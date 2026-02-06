@@ -1,0 +1,874 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		751253BA2DF21E67000A527F /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 751253B92DF21E67000A527F /* GoogleSignIn */; };
+		751253BC2DF21E6B000A527F /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 751253BB2DF21E6B000A527F /* GoogleSignInSwift */; };
+		751253BF2DF21EE7000A527F /* GoogleAPIClientForRESTCore in Frameworks */ = {isa = PBXBuildFile; productRef = 751253BE2DF21EE7000A527F /* GoogleAPIClientForRESTCore */; };
+		751253C12DF21EE7000A527F /* GoogleAPIClientForREST_Docs in Frameworks */ = {isa = PBXBuildFile; productRef = 751253C02DF21EE7000A527F /* GoogleAPIClientForREST_Docs */; };
+		751253C32DF21EE7000A527F /* GoogleAPIClientForREST_Document in Frameworks */ = {isa = PBXBuildFile; productRef = 751253C22DF21EE7000A527F /* GoogleAPIClientForREST_Document */; };
+		751253C52DF21EE7000A527F /* GoogleAPIClientForREST_Drive in Frameworks */ = {isa = PBXBuildFile; productRef = 751253C42DF21EE7000A527F /* GoogleAPIClientForREST_Drive */; };
+		75A7FF382EDE834000F3F4C2 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75A7FF372EDE834000F3F4C2 /* WidgetKit.framework */; };
+		75A7FF3A2EDE834000F3F4C2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75A7FF392EDE834000F3F4C2 /* SwiftUI.framework */; };
+		75A7FF492EDE834100F3F4C2 /* RetrospectWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 75A7FF362EDE834000F3F4C2 /* RetrospectWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		751252A12DF20D0D000A527F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 751252882DF20D0C000A527F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7512528F2DF20D0C000A527F;
+			remoteInfo = Retrospect;
+		};
+		751252AB2DF20D0D000A527F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 751252882DF20D0C000A527F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7512528F2DF20D0C000A527F;
+			remoteInfo = Retrospect;
+		};
+		75A7FF472EDE834100F3F4C2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 751252882DF20D0C000A527F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 75A7FF352EDE834000F3F4C2;
+			remoteInfo = RetrospectWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		75A7FF4E2EDE834100F3F4C2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				75A7FF492EDE834100F3F4C2 /* RetrospectWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		751252902DF20D0C000A527F /* Retrospect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Retrospect.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		751252A02DF20D0D000A527F /* RetrospectTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RetrospectTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		751252AA2DF20D0D000A527F /* RetrospectUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RetrospectUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		751253C62DF21F80000A527F /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		75A7FF362EDE834000F3F4C2 /* RetrospectWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RetrospectWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		75A7FF372EDE834000F3F4C2 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		75A7FF392EDE834000F3F4C2 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		751253C82DF22077000A527F /* Exceptions for "Retrospect" folder in "Retrospect" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7512528F2DF20D0C000A527F /* Retrospect */;
+		};
+		75A7FF4A2EDE834100F3F4C2 /* Exceptions for "RetrospectWidgets" folder in "RetrospectWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 75A7FF352EDE834000F3F4C2 /* RetrospectWidgetsExtension */;
+		};
+		75A7FF502EDE83DC00F3F4C2 /* Exceptions for "Retrospect" folder in "RetrospectWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/VoiceRecordingActivity.swift,
+			);
+			target = 75A7FF352EDE834000F3F4C2 /* RetrospectWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		751252922DF20D0C000A527F /* Retrospect */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				751253C82DF22077000A527F /* Exceptions for "Retrospect" folder in "Retrospect" target */,
+				75A7FF502EDE83DC00F3F4C2 /* Exceptions for "Retrospect" folder in "RetrospectWidgetsExtension" target */,
+			);
+			path = Retrospect;
+			sourceTree = "<group>";
+		};
+		751252A32DF20D0D000A527F /* RetrospectTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RetrospectTests;
+			sourceTree = "<group>";
+		};
+		751252AD2DF20D0D000A527F /* RetrospectUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RetrospectUITests;
+			sourceTree = "<group>";
+		};
+		75A7FF3B2EDE834000F3F4C2 /* RetrospectWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				75A7FF4A2EDE834100F3F4C2 /* Exceptions for "RetrospectWidgets" folder in "RetrospectWidgetsExtension" target */,
+			);
+			path = RetrospectWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7512528D2DF20D0C000A527F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				751253C52DF21EE7000A527F /* GoogleAPIClientForREST_Drive in Frameworks */,
+				751253BC2DF21E6B000A527F /* GoogleSignInSwift in Frameworks */,
+				751253C12DF21EE7000A527F /* GoogleAPIClientForREST_Docs in Frameworks */,
+				751253BF2DF21EE7000A527F /* GoogleAPIClientForRESTCore in Frameworks */,
+				751253C32DF21EE7000A527F /* GoogleAPIClientForREST_Document in Frameworks */,
+				751253BA2DF21E67000A527F /* GoogleSignIn in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7512529D2DF20D0D000A527F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		751252A72DF20D0D000A527F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75A7FF332EDE834000F3F4C2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75A7FF3A2EDE834000F3F4C2 /* SwiftUI.framework in Frameworks */,
+				75A7FF382EDE834000F3F4C2 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		751252872DF20D0C000A527F = {
+			isa = PBXGroup;
+			children = (
+				75A7FF3B2EDE834000F3F4C2 /* RetrospectWidgets */,
+				751253922DF20EFA000A527F /* Frameworks */,
+				751252922DF20D0C000A527F /* Retrospect */,
+				751252A32DF20D0D000A527F /* RetrospectTests */,
+				751252AD2DF20D0D000A527F /* RetrospectUITests */,
+				751252912DF20D0C000A527F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		751252912DF20D0C000A527F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				751252902DF20D0C000A527F /* Retrospect.app */,
+				751252A02DF20D0D000A527F /* RetrospectTests.xctest */,
+				751252AA2DF20D0D000A527F /* RetrospectUITests.xctest */,
+				75A7FF362EDE834000F3F4C2 /* RetrospectWidgetsExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		751253922DF20EFA000A527F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				751253C62DF21F80000A527F /* HealthKit.framework */,
+				75A7FF372EDE834000F3F4C2 /* WidgetKit.framework */,
+				75A7FF392EDE834000F3F4C2 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7512528F2DF20D0C000A527F /* Retrospect */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 751252B42DF20D0D000A527F /* Build configuration list for PBXNativeTarget "Retrospect" */;
+			buildPhases = (
+				7512528C2DF20D0C000A527F /* Sources */,
+				7512528D2DF20D0C000A527F /* Frameworks */,
+				7512528E2DF20D0C000A527F /* Resources */,
+				75A7FF4E2EDE834100F3F4C2 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				75A7FF482EDE834100F3F4C2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				751252922DF20D0C000A527F /* Retrospect */,
+			);
+			name = Retrospect;
+			packageProductDependencies = (
+				751253B92DF21E67000A527F /* GoogleSignIn */,
+				751253BB2DF21E6B000A527F /* GoogleSignInSwift */,
+				751253BE2DF21EE7000A527F /* GoogleAPIClientForRESTCore */,
+				751253C02DF21EE7000A527F /* GoogleAPIClientForREST_Docs */,
+				751253C22DF21EE7000A527F /* GoogleAPIClientForREST_Document */,
+				751253C42DF21EE7000A527F /* GoogleAPIClientForREST_Drive */,
+			);
+			productName = Retrospect;
+			productReference = 751252902DF20D0C000A527F /* Retrospect.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7512529F2DF20D0D000A527F /* RetrospectTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 751252B72DF20D0D000A527F /* Build configuration list for PBXNativeTarget "RetrospectTests" */;
+			buildPhases = (
+				7512529C2DF20D0D000A527F /* Sources */,
+				7512529D2DF20D0D000A527F /* Frameworks */,
+				7512529E2DF20D0D000A527F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				751252A22DF20D0D000A527F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				751252A32DF20D0D000A527F /* RetrospectTests */,
+			);
+			name = RetrospectTests;
+			packageProductDependencies = (
+			);
+			productName = RetrospectTests;
+			productReference = 751252A02DF20D0D000A527F /* RetrospectTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		751252A92DF20D0D000A527F /* RetrospectUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 751252BA2DF20D0D000A527F /* Build configuration list for PBXNativeTarget "RetrospectUITests" */;
+			buildPhases = (
+				751252A62DF20D0D000A527F /* Sources */,
+				751252A72DF20D0D000A527F /* Frameworks */,
+				751252A82DF20D0D000A527F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				751252AC2DF20D0D000A527F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				751252AD2DF20D0D000A527F /* RetrospectUITests */,
+			);
+			name = RetrospectUITests;
+			packageProductDependencies = (
+			);
+			productName = RetrospectUITests;
+			productReference = 751252AA2DF20D0D000A527F /* RetrospectUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		75A7FF352EDE834000F3F4C2 /* RetrospectWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 75A7FF4B2EDE834100F3F4C2 /* Build configuration list for PBXNativeTarget "RetrospectWidgetsExtension" */;
+			buildPhases = (
+				75A7FF322EDE834000F3F4C2 /* Sources */,
+				75A7FF332EDE834000F3F4C2 /* Frameworks */,
+				75A7FF342EDE834000F3F4C2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				75A7FF3B2EDE834000F3F4C2 /* RetrospectWidgets */,
+			);
+			name = RetrospectWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = RetrospectWidgetsExtension;
+			productReference = 75A7FF362EDE834000F3F4C2 /* RetrospectWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		751252882DF20D0C000A527F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 1610;
+				TargetAttributes = {
+					7512528F2DF20D0C000A527F = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					7512529F2DF20D0D000A527F = {
+						CreatedOnToolsVersion = 16.1;
+						TestTargetID = 7512528F2DF20D0C000A527F;
+					};
+					751252A92DF20D0D000A527F = {
+						CreatedOnToolsVersion = 16.1;
+						TestTargetID = 7512528F2DF20D0C000A527F;
+					};
+					75A7FF352EDE834000F3F4C2 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 7512528B2DF20D0C000A527F /* Build configuration list for PBXProject "Retrospect" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 751252872DF20D0C000A527F;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				751253B82DF21E57000A527F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 751252912DF20D0C000A527F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7512528F2DF20D0C000A527F /* Retrospect */,
+				7512529F2DF20D0D000A527F /* RetrospectTests */,
+				751252A92DF20D0D000A527F /* RetrospectUITests */,
+				75A7FF352EDE834000F3F4C2 /* RetrospectWidgetsExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7512528E2DF20D0C000A527F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7512529E2DF20D0D000A527F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		751252A82DF20D0D000A527F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75A7FF342EDE834000F3F4C2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7512528C2DF20D0C000A527F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7512529C2DF20D0D000A527F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		751252A62DF20D0D000A527F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75A7FF322EDE834000F3F4C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		751252A22DF20D0D000A527F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7512528F2DF20D0C000A527F /* Retrospect */;
+			targetProxy = 751252A12DF20D0D000A527F /* PBXContainerItemProxy */;
+		};
+		751252AC2DF20D0D000A527F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7512528F2DF20D0C000A527F /* Retrospect */;
+			targetProxy = 751252AB2DF20D0D000A527F /* PBXContainerItemProxy */;
+		};
+		75A7FF482EDE834100F3F4C2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 75A7FF352EDE834000F3F4C2 /* RetrospectWidgetsExtension */;
+			targetProxy = 75A7FF472EDE834100F3F4C2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		751252B22DF20D0D000A527F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		751252B32DF20D0D000A527F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		751252B52DF20D0D000A527F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Retrospect/Retrospect.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/../../../../../../../../../Users/shauryanarang/Documents/Retrospectapp/Retrospect",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Retrospect/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "need to use faceid";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Retrospect uses your health data to provide personalized insights in your weekly reflection podcasts.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Retrospect needs to access your health data to include wellness metrics in your reflections.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Retrospect needs microphone access to record audio for your journal entries and enable speech-to-text transcription.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Retrospect uses speech recognition to transcribe your spoken reflections into text for analysis and insights.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		751252B62DF20D0D000A527F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Retrospect/Retrospect.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/../../../../../../../../../Users/shauryanarang/Documents/Retrospectapp/Retrospect",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Retrospect/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "need to use faceid";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Retrospect uses your health data to provide personalized insights in your weekly reflection podcasts.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Retrospect needs to access your health data to include wellness metrics in your reflections.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Retrospect needs microphone access to record audio for your journal entries and enable speech-to-text transcription.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Retrospect uses speech recognition to transcribe your spoken reflections into text for analysis and insights.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		751252B82DF20D0D000A527F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Retrospect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Retrospect";
+			};
+			name = Debug;
+		};
+		751252B92DF20D0D000A527F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Retrospect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Retrospect";
+			};
+			name = Release;
+		};
+		751252BB2DF20D0D000A527F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Retrospect;
+			};
+			name = Debug;
+		};
+		751252BC2DF20D0D000A527F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Retrospect;
+			};
+			name = Release;
+		};
+		75A7FF4C2EDE834100F3F4C2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RetrospectWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RetrospectWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		75A7FF4D2EDE834100F3F4C2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W78P34Q9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RetrospectWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RetrospectWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shauryanarang.retrospect.2026a1b7.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7512528B2DF20D0C000A527F /* Build configuration list for PBXProject "Retrospect" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				751252B22DF20D0D000A527F /* Debug */,
+				751252B32DF20D0D000A527F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		751252B42DF20D0D000A527F /* Build configuration list for PBXNativeTarget "Retrospect" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				751252B52DF20D0D000A527F /* Debug */,
+				751252B62DF20D0D000A527F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		751252B72DF20D0D000A527F /* Build configuration list for PBXNativeTarget "RetrospectTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				751252B82DF20D0D000A527F /* Debug */,
+				751252B92DF20D0D000A527F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		751252BA2DF20D0D000A527F /* Build configuration list for PBXNativeTarget "RetrospectUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				751252BB2DF20D0D000A527F /* Debug */,
+				751252BC2DF20D0D000A527F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		75A7FF4B2EDE834100F3F4C2 /* Build configuration list for PBXNativeTarget "RetrospectWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75A7FF4C2EDE834100F3F4C2 /* Debug */,
+				75A7FF4D2EDE834100F3F4C2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		751253B82DF21E57000A527F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+		751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/google-api-objectivec-client-for-rest";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		751253B92DF21E67000A527F /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253B82DF21E57000A527F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		751253BB2DF21E6B000A527F /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253B82DF21E57000A527F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		751253BE2DF21EE7000A527F /* GoogleAPIClientForRESTCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForRESTCore;
+		};
+		751253C02DF21EE7000A527F /* GoogleAPIClientForREST_Docs */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForREST_Docs;
+		};
+		751253C22DF21EE7000A527F /* GoogleAPIClientForREST_Document */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForREST_Document;
+		};
+		751253C42DF21EE7000A527F /* GoogleAPIClientForREST_Drive */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForREST_Drive;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 751252882DF20D0C000A527F /* Project object */;
+}

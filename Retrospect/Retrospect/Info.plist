@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BUNDLE_ID</key>
+	<string>com.shauryanarang.Retrospect</string>
+	<key>CFBundleURLSchemes</key>
+	<string>com.googleusercontent.apps.554366364287-po5osj24tcqrom1lhfkitm3c4qsb3i2c</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.554366364287-po5osj24tcqrom1lhfkitm3c4qsb3i2c</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Retrospect</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>retrospect</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>554366364287-po5osj24tcqrom1lhfkitm3c4qsb3i2c.apps.googleusercontent.com</string>
+	<key>OPENAI_API_KEY</key>
+	<string>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</string>
+	<key>ANTHROPIC_API_KEY</key>
+	<string>YOUR_ANTHROPIC_API_KEY_HERE</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>GeistSans-Regular.otf</string>
+		<string>GeistSans-Medium.otf</string>
+		<string>GeistSans-SemiBold.otf</string>
+		<string>GeistSans-Bold.otf</string>
+		<string>LibreBaskerville-Regular.ttf</string>
+		<string>LibreBaskerville-Bold.ttf</string>
+		<string>LibreBaskerville-Italic.ttf</string>
+		<string>Adamina-Regular.ttf</string>
+		<string>EBGaramond08-Regular.ttf</string>
+		<string>EBGaramond08-Italic.ttf</string>
+		<string>EBGaramond12-Regular.ttf</string>
+		<string>EBGaramond12-Italic.ttf</string>
+		<string>EBGaramond12-AllSC.ttf</string>
+		<string>EBGaramondSC08-Regular.ttf</string>
+		<string>EBGaramondSC12-Regular.ttf</string>
+		<string>EBGaramond-Initials.ttf</string>
+		<string>EBGaramond-InitialsF1.ttf</string>
+		<string>EBGaramond-InitialsF2.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>
