@@ -21,13 +21,13 @@
     --surface-3: #2A2A28;
     --surface-hover: #303030;
 
-    /* Bone ivory text palette (no yellow) */
+    /* Bone ivory text palette */
     --bone: #ECE8E1;
     --bone-dim: #C4BFB6;
     --bone-muted: #8A857C;
     --bone-faint: #5C5850;
 
-    /* Functional colors - muted, dark-friendly */
+    /* Functional colors */
     --green: #6ECC8E;
     --green-dim: rgba(110,204,142,0.12);
     --red: #E57373;
@@ -39,17 +39,25 @@
     --purple: #B99AE4;
     --purple-dim: rgba(185,154,228,0.12);
 
-    --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+    /* Fonts: SF Pro primary, Geist Mono secondary */
     --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
 
     --border: rgba(236,232,225,0.08);
     --border-solid: #2E2E2C;
+
+    /* Consistent interactive sizing */
+    --input-h: 38px;
+    --btn-h: 36px;
+    --btn-h-sm: 30px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
     font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
     background: var(--bg);
     color: var(--bone);
     display: flex;
@@ -98,10 +106,10 @@
     color: var(--bone-muted);
     padding: 11px 14px;
     cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-family: var(--font-body);
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     display: flex;
     align-items: center;
@@ -130,9 +138,8 @@
     padding: 16px 24px;
     border-top: 1px solid var(--border);
     font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
     color: var(--bone-faint);
   }
 
@@ -140,15 +147,14 @@
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
   .topbar {
-    padding: 14px 32px;
+    padding: 12px 32px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-shrink: 0;
   }
-  .topbar select, .topbar input { font-size: 12px; }
   .content { flex: 1; overflow-y: auto; padding: 32px; }
 
   /* ========== AUTH GATE ========== */
@@ -165,58 +171,65 @@
   }
   #authGate .box { background: transparent; width: 360px; text-align: center; }
   #authGate h2 {
-    font-family: var(--font-mono);
-    font-size: 14px;
+    font-family: var(--font-body);
+    font-size: 20px;
     font-weight: 600;
-    letter-spacing: 6px;
+    letter-spacing: 4px;
     text-transform: uppercase;
     color: var(--bone);
     margin-bottom: 6px;
   }
   #authGate p {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     color: var(--bone-faint);
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    font-size: 12px;
     margin-bottom: 32px;
   }
   #authGate input {
     width: 100%;
-    padding: 14px 18px;
-    border: 1px solid var(--border-solid);
-    background: var(--surface);
+    height: 48px;
+    padding: 0 16px;
+    border: none;
+    border-bottom: 2px solid var(--border-solid);
+    background: var(--surface-2);
     color: var(--bone);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    letter-spacing: 1px;
+    font-family: var(--font-body);
+    font-size: 14px;
     outline: none;
     transition: border-color 0.15s;
   }
-  #authGate input:focus { border-color: var(--bone-muted); }
+  #authGate input:focus { border-bottom-color: var(--bone-dim); }
   #authGate input::placeholder { color: var(--bone-faint); }
-  #authGate .btn { margin-top: 16px; width: 100%; }
+  #authGate .btn { margin-top: 16px; width: 100%; height: 48px; font-size: 13px; }
   #authGate .err {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     color: var(--red);
-    font-size: 11px;
-    letter-spacing: 0.5px;
+    font-size: 12px;
     margin-top: 12px;
   }
 
-  /* ========== FORMS ========== */
-  select, input[type="text"], textarea {
-    background: var(--surface);
-    border: 1px solid var(--border-solid);
+  /* ========== FORMS — unified input treatment ========== */
+  select, input[type="text"], input[type="password"], textarea {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: var(--surface-2);
+    border: none;
+    border-bottom: 2px solid var(--border-solid);
     color: var(--bone);
-    padding: 10px 14px;
+    padding: 0 12px;
+    height: var(--input-h);
     font-size: 13px;
     font-family: var(--font-body);
     outline: none;
     transition: border-color 0.15s;
+    width: 100%;
   }
-  select:focus, input:focus, textarea:focus { border-color: var(--bone-muted); }
-  textarea { resize: vertical; min-height: 60px; }
+  select { padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%238A857C' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+  textarea { height: auto; min-height: 80px; padding: 10px 12px; resize: vertical; }
+  select:focus, input:focus, textarea:focus { border-bottom-color: var(--bone-dim); }
+  input::placeholder, textarea::placeholder { color: var(--bone-faint); }
+
   label {
     font-family: var(--font-mono);
     font-size: 10px;
@@ -224,30 +237,34 @@
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--bone-muted);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     display: block;
   }
 
-  /* ========== BUTTONS ========== */
+  /* ========== BUTTONS — consistent height & spacing ========== */
   .btn {
-    padding: 10px 20px;
+    height: var(--btn-h);
+    padding: 0 18px;
     border: 1px solid var(--border-solid);
     background: var(--surface-2);
     color: var(--bone-dim);
     cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 10px;
+    font-family: var(--font-body);
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    letter-spacing: 0.5px;
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .btn:hover { background: var(--surface-3); color: var(--bone); border-color: var(--bone-faint); }
   .btn:active { transform: translateY(1px); }
   .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .btn-sm { height: var(--btn-h-sm); padding: 0 12px; font-size: 11px; }
   .btn-primary {
     background: var(--bone);
     border-color: var(--bone);
@@ -277,16 +294,14 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border-solid);
-    padding: 20px 24px;
-    margin-bottom: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
   }
   .card h3 {
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-family: var(--font-body);
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--bone);
   }
   .card p {
@@ -306,12 +321,12 @@
   }
   .stat-card {
     background: var(--surface);
-    padding: 24px 20px;
+    padding: 28px 20px;
     text-align: center;
   }
   .stat-card .num {
-    font-family: var(--font-mono);
-    font-size: 32px;
+    font-family: var(--font-body);
+    font-size: 36px;
     font-weight: 300;
     color: var(--bone);
     letter-spacing: -1px;
@@ -319,7 +334,7 @@
   .stat-card .lbl {
     font-family: var(--font-mono);
     font-size: 9px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--bone-faint);
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -330,22 +345,23 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
     text-align: left;
-    padding: 12px 16px;
+    padding: 10px 16px;
     font-family: var(--font-mono);
-    font-weight: 600;
-    font-size: 9px;
-    letter-spacing: 1.5px;
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
     color: var(--bone-muted);
-    border-bottom: 1px solid var(--bone-muted);
+    border-bottom: 1px solid var(--bone-faint);
     background: var(--surface);
   }
   td {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-solid);
     vertical-align: top;
-    line-height: 1.5;
+    line-height: 1.55;
     color: var(--bone-dim);
+    font-size: 13px;
   }
   tr:hover td { background: var(--surface-2); }
 
@@ -354,9 +370,9 @@
     display: inline-block;
     padding: 3px 10px;
     font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
   }
   .badge-green { background: var(--green-dim); color: var(--green); }
@@ -372,15 +388,14 @@
   /* ========== SECTIONS ========== */
   .section { margin-bottom: 32px; }
   .section-title {
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-family: var(--font-body);
+    font-size: 16px;
     font-weight: 600;
-    letter-spacing: 3px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
     color: var(--bone);
     margin-bottom: 20px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--bone-muted);
+    border-bottom: 1px solid var(--border-solid);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -403,9 +418,9 @@
   }
   .playground-col h4 {
     font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--bone-muted);
     margin-bottom: 16px;
@@ -416,7 +431,8 @@
     border-bottom: 1px solid var(--border-solid);
   }
   .playground-col h4 .count {
-    font-size: 16px;
+    font-family: var(--font-body);
+    font-size: 18px;
     font-weight: 300;
     color: var(--bone);
     letter-spacing: -0.5px;
@@ -435,7 +451,6 @@
     padding: 16px 20px;
     background: var(--surface);
     text-align: center;
-    font-family: var(--font-mono);
     color: var(--bone-faint);
   }
   .step.active {
@@ -452,12 +467,13 @@
     color: var(--red);
   }
   .step .step-label {
-    font-size: 10px;
+    font-family: var(--font-body);
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
   .step .step-detail {
+    font-family: var(--font-mono);
     font-size: 9px;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -470,39 +486,37 @@
     border: 1px solid var(--border-solid);
     padding: 14px 16px;
     margin-bottom: 8px;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.6;
     background: var(--surface-2);
     color: var(--bone-dim);
   }
   .obs-item .goal-tag {
     font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     color: var(--purple);
     margin-bottom: 6px;
   }
   .obs-item .confidence {
     font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.5px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
     color: var(--bone-faint);
     margin-top: 8px;
   }
   .insight-item .insight-title {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    font-size: 13px;
     margin-bottom: 6px;
     color: var(--bone);
   }
   .insight-item .insight-badge { margin-bottom: 8px; }
   .insight-item .evidence {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bone-muted);
     margin-top: 8px;
     font-style: italic;
@@ -517,33 +531,32 @@
     max-height: 600px;
     overflow-y: auto;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 2;
     color: var(--bone-muted);
   }
   .log-entry {
-    padding: 1px 0;
+    padding: 2px 0;
     border-bottom: 1px solid rgba(236,232,225,0.03);
   }
-  .log-time { color: var(--bone-faint); }
+  .log-time { color: var(--bone-faint); font-size: 11px; }
   .log-info { color: var(--blue); }
   .log-success { color: var(--green); }
   .log-error { color: var(--red); }
   .log-warn { color: var(--amber); }
 
   /* ========== FORM GROUPS ========== */
-  .form-group { margin-bottom: 14px; }
+  .form-group { margin-bottom: 16px; }
   .form-row { display: flex; gap: 16px; align-items: flex-end; }
   .form-row > * { flex: 1; }
+  .form-row .btn { margin-bottom: 2px; /* align with input bottom border */ }
 
   /* ========== EMPTY STATE ========== */
   .empty {
     text-align: center;
     padding: 48px 24px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    font-family: var(--font-body);
+    font-size: 13px;
     color: var(--bone-faint);
   }
 
@@ -558,9 +571,9 @@
     align-items: center;
     gap: 6px;
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 500;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     color: var(--green);
   }
@@ -568,6 +581,7 @@
     content: '';
     width: 6px;
     height: 6px;
+    border-radius: 50%;
     background: var(--green);
     display: block;
   }
@@ -575,9 +589,9 @@
   /* ========== TOPBAR ========== */
   .topbar-label {
     font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
     color: var(--bone-muted);
     display: flex;
@@ -586,13 +600,19 @@
   }
   .topbar-label select {
     font-family: var(--font-body);
-    font-size: 12px;
-    min-width: 220px;
+    font-size: 13px;
+    min-width: 240px;
+    height: var(--btn-h);
     background: var(--surface-2);
-    border: 1px solid var(--border-solid);
-    padding: 8px 12px;
+    border: none;
+    border-bottom: 2px solid var(--border-solid);
+    padding: 0 32px 0 12px;
     color: var(--bone);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%238A857C' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
   }
+  .topbar-label select:focus { border-bottom-color: var(--bone-dim); }
 
   .topbar-divider {
     width: 1px;
@@ -609,7 +629,7 @@
     <h2>RETROSPECT</h2>
     <p>Enter admin secret to continue</p>
     <input type="password" id="secretInput" placeholder="SECRET KEY" autofocus>
-    <button class="btn btn-primary" onclick="authenticate()" style="margin-top:16px;width:100%;justify-content:center;padding:14px 20px">AUTHENTICATE</button>
+    <button class="btn btn-primary" onclick="authenticate()" style="margin-top:16px;width:100%">AUTHENTICATE</button>
     <div id="authError" class="err"></div>
   </div>
 </div>
@@ -638,9 +658,9 @@
         <select id="userSelect" onchange="onUserChange()"></select>
       </div>
       <div class="topbar-divider"></div>
-      <button class="btn" onclick="createTestUser()">+ NEW USER</button>
-      <button class="btn" onclick="refreshAll()">REFRESH</button>
-      <button class="btn btn-red" onclick="runDiagnose()">DIAGNOSE</button>
+      <button class="btn" onclick="createTestUser()">+ New User</button>
+      <button class="btn" onclick="refreshAll()">Refresh</button>
+      <button class="btn btn-red" onclick="runDiagnose()">Diagnose</button>
       <span style="margin-left:auto"><span id="statusDot" class="status-indicator">CONNECTED</span></span>
     </div>
 
@@ -648,7 +668,7 @@
 
       <!-- OVERVIEW TAB -->
       <div id="tab-overview" class="tab-content active">
-        <div class="section-title">SYSTEM OVERVIEW</div>
+        <div class="section-title">System Overview</div>
         <div class="stats-grid" id="statsGrid">
           <div class="stat-card"><div class="num" id="stat-users">-</div><div class="lbl">USERS</div></div>
           <div class="stat-card"><div class="num" id="stat-goals">-</div><div class="lbl">GOALS</div></div>
@@ -657,29 +677,29 @@
           <div class="stat-card"><div class="num" id="stat-insights">-</div><div class="lbl">INSIGHTS</div></div>
           <div class="stat-card"><div class="num" id="stat-runs">-</div><div class="lbl">RUNS</div></div>
         </div>
-        <div class="section-title">RECENT PIPELINE RUNS</div>
+        <div class="section-title">Recent Pipeline Runs</div>
         <div id="pipelineRunsList"></div>
       </div>
 
       <!-- GOALS TAB -->
       <div id="tab-goals" class="tab-content">
-        <div class="section-title">GOAL EXTRACTION</div>
+        <div class="section-title">Goal Extraction</div>
 
         <div class="card">
-          <h3>EXTRACT FROM NATURAL LANGUAGE</h3>
+          <h3>Extract from Natural Language</h3>
           <p style="margin-bottom:14px">Type how you feel, what you want, or what's on your mind. Claude will extract nuanced goals.</p>
           <div class="form-group">
             <textarea id="goalText" rows="4" style="width:100%" placeholder='e.g. "I want to make more money so I can expand my dating life, I feel like I should be healthier too..."'></textarea>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="extractGoals(false)" id="extractBtn">PREVIEW</button>
-            <button class="btn btn-green" onclick="extractGoals(true)" id="extractSaveBtn">EXTRACT & SAVE</button>
+            <button class="btn btn-primary" onclick="extractGoals(false)" id="extractBtn">Preview</button>
+            <button class="btn btn-green" onclick="extractGoals(true)" id="extractSaveBtn">Extract & Save</button>
           </div>
           <div id="extractedGoals" style="margin-top:20px"></div>
         </div>
 
         <div class="card" style="margin-top:16px">
-          <h3>CREATE MANUAL GOAL</h3>
+          <h3>Create Manual Goal</h3>
           <div class="form-row" style="margin-top:12px">
             <div class="form-group">
               <label>TITLE</label>
@@ -689,26 +709,26 @@
               <label>DESCRIPTION</label>
               <input type="text" id="goalDesc" style="width:100%" placeholder="Optional description">
             </div>
-            <div class="form-group">
-              <button class="btn btn-primary" onclick="createGoalManual()" style="margin-top:20px">CREATE</button>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <button class="btn btn-primary" onclick="createGoalManual()">Create</button>
             </div>
           </div>
         </div>
 
-        <div class="section-title" style="margin-top:32px">EXISTING GOALS</div>
+        <div class="section-title" style="margin-top:32px">Existing Goals</div>
         <div id="goalsList"></div>
       </div>
 
       <!-- DATA BROWSER TAB -->
       <div id="tab-browser" class="tab-content">
-        <div class="section-title">DATA BROWSER</div>
+        <div class="section-title">Data Browser</div>
 
         <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center">
-          <button class="btn btn-primary" onclick="loadBrowserData('content')" id="browseContentBtn">RAW CONTENT</button>
-          <button class="btn" onclick="loadBrowserData('observations')" id="browseObsBtn">OBSERVATIONS</button>
-          <button class="btn" onclick="loadBrowserData('insights')" id="browseInsBtn">INSIGHTS</button>
-          <select id="browserGoalFilter" onchange="loadBrowserData(currentBrowserView)" style="margin-left:auto;font-family:var(--font-body);font-size:12px;padding:8px 12px;">
-            <option value="">ALL GOALS</option>
+          <button class="btn btn-primary" onclick="loadBrowserData('content')" id="browseContentBtn">Raw Content</button>
+          <button class="btn" onclick="loadBrowserData('observations')" id="browseObsBtn">Observations</button>
+          <button class="btn" onclick="loadBrowserData('insights')" id="browseInsBtn">Insights</button>
+          <select id="browserGoalFilter" onchange="loadBrowserData(currentBrowserView)" style="margin-left:auto;min-width:200px;">
+            <option value="">All Goals</option>
           </select>
         </div>
 
@@ -717,8 +737,8 @@
 
       <!-- PLAYGROUND TAB -->
       <div id="tab-playground" class="tab-content">
-        <div class="section-title">PIPELINE PLAYGROUND</div>
-        <p style="color:var(--dark-gray);font-size:13px;margin-bottom:20px;line-height:1.6">Paste content, process it through the observation-insight pipeline, and review results in real time.</p>
+        <div class="section-title">Pipeline Playground</div>
+        <p style="color:var(--bone-dim);font-size:13px;margin-bottom:20px;line-height:1.6">Paste content, process it through the observation-insight pipeline, and review results in real time.</p>
 
         <div class="card">
           <div class="form-row" style="align-items:stretch">
@@ -743,12 +763,12 @@
                 <label>CONTENT DATE</label>
                 <input type="text" id="playContentDate" style="width:100%" placeholder="auto (now)">
               </div>
-              <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%;justify-content:center;padding:14px">SUBMIT & PROCESS</button>
-              <button class="btn btn-primary" onclick="runPlayground(true)" id="playReprocessBtn" style="width:100%;justify-content:center;font-size:9px">FORCE REPROCESS ALL</button>
+              <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%">Submit & Process</button>
+              <button class="btn btn-primary btn-sm" onclick="runPlayground(true)" id="playReprocessBtn" style="width:100%">Force Reprocess All</button>
               <div style="display:flex;gap:4px">
-                <button class="btn btn-ghost" onclick="runPlaygroundStep('content')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">SUBMIT</button>
-                <button class="btn btn-ghost" onclick="runPlaygroundStep('observations')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">OBS</button>
-                <button class="btn btn-ghost" onclick="runPlaygroundStep('insights')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">INS</button>
+                <button class="btn btn-ghost btn-sm" onclick="runPlaygroundStep('content')" style="flex:1">Submit</button>
+                <button class="btn btn-ghost btn-sm" onclick="runPlaygroundStep('observations')" style="flex:1">Obs</button>
+                <button class="btn btn-ghost btn-sm" onclick="runPlaygroundStep('insights')" style="flex:1">Ins</button>
               </div>
             </div>
           </div>
@@ -781,8 +801,8 @@
 
       <!-- LOGS TAB -->
       <div id="tab-logs" class="tab-content">
-        <div class="section-title">ACTIVITY LOG</div>
-        <button class="btn" onclick="clearLogs()" style="margin-bottom:16px">CLEAR LOG</button>
+        <div class="section-title">Activity Log</div>
+        <button class="btn" onclick="clearLogs()" style="margin-bottom:16px">Clear Log</button>
         <div class="log-container" id="logContainer"></div>
       </div>
 
@@ -926,8 +946,8 @@ async function loadPipelineRuns() {
         <td><span class="badge ${badge}">${r.status}</span></td>
         <td style="font-family:var(--font-mono)">${r.observations_created || 0}</td>
         <td style="font-family:var(--font-mono)">${r.insights_created || 0}</td>
-        <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(r.started_at)}</td>
-        <td style="color:var(--error);font-size:11px">${r.error_message || ''}</td>
+        <td style="font-size:12px;color:var(--bone-muted)">${fmtDate(r.started_at)}</td>
+        <td style="color:var(--red);font-size:11px">${r.error_message || ''}</td>
       </tr>`;
     }
     html += '</table>';
@@ -960,7 +980,7 @@ function renderGoals(goals) {
         <span class="badge ${g.is_active ? 'badge-green' : 'badge-red'}">${g.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
       </div>
       <p style="margin-top:8px">${esc(g.description || 'No description')}</p>
-      <div style="margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--mid-gray)">${fmtDate(g.created_at)} &middot; ${g.id.slice(0,8)}</div>
+      <div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:var(--bone-faint)">${fmtDate(g.created_at)} &middot; ${g.id.slice(0,8)}</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -971,7 +991,7 @@ async function extractGoals(save) {
   if (!text) return;
   const btn = save ? document.getElementById('extractSaveBtn') : document.getElementById('extractBtn');
   btn.disabled = true;
-  btn.textContent = 'PROCESSING...';
+  btn.textContent = 'Processing...';
   try {
     let res;
     if (save) {
@@ -986,12 +1006,12 @@ async function extractGoals(save) {
     }
     const goals = save ? res.data.extracted.goals : res.data.goals;
     const el = document.getElementById('extractedGoals');
-    let html = `<div style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mid-gray);margin-bottom:12px">${save ? 'SAVED GOALS' : 'PREVIEW (NOT SAVED)'}</div>`;
+    let html = `<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--bone-faint);margin-bottom:12px">${save ? 'Saved Goals' : 'Preview (not saved)'}</div>`;
     for (const g of goals) {
       html += `<div class="card" style="border-left:3px solid var(--purple)">
         <h3>${esc(g.title)}</h3>
         <p>${esc(g.description)}</p>
-        <p style="font-size:11px;color:var(--warn);margin-top:8px;font-style:italic">${esc(g.reasoning)}</p>
+        <p style="font-size:12px;color:var(--amber);margin-top:8px;font-style:italic">${esc(g.reasoning)}</p>
       </div>`;
     }
     el.innerHTML = html;
@@ -999,7 +1019,7 @@ async function extractGoals(save) {
     log('error', `Goal extraction failed: ${e.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = save ? 'EXTRACT & SAVE' : 'PREVIEW';
+    btn.textContent = save ? 'Extract & Save' : 'Preview';
   }
 }
 
@@ -1059,7 +1079,7 @@ async function loadBrowserData(view) {
           <td><span class="badge badge-blue">${c.content_type}</span></td>
           <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((c.content || '').slice(0,120))}</td>
           <td><span class="badge ${c.processing_status === 'completed' ? 'badge-green' : 'badge-orange'}">${c.processing_status}</span></td>
-          <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(c.content_date || c.created_at)}</td>
+          <td style="font-size:12px;color:var(--bone-muted)">${fmtDate(c.content_date || c.created_at)}</td>
         </tr>`;
       }
       html += '</table>';
@@ -1074,9 +1094,9 @@ async function loadBrowserData(view) {
         html += `<tr>
           <td>${esc(o.content)}</td>
           <td><span class="badge badge-purple">${goal ? esc(goal.title) : o.goal_id.slice(0,8)}</span></td>
-          <td style="font-size:11px;color:var(--dark-gray)">${esc(o.reason_why || '')}</td>
-          <td style="font-family:var(--font-mono);font-size:11px">${(o.confidence_score || 0).toFixed(2)}</td>
-          <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(o.observation_date)}</td>
+          <td style="font-size:12px;color:var(--bone-muted)">${esc(o.reason_why || '')}</td>
+          <td style="font-family:var(--font-mono);font-size:12px">${(o.confidence_score || 0).toFixed(2)}</td>
+          <td style="font-size:12px;color:var(--bone-muted)">${fmtDate(o.observation_date)}</td>
         </tr>`;
       }
       html += '</table>';
@@ -1093,14 +1113,14 @@ async function loadBrowserData(view) {
           <td style="max-width:300px;line-height:1.5">${esc(i.content)}</td>
           <td><span class="badge badge-purple">${goal ? esc(goal.title) : (i.goal_id || '').slice(0,8)}</span></td>
           <td style="font-family:var(--font-mono);font-size:11px">${(i.confidence_score || 0).toFixed(2)}</td>
-          <td style="font-size:11px;color:var(--dark-gray);max-width:200px">${esc(i.evidence_summary || '')}</td>
+          <td style="font-size:12px;color:var(--bone-muted);max-width:200px">${esc(i.evidence_summary || '')}</td>
         </tr>`;
       }
       html += '</table>';
       el.innerHTML = html;
     }
   } catch (e) {
-    el.innerHTML = `<div class="empty" style="color:var(--error)">${e.message}</div>`;
+    el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`;
   }
 }
 
@@ -1126,7 +1146,7 @@ async function runPlayground(forceReprocess = false) {
 
   const btn = forceReprocess ? document.getElementById('playReprocessBtn') : document.getElementById('playRunBtn');
   btn.disabled = true;
-  btn.textContent = 'PROCESSING...';
+  btn.textContent = 'Processing...';
   resetSteps();
 
   try {
@@ -1192,7 +1212,7 @@ async function runPlayground(forceReprocess = false) {
     });
   } finally {
     btn.disabled = false;
-    btn.textContent = forceReprocess ? 'FORCE REPROCESS ALL' : 'SUBMIT & PROCESS';
+    btn.textContent = forceReprocess ? 'Force Reprocess All' : 'Submit & Process';
   }
 }
 
@@ -1271,9 +1291,9 @@ function renderPlayInsights(items) {
     html += `<div class="insight-item">
       <div class="insight-badge"><span class="badge ${isUpdated ? 'badge-orange' : 'badge-green'}">${isUpdated ? 'UPDATED' : 'NEW'}</span></div>
       <div class="insight-title">${esc(i.title)}</div>
-      <div style="font-size:12px;line-height:1.6;color:var(--charcoal)">${esc(i.content)}</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--bone-dim)">${esc(i.content)}</div>
       <div class="evidence">${esc(i.evidence_summary || '')}</div>
-      <div style="margin-top:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.5px;color:var(--mid-gray)">${goal ? esc(goal.title) : ''} &middot; ${(i.confidence_score || 0).toFixed(2)}</div>
+      <div style="margin-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--bone-faint)">${goal ? esc(goal.title) : ''} &middot; ${(i.confidence_score || 0).toFixed(2)}</div>
     </div>`;
   }
   el.innerHTML = html;
