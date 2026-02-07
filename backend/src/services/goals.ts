@@ -166,6 +166,25 @@ export async function getGoal(goalId: string, userId: string): Promise<DbGoal | 
 }
 
 /**
+ * Parse a vector value from Supabase.
+ * PostgreSQL vector columns are returned as strings like "[-0.024,0.008,...]"
+ * by the Supabase JS client. This converts them to number[].
+ */
+export function parseEmbedding(value: unknown): number[] | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value as number[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed as number[];
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * Get all active goals with their embeddings (for pipeline use).
  */
 export async function getActiveGoalsWithEmbeddings(
@@ -182,12 +201,17 @@ export async function getActiveGoalsWithEmbeddings(
     throw new Error(`Failed to get goals: ${error.message}`);
   }
 
-  return (data || []) as Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    embedding: number[];
-  }>;
+  // Parse embedding strings into number arrays (Supabase returns vector as string)
+  return (data || [])
+    .map((g: any) => ({
+      id: g.id,
+      title: g.title,
+      description: g.description,
+      embedding: parseEmbedding(g.embedding),
+    }))
+    .filter((g): g is { id: string; title: string; description: string | null; embedding: number[] } =>
+      g.embedding !== null && g.embedding.length > 0
+    );
 }
 
 /**

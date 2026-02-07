@@ -1,6 +1,6 @@
 import { generateEmbedding, generateEmbeddings, jsonChatCompletion } from '../utils/openai.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
-import { getActiveGoalsWithEmbeddings } from './goals.js';
+import { getActiveGoalsWithEmbeddings, parseEmbedding } from './goals.js';
 import type {
   DbObservation,
   DbInsight,
@@ -39,7 +39,13 @@ function clusterObservations(
   similarityThreshold: number = 0.65,
   minClusterSize: number = 2
 ): ObservationCluster[] {
-  const withEmbeddings = observations.filter((o) => o.embedding && o.embedding.length > 0);
+  // Parse embedding strings from Supabase into number arrays
+  for (const obs of observations) {
+    if (obs.embedding && !Array.isArray(obs.embedding)) {
+      obs.embedding = parseEmbedding(obs.embedding);
+    }
+  }
+  const withEmbeddings = observations.filter((o) => o.embedding && Array.isArray(o.embedding) && o.embedding.length > 0);
 
   if (withEmbeddings.length < minClusterSize) return [];
 

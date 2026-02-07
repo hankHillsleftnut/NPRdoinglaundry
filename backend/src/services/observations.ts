@@ -1,7 +1,7 @@
 import { generateEmbedding, generateEmbeddings, jsonChatCompletion } from '../utils/openai.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { config } from '../utils/config.js';
-import { getActiveGoalsWithEmbeddings } from './goals.js';
+import { getActiveGoalsWithEmbeddings, parseEmbedding } from './goals.js';
 import type {
   ObservationExtractionResult,
   DbObservation,
