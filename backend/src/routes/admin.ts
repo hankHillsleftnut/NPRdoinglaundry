@@ -376,6 +376,171 @@ adminRouter.get('/pipeline/runs', async (req: Request, res: Response) => {
 });
 
 // ============================================
+// Diagnostics — trace pipeline step by step
+// ============================================
+
+adminRouter.post('/diagnose', async (req: Request, res: Response) => {
+  const { userId } = req.body;
+  if (!userId) {
+    res.status(400).json({ success: false, error: 'userId is required' });
+    return;
+  }
+
+  const steps: Array<{ step: string; status: string; detail: string; data?: unknown }> = [];
+
+  try {
+    // Step 1: Check user exists
+    const { data: user, error: userErr } = await supabaseAdmin
+      .from(Tables.USERS)
+      .select('id, email')
+      .eq('id', userId)
+      .single();
+    if (userErr || !user) {
+      steps.push({ step: 'User lookup', status: 'FAIL', detail: `User not found: ${userErr?.message || 'no data'}` });
+      res.json({ success: true, data: { steps } });
+      return;
+    }
+    steps.push({ step: 'User lookup', status: 'OK', detail: `Found: ${user.email}` });
+
+    // Step 2: Check goals
+    const { data: allGoals, error: goalsErr } = await supabaseAdmin
+      .from(Tables.GOALS)
+      .select('id, title, is_active, embedding')
+      .eq('user_id', userId);
+    if (goalsErr) {
+      steps.push({ step: 'Goals query', status: 'FAIL', detail: goalsErr.message });
+      res.json({ success: true, data: { steps } });
+      return;
+    }
+    const totalGoals = (allGoals || []).length;
+    const activeGoals = (allGoals || []).filter((g: any) => g.is_active);
+    const goalsWithEmbedding = activeGoals.filter((g: any) => g.embedding != null);
+    const embeddingTypes = activeGoals.map((g: any) => ({
+      title: g.title,
+      is_active: g.is_active,
+      has_embedding: g.embedding != null,
+      embedding_type: typeof g.embedding,
+      embedding_is_array: Array.isArray(g.embedding),
+      embedding_length: Array.isArray(g.embedding) ? g.embedding.length : (typeof g.embedding === 'string' ? g.embedding.length : 0),
+      embedding_preview: Array.isArray(g.embedding) ? `[${g.embedding.slice(0, 3).join(', ')}...]` : (typeof g.embedding === 'string' ? g.embedding.slice(0, 80) + '...' : String(g.embedding)),
+    }));
+    steps.push({
+      step: 'Goals check',
+      status: goalsWithEmbedding.length > 0 ? 'OK' : 'FAIL',
+      detail: `Total: ${totalGoals}, Active: ${activeGoals.length}, With embedding: ${goalsWithEmbedding.length}`,
+      data: embeddingTypes,
+    });
+
+    // Step 3: Check raw content
+    const { data: rawContent, error: rcErr } = await supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .select('id, content_type, processing_status, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (rcErr) {
+      steps.push({ step: 'Raw content query', status: 'FAIL', detail: rcErr.message });
+    } else {
+      steps.push({
+        step: 'Raw content',
+        status: (rawContent || []).length > 0 ? 'OK' : 'WARN',
+        detail: `Found ${(rawContent || []).length} content items`,
+        data: rawContent,
+      });
+    }
+
+    // Step 4: Check pipeline runs
+    const { data: pipelineRuns, error: prErr } = await supabaseAdmin
+      .from(Tables.PIPELINE_RUNS)
+      .select('*')
+      .eq('user_id', userId)
+      .order('started_at', { ascending: false })
+      .limit(10);
+    steps.push({
+      step: 'Pipeline runs',
+      status: 'INFO',
+      detail: `Found ${(pipelineRuns || []).length} pipeline runs`,
+      data: pipelineRuns,
+    });
+
+    // Step 5: Check existing observations
+    const { data: existingObs, count: obsCount } = await supabaseAdmin
+      .from(Tables.OBSERVATIONS)
+      .select('id, goal_id, content, confidence_score', { count: 'exact' })
+      .eq('user_id', userId)
+      .limit(5);
+    steps.push({
+      step: 'Existing observations',
+      status: 'INFO',
+      detail: `Total: ${obsCount || 0}`,
+      data: existingObs,
+    });
+
+    // Step 6: Check existing insights
+    const { data: existingIns, count: insCount } = await supabaseAdmin
+      .from(Tables.INSIGHTS)
+      .select('id, goal_id, title, content', { count: 'exact' })
+      .eq('user_id', userId)
+      .limit(5);
+    steps.push({
+      step: 'Existing insights',
+      status: 'INFO',
+      detail: `Total: ${insCount || 0}`,
+      data: existingIns,
+    });
+
+    // Step 7: Try to get active goals with embeddings (the actual function the pipeline uses)
+    try {
+      const pipelineGoals = await listGoals(userId);
+      const activeWithEmbed = pipelineGoals.filter((g: any) => g.is_active && g.embedding != null);
+      steps.push({
+        step: 'getActiveGoalsWithEmbeddings simulation',
+        status: activeWithEmbed.length > 0 ? 'OK' : 'FAIL',
+        detail: `listGoals returned ${pipelineGoals.length}, active with embedding: ${activeWithEmbed.length}`,
+      });
+    } catch (e) {
+      steps.push({ step: 'getActiveGoalsWithEmbeddings simulation', status: 'FAIL', detail: String(e) });
+    }
+
+    // Step 8: Test a mini observation extraction if we have content + goals
+    if (goalsWithEmbedding.length > 0 && (rawContent || []).length > 0) {
+      try {
+        // Just test the chunk + embedding step, not the full extraction
+        const testContent = await supabaseAdmin
+          .from(Tables.RAW_CONTENT)
+          .select('content')
+          .eq('user_id', userId)
+          .limit(1)
+          .single();
+
+        if (testContent.data) {
+          const contentPreview = testContent.data.content.slice(0, 200);
+          steps.push({
+            step: 'Content preview',
+            status: 'INFO',
+            detail: `First content item: "${contentPreview}..."`,
+          });
+        }
+      } catch (e) {
+        steps.push({ step: 'Content preview', status: 'FAIL', detail: String(e) });
+      }
+    }
+
+    // Step 9: Check environment
+    steps.push({
+      step: 'Environment check',
+      status: 'INFO',
+      detail: `ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'set (' + process.env.ANTHROPIC_API_KEY.slice(0, 8) + '...)' : 'MISSING'}, OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'set (' + process.env.OPENAI_API_KEY.slice(0, 8) + '...)' : 'MISSING'}`,
+    });
+
+    res.json({ success: true, data: { steps } });
+  } catch (error) {
+    steps.push({ step: 'Unexpected error', status: 'FAIL', detail: String(error) });
+    res.json({ success: true, data: { steps } });
+  }
+});
+
+// ============================================
 // Stats
 // ============================================
 

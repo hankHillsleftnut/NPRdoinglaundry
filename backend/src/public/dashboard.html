@@ -176,6 +176,7 @@
       </label>
       <button class="btn" onclick="createTestUser()">+ New Test User</button>
       <button class="btn" onclick="refreshAll()">Refresh</button>
+      <button class="btn btn-red" onclick="runDiagnose()">Diagnose Pipeline</button>
       <span id="statusDot" style="margin-left:auto;font-size:11px;color:var(--green)">Connected</span>
     </div>
     <div class="content">
@@ -853,6 +854,25 @@ function refreshAll() {
   loadStats();
   loadGoals();
   loadPipelineRuns();
+}
+
+async function runDiagnose() {
+  if (!currentUserId) { alert('Select a user first'); return; }
+  switchTab('logs', document.querySelector('.sidebar nav button:last-child'));
+  log('info', '=== RUNNING PIPELINE DIAGNOSTICS ===');
+  try {
+    const res = await api('POST', '/diagnose', { userId: currentUserId });
+    for (const step of res.data.steps) {
+      const level = step.status === 'FAIL' ? 'error' : step.status === 'WARN' ? 'warn' : step.status === 'OK' ? 'success' : 'info';
+      log(level, `[${step.status}] ${step.step}: ${step.detail}`);
+      if (step.data) {
+        log('info', `  └─ Data: ${JSON.stringify(step.data, null, 0).slice(0, 500)}`);
+      }
+    }
+    log('info', '=== DIAGNOSTICS COMPLETE ===');
+  } catch (e) {
+    log('error', `Diagnose failed: ${e.message}`);
+  }
 }
 
 // ============================================
