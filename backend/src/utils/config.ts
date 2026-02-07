@@ -47,6 +47,11 @@ export const config = {
     privateKey: optionalEnv('APPLE_PRIVATE_KEY', ''),
   },
 
+  // Admin
+  admin: {
+    secret: optionalEnv('ADMIN_SECRET', 'retrospect-admin-local'),
+  },
+
   // Server
   server: {
     port: parseInt(optionalEnv('PORT', '3000'), 10),

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retrospect Admin</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #30363d;
+    --text: #e6edf3; --text2: #8b949e; --text3: #484f58;
+    --accent: #58a6ff; --accent2: #1f6feb; --green: #3fb950; --red: #f85149;
+    --orange: #d29922; --purple: #bc8cff; --pink: #f778ba;
+    --border: #30363d; --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-header h1 { font-size: 16px; font-weight: 600; }
+  .sidebar-header p { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .sidebar nav { flex: 1; padding: 8px; }
+  .sidebar nav button { width: 100%; text-align: left; background: none; border: none; color: var(--text2); padding: 10px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
+  .sidebar nav button:hover { background: var(--bg3); color: var(--text); }
+  .sidebar nav button.active { background: var(--accent2); color: #fff; }
+  .sidebar nav button .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { padding: 12px 24px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  .topbar select, .topbar input, .topbar button { font-size: 13px; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Auth gate */
+  #authGate { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; background: var(--bg); z-index: 999; }
+  #authGate .box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 380px; text-align: center; }
+  #authGate h2 { margin-bottom: 8px; }
+  #authGate p { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+  #authGate input { width: 100%; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg3); color: var(--text); font-size: 14px; outline: none; }
+  #authGate input:focus { border-color: var(--accent); }
+  #authGate .btn { margin-top: 12px; width: 100%; }
+  #authGate .err { color: var(--red); font-size: 12px; margin-top: 8px; }
+
+  /* Forms / Inputs */
+  select, input[type="text"], textarea { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; outline: none; font-family: inherit; }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 60px; }
+  label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; font-weight: 500; }
+
+  /* Buttons */
+  .btn { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg3); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--bg4); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .btn-primary:hover { background: var(--accent); }
+  .btn-green { background: #238636; border-color: #238636; color: #fff; }
+  .btn-green:hover { background: #2ea043; }
+  .btn-red { background: #da3633; border-color: #da3633; color: #fff; }
+  .btn-red:hover { background: #f85149; }
+
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card h3 { font-size: 14px; margin-bottom: 8px; }
+  .card p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .stat-card .num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-card .lbl { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; color: var(--text2); border-bottom: 1px solid var(--border); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(88,166,255,0.04); }
+
+  /* Badge */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+
+  /* Tabs */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Section */
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* Playground columns */
+  .playground-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .playground-col { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-height: 500px; overflow-y: auto; }
+  .playground-col h4 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+  .playground-col h4 .count { color: var(--accent); }
+
+  /* Steps */
+  .steps { display: flex; gap: 0; margin: 16px 0; }
+  .step { flex: 1; padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text3); position: relative; }
+  .step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+  .step.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .step.done { background: #238636; border-color: #238636; color: #fff; }
+  .step.error { background: var(--red); border-color: var(--red); color: #fff; }
+  .step .step-label { font-weight: 600; }
+  .step .step-detail { font-size: 11px; margin-top: 2px; opacity: 0.8; }
+
+  /* Observation/Insight item */
+  .obs-item, .insight-item { background: var(--bg3); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
+  .obs-item .goal-tag { font-size: 10px; color: var(--purple); margin-bottom: 4px; }
+  .obs-item .confidence { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .insight-item .insight-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .insight-item .insight-badge { margin-bottom: 6px; }
+  .insight-item .evidence { font-size: 11px; color: var(--text2); margin-top: 6px; font-style: italic; }
+
+  /* Log */
+  .log-container { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-height: 600px; overflow-y: auto; font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; line-height: 1.8; }
+  .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(48,54,61,0.5); }
+  .log-time { color: var(--text3); }
+  .log-info { color: var(--accent); }
+  .log-success { color: var(--green); }
+  .log-error { color: var(--red); }
+  .log-warn { color: var(--orange); }
+
+  /* Form group */
+  .form-group { margin-bottom: 12px; }
+  .form-row { display: flex; gap: 12px; align-items: flex-end; }
+  .form-row > * { flex: 1; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Auth Gate -->
+<div id="authGate">
+  <div class="box">
+    <h2>Retrospect Admin</h2>
+    <p>Enter your admin secret to continue</p>
+    <input type="password" id="secretInput" placeholder="Admin secret..." autofocus>
+    <button class="btn btn-primary" onclick="authenticate()" style="margin-top:12px;width:100%">Enter</button>
+    <div id="authError" class="err"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" style="display:none;width:100%;height:100vh;">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>Retrospect</h1>
+      <p>Admin Dashboard</p>
+    </div>
+    <nav>
+      <button class="active" onclick="switchTab('overview', this)"><span class="icon">&#9632;</span> Overview</button>
+      <button onclick="switchTab('goals', this)"><span class="icon">&#9733;</span> Goals</button>
+      <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> Data Browser</button>
+      <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> Playground</button>
+      <button onclick="switchTab('logs', this)"><span class="icon">&#9998;</span> Logs</button>
+    </nav>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px">
+        User:
+        <select id="userSelect" onchange="onUserChange()" style="min-width:200px"></select>
+      </label>
+      <button class="btn" onclick="createTestUser()">+ New Test User</button>
+      <button class="btn" onclick="refreshAll()">Refresh</button>
+      <span id="statusDot" style="margin-left:auto;font-size:11px;color:var(--green)">Connected</span>
+    </div>
+    <div class="content">
+
+      <!-- OVERVIEW TAB -->
+      <div id="tab-overview" class="tab-content active">
+        <div class="section-title">System Overview</div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card"><div class="num" id="stat-users">-</div><div class="lbl">Users</div></div>
+          <div class="stat-card"><div class="num" id="stat-goals">-</div><div class="lbl">Goals</div></div>
+          <div class="stat-card"><div class="num" id="stat-content">-</div><div class="lbl">Content</div></div>
+          <div class="stat-card"><div class="num" id="stat-observations">-</div><div class="lbl">Observations</div></div>
+          <div class="stat-card"><div class="num" id="stat-insights">-</div><div class="lbl">Insights</div></div>
+          <div class="stat-card"><div class="num" id="stat-runs">-</div><div class="lbl">Pipeline Runs</div></div>
+        </div>
+        <div class="section-title">Recent Pipeline Runs</div>
+        <div id="pipelineRunsList"></div>
+      </div>
+
+      <!-- GOALS TAB -->
+      <div id="tab-goals" class="tab-content">
+        <div class="section-title">Goals</div>
+
+        <div class="card">
+          <h3>Extract Goals from Natural Language</h3>
+          <p style="margin-bottom:12px">Type how you feel, what you want, or what's on your mind. Claude will extract nuanced goals.</p>
+          <div class="form-group">
+            <textarea id="goalText" rows="4" style="width:100%" placeholder='e.g. "I want to make more money so I can expand my dating life, I feel like I should be healthier too..."'></textarea>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="extractGoals(false)" id="extractBtn">Extract Goals (Preview)</button>
+            <button class="btn btn-green" onclick="extractGoals(true)" id="extractSaveBtn">Extract & Save</button>
+          </div>
+          <div id="extractedGoals" style="margin-top:16px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Create Goal Manually</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" id="goalTitle" style="width:100%" placeholder="Goal title">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="goalDesc" style="width:100%" placeholder="Optional description">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-primary" onclick="createGoalManual()" style="margin-top:18px">Create</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Existing Goals</div>
+        <div id="goalsList"></div>
+      </div>
+
+      <!-- DATA BROWSER TAB -->
+      <div id="tab-browser" class="tab-content">
+        <div class="section-title">Data Browser</div>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button class="btn btn-primary" onclick="loadBrowserData('content')" id="browseContentBtn">Raw Content</button>
+          <button class="btn" onclick="loadBrowserData('observations')" id="browseObsBtn">Observations</button>
+          <button class="btn" onclick="loadBrowserData('insights')" id="browseInsBtn">Insights</button>
+          <select id="browserGoalFilter" onchange="loadBrowserData(currentBrowserView)" style="margin-left:auto">
+            <option value="">All Goals</option>
+          </select>
+        </div>
+
+        <div id="browserTable"></div>
+      </div>
+
+      <!-- PLAYGROUND TAB -->
+      <div id="tab-playground" class="tab-content">
+        <div class="section-title">Pipeline Playground</div>
+        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Paste content, process it through the pipeline, and watch observations and insights appear in real time.</p>
+
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group" style="flex:3">
+              <label>Content to process</label>
+              <textarea id="playContent" rows="8" style="width:100%" placeholder="Paste journal entries, voice note transcripts, meeting notes, or anything else here..."></textarea>
+            </div>
+            <div style="flex:1">
+              <div class="form-group">
+                <label>Content Type</label>
+                <select id="playContentType" style="width:100%">
+                  <option value="journal_entry">Journal Entry</option>
+                  <option value="voice_note">Voice Note</option>
+                  <option value="granola">Granola</option>
+                  <option value="google_docs">Google Docs</option>
+                  <option value="notion">Notion</option>
+                  <option value="email">Email</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Content Date</label>
+                <input type="text" id="playContentDate" style="width:100%" placeholder="auto (now)">
+              </div>
+              <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%;margin-top:8px">Submit & Process All</button>
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button class="btn" onclick="runPlaygroundStep('content')" style="flex:1;font-size:11px">Submit Only</button>
+                <button class="btn" onclick="runPlaygroundStep('observations')" style="flex:1;font-size:11px">Obs Only</button>
+                <button class="btn" onclick="runPlaygroundStep('insights')" style="flex:1;font-size:11px">Ins Only</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress steps -->
+        <div class="steps" id="playSteps">
+          <div class="step" id="step-submit"><div class="step-label">1. Submit</div><div class="step-detail">Store content</div></div>
+          <div class="step" id="step-obs"><div class="step-label">2. Observations</div><div class="step-detail">Extract facts</div></div>
+          <div class="step" id="step-ins"><div class="step-label">3. Insights</div><div class="step-detail">Synthesize</div></div>
+          <div class="step" id="step-done"><div class="step-label">4. Done</div><div class="step-detail">Review</div></div>
+        </div>
+
+        <!-- Results -->
+        <div class="playground-grid">
+          <div class="playground-col">
+            <h4>Raw Content <span class="count" id="playContentCount">0</span></h4>
+            <div id="playContentList"></div>
+          </div>
+          <div class="playground-col">
+            <h4>Observations <span class="count" id="playObsCount">0</span></h4>
+            <div id="playObsList"></div>
+          </div>
+          <div class="playground-col">
+            <h4>Insights <span class="count" id="playInsCount">0</span></h4>
+            <div id="playInsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGS TAB -->
+      <div id="tab-logs" class="tab-content">
+        <div class="section-title">Activity Log</div>
+        <button class="btn" onclick="clearLogs()" style="margin-bottom:12px">Clear</button>
+        <div class="log-container" id="logContainer"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// State
+// ============================================
+let API_SECRET = sessionStorage.getItem('adminSecret') || '';
+const BASE = window.location.origin;
+let currentUserId = '';
+let currentBrowserView = 'content';
+let goalCache = {};
+
+// ============================================
+// API helper
+// ============================================
+async function api(method, path, body) {
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${BASE}/admin${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+  log('info', `${method} /admin${path}`);
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const json = await res.json();
+  if (!json.success) {
+    log('error', `Error: ${json.error}`);
+    throw new Error(json.error);
+  }
+  return json;
+}
+
+// ============================================
+// Auth
+// ============================================
+async function authenticate() {
+  const secret = document.getElementById('secretInput').value.trim();
+  if (!secret) return;
+  API_SECRET = secret;
+  try {
+    await api('GET', '/stats');
+    sessionStorage.setItem('adminSecret', secret);
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    init();
+  } catch {
+    document.getElementById('authError').textContent = 'Invalid secret';
+    API_SECRET = '';
+  }
+}
+
+document.getElementById('secretInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') authenticate();
+});
+
+// Auto-login if secret in session
+if (API_SECRET) {
+  authenticate().catch(() => {
+    API_SECRET = '';
+    sessionStorage.removeItem('adminSecret');
+  });
+}
+
+// ============================================
+// Init
+// ============================================
+async function init() {
+  await loadUsers();
+  loadStats();
+  loadPipelineRuns();
+}
+
+// ============================================
+// Users
+// ============================================
+async function loadUsers() {
+  const res = await api('GET', '/users');
+  const select = document.getElementById('userSelect');
+  select.innerHTML = '';
+  if (res.data.length === 0) {
+    select.innerHTML = '<option value="">No users yet — create one</option>';
+    return;
+  }
+  for (const u of res.data) {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = `${u.email || 'No email'} (${u.id.slice(0,8)}...)`;
+    select.appendChild(opt);
+  }
+  currentUserId = res.data[0].id;
+  select.value = currentUserId;
+  onUserChange();
+}
+
+async function createTestUser() {
+  const res = await api('POST', '/users', { email: `test-${Date.now()}@retrospect.dev` });
+  log('success', `Created user: ${res.data.email}`);
+  await loadUsers();
+  document.getElementById('userSelect').value = res.data.id;
+  currentUserId = res.data.id;
+  onUserChange();
+}
+
+function onUserChange() {
+  currentUserId = document.getElementById('userSelect').value;
+  loadGoals();
+  loadBrowserGoalFilter();
+}
+
+// ============================================
+// Stats
+// ============================================
+async function loadStats() {
+  try {
+    const res = await api('GET', '/stats');
+    const d = res.data;
+    document.getElementById('stat-users').textContent = d.users;
+    document.getElementById('stat-goals').textContent = d.goals;
+    document.getElementById('stat-content').textContent = d.rawContent;
+    document.getElementById('stat-observations').textContent = d.observations;
+    document.getElementById('stat-insights').textContent = d.insights;
+    document.getElementById('stat-runs').textContent = d.pipelineRuns;
+  } catch {}
+}
+
+// ============================================
+// Pipeline Runs
+// ============================================
+async function loadPipelineRuns() {
+  try {
+    const res = await api('GET', `/pipeline/runs${currentUserId ? `?userId=${currentUserId}` : ''}`);
+    const el = document.getElementById('pipelineRunsList');
+    if (!res.data.length) { el.innerHTML = '<div class="empty">No pipeline runs yet</div>'; return; }
+    let html = '<table><tr><th>Type</th><th>Status</th><th>Observations</th><th>Insights</th><th>Started</th><th>Error</th></tr>';
+    for (const r of res.data.slice(0, 20)) {
+      const badge = r.status === 'completed' ? 'badge-green' : r.status === 'failed' ? 'badge-red' : 'badge-orange';
+      html += `<tr>
+        <td>${r.run_type}</td>
+        <td><span class="badge ${badge}">${r.status}</span></td>
+        <td>${r.observations_created || 0}</td>
+        <td>${r.insights_created || 0}</td>
+        <td>${fmtDate(r.started_at)}</td>
+        <td style="color:var(--red);font-size:11px">${r.error_message || ''}</td>
+      </tr>`;
+    }
+    html += '</table>';
+    el.innerHTML = html;
+  } catch {}
+}
+
+// ============================================
+// Goals
+// ============================================
+async function loadGoals() {
+  if (!currentUserId) return;
+  try {
+    const res = await api('GET', `/goals?userId=${currentUserId}`);
+    goalCache = {};
+    for (const g of res.data) goalCache[g.id] = g;
+    renderGoals(res.data);
+    loadBrowserGoalFilter();
+  } catch {}
+}
+
+function renderGoals(goals) {
+  const el = document.getElementById('goalsList');
+  if (!goals.length) { el.innerHTML = '<div class="empty">No goals yet. Create one above.</div>'; return; }
+  let html = '';
+  for (const g of goals) {
+    html += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>${esc(g.title)}</h3>
+        <span class="badge ${g.is_active ? 'badge-green' : 'badge-red'}">${g.is_active ? 'Active' : 'Inactive'}</span>
+      </div>
+      <p>${esc(g.description || 'No description')}</p>
+      <div style="margin-top:6px;font-size:11px;color:var(--text3)">Created: ${fmtDate(g.created_at)} | ID: ${g.id.slice(0,8)}...</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function extractGoals(save) {
+  const text = document.getElementById('goalText').value.trim();
+  if (!text) return;
+  const btn = save ? document.getElementById('extractSaveBtn') : document.getElementById('extractBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  try {
+    let res;
+    if (save) {
+      if (!currentUserId) { alert('Select a user first'); return; }
+      res = await api('POST', '/goals/extract-and-save', { userId: currentUserId, text });
+      log('success', `Extracted and saved ${res.data.saved.length} goals`);
+      loadGoals();
+      loadStats();
+    } else {
+      res = await api('POST', '/goals/extract', { text });
+      log('success', `Extracted ${res.data.goals.length} goals (preview)`);
+    }
+    const goals = save ? res.data.extracted.goals : res.data.goals;
+    const el = document.getElementById('extractedGoals');
+    let html = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + (save ? 'Saved goals:' : 'Preview (not saved yet):') + '</div>';
+    for (const g of goals) {
+      html += `<div class="card" style="border-left:3px solid var(--purple)">
+        <h3>${esc(g.title)}</h3>
+        <p>${esc(g.description)}</p>
+        <p style="font-size:11px;color:var(--orange);margin-top:6px">Reasoning: ${esc(g.reasoning)}</p>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) {
+    log('error', `Goal extraction failed: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = save ? 'Extract & Save' : 'Extract Goals (Preview)';
+  }
+}
+
+async function createGoalManual() {
+  if (!currentUserId) return;
+  const title = document.getElementById('goalTitle').value.trim();
+  if (!title) return;
+  const desc = document.getElementById('goalDesc').value.trim();
+  try {
+    await api('POST', '/goals', { userId: currentUserId, title, description: desc || undefined });
+    log('success', `Created goal: ${title}`);
+    document.getElementById('goalTitle').value = '';
+    document.getElementById('goalDesc').value = '';
+    loadGoals();
+    loadStats();
+  } catch (e) {
+    log('error', `Create goal failed: ${e.message}`);
+  }
+}
+
+// ============================================
+// Data Browser
+// ============================================
+function loadBrowserGoalFilter() {
+  const sel = document.getElementById('browserGoalFilter');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">All Goals</option>';
+  for (const [id, g] of Object.entries(goalCache)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = g.title;
+    sel.appendChild(opt);
+  }
+  sel.value = val;
+}
+
+async function loadBrowserData(view) {
+  currentBrowserView = view;
+  ['browseContentBtn', 'browseObsBtn', 'browseInsBtn'].forEach(id => {
+    document.getElementById(id).className = 'btn';
+  });
+  const btnMap = { content: 'browseContentBtn', observations: 'browseObsBtn', insights: 'browseInsBtn' };
+  document.getElementById(btnMap[view]).className = 'btn btn-primary';
+
+  if (!currentUserId) { document.getElementById('browserTable').innerHTML = '<div class="empty">Select a user</div>'; return; }
+
+  const goalId = document.getElementById('browserGoalFilter').value;
+  const el = document.getElementById('browserTable');
+
+  try {
+    if (view === 'content') {
+      const res = await api('GET', `/content?userId=${currentUserId}`);
+      if (!res.data.length) { el.innerHTML = '<div class="empty">No content yet</div>'; return; }
+      let html = '<table><tr><th>Type</th><th>Content (preview)</th><th>Status</th><th>Date</th></tr>';
+      for (const c of res.data) {
+        html += `<tr>
+          <td><span class="badge badge-blue">${c.content_type}</span></td>
+          <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((c.content || '').slice(0,120))}</td>
+          <td><span class="badge ${c.processing_status === 'completed' ? 'badge-green' : 'badge-orange'}">${c.processing_status}</span></td>
+          <td>${fmtDate(c.content_date || c.created_at)}</td>
+        </tr>`;
+      }
+      html += '</table>';
+      el.innerHTML = html;
+    } else if (view === 'observations') {
+      const gq = goalId ? `&goalId=${goalId}` : '';
+      const res = await api('GET', `/observations?userId=${currentUserId}${gq}&limit=100`);
+      if (!res.data.length) { el.innerHTML = '<div class="empty">No observations yet</div>'; return; }
+      let html = '<table><tr><th>Observation</th><th>Goal</th><th>Reason</th><th>Confidence</th><th>Date</th></tr>';
+      for (const o of res.data) {
+        const goal = goalCache[o.goal_id];
+        html += `<tr>
+          <td>${esc(o.content)}</td>
+          <td><span class="badge badge-purple">${goal ? esc(goal.title) : o.goal_id.slice(0,8)}</span></td>
+          <td style="font-size:11px;color:var(--text2)">${esc(o.reason_why || '')}</td>
+          <td>${(o.confidence_score || 0).toFixed(2)}</td>
+          <td>${fmtDate(o.observation_date)}</td>
+        </tr>`;
+      }
+      html += '</table>';
+      el.innerHTML = html;
+    } else {
+      const gq = goalId ? `&goalId=${goalId}` : '';
+      const res = await api('GET', `/insights?userId=${currentUserId}${gq}&limit=100`);
+      if (!res.data.length) { el.innerHTML = '<div class="empty">No insights yet</div>'; return; }
+      let html = '<table><tr><th>Insight</th><th>Content</th><th>Goal</th><th>Confidence</th><th>Evidence</th></tr>';
+      for (const i of res.data) {
+        const goal = goalCache[i.goal_id];
+        html += `<tr>
+          <td><strong>${esc(i.title)}</strong></td>
+          <td style="max-width:300px">${esc(i.content)}</td>
+          <td><span class="badge badge-purple">${goal ? esc(goal.title) : (i.goal_id || '').slice(0,8)}</span></td>
+          <td>${(i.confidence_score || 0).toFixed(2)}</td>
+          <td style="font-size:11px;color:var(--text2);max-width:200px">${esc(i.evidence_summary || '')}</td>
+        </tr>`;
+      }
+      html += '</table>';
+      el.innerHTML = html;
+    }
+  } catch (e) {
+    el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+// ============================================
+// Playground
+// ============================================
+function setStep(stepId, state) {
+  const el = document.getElementById(stepId);
+  el.className = 'step' + (state ? ` ${state}` : '');
+}
+
+function resetSteps() {
+  ['step-submit', 'step-obs', 'step-ins', 'step-done'].forEach(id => setStep(id, ''));
+}
+
+async function runPlayground() {
+  if (!currentUserId) { alert('Select a user first'); return; }
+  const content = document.getElementById('playContent').value.trim();
+  if (!content) { alert('Enter some content'); return; }
+
+  const btn = document.getElementById('playRunBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+  resetSteps();
+
+  try {
+    // Step 1: Submit content
+    setStep('step-submit', 'active');
+    log('info', 'Submitting content...');
+    const contentRes = await api('POST', '/content', {
+      userId: currentUserId,
+      contentType: document.getElementById('playContentType').value,
+      content,
+      contentDate: document.getElementById('playContentDate').value || undefined,
+    });
+    setStep('step-submit', 'done');
+    log('success', `Content stored: ${contentRes.data.id}`);
+    renderPlayContent([contentRes.data]);
+
+    // Step 2: Extract observations
+    setStep('step-obs', 'active');
+    log('info', 'Extracting observations...');
+    const obsRes = await api('POST', '/pipeline/observations', { userId: currentUserId });
+    setStep('step-obs', 'done');
+    log('success', `Extracted ${obsRes.data.totalObservations} observations from ${obsRes.data.contentProcessed} content items`);
+
+    // Fetch and display observations
+    const obsListRes = await api('GET', `/observations?userId=${currentUserId}&limit=50`);
+    renderPlayObservations(obsListRes.data);
+
+    // Step 3: Generate insights
+    setStep('step-ins', 'active');
+    log('info', 'Generating insights...');
+    const insRes = await api('POST', '/pipeline/insights', { userId: currentUserId });
+    setStep('step-ins', 'done');
+    log('success', `Created ${insRes.data.totalCreated} new insights, updated ${insRes.data.totalUpdated} existing`);
+
+    // Fetch and display insights
+    const insListRes = await api('GET', `/insights?userId=${currentUserId}&limit=50`);
+    renderPlayInsights(insListRes.data);
+
+    // Done
+    setStep('step-done', 'done');
+    log('success', 'Pipeline complete!');
+    loadStats();
+
+  } catch (e) {
+    log('error', `Pipeline error: ${e.message}`);
+    ['step-submit', 'step-obs', 'step-ins', 'step-done'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el.classList.contains('active')) setStep(id, 'error');
+    });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit & Process All';
+  }
+}
+
+async function runPlaygroundStep(step) {
+  if (!currentUserId) { alert('Select a user first'); return; }
+  try {
+    if (step === 'content') {
+      const content = document.getElementById('playContent').value.trim();
+      if (!content) { alert('Enter some content'); return; }
+      log('info', 'Submitting content...');
+      const res = await api('POST', '/content', {
+        userId: currentUserId,
+        contentType: document.getElementById('playContentType').value,
+        content,
+        contentDate: document.getElementById('playContentDate').value || undefined,
+      });
+      log('success', `Content stored: ${res.data.id}`);
+      renderPlayContent([res.data]);
+    } else if (step === 'observations') {
+      log('info', 'Extracting observations...');
+      const res = await api('POST', '/pipeline/observations', { userId: currentUserId });
+      log('success', `Extracted ${res.data.totalObservations} observations`);
+      const obsRes = await api('GET', `/observations?userId=${currentUserId}&limit=50`);
+      renderPlayObservations(obsRes.data);
+    } else if (step === 'insights') {
+      log('info', 'Generating insights...');
+      const res = await api('POST', '/pipeline/insights', { userId: currentUserId });
+      log('success', `Created ${res.data.totalCreated} new, updated ${res.data.totalUpdated}`);
+      const insRes = await api('GET', `/insights?userId=${currentUserId}&limit=50`);
+      renderPlayInsights(insRes.data);
+    }
+    loadStats();
+  } catch (e) {
+    log('error', `Error: ${e.message}`);
+  }
+}
+
+function renderPlayContent(items) {
+  document.getElementById('playContentCount').textContent = items.length;
+  const el = document.getElementById('playContentList');
+  let html = '';
+  for (const c of items) {
+    html += `<div class="obs-item">
+      <div class="goal-tag">${c.content_type || 'journal_entry'} | ${fmtDate(c.content_date || c.created_at)}</div>
+      <div>${esc((c.content || 'Stored').slice(0, 200))}${(c.content || '').length > 200 ? '...' : ''}</div>
+      <div class="confidence">ID: ${c.id}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderPlayObservations(items) {
+  document.getElementById('playObsCount').textContent = items.length;
+  const el = document.getElementById('playObsList');
+  if (!items.length) { el.innerHTML = '<div class="empty">No observations</div>'; return; }
+  let html = '';
+  for (const o of items) {
+    const goal = goalCache[o.goal_id];
+    html += `<div class="obs-item">
+      <div class="goal-tag">${goal ? esc(goal.title) : 'Unknown goal'}</div>
+      <div>${esc(o.content)}</div>
+      <div class="confidence">Confidence: ${(o.confidence_score || 0).toFixed(2)} | ${esc(o.reason_why || '')}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderPlayInsights(items) {
+  document.getElementById('playInsCount').textContent = items.length;
+  const el = document.getElementById('playInsList');
+  if (!items.length) { el.innerHTML = '<div class="empty">No insights yet</div>'; return; }
+  let html = '';
+  for (const i of items) {
+    const goal = goalCache[i.goal_id];
+    const isUpdated = i.metadata && i.metadata.last_update_reasoning;
+    html += `<div class="insight-item">
+      <div class="insight-badge"><span class="badge ${isUpdated ? 'badge-orange' : 'badge-green'}">${isUpdated ? 'Updated' : 'New'}</span></div>
+      <div class="insight-title">${esc(i.title)}</div>
+      <div>${esc(i.content)}</div>
+      <div class="evidence">${esc(i.evidence_summary || '')}</div>
+      <div style="margin-top:4px;font-size:10px;color:var(--text3)">${goal ? esc(goal.title) : ''} | Confidence: ${(i.confidence_score || 0).toFixed(2)}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ============================================
+// Logging
+// ============================================
+function log(level, msg) {
+  const el = document.getElementById('logContainer');
+  const time = new Date().toLocaleTimeString();
+  const cls = level === 'error' ? 'log-error' : level === 'success' ? 'log-success' : level === 'warn' ? 'log-warn' : 'log-info';
+  el.innerHTML += `<div class="log-entry"><span class="log-time">[${time}]</span> <span class="${cls}">${esc(msg)}</span></div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLogs() {
+  document.getElementById('logContainer').innerHTML = '';
+}
+
+// ============================================
+// Navigation
+// ============================================
+function switchTab(tabId, btnEl) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${tabId}`).classList.add('active');
+  document.querySelectorAll('.sidebar nav button').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  if (tabId === 'overview') { loadStats(); loadPipelineRuns(); }
+  if (tabId === 'goals') { loadGoals(); }
+  if (tabId === 'browser') { loadBrowserData(currentBrowserView); }
+}
+
+function refreshAll() {
+  loadStats();
+  loadGoals();
+  loadPipelineRuns();
+}
+
+// ============================================
+// Utilities
+// ============================================
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function fmtDate(d) {
+  if (!d) return '-';
+  try { return new Date(d).toLocaleString(); } catch { return d; }
+}
+</script>
+</body>
+</html>
