@@ -3,141 +3,602 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retrospect Admin</title>
+<title>RETROSPECT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #30363d;
-    --text: #e6edf3; --text2: #8b949e; --text3: #484f58;
-    --accent: #58a6ff; --accent2: #1f6feb; --green: #3fb950; --red: #f85149;
-    --orange: #d29922; --purple: #bc8cff; --pink: #f778ba;
-    --border: #30363d; --radius: 8px;
+  @font-face {
+    font-family: 'SF Pro Display';
+    src: local('-apple-system'), local('BlinkMacSystemFont'), local('SF Pro Display');
   }
+
+  :root {
+    --ivory: #FFFFF0;
+    --ivory-2: #FAF9F6;
+    --ivory-3: #F5F4F0;
+    --ivory-4: #EEEDEA;
+    --ivory-5: #E4E3DF;
+    --warm-gray: #C8C5BD;
+    --mid-gray: #9B978E;
+    --dark-gray: #6B6860;
+    --charcoal: #3A3835;
+    --ink: #1A1918;
+    --black: #0D0D0C;
+
+    --accent: #1A1918;
+    --accent-hover: #3A3835;
+    --success: #2D6A4F;
+    --success-bg: #D4EDDA;
+    --error: #9B2C2C;
+    --error-bg: #FDE8E8;
+    --warn: #92400E;
+    --warn-bg: #FEF3C7;
+    --info: #1E40AF;
+    --info-bg: #DBEAFE;
+    --purple: #6B21A8;
+    --purple-bg: #F3E8FF;
+
+    --font-mono: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+
+    --border: #D6D3CC;
+    --border-light: #E8E6E1;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
-  /* Sidebar */
-  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-  .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
-  .sidebar-header h1 { font-size: 16px; font-weight: 600; }
-  .sidebar-header p { font-size: 11px; color: var(--text2); margin-top: 4px; }
-  .sidebar nav { flex: 1; padding: 8px; }
-  .sidebar nav button { width: 100%; text-align: left; background: none; border: none; color: var(--text2); padding: 10px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
-  .sidebar nav button:hover { background: var(--bg3); color: var(--text); }
-  .sidebar nav button.active { background: var(--accent2); color: #fff; }
-  .sidebar nav button .icon { font-size: 16px; width: 20px; text-align: center; }
+  body {
+    font-family: var(--font-body);
+    background: var(--ivory-2);
+    color: var(--ink);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  /* Main */
+  /* ========== SIDEBAR ========== */
+  .sidebar {
+    width: 240px;
+    background: var(--black);
+    color: var(--ivory);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid rgba(255,255,240,0.08);
+  }
+  .sidebar-header h1 {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--ivory);
+  }
+  .sidebar-header p {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+    margin-top: 6px;
+  }
+  .sidebar nav { flex: 1; padding: 12px 10px; }
+  .sidebar nav button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--mid-gray);
+    padding: 11px 14px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.12s ease;
+    border-left: 2px solid transparent;
+    margin-bottom: 2px;
+  }
+  .sidebar nav button:hover {
+    color: var(--ivory);
+    background: rgba(255,255,240,0.04);
+  }
+  .sidebar nav button.active {
+    color: var(--ivory);
+    background: rgba(255,255,240,0.06);
+    border-left-color: var(--ivory);
+  }
+  .sidebar nav button .icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+    opacity: 0.6;
+  }
+  .sidebar nav button.active .icon { opacity: 1; }
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255,255,240,0.08);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dark-gray);
+  }
+
+  /* ========== MAIN ========== */
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .topbar { padding: 12px 24px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-  .topbar select, .topbar input, .topbar button { font-size: 13px; }
-  .content { flex: 1; overflow-y: auto; padding: 24px; }
 
-  /* Auth gate */
-  #authGate { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; background: var(--bg); z-index: 999; }
-  #authGate .box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 380px; text-align: center; }
-  #authGate h2 { margin-bottom: 8px; }
-  #authGate p { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
-  #authGate input { width: 100%; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg3); color: var(--text); font-size: 14px; outline: none; }
-  #authGate input:focus { border-color: var(--accent); }
-  #authGate .btn { margin-top: 12px; width: 100%; }
-  #authGate .err { color: var(--red); font-size: 12px; margin-top: 8px; }
+  .topbar {
+    padding: 14px 32px;
+    background: var(--ivory);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar select, .topbar input { font-size: 12px; }
+  .content { flex: 1; overflow-y: auto; padding: 32px; }
 
-  /* Forms / Inputs */
-  select, input[type="text"], textarea { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; outline: none; font-family: inherit; }
-  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  /* ========== AUTH GATE ========== */
+  #authGate {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    position: fixed;
+    top: 0; left: 0;
+    background: var(--black);
+    z-index: 999;
+  }
+  #authGate .box {
+    background: transparent;
+    width: 360px;
+    text-align: center;
+  }
+  #authGate h2 {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--ivory);
+    margin-bottom: 6px;
+  }
+  #authGate p {
+    font-family: var(--font-mono);
+    color: var(--dark-gray);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  #authGate input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 1px solid rgba(255,255,240,0.12);
+    background: rgba(255,255,240,0.04);
+    color: var(--ivory);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 1px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #authGate input:focus { border-color: rgba(255,255,240,0.3); }
+  #authGate input::placeholder { color: var(--dark-gray); }
+  #authGate .btn { margin-top: 16px; width: 100%; }
+  #authGate .err {
+    font-family: var(--font-mono);
+    color: #E57373;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+  }
+
+  /* ========== FORMS ========== */
+  select, input[type="text"], textarea {
+    background: var(--ivory);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--ink); }
   textarea { resize: vertical; min-height: 60px; }
-  label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; font-weight: 500; }
+  label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--dark-gray);
+    margin-bottom: 6px;
+    display: block;
+  }
 
-  /* Buttons */
-  .btn { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg3); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
-  .btn:hover { background: var(--bg4); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
-  .btn-primary:hover { background: var(--accent); }
-  .btn-green { background: #238636; border-color: #238636; color: #fff; }
-  .btn-green:hover { background: #2ea043; }
-  .btn-red { background: #da3633; border-color: #da3633; color: #fff; }
-  .btn-red:hover { background: #f85149; }
+  /* ========== BUTTONS ========== */
+  .btn {
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    background: var(--ivory);
+    color: var(--ink);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: all 0.12s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover { background: var(--ivory-4); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--ivory);
+  }
+  .btn-primary:hover { background: var(--charcoal); }
+  .btn-green {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+  .btn-green:hover { background: #245A42; }
+  .btn-red {
+    background: var(--error);
+    border-color: var(--error);
+    color: #fff;
+  }
+  .btn-red:hover { background: #7F2424; }
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--dark-gray);
+  }
+  .btn-ghost:hover { color: var(--ink); background: var(--ivory-3); }
 
-  /* Cards */
-  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
-  .card h3 { font-size: 14px; margin-bottom: 8px; }
-  .card p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  /* ========== CARDS ========== */
+  .card {
+    background: var(--ivory);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 12px;
+  }
+  .card h3 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+  .card p {
+    font-size: 13px;
+    color: var(--dark-gray);
+    line-height: 1.65;
+  }
 
-  /* Stats grid */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
-  .stat-card .num { font-size: 28px; font-weight: 700; color: var(--accent); }
-  .stat-card .lbl { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  /* ========== STAT CARDS ========== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--ivory);
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--ink);
+    letter-spacing: -1px;
+  }
+  .stat-card .lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--mid-gray);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 8px;
+  }
 
-  /* Table */
+  /* ========== TABLES ========== */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 12px; color: var(--text2); border-bottom: 1px solid var(--border); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  tr:hover td { background: rgba(88,166,255,0.04); }
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+    border-bottom: 2px solid var(--ink);
+    background: var(--ivory);
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tr:hover td { background: var(--ivory-3); }
 
-  /* Badge */
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
-  .badge-blue { background: rgba(88,166,255,0.15); color: var(--accent); }
-  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
-  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
-  .badge-purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+  /* ========== BADGES ========== */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-blue { background: var(--info-bg); color: var(--info); }
+  .badge-orange { background: var(--warn-bg); color: var(--warn); }
+  .badge-red { background: var(--error-bg); color: var(--error); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
 
-  /* Tabs */
+  /* ========== TABS ========== */
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  /* Section */
-  .section { margin-bottom: 24px; }
-  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  /* ========== SECTIONS ========== */
+  .section { margin-bottom: 32px; }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-  /* Playground columns */
-  .playground-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
-  .playground-col { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-height: 500px; overflow-y: auto; }
-  .playground-col h4 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; justify-content: space-between; }
-  .playground-col h4 .count { color: var(--accent); }
+  /* ========== PLAYGROUND ========== */
+  .playground-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 20px;
+  }
+  .playground-col {
+    background: var(--ivory);
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .playground-col h4 {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .playground-col h4 .count {
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
 
-  /* Steps */
-  .steps { display: flex; gap: 0; margin: 16px 0; }
-  .step { flex: 1; padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text3); position: relative; }
-  .step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
-  .step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
-  .step.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
-  .step.done { background: #238636; border-color: #238636; color: #fff; }
-  .step.error { background: var(--red); border-color: var(--red); color: #fff; }
-  .step .step-label { font-weight: 600; }
-  .step .step-detail { font-size: 11px; margin-top: 2px; opacity: 0.8; }
+  /* ========== PIPELINE STEPS ========== */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 20px 0;
+  }
+  .step {
+    padding: 16px 20px;
+    background: var(--ivory);
+    text-align: center;
+    font-family: var(--font-mono);
+    color: var(--warm-gray);
+  }
+  .step.active {
+    background: var(--ink);
+    color: var(--ivory);
+  }
+  .step.done {
+    background: var(--success);
+    color: #fff;
+  }
+  .step.error {
+    background: var(--error);
+    color: #fff;
+  }
+  .step .step-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .step .step-detail {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+    opacity: 0.7;
+  }
 
-  /* Observation/Insight item */
-  .obs-item, .insight-item { background: var(--bg3); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
-  .obs-item .goal-tag { font-size: 10px; color: var(--purple); margin-bottom: 4px; }
-  .obs-item .confidence { font-size: 10px; color: var(--text3); margin-top: 4px; }
-  .insight-item .insight-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-  .insight-item .insight-badge { margin-bottom: 6px; }
-  .insight-item .evidence { font-size: 11px; color: var(--text2); margin-top: 6px; font-style: italic; }
+  /* ========== OBSERVATION / INSIGHT ITEMS ========== */
+  .obs-item, .insight-item {
+    border: 1px solid var(--border-light);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.6;
+    background: var(--ivory-2);
+  }
+  .obs-item .goal-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 6px;
+  }
+  .obs-item .confidence {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: var(--mid-gray);
+    margin-top: 8px;
+  }
+  .insight-item .insight-title {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .insight-item .insight-badge { margin-bottom: 8px; }
+  .insight-item .evidence {
+    font-size: 11px;
+    color: var(--dark-gray);
+    margin-top: 8px;
+    font-style: italic;
+    line-height: 1.5;
+  }
 
-  /* Log */
-  .log-container { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-height: 600px; overflow-y: auto; font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; line-height: 1.8; }
-  .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(48,54,61,0.5); }
-  .log-time { color: var(--text3); }
-  .log-info { color: var(--accent); }
-  .log-success { color: var(--green); }
-  .log-error { color: var(--red); }
-  .log-warn { color: var(--orange); }
+  /* ========== LOG ========== */
+  .log-container {
+    background: var(--black);
+    border: 1px solid var(--charcoal);
+    padding: 20px;
+    max-height: 600px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 2;
+    color: var(--mid-gray);
+  }
+  .log-entry {
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(255,255,240,0.04);
+  }
+  .log-time { color: var(--dark-gray); }
+  .log-info { color: #60A5FA; }
+  .log-success { color: #6EE7B7; }
+  .log-error { color: #FCA5A5; }
+  .log-warn { color: #FCD34D; }
 
-  /* Form group */
-  .form-group { margin-bottom: 12px; }
-  .form-row { display: flex; gap: 12px; align-items: flex-end; }
+  /* ========== FORM GROUPS ========== */
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: flex; gap: 16px; align-items: flex-end; }
   .form-row > * { flex: 1; }
 
-  /* Empty state */
-  .empty { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
+  /* ========== EMPTY STATE ========== */
+  .empty {
+    text-align: center;
+    padding: 48px 24px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--warm-gray);
+  }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
+  /* ========== SCROLLBAR ========== */
+  ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--warm-gray); }
+  .log-container::-webkit-scrollbar-thumb { background: var(--charcoal); }
+
+  /* ========== STATUS DOT ========== */
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--success);
+  }
+  .status-indicator::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    display: block;
+  }
+
+  /* ========== TOPBAR USER SELECT ========== */
+  .topbar-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-label select {
+    font-family: var(--font-body);
+    font-size: 12px;
+    min-width: 220px;
+    background: var(--ivory-2);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    color: var(--ink);
+  }
+
+  /* ========== DIVIDER ========== */
+  .topbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+  }
 </style>
 </head>
 <body>
@@ -145,10 +606,10 @@
 <!-- Auth Gate -->
 <div id="authGate">
   <div class="box">
-    <h2>Retrospect Admin</h2>
-    <p>Enter your admin secret to continue</p>
-    <input type="password" id="secretInput" placeholder="Admin secret..." autofocus>
-    <button class="btn btn-primary" onclick="authenticate()" style="margin-top:12px;width:100%">Enter</button>
+    <h2>RETROSPECT</h2>
+    <p>Enter admin secret to continue</p>
+    <input type="password" id="secretInput" placeholder="SECRET KEY" autofocus>
+    <button class="btn btn-primary" onclick="authenticate()" style="margin-top:16px;width:100%;justify-content:center;padding:14px 20px">AUTHENTICATE</button>
     <div id="authError" class="err"></div>
   </div>
 </div>
@@ -157,93 +618,97 @@
 <div id="app" style="display:none;width:100%;height:100vh;">
   <div class="sidebar">
     <div class="sidebar-header">
-      <h1>Retrospect</h1>
-      <p>Admin Dashboard</p>
+      <h1>RETROSPECT</h1>
+      <p>Admin Panel</p>
     </div>
     <nav>
-      <button class="active" onclick="switchTab('overview', this)"><span class="icon">&#9632;</span> Overview</button>
-      <button onclick="switchTab('goals', this)"><span class="icon">&#9733;</span> Goals</button>
-      <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> Data Browser</button>
-      <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> Playground</button>
-      <button onclick="switchTab('logs', this)"><span class="icon">&#9998;</span> Logs</button>
+      <button class="active" onclick="switchTab('overview', this)"><span class="icon">&#9632;</span> OVERVIEW</button>
+      <button onclick="switchTab('goals', this)"><span class="icon">&#9733;</span> GOALS</button>
+      <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> DATA</button>
+      <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> PIPELINE</button>
+      <button onclick="switchTab('logs', this)"><span class="icon">&#9998;</span> LOGS</button>
     </nav>
+    <div class="sidebar-footer">V1.0 &middot; 2026</div>
   </div>
+
   <div class="main">
     <div class="topbar">
-      <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px">
-        User:
-        <select id="userSelect" onchange="onUserChange()" style="min-width:200px"></select>
-      </label>
-      <button class="btn" onclick="createTestUser()">+ New Test User</button>
-      <button class="btn" onclick="refreshAll()">Refresh</button>
-      <button class="btn btn-red" onclick="runDiagnose()">Diagnose Pipeline</button>
-      <span id="statusDot" style="margin-left:auto;font-size:11px;color:var(--green)">Connected</span>
+      <div class="topbar-label">
+        USER
+        <select id="userSelect" onchange="onUserChange()"></select>
+      </div>
+      <div class="topbar-divider"></div>
+      <button class="btn" onclick="createTestUser()">+ NEW USER</button>
+      <button class="btn" onclick="refreshAll()">REFRESH</button>
+      <button class="btn btn-red" onclick="runDiagnose()">DIAGNOSE</button>
+      <span style="margin-left:auto"><span id="statusDot" class="status-indicator">CONNECTED</span></span>
     </div>
+
     <div class="content">
 
       <!-- OVERVIEW TAB -->
       <div id="tab-overview" class="tab-content active">
-        <div class="section-title">System Overview</div>
+        <div class="section-title">SYSTEM OVERVIEW</div>
         <div class="stats-grid" id="statsGrid">
-          <div class="stat-card"><div class="num" id="stat-users">-</div><div class="lbl">Users</div></div>
-          <div class="stat-card"><div class="num" id="stat-goals">-</div><div class="lbl">Goals</div></div>
-          <div class="stat-card"><div class="num" id="stat-content">-</div><div class="lbl">Content</div></div>
-          <div class="stat-card"><div class="num" id="stat-observations">-</div><div class="lbl">Observations</div></div>
-          <div class="stat-card"><div class="num" id="stat-insights">-</div><div class="lbl">Insights</div></div>
-          <div class="stat-card"><div class="num" id="stat-runs">-</div><div class="lbl">Pipeline Runs</div></div>
+          <div class="stat-card"><div class="num" id="stat-users">-</div><div class="lbl">USERS</div></div>
+          <div class="stat-card"><div class="num" id="stat-goals">-</div><div class="lbl">GOALS</div></div>
+          <div class="stat-card"><div class="num" id="stat-content">-</div><div class="lbl">CONTENT</div></div>
+          <div class="stat-card"><div class="num" id="stat-observations">-</div><div class="lbl">OBSERVATIONS</div></div>
+          <div class="stat-card"><div class="num" id="stat-insights">-</div><div class="lbl">INSIGHTS</div></div>
+          <div class="stat-card"><div class="num" id="stat-runs">-</div><div class="lbl">RUNS</div></div>
         </div>
-        <div class="section-title">Recent Pipeline Runs</div>
+        <div class="section-title">RECENT PIPELINE RUNS</div>
         <div id="pipelineRunsList"></div>
       </div>
 
       <!-- GOALS TAB -->
       <div id="tab-goals" class="tab-content">
-        <div class="section-title">Goals</div>
+        <div class="section-title">GOAL EXTRACTION</div>
 
         <div class="card">
-          <h3>Extract Goals from Natural Language</h3>
-          <p style="margin-bottom:12px">Type how you feel, what you want, or what's on your mind. Claude will extract nuanced goals.</p>
+          <h3>EXTRACT FROM NATURAL LANGUAGE</h3>
+          <p style="margin-bottom:14px">Type how you feel, what you want, or what's on your mind. Claude will extract nuanced goals.</p>
           <div class="form-group">
             <textarea id="goalText" rows="4" style="width:100%" placeholder='e.g. "I want to make more money so I can expand my dating life, I feel like I should be healthier too..."'></textarea>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="extractGoals(false)" id="extractBtn">Extract Goals (Preview)</button>
-            <button class="btn btn-green" onclick="extractGoals(true)" id="extractSaveBtn">Extract & Save</button>
+            <button class="btn btn-primary" onclick="extractGoals(false)" id="extractBtn">PREVIEW</button>
+            <button class="btn btn-green" onclick="extractGoals(true)" id="extractSaveBtn">EXTRACT & SAVE</button>
           </div>
-          <div id="extractedGoals" style="margin-top:16px"></div>
+          <div id="extractedGoals" style="margin-top:20px"></div>
         </div>
 
-        <div class="card">
-          <h3>Create Goal Manually</h3>
-          <div class="form-row">
+        <div class="card" style="margin-top:16px">
+          <h3>CREATE MANUAL GOAL</h3>
+          <div class="form-row" style="margin-top:12px">
             <div class="form-group">
-              <label>Title</label>
+              <label>TITLE</label>
               <input type="text" id="goalTitle" style="width:100%" placeholder="Goal title">
             </div>
             <div class="form-group">
-              <label>Description</label>
+              <label>DESCRIPTION</label>
               <input type="text" id="goalDesc" style="width:100%" placeholder="Optional description">
             </div>
             <div class="form-group">
-              <button class="btn btn-primary" onclick="createGoalManual()" style="margin-top:18px">Create</button>
+              <button class="btn btn-primary" onclick="createGoalManual()" style="margin-top:20px">CREATE</button>
             </div>
           </div>
         </div>
 
-        <div class="section-title" style="margin-top:24px">Existing Goals</div>
+        <div class="section-title" style="margin-top:32px">EXISTING GOALS</div>
         <div id="goalsList"></div>
       </div>
 
       <!-- DATA BROWSER TAB -->
       <div id="tab-browser" class="tab-content">
-        <div class="section-title">Data Browser</div>
+        <div class="section-title">DATA BROWSER</div>
 
-        <div style="display:flex;gap:8px;margin-bottom:16px">
-          <button class="btn btn-primary" onclick="loadBrowserData('content')" id="browseContentBtn">Raw Content</button>
-          <button class="btn" onclick="loadBrowserData('observations')" id="browseObsBtn">Observations</button>
-          <button class="btn" onclick="loadBrowserData('insights')" id="browseInsBtn">Insights</button>
-          <select id="browserGoalFilter" onchange="loadBrowserData(currentBrowserView)" style="margin-left:auto">
-            <option value="">All Goals</option>
+        <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center">
+          <button class="btn btn-primary" onclick="loadBrowserData('content')" id="browseContentBtn">RAW CONTENT</button>
+          <button class="btn" onclick="loadBrowserData('observations')" id="browseObsBtn">OBSERVATIONS</button>
+          <button class="btn" onclick="loadBrowserData('insights')" id="browseInsBtn">INSIGHTS</button>
+          <select id="browserGoalFilter" onchange="loadBrowserData(currentBrowserView)" style="margin-left:auto;font-family:var(--font-body);font-size:12px;padding:8px 12px;">
+            <option value="">ALL GOALS</option>
           </select>
         </div>
 
@@ -252,18 +717,18 @@
 
       <!-- PLAYGROUND TAB -->
       <div id="tab-playground" class="tab-content">
-        <div class="section-title">Pipeline Playground</div>
-        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Paste content, process it through the pipeline, and watch observations and insights appear in real time.</p>
+        <div class="section-title">PIPELINE PLAYGROUND</div>
+        <p style="color:var(--dark-gray);font-size:13px;margin-bottom:20px;line-height:1.6">Paste content, process it through the observation-insight pipeline, and review results in real time.</p>
 
         <div class="card">
-          <div class="form-row">
+          <div class="form-row" style="align-items:stretch">
             <div class="form-group" style="flex:3">
-              <label>Content to process</label>
-              <textarea id="playContent" rows="8" style="width:100%" placeholder="Paste journal entries, voice note transcripts, meeting notes, or anything else here..."></textarea>
+              <label>CONTENT TO PROCESS</label>
+              <textarea id="playContent" rows="8" style="width:100%;height:calc(100% - 24px)" placeholder="Paste journal entries, voice note transcripts, meeting notes, or anything else here..."></textarea>
             </div>
-            <div style="flex:1">
-              <div class="form-group">
-                <label>Content Type</label>
+            <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+              <div class="form-group" style="margin-bottom:0">
+                <label>CONTENT TYPE</label>
                 <select id="playContentType" style="width:100%">
                   <option value="journal_entry">Journal Entry</option>
                   <option value="voice_note">Voice Note</option>
@@ -274,16 +739,16 @@
                   <option value="other">Other</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Content Date</label>
+              <div class="form-group" style="margin-bottom:0">
+                <label>CONTENT DATE</label>
                 <input type="text" id="playContentDate" style="width:100%" placeholder="auto (now)">
               </div>
-              <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%;margin-top:8px">Submit & Process All</button>
-              <button class="btn btn-primary" onclick="runPlayground(true)" id="playReprocessBtn" style="width:100%;margin-top:4px;font-size:11px">Force Reprocess All Content</button>
-              <div style="display:flex;gap:4px;margin-top:4px">
-                <button class="btn" onclick="runPlaygroundStep('content')" style="flex:1;font-size:11px">Submit Only</button>
-                <button class="btn" onclick="runPlaygroundStep('observations')" style="flex:1;font-size:11px">Obs Only</button>
-                <button class="btn" onclick="runPlaygroundStep('insights')" style="flex:1;font-size:11px">Ins Only</button>
+              <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%;justify-content:center;padding:14px">SUBMIT & PROCESS</button>
+              <button class="btn btn-primary" onclick="runPlayground(true)" id="playReprocessBtn" style="width:100%;justify-content:center;font-size:9px">FORCE REPROCESS ALL</button>
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-ghost" onclick="runPlaygroundStep('content')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">SUBMIT</button>
+                <button class="btn btn-ghost" onclick="runPlaygroundStep('observations')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">OBS</button>
+                <button class="btn btn-ghost" onclick="runPlaygroundStep('insights')" style="flex:1;justify-content:center;font-size:8px;padding:8px 4px">INS</button>
               </div>
             </div>
           </div>
@@ -291,24 +756,24 @@
 
         <!-- Progress steps -->
         <div class="steps" id="playSteps">
-          <div class="step" id="step-submit"><div class="step-label">1. Submit</div><div class="step-detail">Store content</div></div>
-          <div class="step" id="step-obs"><div class="step-label">2. Observations</div><div class="step-detail">Extract facts</div></div>
-          <div class="step" id="step-ins"><div class="step-label">3. Insights</div><div class="step-detail">Synthesize</div></div>
-          <div class="step" id="step-done"><div class="step-label">4. Done</div><div class="step-detail">Review</div></div>
+          <div class="step" id="step-submit"><div class="step-label">01 SUBMIT</div><div class="step-detail">STORE CONTENT</div></div>
+          <div class="step" id="step-obs"><div class="step-label">02 OBSERVE</div><div class="step-detail">EXTRACT FACTS</div></div>
+          <div class="step" id="step-ins"><div class="step-label">03 SYNTHESIZE</div><div class="step-detail">GENERATE INSIGHTS</div></div>
+          <div class="step" id="step-done"><div class="step-label">04 COMPLETE</div><div class="step-detail">REVIEW RESULTS</div></div>
         </div>
 
         <!-- Results -->
         <div class="playground-grid">
           <div class="playground-col">
-            <h4>Raw Content <span class="count" id="playContentCount">0</span></h4>
+            <h4>RAW CONTENT <span class="count" id="playContentCount">0</span></h4>
             <div id="playContentList"></div>
           </div>
           <div class="playground-col">
-            <h4>Observations <span class="count" id="playObsCount">0</span></h4>
+            <h4>OBSERVATIONS <span class="count" id="playObsCount">0</span></h4>
             <div id="playObsList"></div>
           </div>
           <div class="playground-col">
-            <h4>Insights <span class="count" id="playInsCount">0</span></h4>
+            <h4>INSIGHTS <span class="count" id="playInsCount">0</span></h4>
             <div id="playInsList"></div>
           </div>
         </div>
@@ -316,8 +781,8 @@
 
       <!-- LOGS TAB -->
       <div id="tab-logs" class="tab-content">
-        <div class="section-title">Activity Log</div>
-        <button class="btn" onclick="clearLogs()" style="margin-bottom:12px">Clear</button>
+        <div class="section-title">ACTIVITY LOG</div>
+        <button class="btn" onclick="clearLogs()" style="margin-bottom:16px">CLEAR LOG</button>
         <div class="log-container" id="logContainer"></div>
       </div>
 
@@ -367,7 +832,7 @@ async function authenticate() {
     document.getElementById('app').style.display = 'flex';
     init();
   } catch {
-    document.getElementById('authError').textContent = 'Invalid secret';
+    document.getElementById('authError').textContent = 'INVALID SECRET';
     API_SECRET = '';
   }
 }
@@ -376,7 +841,6 @@ document.getElementById('secretInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') authenticate();
 });
 
-// Auto-login if secret in session
 if (API_SECRET) {
   authenticate().catch(() => {
     API_SECRET = '';
@@ -401,13 +865,13 @@ async function loadUsers() {
   const select = document.getElementById('userSelect');
   select.innerHTML = '';
   if (res.data.length === 0) {
-    select.innerHTML = '<option value="">No users yet — create one</option>';
+    select.innerHTML = '<option value="">No users yet</option>';
     return;
   }
   for (const u of res.data) {
     const opt = document.createElement('option');
     opt.value = u.id;
-    opt.textContent = `${u.email || 'No email'} (${u.id.slice(0,8)}...)`;
+    opt.textContent = `${u.email || 'No email'} (${u.id.slice(0,8)})`;
     select.appendChild(opt);
   }
   currentUserId = res.data[0].id;
@@ -453,17 +917,17 @@ async function loadPipelineRuns() {
   try {
     const res = await api('GET', `/pipeline/runs${currentUserId ? `?userId=${currentUserId}` : ''}`);
     const el = document.getElementById('pipelineRunsList');
-    if (!res.data.length) { el.innerHTML = '<div class="empty">No pipeline runs yet</div>'; return; }
-    let html = '<table><tr><th>Type</th><th>Status</th><th>Observations</th><th>Insights</th><th>Started</th><th>Error</th></tr>';
+    if (!res.data.length) { el.innerHTML = '<div class="empty">NO PIPELINE RUNS YET</div>'; return; }
+    let html = '<table><tr><th>TYPE</th><th>STATUS</th><th>OBS</th><th>INS</th><th>STARTED</th><th>ERROR</th></tr>';
     for (const r of res.data.slice(0, 20)) {
       const badge = r.status === 'completed' ? 'badge-green' : r.status === 'failed' ? 'badge-red' : 'badge-orange';
       html += `<tr>
-        <td>${r.run_type}</td>
+        <td style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px">${r.run_type}</td>
         <td><span class="badge ${badge}">${r.status}</span></td>
-        <td>${r.observations_created || 0}</td>
-        <td>${r.insights_created || 0}</td>
-        <td>${fmtDate(r.started_at)}</td>
-        <td style="color:var(--red);font-size:11px">${r.error_message || ''}</td>
+        <td style="font-family:var(--font-mono)">${r.observations_created || 0}</td>
+        <td style="font-family:var(--font-mono)">${r.insights_created || 0}</td>
+        <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(r.started_at)}</td>
+        <td style="color:var(--error);font-size:11px">${r.error_message || ''}</td>
       </tr>`;
     }
     html += '</table>';
@@ -487,16 +951,16 @@ async function loadGoals() {
 
 function renderGoals(goals) {
   const el = document.getElementById('goalsList');
-  if (!goals.length) { el.innerHTML = '<div class="empty">No goals yet. Create one above.</div>'; return; }
+  if (!goals.length) { el.innerHTML = '<div class="empty">NO GOALS YET</div>'; return; }
   let html = '';
   for (const g of goals) {
     html += `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <h3>${esc(g.title)}</h3>
-        <span class="badge ${g.is_active ? 'badge-green' : 'badge-red'}">${g.is_active ? 'Active' : 'Inactive'}</span>
+        <span class="badge ${g.is_active ? 'badge-green' : 'badge-red'}">${g.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
       </div>
-      <p>${esc(g.description || 'No description')}</p>
-      <div style="margin-top:6px;font-size:11px;color:var(--text3)">Created: ${fmtDate(g.created_at)} | ID: ${g.id.slice(0,8)}...</div>
+      <p style="margin-top:8px">${esc(g.description || 'No description')}</p>
+      <div style="margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--mid-gray)">${fmtDate(g.created_at)} &middot; ${g.id.slice(0,8)}</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -507,7 +971,7 @@ async function extractGoals(save) {
   if (!text) return;
   const btn = save ? document.getElementById('extractSaveBtn') : document.getElementById('extractBtn');
   btn.disabled = true;
-  btn.textContent = 'Processing...';
+  btn.textContent = 'PROCESSING...';
   try {
     let res;
     if (save) {
@@ -522,12 +986,12 @@ async function extractGoals(save) {
     }
     const goals = save ? res.data.extracted.goals : res.data.goals;
     const el = document.getElementById('extractedGoals');
-    let html = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + (save ? 'Saved goals:' : 'Preview (not saved yet):') + '</div>';
+    let html = `<div style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mid-gray);margin-bottom:12px">${save ? 'SAVED GOALS' : 'PREVIEW (NOT SAVED)'}</div>`;
     for (const g of goals) {
       html += `<div class="card" style="border-left:3px solid var(--purple)">
         <h3>${esc(g.title)}</h3>
         <p>${esc(g.description)}</p>
-        <p style="font-size:11px;color:var(--orange);margin-top:6px">Reasoning: ${esc(g.reasoning)}</p>
+        <p style="font-size:11px;color:var(--warn);margin-top:8px;font-style:italic">${esc(g.reasoning)}</p>
       </div>`;
     }
     el.innerHTML = html;
@@ -535,7 +999,7 @@ async function extractGoals(save) {
     log('error', `Goal extraction failed: ${e.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = save ? 'Extract & Save' : 'Extract Goals (Preview)';
+    btn.textContent = save ? 'EXTRACT & SAVE' : 'PREVIEW';
   }
 }
 
@@ -562,7 +1026,7 @@ async function createGoalManual() {
 function loadBrowserGoalFilter() {
   const sel = document.getElementById('browserGoalFilter');
   const val = sel.value;
-  sel.innerHTML = '<option value="">All Goals</option>';
+  sel.innerHTML = '<option value="">ALL GOALS</option>';
   for (const [id, g] of Object.entries(goalCache)) {
     const opt = document.createElement('option');
     opt.value = id;
@@ -580,7 +1044,7 @@ async function loadBrowserData(view) {
   const btnMap = { content: 'browseContentBtn', observations: 'browseObsBtn', insights: 'browseInsBtn' };
   document.getElementById(btnMap[view]).className = 'btn btn-primary';
 
-  if (!currentUserId) { document.getElementById('browserTable').innerHTML = '<div class="empty">Select a user</div>'; return; }
+  if (!currentUserId) { document.getElementById('browserTable').innerHTML = '<div class="empty">SELECT A USER</div>'; return; }
 
   const goalId = document.getElementById('browserGoalFilter').value;
   const el = document.getElementById('browserTable');
@@ -588,14 +1052,14 @@ async function loadBrowserData(view) {
   try {
     if (view === 'content') {
       const res = await api('GET', `/content?userId=${currentUserId}`);
-      if (!res.data.length) { el.innerHTML = '<div class="empty">No content yet</div>'; return; }
-      let html = '<table><tr><th>Type</th><th>Content (preview)</th><th>Status</th><th>Date</th></tr>';
+      if (!res.data.length) { el.innerHTML = '<div class="empty">NO CONTENT YET</div>'; return; }
+      let html = '<table><tr><th>TYPE</th><th>CONTENT</th><th>STATUS</th><th>DATE</th></tr>';
       for (const c of res.data) {
         html += `<tr>
           <td><span class="badge badge-blue">${c.content_type}</span></td>
           <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((c.content || '').slice(0,120))}</td>
           <td><span class="badge ${c.processing_status === 'completed' ? 'badge-green' : 'badge-orange'}">${c.processing_status}</span></td>
-          <td>${fmtDate(c.content_date || c.created_at)}</td>
+          <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(c.content_date || c.created_at)}</td>
         </tr>`;
       }
       html += '</table>';
@@ -603,16 +1067,16 @@ async function loadBrowserData(view) {
     } else if (view === 'observations') {
       const gq = goalId ? `&goalId=${goalId}` : '';
       const res = await api('GET', `/observations?userId=${currentUserId}${gq}&limit=100`);
-      if (!res.data.length) { el.innerHTML = '<div class="empty">No observations yet</div>'; return; }
-      let html = '<table><tr><th>Observation</th><th>Goal</th><th>Reason</th><th>Confidence</th><th>Date</th></tr>';
+      if (!res.data.length) { el.innerHTML = '<div class="empty">NO OBSERVATIONS YET</div>'; return; }
+      let html = '<table><tr><th>OBSERVATION</th><th>GOAL</th><th>REASON</th><th>CONF</th><th>DATE</th></tr>';
       for (const o of res.data) {
         const goal = goalCache[o.goal_id];
         html += `<tr>
           <td>${esc(o.content)}</td>
           <td><span class="badge badge-purple">${goal ? esc(goal.title) : o.goal_id.slice(0,8)}</span></td>
-          <td style="font-size:11px;color:var(--text2)">${esc(o.reason_why || '')}</td>
-          <td>${(o.confidence_score || 0).toFixed(2)}</td>
-          <td>${fmtDate(o.observation_date)}</td>
+          <td style="font-size:11px;color:var(--dark-gray)">${esc(o.reason_why || '')}</td>
+          <td style="font-family:var(--font-mono);font-size:11px">${(o.confidence_score || 0).toFixed(2)}</td>
+          <td style="font-size:12px;color:var(--dark-gray)">${fmtDate(o.observation_date)}</td>
         </tr>`;
       }
       html += '</table>';
@@ -620,23 +1084,23 @@ async function loadBrowserData(view) {
     } else {
       const gq = goalId ? `&goalId=${goalId}` : '';
       const res = await api('GET', `/insights?userId=${currentUserId}${gq}&limit=100`);
-      if (!res.data.length) { el.innerHTML = '<div class="empty">No insights yet</div>'; return; }
-      let html = '<table><tr><th>Insight</th><th>Content</th><th>Goal</th><th>Confidence</th><th>Evidence</th></tr>';
+      if (!res.data.length) { el.innerHTML = '<div class="empty">NO INSIGHTS YET</div>'; return; }
+      let html = '<table><tr><th>INSIGHT</th><th>CONTENT</th><th>GOAL</th><th>CONF</th><th>EVIDENCE</th></tr>';
       for (const i of res.data) {
         const goal = goalCache[i.goal_id];
         html += `<tr>
-          <td><strong>${esc(i.title)}</strong></td>
-          <td style="max-width:300px">${esc(i.content)}</td>
+          <td><strong style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px">${esc(i.title)}</strong></td>
+          <td style="max-width:300px;line-height:1.5">${esc(i.content)}</td>
           <td><span class="badge badge-purple">${goal ? esc(goal.title) : (i.goal_id || '').slice(0,8)}</span></td>
-          <td>${(i.confidence_score || 0).toFixed(2)}</td>
-          <td style="font-size:11px;color:var(--text2);max-width:200px">${esc(i.evidence_summary || '')}</td>
+          <td style="font-family:var(--font-mono);font-size:11px">${(i.confidence_score || 0).toFixed(2)}</td>
+          <td style="font-size:11px;color:var(--dark-gray);max-width:200px">${esc(i.evidence_summary || '')}</td>
         </tr>`;
       }
       html += '</table>';
       el.innerHTML = html;
     }
   } catch (e) {
-    el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`;
+    el.innerHTML = `<div class="empty" style="color:var(--error)">${e.message}</div>`;
   }
 }
 
@@ -662,11 +1126,10 @@ async function runPlayground(forceReprocess = false) {
 
   const btn = forceReprocess ? document.getElementById('playReprocessBtn') : document.getElementById('playRunBtn');
   btn.disabled = true;
-  btn.textContent = 'Processing...';
+  btn.textContent = 'PROCESSING...';
   resetSteps();
 
   try {
-    // Step 1: Submit content (skip if force-reprocessing with no new content)
     if (!skipSubmit && content) {
       setStep('step-submit', 'active');
       log('info', 'Submitting content...');
@@ -684,9 +1147,8 @@ async function runPlayground(forceReprocess = false) {
       log('info', 'Skipping submit — reprocessing existing content');
     }
 
-    // Step 2: Extract observations
     setStep('step-obs', 'active');
-    log('info', forceReprocess ? 'Force-reprocessing ALL content for observations...' : 'Extracting observations...');
+    log('info', forceReprocess ? 'Force-reprocessing ALL content...' : 'Extracting observations...');
     const obsRes = await api('POST', '/pipeline/observations', {
       userId: currentUserId,
       forceReprocess: forceReprocess,
@@ -694,36 +1156,32 @@ async function runPlayground(forceReprocess = false) {
     setStep('step-obs', 'done');
 
     if (obsRes.data.contentProcessed === 0) {
-      log('warn', 'No content items found to process. Make sure you have submitted content first.');
+      log('warn', 'No content items found to process.');
     } else if (obsRes.data.totalObservations === 0) {
-      log('warn', `Processed ${obsRes.data.contentProcessed} content items but extracted 0 observations. Check that your goals are relevant to the content.`);
+      log('warn', `Processed ${obsRes.data.contentProcessed} items — 0 observations extracted.`);
     } else {
-      log('success', `Extracted ${obsRes.data.totalObservations} observations from ${obsRes.data.contentProcessed} content items`);
+      log('success', `${obsRes.data.totalObservations} observations from ${obsRes.data.contentProcessed} items`);
     }
 
-    // Fetch and display observations
     const obsListRes = await api('GET', `/observations?userId=${currentUserId}&limit=50`);
     renderPlayObservations(obsListRes.data);
 
-    // Step 3: Generate insights
     setStep('step-ins', 'active');
     log('info', 'Generating insights...');
     const insRes = await api('POST', '/pipeline/insights', { userId: currentUserId });
     setStep('step-ins', 'done');
 
     if (insRes.data.totalCreated === 0 && insRes.data.totalUpdated === 0) {
-      log('warn', 'No new insights generated. This can happen if there are too few observations or they lack clear patterns.');
+      log('warn', 'No new insights generated.');
     } else {
-      log('success', `Created ${insRes.data.totalCreated} new insights, updated ${insRes.data.totalUpdated} existing`);
+      log('success', `${insRes.data.totalCreated} created, ${insRes.data.totalUpdated} updated`);
     }
 
-    // Fetch and display insights
     const insListRes = await api('GET', `/insights?userId=${currentUserId}&limit=50`);
     renderPlayInsights(insListRes.data);
 
-    // Done
     setStep('step-done', 'done');
-    log('success', 'Pipeline complete!');
+    log('success', 'Pipeline complete.');
     loadStats();
 
   } catch (e) {
@@ -734,7 +1192,7 @@ async function runPlayground(forceReprocess = false) {
     });
   } finally {
     btn.disabled = false;
-    btn.textContent = forceReprocess ? 'Force Reprocess All Content' : 'Submit & Process All';
+    btn.textContent = forceReprocess ? 'FORCE REPROCESS ALL' : 'SUBMIT & PROCESS';
   }
 }
 
@@ -756,13 +1214,13 @@ async function runPlaygroundStep(step) {
     } else if (step === 'observations') {
       log('info', 'Extracting observations...');
       const res = await api('POST', '/pipeline/observations', { userId: currentUserId });
-      log('success', `Extracted ${res.data.totalObservations} observations`);
+      log('success', `${res.data.totalObservations} observations extracted`);
       const obsRes = await api('GET', `/observations?userId=${currentUserId}&limit=50`);
       renderPlayObservations(obsRes.data);
     } else if (step === 'insights') {
       log('info', 'Generating insights...');
       const res = await api('POST', '/pipeline/insights', { userId: currentUserId });
-      log('success', `Created ${res.data.totalCreated} new, updated ${res.data.totalUpdated}`);
+      log('success', `${res.data.totalCreated} created, ${res.data.totalUpdated} updated`);
       const insRes = await api('GET', `/insights?userId=${currentUserId}&limit=50`);
       renderPlayInsights(insRes.data);
     }
@@ -778,9 +1236,9 @@ function renderPlayContent(items) {
   let html = '';
   for (const c of items) {
     html += `<div class="obs-item">
-      <div class="goal-tag">${c.content_type || 'journal_entry'} | ${fmtDate(c.content_date || c.created_at)}</div>
+      <div class="goal-tag">${c.content_type || 'journal_entry'} &middot; ${fmtDate(c.content_date || c.created_at)}</div>
       <div>${esc((c.content || 'Stored').slice(0, 200))}${(c.content || '').length > 200 ? '...' : ''}</div>
-      <div class="confidence">ID: ${c.id}</div>
+      <div class="confidence">${c.id}</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -789,14 +1247,14 @@ function renderPlayContent(items) {
 function renderPlayObservations(items) {
   document.getElementById('playObsCount').textContent = items.length;
   const el = document.getElementById('playObsList');
-  if (!items.length) { el.innerHTML = '<div class="empty">No observations</div>'; return; }
+  if (!items.length) { el.innerHTML = '<div class="empty">NO OBSERVATIONS</div>'; return; }
   let html = '';
   for (const o of items) {
     const goal = goalCache[o.goal_id];
     html += `<div class="obs-item">
-      <div class="goal-tag">${goal ? esc(goal.title) : 'Unknown goal'}</div>
+      <div class="goal-tag">${goal ? esc(goal.title) : 'UNKNOWN GOAL'}</div>
       <div>${esc(o.content)}</div>
-      <div class="confidence">Confidence: ${(o.confidence_score || 0).toFixed(2)} | ${esc(o.reason_why || '')}</div>
+      <div class="confidence">${(o.confidence_score || 0).toFixed(2)} &middot; ${esc(o.reason_why || '')}</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -805,17 +1263,17 @@ function renderPlayObservations(items) {
 function renderPlayInsights(items) {
   document.getElementById('playInsCount').textContent = items.length;
   const el = document.getElementById('playInsList');
-  if (!items.length) { el.innerHTML = '<div class="empty">No insights yet</div>'; return; }
+  if (!items.length) { el.innerHTML = '<div class="empty">NO INSIGHTS YET</div>'; return; }
   let html = '';
   for (const i of items) {
     const goal = goalCache[i.goal_id];
     const isUpdated = i.metadata && i.metadata.last_update_reasoning;
     html += `<div class="insight-item">
-      <div class="insight-badge"><span class="badge ${isUpdated ? 'badge-orange' : 'badge-green'}">${isUpdated ? 'Updated' : 'New'}</span></div>
+      <div class="insight-badge"><span class="badge ${isUpdated ? 'badge-orange' : 'badge-green'}">${isUpdated ? 'UPDATED' : 'NEW'}</span></div>
       <div class="insight-title">${esc(i.title)}</div>
-      <div>${esc(i.content)}</div>
+      <div style="font-size:12px;line-height:1.6;color:var(--charcoal)">${esc(i.content)}</div>
       <div class="evidence">${esc(i.evidence_summary || '')}</div>
-      <div style="margin-top:4px;font-size:10px;color:var(--text3)">${goal ? esc(goal.title) : ''} | Confidence: ${(i.confidence_score || 0).toFixed(2)}</div>
+      <div style="margin-top:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.5px;color:var(--mid-gray)">${goal ? esc(goal.title) : ''} &middot; ${(i.confidence_score || 0).toFixed(2)}</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -866,7 +1324,7 @@ async function runDiagnose() {
       const level = step.status === 'FAIL' ? 'error' : step.status === 'WARN' ? 'warn' : step.status === 'OK' ? 'success' : 'info';
       log(level, `[${step.status}] ${step.step}: ${step.detail}`);
       if (step.data) {
-        log('info', `  └─ Data: ${JSON.stringify(step.data, null, 0).slice(0, 500)}`);
+        log('info', `  > ${JSON.stringify(step.data, null, 0).slice(0, 500)}`);
       }
     }
     log('info', '=== DIAGNOSTICS COMPLETE ===');
