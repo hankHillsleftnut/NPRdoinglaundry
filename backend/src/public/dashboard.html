@@ -643,6 +643,7 @@
     </div>
     <nav>
       <button class="active" onclick="switchTab('overview', this)"><span class="icon">&#9632;</span> OVERVIEW</button>
+      <button onclick="switchTab('review', this)"><span class="icon">&#9673;</span> REVIEW</button>
       <button onclick="switchTab('goals', this)"><span class="icon">&#9733;</span> GOALS</button>
       <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> DATA</button>
       <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> PIPELINE</button>
@@ -679,6 +680,19 @@
         </div>
         <div class="section-title">Recent Pipeline Runs</div>
         <div id="pipelineRunsList"></div>
+
+        <div class="section-title" style="margin-top:32px">Recent Observations</div>
+        <div id="overviewObsList"></div>
+
+        <div class="section-title" style="margin-top:32px">Recent Insights</div>
+        <div id="overviewInsList"></div>
+      </div>
+
+      <!-- REVIEW TAB -->
+      <div id="tab-review" class="tab-content">
+        <div class="section-title">Review</div>
+        <p style="color:var(--bone-dim);font-size:13px;margin-bottom:24px;line-height:1.6">All observations and insights for the selected user, grouped by goal.</p>
+        <div id="reviewContent"></div>
       </div>
 
       <!-- GOALS TAB -->
@@ -908,10 +922,13 @@ async function createTestUser() {
   onUserChange();
 }
 
-function onUserChange() {
+async function onUserChange() {
   currentUserId = document.getElementById('userSelect').value;
-  loadGoals();
+  await loadGoals();
   loadBrowserGoalFilter();
+  loadOverviewObservations();
+  loadOverviewInsights();
+  loadPipelineRuns();
 }
 
 // ============================================
@@ -953,6 +970,145 @@ async function loadPipelineRuns() {
     html += '</table>';
     el.innerHTML = html;
   } catch {}
+}
+
+// ============================================
+// Overview: Recent Observations & Insights
+// ============================================
+async function loadOverviewObservations() {
+  const el = document.getElementById('overviewObsList');
+  if (!currentUserId) { el.innerHTML = '<div class="empty">Select a user to see observations</div>'; return; }
+  try {
+    const res = await api('GET', `/observations?userId=${currentUserId}&limit=10`);
+    if (!res.data.length) { el.innerHTML = '<div class="empty">No observations yet</div>'; return; }
+    let html = '';
+    for (const o of res.data) {
+      const goal = goalCache[o.goal_id];
+      html += `<div class="obs-item">
+        <div class="goal-tag">${goal ? esc(goal.title) : 'Unknown Goal'} &middot; ${fmtDate(o.observation_date)}</div>
+        <div>${esc(o.content)}</div>
+        <div class="confidence">${(o.confidence_score || 0).toFixed(2)} &middot; ${esc(o.reason_why || '')}</div>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadOverviewInsights() {
+  const el = document.getElementById('overviewInsList');
+  if (!currentUserId) { el.innerHTML = '<div class="empty">Select a user to see insights</div>'; return; }
+  try {
+    const res = await api('GET', `/insights?userId=${currentUserId}&limit=10`);
+    if (!res.data.length) { el.innerHTML = '<div class="empty">No insights yet</div>'; return; }
+    let html = '';
+    for (const i of res.data) {
+      const goal = goalCache[i.goal_id];
+      html += `<div class="insight-item">
+        <div class="insight-badge"><span class="badge badge-purple">${goal ? esc(goal.title) : ''}</span></div>
+        <div class="insight-title">${esc(i.title)}</div>
+        <div style="font-size:13px;line-height:1.6;color:var(--bone-dim)">${esc(i.content)}</div>
+        <div class="evidence">${esc(i.evidence_summary || '')}</div>
+        <div style="margin-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--bone-faint)">${(i.confidence_score || 0).toFixed(2)} &middot; ${fmtDate(i.created_at)}</div>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`; }
+}
+
+// ============================================
+// Review Tab: grouped by goal
+// ============================================
+async function loadReview() {
+  const el = document.getElementById('reviewContent');
+  if (!currentUserId) { el.innerHTML = '<div class="empty">Select a user to review</div>'; return; }
+
+  el.innerHTML = '<div class="empty">Loading...</div>';
+
+  try {
+    // Fetch all data in parallel
+    const [goalsRes, obsRes, insRes] = await Promise.all([
+      api('GET', `/goals?userId=${currentUserId}`),
+      api('GET', `/observations?userId=${currentUserId}&limit=500`),
+      api('GET', `/insights?userId=${currentUserId}&limit=500`),
+    ]);
+
+    const goals = goalsRes.data || [];
+    const observations = obsRes.data || [];
+    const insights = insRes.data || [];
+
+    if (!goals.length) { el.innerHTML = '<div class="empty">No goals for this user</div>'; return; }
+    if (!observations.length && !insights.length) { el.innerHTML = '<div class="empty">No observations or insights generated yet</div>'; return; }
+
+    // Group by goal
+    const byGoal = {};
+    for (const g of goals) {
+      byGoal[g.id] = { goal: g, observations: [], insights: [] };
+    }
+    for (const o of observations) {
+      if (byGoal[o.goal_id]) byGoal[o.goal_id].observations.push(o);
+    }
+    for (const i of insights) {
+      if (byGoal[i.goal_id]) byGoal[i.goal_id].insights.push(i);
+    }
+
+    let html = '';
+    for (const [goalId, group] of Object.entries(byGoal)) {
+      const g = group.goal;
+      const obsCount = group.observations.length;
+      const insCount = group.insights.length;
+      if (obsCount === 0 && insCount === 0) continue;
+
+      html += `<div class="card" style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div>
+            <h3 style="margin-bottom:4px">${esc(g.title)}</h3>
+            <p style="font-size:12px;color:var(--bone-muted)">${esc(g.description || '')}</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-blue">${obsCount} obs</span>
+            <span class="badge badge-green">${insCount} insights</span>
+          </div>
+        </div>`;
+
+      // Insights first (the synthesized output)
+      if (insCount > 0) {
+        html += `<div style="margin-bottom:16px">
+          <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--bone-muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-solid)">Insights</div>`;
+        for (const i of group.insights) {
+          html += `<div class="insight-item">
+            <div class="insight-title">${esc(i.title)}</div>
+            <div style="font-size:13px;line-height:1.6;color:var(--bone-dim)">${esc(i.content)}</div>
+            <div class="evidence">${esc(i.evidence_summary || '')}</div>
+            <div style="margin-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--bone-faint)">confidence ${(i.confidence_score || 0).toFixed(2)} &middot; ${fmtDate(i.updated_at || i.created_at)}</div>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      // Observations
+      if (obsCount > 0) {
+        html += `<div>
+          <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--bone-muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-solid)">Observations</div>`;
+        for (const o of group.observations) {
+          html += `<div class="obs-item">
+            <div>${esc(o.content)}</div>
+            <div class="confidence">${(o.confidence_score || 0).toFixed(2)} &middot; ${esc(o.reason_why || '')} &middot; ${fmtDate(o.observation_date)}</div>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div>`; // close card
+    }
+
+    if (!html) {
+      html = '<div class="empty">Observations and insights exist but are not linked to current goals</div>';
+    }
+
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<div class="empty" style="color:var(--red)">${e.message}</div>`;
+  }
 }
 
 // ============================================
@@ -1323,7 +1479,8 @@ function switchTab(tabId, btnEl) {
   document.querySelectorAll('.sidebar nav button').forEach(b => b.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
 
-  if (tabId === 'overview') { loadStats(); loadPipelineRuns(); }
+  if (tabId === 'overview') { loadStats(); loadPipelineRuns(); loadOverviewObservations(); loadOverviewInsights(); }
+  if (tabId === 'review') { loadReview(); }
   if (tabId === 'goals') { loadGoals(); }
   if (tabId === 'browser') { loadBrowserData(currentBrowserView); }
 }
@@ -1332,6 +1489,8 @@ function refreshAll() {
   loadStats();
   loadGoals();
   loadPipelineRuns();
+  loadOverviewObservations();
+  loadOverviewInsights();
 }
 
 async function runDiagnose() {
