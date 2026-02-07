@@ -348,7 +348,7 @@ export async function generateInsightsForGoal(
     throw new Error(`Failed to fetch observations: ${error.message}`);
   }
 
-  if (!observations || observations.length < 2) {
+  if (!observations || observations.length === 0) {
     return { createdIds: [], updatedIds: [] };
   }
 
@@ -356,7 +356,17 @@ export async function generateInsightsForGoal(
   const existingInsights = await getExistingInsightsForGoal(userId, goalId);
 
   // 3. Cluster observations by semantic similarity
-  const clusters = clusterObservations(observations as DbObservation[]);
+  // For small observation sets, fall back to a single cluster so insights can still be generated
+  let clusters = clusterObservations(observations as DbObservation[]);
+
+  if (clusters.length === 0 && observations.length > 0) {
+    // If clustering produced nothing (too few observations or missing embeddings),
+    // treat all observations as a single cluster so we can still generate insights
+    clusters = [{
+      observations: observations as DbObservation[],
+      centroidText: (observations as DbObservation[]).slice(0, 5).map((o) => o.content).join(' | '),
+    }];
+  }
 
   if (clusters.length === 0) {
     return { createdIds: [], updatedIds: [] };

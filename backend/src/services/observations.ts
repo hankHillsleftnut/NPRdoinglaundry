@@ -262,10 +262,12 @@ export async function processContentForObservations(
     allObservationIds.push(...ids);
     byGoal[goal.id] = ids.length;
 
-    // Generate embeddings for the new observations (async, non-blocking for the caller)
-    generateObservationEmbeddings(ids).catch((err) =>
-      console.error('Failed to generate observation embeddings:', err)
-    );
+    // Generate embeddings for the new observations (must complete before insight synthesis)
+    try {
+      await generateObservationEmbeddings(ids);
+    } catch (err) {
+      console.error('Failed to generate observation embeddings:', err);
+    }
   }
 
   return { observationIds: allObservationIds, byGoal };
