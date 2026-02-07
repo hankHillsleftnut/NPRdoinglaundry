@@ -280,34 +280,56 @@ export async function processContentForObservations(
  * We track this via the pipeline_runs table.
  */
 export async function processAllPendingContent(
-  userId: string
+  userId: string,
+  forceReprocess: boolean = false
 ): Promise<{ totalObservations: number; contentProcessed: number; byGoal: Record<string, number> }> {
-  // Find raw content that has been uploaded but not yet observation-processed.
-  // We look at raw_content with status = 'completed' (or 'pending')
-  // and exclude any that already appear in a successful pipeline_run.
-  const { data: alreadyProcessed } = await supabaseAdmin
-    .from(Tables.PIPELINE_RUNS)
-    .select('raw_content_ids')
-    .eq('user_id', userId)
-    .eq('run_type', 'observation_extraction')
-    .eq('status', 'completed');
+  let unprocessed: { id: string }[];
 
-  const processedIds = new Set(
-    (alreadyProcessed || []).flatMap((r) => r.raw_content_ids || [])
-  );
+  if (forceReprocess) {
+    // Force mode: reprocess ALL content regardless of pipeline run history
+    // First, delete old observation_extraction pipeline runs so they don't block future runs
+    await supabaseAdmin
+      .from(Tables.PIPELINE_RUNS)
+      .delete()
+      .eq('user_id', userId)
+      .eq('run_type', 'observation_extraction');
 
-  // Get raw content not yet processed for observations
-  const { data: rawContents, error } = await supabaseAdmin
-    .from(Tables.RAW_CONTENT)
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+    const { data: rawContents, error } = await supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .select('id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
 
-  if (error || !rawContents) {
-    throw new Error(`Failed to fetch raw content: ${error?.message}`);
+    if (error || !rawContents) {
+      throw new Error(`Failed to fetch raw content: ${error?.message}`);
+    }
+
+    unprocessed = rawContents;
+  } else {
+    // Normal mode: only process content not yet in a completed pipeline run
+    const { data: alreadyProcessed } = await supabaseAdmin
+      .from(Tables.PIPELINE_RUNS)
+      .select('raw_content_ids')
+      .eq('user_id', userId)
+      .eq('run_type', 'observation_extraction')
+      .eq('status', 'completed');
+
+    const processedIds = new Set(
+      (alreadyProcessed || []).flatMap((r) => r.raw_content_ids || [])
+    );
+
+    const { data: rawContents, error } = await supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .select('id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (error || !rawContents) {
+      throw new Error(`Failed to fetch raw content: ${error?.message}`);
+    }
+
+    unprocessed = rawContents.filter((rc) => !processedIds.has(rc.id));
   }
-
-  const unprocessed = rawContents.filter((rc) => !processedIds.has(rc.id));
 
   if (unprocessed.length === 0) {
     return { totalObservations: 0, contentProcessed: 0, byGoal: {} };

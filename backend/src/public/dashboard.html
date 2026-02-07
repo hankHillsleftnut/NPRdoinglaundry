@@ -278,6 +278,7 @@
                 <input type="text" id="playContentDate" style="width:100%" placeholder="auto (now)">
               </div>
               <button class="btn btn-green" onclick="runPlayground()" id="playRunBtn" style="width:100%;margin-top:8px">Submit & Process All</button>
+              <button class="btn btn-primary" onclick="runPlayground(true)" id="playReprocessBtn" style="width:100%;margin-top:4px;font-size:11px">Force Reprocess All Content</button>
               <div style="display:flex;gap:4px;margin-top:4px">
                 <button class="btn" onclick="runPlaygroundStep('content')" style="flex:1;font-size:11px">Submit Only</button>
                 <button class="btn" onclick="runPlaygroundStep('observations')" style="flex:1;font-size:11px">Obs Only</button>
@@ -650,36 +651,54 @@ function resetSteps() {
   ['step-submit', 'step-obs', 'step-ins', 'step-done'].forEach(id => setStep(id, ''));
 }
 
-async function runPlayground() {
+async function runPlayground(forceReprocess = false) {
   if (!currentUserId) { alert('Select a user first'); return; }
-  const content = document.getElementById('playContent').value.trim();
-  if (!content) { alert('Enter some content'); return; }
 
-  const btn = document.getElementById('playRunBtn');
+  const content = document.getElementById('playContent').value.trim();
+  const skipSubmit = forceReprocess && !content;
+
+  if (!forceReprocess && !content) { alert('Enter some content'); return; }
+
+  const btn = forceReprocess ? document.getElementById('playReprocessBtn') : document.getElementById('playRunBtn');
   btn.disabled = true;
   btn.textContent = 'Processing...';
   resetSteps();
 
   try {
-    // Step 1: Submit content
-    setStep('step-submit', 'active');
-    log('info', 'Submitting content...');
-    const contentRes = await api('POST', '/content', {
-      userId: currentUserId,
-      contentType: document.getElementById('playContentType').value,
-      content,
-      contentDate: document.getElementById('playContentDate').value || undefined,
-    });
-    setStep('step-submit', 'done');
-    log('success', `Content stored: ${contentRes.data.id}`);
-    renderPlayContent([contentRes.data]);
+    // Step 1: Submit content (skip if force-reprocessing with no new content)
+    if (!skipSubmit && content) {
+      setStep('step-submit', 'active');
+      log('info', 'Submitting content...');
+      const contentRes = await api('POST', '/content', {
+        userId: currentUserId,
+        contentType: document.getElementById('playContentType').value,
+        content,
+        contentDate: document.getElementById('playContentDate').value || undefined,
+      });
+      setStep('step-submit', 'done');
+      log('success', `Content stored: ${contentRes.data.id}`);
+      renderPlayContent([contentRes.data]);
+    } else {
+      setStep('step-submit', 'done');
+      log('info', 'Skipping submit — reprocessing existing content');
+    }
 
     // Step 2: Extract observations
     setStep('step-obs', 'active');
-    log('info', 'Extracting observations...');
-    const obsRes = await api('POST', '/pipeline/observations', { userId: currentUserId });
+    log('info', forceReprocess ? 'Force-reprocessing ALL content for observations...' : 'Extracting observations...');
+    const obsRes = await api('POST', '/pipeline/observations', {
+      userId: currentUserId,
+      forceReprocess: forceReprocess,
+    });
     setStep('step-obs', 'done');
-    log('success', `Extracted ${obsRes.data.totalObservations} observations from ${obsRes.data.contentProcessed} content items`);
+
+    if (obsRes.data.contentProcessed === 0) {
+      log('warn', 'No content items found to process. Make sure you have submitted content first.');
+    } else if (obsRes.data.totalObservations === 0) {
+      log('warn', `Processed ${obsRes.data.contentProcessed} content items but extracted 0 observations. Check that your goals are relevant to the content.`);
+    } else {
+      log('success', `Extracted ${obsRes.data.totalObservations} observations from ${obsRes.data.contentProcessed} content items`);
+    }
 
     // Fetch and display observations
     const obsListRes = await api('GET', `/observations?userId=${currentUserId}&limit=50`);
@@ -690,7 +709,12 @@ async function runPlayground() {
     log('info', 'Generating insights...');
     const insRes = await api('POST', '/pipeline/insights', { userId: currentUserId });
     setStep('step-ins', 'done');
-    log('success', `Created ${insRes.data.totalCreated} new insights, updated ${insRes.data.totalUpdated} existing`);
+
+    if (insRes.data.totalCreated === 0 && insRes.data.totalUpdated === 0) {
+      log('warn', 'No new insights generated. This can happen if there are too few observations or they lack clear patterns.');
+    } else {
+      log('success', `Created ${insRes.data.totalCreated} new insights, updated ${insRes.data.totalUpdated} existing`);
+    }
 
     // Fetch and display insights
     const insListRes = await api('GET', `/insights?userId=${currentUserId}&limit=50`);
@@ -709,7 +733,7 @@ async function runPlayground() {
     });
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Submit & Process All';
+    btn.textContent = forceReprocess ? 'Force Reprocess All Content' : 'Submit & Process All';
   }
 }
 

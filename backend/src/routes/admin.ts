@@ -266,13 +266,13 @@ adminRouter.get('/insights/:id', async (req: Request, res: Response) => {
 // POST /admin/pipeline/observations — extract observations only
 adminRouter.post('/pipeline/observations', async (req: Request, res: Response) => {
   try {
-    const { userId } = req.body;
+    const { userId, forceReprocess } = req.body;
     if (!userId) {
       res.status(400).json({ success: false, error: 'userId is required' });
       return;
     }
 
-    const result = await processAllPendingContent(userId);
+    const result = await processAllPendingContent(userId, forceReprocess === true);
     res.json({
       success: true,
       data: result,
@@ -326,14 +326,14 @@ adminRouter.post('/pipeline/insights', async (req: Request, res: Response) => {
 // POST /admin/pipeline/run — full pipeline (content → observations → insights)
 adminRouter.post('/pipeline/run', async (req: Request, res: Response) => {
   try {
-    const { userId, daysBack } = req.body;
+    const { userId, daysBack, forceReprocess } = req.body;
     if (!userId) {
       res.status(400).json({ success: false, error: 'userId is required' });
       return;
     }
 
     // Step 1: Extract observations
-    const obsResult = await processAllPendingContent(userId);
+    const obsResult = await processAllPendingContent(userId, forceReprocess === true);
 
     // Step 2: Generate insights
     const insightResult = await generateInsightsForAllGoals(userId, daysBack || 30);
