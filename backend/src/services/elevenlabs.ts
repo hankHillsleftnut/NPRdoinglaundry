@@ -7,7 +7,8 @@
  *
  * Key v3 details:
  *   - 5,000 char limit per request (we use 4,800 as buffer)
- *   - Scripts over 4,800 chars are chunked and stitched via previous_request_ids
+ *   - Scripts over 4,800 chars are chunked independently and concatenated
+ *   - NOTE: v3 does NOT support previous_request_ids or next_text (v2-only)
  *   - voice_settings still supported (stability, similarity_boost, style)
  *   - Higher latency than v2 — not for real-time, perfect for pre-generated podcasts
  *
@@ -142,23 +143,16 @@ interface TTSOptions {
   modelId?: string;
 }
 
-interface TTSChunkResponse {
-  audio: Buffer;
-  requestId: string | null;
-}
-
 /**
  * Generate speech for a single chunk via the ElevenLabs API.
- * Returns the audio buffer and the request ID for stitching.
+ * v3 does NOT support previous_request_ids or next_text — each chunk is independent.
  */
 async function generateChunk(
   text: string,
   voiceId: string,
   modelId: string,
   persona: PersonaConfig,
-  previousRequestIds: string[],
-  nextText?: string,
-): Promise<TTSChunkResponse> {
+): Promise<Buffer> {
   const body: Record<string, unknown> = {
     text,
     model_id: modelId,
@@ -169,16 +163,6 @@ async function generateChunk(
       use_speaker_boost: persona.speakerBoost,
     },
   };
-
-  // Request stitching for multi-chunk continuity
-  if (previousRequestIds.length > 0) {
-    body.previous_request_ids = previousRequestIds.slice(-3); // Max 3
-  }
-
-  // Provide next text hint for better continuity at chunk boundary
-  if (nextText) {
-    body.next_text = nextText.slice(0, 500);
-  }
 
   // v3 is higher latency — allow up to 120s per chunk
   const controller = new AbortController();
@@ -213,21 +197,19 @@ async function generateChunk(
     throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
   }
 
-  const requestId = response.headers.get('request-id');
   const arrayBuffer = await response.arrayBuffer();
-
-  return {
-    audio: Buffer.from(arrayBuffer),
-    requestId,
-  };
+  return Buffer.from(arrayBuffer);
 }
 
 /**
  * Generate speech audio from an emotion-annotated script using Eleven v3.
  *
  * For scripts under 4,800 chars: single API call.
- * For longer scripts: chunks the text at sentence boundaries and stitches
- * them together using previous_request_ids for seamless continuity.
+ * For longer scripts: chunks the text at sentence boundaries, generates
+ * each chunk independently, and concatenates the resulting MP3 buffers.
+ *
+ * NOTE: v3 does not support request stitching (previous_request_ids / next_text).
+ * We split at sentence boundaries to keep transitions natural.
  *
  * Returns raw audio bytes (mp3 format).
  */
@@ -249,41 +231,25 @@ export async function textToSpeech(
   console.log(`[ElevenLabs v3] Generating with persona "${persona.displayName}" (voice: ${voiceId}, model: ${modelId}, chunks: ${chunks.length}, total chars: ${text.length})`);
 
   if (chunks.length === 1) {
-    // Single chunk — simple case
-    const result = await generateChunk(chunks[0]!, voiceId, modelId, persona, []);
-    console.log(`[ElevenLabs v3] Single-chunk generation complete.`);
-    return result.audio;
+    const audio = await generateChunk(chunks[0]!, voiceId, modelId, persona);
+    console.log(`[ElevenLabs v3] Single-chunk generation complete (${audio.length} bytes).`);
+    return audio;
   }
 
-  // Multi-chunk: generate sequentially with request stitching
+  // Multi-chunk: generate each independently and concatenate
   const audioBuffers: Buffer[] = [];
-  const previousRequestIds: string[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i]!;
-    const nextText = i < chunks.length - 1 ? chunks[i + 1] : undefined;
-
     console.log(`[ElevenLabs v3] Generating chunk ${i + 1}/${chunks.length} (${chunk.length} chars)...`);
 
-    const result = await generateChunk(
-      chunk,
-      voiceId,
-      modelId,
-      persona,
-      previousRequestIds,
-      nextText,
-    );
+    const audio = await generateChunk(chunk, voiceId, modelId, persona);
+    audioBuffers.push(audio);
 
-    audioBuffers.push(result.audio);
-
-    if (result.requestId) {
-      previousRequestIds.push(result.requestId);
-    }
+    console.log(`[ElevenLabs v3] Chunk ${i + 1} complete (${audio.length} bytes).`);
   }
 
   console.log(`[ElevenLabs v3] All ${chunks.length} chunks generated. Concatenating audio...`);
-
-  // Concatenate all MP3 buffers
   return Buffer.concat(audioBuffers);
 }
 
