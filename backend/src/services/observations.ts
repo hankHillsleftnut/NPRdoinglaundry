@@ -29,15 +29,44 @@ function chunkContent(content: string, maxChunkLength: number = 1500): string[] 
   // Split on double newlines first (paragraph boundaries)
   const paragraphs = content.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
 
+  // If no paragraph breaks, try single newlines
+  const segments = paragraphs.length > 1
+    ? paragraphs
+    : content.split(/\n/).filter((p) => p.trim().length > 0);
+
   const chunks: string[] = [];
   let currentChunk = '';
 
-  for (const paragraph of paragraphs) {
-    if (currentChunk.length + paragraph.length > maxChunkLength && currentChunk.length > 0) {
+  for (const segment of segments) {
+    // If a single segment is longer than maxChunkLength, split it by sentences
+    if (segment.length > maxChunkLength) {
+      // Flush current chunk first
+      if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+      // Split long segment by sentences
+      const sentences = segment.match(/[^.!?]+[.!?]+[\s]*/g) || [segment];
+      let sentenceChunk = '';
+      for (const sentence of sentences) {
+        if (sentenceChunk.length + sentence.length > maxChunkLength && sentenceChunk.length > 0) {
+          chunks.push(sentenceChunk.trim());
+          sentenceChunk = sentence;
+        } else {
+          sentenceChunk += sentence;
+        }
+      }
+      if (sentenceChunk.trim().length > 0) {
+        chunks.push(sentenceChunk.trim());
+      }
+      continue;
+    }
+
+    if (currentChunk.length + segment.length > maxChunkLength && currentChunk.length > 0) {
       chunks.push(currentChunk.trim());
-      currentChunk = paragraph;
+      currentChunk = segment;
     } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+      currentChunk += (currentChunk ? '\n\n' : '') + segment;
     }
   }
 
@@ -45,12 +74,37 @@ function chunkContent(content: string, maxChunkLength: number = 1500): string[] 
     chunks.push(currentChunk.trim());
   }
 
-  // If content has no paragraph breaks, split by sentences
-  if (chunks.length === 0 && content.trim().length > 0) {
-    chunks.push(content.trim());
+  // Final safety: if any chunk still exceeds maxChunkLength, hard-split it
+  const safeChunks: string[] = [];
+  for (const chunk of chunks) {
+    if (chunk.length > maxChunkLength * 2) {
+      // Hard split by character boundary at word breaks
+      let remaining = chunk;
+      while (remaining.length > maxChunkLength) {
+        let splitAt = remaining.lastIndexOf(' ', maxChunkLength);
+        if (splitAt <= 0) splitAt = maxChunkLength;
+        safeChunks.push(remaining.slice(0, splitAt).trim());
+        remaining = remaining.slice(splitAt).trim();
+      }
+      if (remaining.length > 0) safeChunks.push(remaining);
+    } else {
+      safeChunks.push(chunk);
+    }
   }
 
-  return chunks;
+  // If still empty after all splitting, push the whole content as safe chunks
+  if (safeChunks.length === 0 && content.trim().length > 0) {
+    let remaining = content.trim();
+    while (remaining.length > maxChunkLength) {
+      let splitAt = remaining.lastIndexOf(' ', maxChunkLength);
+      if (splitAt <= 0) splitAt = maxChunkLength;
+      safeChunks.push(remaining.slice(0, splitAt).trim());
+      remaining = remaining.slice(splitAt).trim();
+    }
+    if (remaining.length > 0) safeChunks.push(remaining);
+  }
+
+  return safeChunks;
 }
 
 // ============================================
@@ -104,40 +158,61 @@ async function extractObservationsFromChunks(
     ? `"${goalTitle}" — ${goalDescription}`
     : `"${goalTitle}"`;
 
-  const systemPrompt = `You are an expert at extracting atomic observations from personal data that are relevant to a specific user goal.
+  const systemPrompt = `You are a CBT therapist extracting observations from personal data that are relevant to a specific user goal. You pay special attention to evidence of capability, negative self-talk, and cognitive distortions.
 
 THE USER'S GOAL: ${goalText}
 
-Your job is to read the content below and extract ONLY facts that are relevant to this goal. Each observation should be:
-- ONE atomic fact (not a compound statement)
-- Directly relevant to the user's goal
-- Paired with a short "reason_why" explaining how it connects to the goal
+Your job is to read the content below and extract observations in THREE CATEGORIES:
 
-RULES:
-1. Only extract facts relevant to the goal. Ignore unrelated content.
-2. Each observation = ONE atomic, self-contained statement.
-3. Be specific. "User exercised" is bad. "User ran 3 miles on Tuesday morning" is good.
-4. The reason_why should be 1-2 sentences explaining the relevance to the goal.
-5. confidence_score: how confident you are this is accurate (0.0-1.0).
-6. If nothing in the content relates to the goal, return an empty observations array.
+**1. EVIDENCE OF CAPABILITY** — Facts that demonstrate competence, resilience, problem-solving, growth, or skill
+   - These counter negative core beliefs
+   - Examples: "User successfully navigated conflict with manager", "User completed project despite initial fear", "User asked for help when stuck (showing self-awareness)"
+
+**2. NEGATIVE SELF-TALK** — Thoughts, statements, or beliefs that reveal low self-esteem or cognitive distortions
+   - Flag the SPECIFIC distortion type when present
+   - Examples: "User said 'I'm terrible at this' after one mistake" (overgeneralization), "User dismissed compliment as 'just being nice'" (discounting positives)
+
+**3. BEHAVIORAL DATA** — Actions, patterns, or environmental factors relevant to the goal
+   - Examples: "User avoided team meeting for third week", "User exercised 4 times this week", "User received positive feedback from client"
+
+COGNITIVE DISTORTIONS TO IDENTIFY:
+- **All-or-nothing thinking**: "If I'm not perfect, I'm a failure"
+- **Overgeneralization**: One event = always/never pattern
+- **Mental filter**: Focusing only on negatives, ignoring positives
+- **Discounting positives**: "That doesn't count because..."
+- **Jumping to conclusions**: Mind reading ("they think I'm dumb") or fortune telling ("I'll definitely fail")
+- **Catastrophizing**: Assuming the worst outcome
+- **Emotional reasoning**: "I feel incompetent, therefore I am"
+- **Should statements**: "I should be further along", "I must be better"
+- **Labeling**: "I'm a loser" (global label from specific event)
+- **Personalization**: "It's my fault" when it's not
+
+RULES FOR EXTRACTION:
+1. Each observation = ONE atomic, self-contained statement
+2. Be specific. "User felt anxious" is bad. "User experienced anxiety before presentation, catastrophizing that 'everyone will think I'm incompetent'" is good.
+3. When extracting negative self-talk, note the distortion type in the reason_why
+4. When extracting evidence of capability, note if the user ACKNOWLEDGED it or DISMISSED it
+5. The reason_why should explicitly connect to either building self-esteem OR identifying barriers to it
+6. confidence_score: how confident you are this is accurate (0.0-1.0)
+7. If nothing relates to the goal, return empty observations array
 
 OUTPUT FORMAT: Return a JSON object:
 {
   "observations": [
     {
-      "content": "the atomic fact / observation",
-      "reason_why": "why this is relevant to the goal",
+      "content": "The atomic fact / observation",
+      "reason_why": "Why this matters for self-esteem and goal progress, including distortion type if negative self-talk",
       "confidence_score": 0.0-1.0
     }
   ],
-  "processingNotes": "optional notes about the extraction"
+  "processingNotes": "Patterns in self-esteem language or notable capability the user might be missing"
 }`;
 
   const chunksText = relevantChunks
     .map((rc, i) => `--- Chunk ${i + 1} (relevance: ${rc.similarity.toFixed(2)}) ---\n${rc.chunk}`)
     .join('\n\n');
 
-  const userMessage = `Extract goal-relevant observations from this content:\n\n${chunksText}`;
+  const userMessage = `Extract goal-relevant observations, categorizing by capability evidence, negative self-talk, and behavioral data:\n\nGOAL: ${goalText}\n\n${chunksText}`;
 
   try {
     const result = await jsonChatCompletion<ObservationExtractionResult>(

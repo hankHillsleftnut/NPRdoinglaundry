@@ -300,18 +300,23 @@ class TranscriptViewModel: ObservableObject {
         // Use regular OpenAI to create podcast from research
         let systemPrompt = getFocusedPodcastPrompt(for: generationType)
         let userPrompt = """
-        Based on the following research findings, create a personalized podcast episode:
-        
+        Based on the following CBT research findings, create a personalized podcast episode:
+
         **User's Original Reflections:**
         \(originalText)
-        
+
         **User's Goals:**
         \(goals.joined(separator: ", "))
-        
+
         **Research Findings:**
         \(research)
-        
-        Create a 5-8 minute podcast episode that weaves together the research findings with specific insights about this person's reflections and goals. Reference the research naturally but focus on making it personally relevant and actionable.
+
+        Create a 5-8 minute podcast episode that:
+        1. Presents EVIDENCE of capability they're dismissing (with specific counts from their data)
+        2. Challenges cognitive distortions by NAME with evidence-based reframes
+        3. Weaves CBT research naturally into personal insights
+        4. Prescribes ONE behavioral experiment to test a belief this week
+        Make it personally relevant, therapeutically focused, and direct — not generic or sycophantic.
         """
         
         openAIService.makeAPICall(
@@ -376,40 +381,40 @@ class TranscriptViewModel: ObservableObject {
     
     private func getFocusedPodcastPrompt(for generationType: GenerationType) -> String {
         let tone = generationType == .goodListener ? 
-            "warm, motivating, occasionally challenging, and always deeply personal" : 
-            "warm, clear, and unafraid to challenge. Noticing without judging. Encouraging without sugarcoating"
+            "warm, direct, evidence-based — no toxic positivity" : 
+            "direct, energizing, action-oriented — challenge harsh self-criticism"
         
         return """
-        You are creating a research-backed personal growth podcast episode based on scientific findings and expert insights.
-        
+        You are creating a research-backed CBT podcast episode focused on building self-esteem through evidence-based cognitive restructuring.
+
         Your tone should be \(tone).
-        
+
         CRITICAL REQUIREMENTS:
         - MAXIMUM 1,200 words total
-        - Reference research naturally without being academic
-        - Connect scientific findings to their personal patterns
-        - Make evidence-based recommendations feel personal and actionable
-        - Balance authority of research with empathy for their journey
-        
-        Create a complete podcast episode (1,000-1,200 words) that:
-        
+        - Reference CBT research naturally without being academic
+        - Connect scientific findings to their SPECIFIC cognitive distortions and capabilities
+        - Present capability evidence FORCEFULLY — "This isn't luck. Here's proof."
+        - Challenge distortions by NAME with evidence-based reframes
+
+        Create a complete podcast episode (1,000-1,200 words):
+
         **Introduction (200-300 words)**
-        - Warmly acknowledge their reflections
-        - Preview the research-backed insights you'll share
-        - Set the tone that science supports their growth journey
-        
-        **Main Content (600-800 words)**
-        - Weave research findings into personal insights
-        - Explain how scientific findings apply to their specific situation
-        - Use research to validate their experiences or provide new perspectives
-        - Give evidence-based recommendations that feel personally relevant
-        
-        **Conclusion (200-300 words)**
-        - Synthesize research insights with their personal goals
-        - Provide specific, research-backed actions for the week ahead
-        - End with encouragement rooted in scientific understanding
-        
-        The research should enhance rather than dominate the personal touch. Make it feel like a knowledgeable friend sharing discoveries, not a research presentation.
+        - Acknowledge their week
+        - Preview the challenge: "I found some research that connects to something you're not seeing clearly..."
+
+        **Evidence & Research (600-800 words)**
+        - Present SPECIFIC capability evidence with counts from their data
+        - Weave CBT research to support challenging their distortions
+        - NAME cognitive distortions and show the evidence against them
+        - Use research to explain WHY they dismiss positive evidence (discounting positives, emotional reasoning)
+        - Trace thought → feeling → behavior chains with research backing
+
+        **Behavioral Experiment (200-300 words)**
+        - ONE specific, research-backed action to test a belief
+        - Frame as experiment: "The research says X, so let's test whether Y is actually true for you"
+        - Self-compassion: "Progress, not perfection"
+
+        The research should SUPPORT the CBT work, not replace it. Use science to give weight to your challenges and reframes.
         """
     }
     

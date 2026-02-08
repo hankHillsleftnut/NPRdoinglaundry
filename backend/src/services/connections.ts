@@ -174,50 +174,85 @@ async function analyzeConnections(
     return { connections: [] };
   }
 
-  const systemPrompt = `You are an expert at analyzing connections between personal insights.
-Given a source insight and a list of potentially related insights, determine the type and strength of each connection.
+  const systemPrompt = `You are a CBT therapist analyzing how insights connect to form larger patterns in self-esteem and cognition.
 
-CONNECTION TYPES:
-- same_topic: Both insights are about the same subject or theme
-- causal: One insight likely influenced or caused the other
-- temporal: Both are part of the same event, period, or timeframe
-- supports: The target insight reinforces or validates the source
-- contradicts: The target insight conflicts with or challenges the source
+Given a source insight and related insights, determine connections that reveal:
+1. How cognitive distortions reinforce each other
+2. How capability evidence contradicts negative beliefs
+3. How thought patterns lead to behavioral patterns
+4. How discounting mechanisms prevent belief change
 
-For each potential connection:
-1. Determine if there's a meaningful connection (skip weak/no connections)
-2. Classify the connection type
-3. Rate the strength (0.0-1.0)
-4. Explain your reasoning briefly
-5. Indicate if the connection works both ways (bidirectional)
+**CONNECTION TYPES:**
+
+**1. reinforces_distortion** — This insight strengthens or maintains the other's negative pattern
+   - Example: Source = "User catastrophizes about work", Target = "User avoids challenging projects"
+   - The catastrophizing CAUSES the avoidance, which prevents evidence gathering, which maintains the catastrophizing
+
+**2. contradicts_belief** — This insight provides evidence AGAINST the other's negative conclusion
+   - Example: Source = "User believes 'I'm incompetent at leadership'", Target = "User successfully led team through crisis"
+   - The capability evidence DIRECTLY contradicts the belief
+
+**3. discounting_mechanism** — This insight explains HOW the user dismisses the other
+   - Example: Source = "User received praise for presentation", Target = "User attributes success to luck, not skill"
+   - The discounting mechanism prevents the praise from challenging the core belief
+
+**4. thought_to_behavior** — Thought pattern directly causes behavioral pattern
+   - Example: Source = "User thinks 'I'll say something stupid'", Target = "User stays silent in meetings"
+   - Classic CBT chain — thought → emotion → behavior
+
+**5. behavior_to_outcome** — Behavior creates outcome that confirms original thought
+   - Example: Source = "User procrastinates due to perfectionism", Target = "User submits rushed work, confirming 'I'm not good enough'"
+   - Self-fulfilling prophecy cycle
+
+**6. capability_cluster** — Multiple insights demonstrating the same competency
+   - Example: Source = "User resolved conflict with coworker", Target = "User set boundary with friend"
+   - Pattern of capability in interpersonal situations
+
+**ANALYSIS RULES:**
+1. Strength (0.0-1.0) based on:
+   - How DIRECT the connection is (thought → immediate behavior = high strength)
+   - How CONSISTENT the pattern is (happens once = low, happens 5 times = high)
+   - How THERAPEUTIC the connection is (does knowing this help the user?)
+
+2. Prioritize connections that:
+   - Reveal self-fulfilling prophecies (thought → behavior → outcome confirming thought)
+   - Show capability the user is missing (evidence cluster contradicting belief)
+   - Explain resistance to change (how discounting prevents belief update)
+
+3. Note if bidirectional (both insights reinforce each other in a cycle)
+4. Only include connections with therapeutic value — not just "both about work"
 
 OUTPUT FORMAT: Return a JSON object:
 {
   "connections": [
     {
       "target_insight_id": "uuid",
-      "connection_type": "same_topic|causal|temporal|supports|contradicts",
+      "connection_type": "reinforces_distortion|contradicts_belief|discounting_mechanism|thought_to_behavior|behavior_to_outcome|capability_cluster",
       "strength": 0.0-1.0,
-      "reasoning": "brief explanation",
+      "reasoning": "How this connection operates and its therapeutic significance",
       "is_bidirectional": boolean
     }
   ]
 }
 
-Only include connections with strength >= ${config.patterns.connectionStrengthThreshold}.`;
+Only include connections with strength >= ${config.patterns.connectionStrengthThreshold} and clear therapeutic value.`;
 
   const candidatesText = similarInsights
     .map((i) => `- ID: ${i.id}\n  Content: "${i.content}"`)
     .join('\n\n');
 
-  const userMessage = `SOURCE INSIGHT:
+  const userMessage = `Analyze connections with CBT lens:
+
+SOURCE INSIGHT:
 Category: ${sourceInsight.primary_category}
 Content: "${sourceInsight.content}"
 Date: ${sourceInsight.insight_date}
 ${sourceInsight.sentiment ? `Sentiment: ${sourceInsight.sentiment}` : ''}
 
 CANDIDATE INSIGHTS TO ANALYZE:
-${candidatesText}`;
+${candidatesText}
+
+Focus on: How do these insights form cycles of low self-esteem OR accumulate evidence to challenge negative beliefs?`;
 
   try {
     const result = await jsonChatCompletion<ConnectionAnalysis>(
