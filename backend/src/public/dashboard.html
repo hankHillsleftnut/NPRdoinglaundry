@@ -1589,22 +1589,66 @@ async function loadPodcastList() {
     if (eps.length === 0) { el.innerHTML = '<div class="empty">No episodes yet.</div>'; return; }
     let html = '';
     for (const ep of eps) {
-      const status = ep.status === 'ready' ? '&#10003;' : ep.status === 'generating' ? '&#9203;' : '&#10007;';
-      html += `<div class="card" style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h3 style="margin:0">${status} ${esc(ep.title)}</h3>
-          <span class="badge">${esc(ep.mood || ep.status)}</span>
+      const statusIcon = ep.status === 'ready' ? '&#10003;' : ep.status === 'generating' ? '&#9203;' : '&#10007;';
+      const statusColor = ep.status === 'ready' ? 'var(--green)' : ep.status === 'generating' ? 'var(--amber)' : 'var(--red)';
+      const durationText = ep.duration_seconds ? Math.round(ep.duration_seconds / 60) + ' min' : '';
+      const insightCount = (ep.insight_ids || []).length;
+      const citationCount = (ep.research_citations || []).length;
+
+      html += `<div class="card" style="margin-bottom:14px">
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="color:${statusColor};font-size:14px">${statusIcon}</span>
+              <h3 style="margin:0;font-size:15px">${esc(ep.title)}</h3>
+            </div>
+            <p style="color:var(--bone-muted);font-size:13px;margin:0">${esc(ep.description || '')}</p>
+          </div>
+          <span class="badge" style="flex-shrink:0;margin-left:12px">${esc(ep.mood || ep.status)}</span>
         </div>
-        <p style="color:var(--bone-muted);font-size:13px;margin-bottom:6px">${esc(ep.description || '')}</p>
-        <div style="font-size:11px;color:var(--bone-faint);font-family:var(--font-mono)">
-          Ep #${ep.episode_number || '?'} &middot; ${ep.duration_seconds ? Math.round(ep.duration_seconds/60) + ' min' : 'No audio'} &middot; ${fmtDate(ep.created_at)}
-          &middot; ${(ep.insight_ids || []).length} insights &middot; ${(ep.research_citations || []).length} citations
+
+        <!-- Metadata -->
+        <div style="font-size:11px;color:var(--bone-faint);font-family:var(--font-mono);margin-bottom:10px">
+          Ep #${ep.episode_number || '?'} &middot; ${durationText || 'Text only'} &middot; ${fmtDate(ep.created_at)}
+          &middot; ${insightCount} insight${insightCount !== 1 ? 's' : ''} &middot; ${citationCount} citation${citationCount !== 1 ? 's' : ''}
         </div>
-        ${ep.audio_url ? `<div style="margin-top:8px"><audio controls src="${esc(ep.audio_url)}" style="width:100%;height:32px"></audio></div>` : ''}
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;color:var(--bone-muted);font-size:12px">View Script</summary>
-          <pre style="white-space:pre-wrap;font-size:12px;color:var(--bone-muted);margin-top:8px;max-height:300px;overflow-y:auto">${esc(ep.script)}</pre>
+
+        <!-- Audio Player -->
+        ${ep.audio_url ? `
+        <div style="padding:12px;background:var(--surface);border:1px solid var(--border-solid);border-radius:10px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:16px">&#127911;</span>
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;text-transform:uppercase;color:var(--bone-dim);letter-spacing:0.05em">Audio Playback</span>
+            ${durationText ? `<span style="font-size:11px;color:var(--bone-faint);margin-left:auto">${durationText}</span>` : ''}
+          </div>
+          <audio controls preload="metadata" src="${esc(ep.audio_url)}" style="width:100%;height:40px;border-radius:6px"></audio>
+        </div>
+        ` : `
+        <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border-solid);border-radius:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;opacity:0.5">&#128263;</span>
+          <span style="font-size:12px;color:var(--bone-faint)">No audio — generated with Skip TTS enabled</span>
+        </div>
+        `}
+
+        <!-- Script -->
+        <details style="margin-top:4px">
+          <summary style="cursor:pointer;color:var(--bone-muted);font-size:12px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;padding:6px 0">View Script</summary>
+          <pre style="white-space:pre-wrap;font-size:12px;color:var(--bone-dim);margin-top:8px;padding:12px;background:var(--bg);border:1px solid var(--border-solid);border-radius:8px;max-height:400px;overflow-y:auto;line-height:1.7">${esc(ep.script)}</pre>
         </details>
+
+        <!-- Outline -->
+        ${ep.outline && ep.outline.segments ? `
+        <details style="margin-top:4px">
+          <summary style="cursor:pointer;color:var(--bone-muted);font-size:12px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;padding:6px 0">View Outline</summary>
+          <div style="margin-top:8px;padding:12px;background:var(--bg);border:1px solid var(--border-solid);border-radius:8px;font-size:12px;color:var(--bone-dim);line-height:1.7">
+            ${(ep.outline.segments || []).map((seg, i) => `<div style="margin-bottom:8px"><span style="color:var(--amber);font-weight:600">${i+1}.</span> <strong>${esc(seg.title || '')}</strong> <span style="color:var(--bone-faint)">(${esc(seg.type || '')})</span><br><span style="color:var(--bone-muted)">${esc(seg.description || seg.content || '')}</span></div>`).join('')}
+          </div>
+        </details>
+        ` : ''}
+
+        <!-- Error message if failed -->
+        ${ep.error_message ? `<div style="margin-top:8px;padding:8px 12px;background:var(--red-dim);border:1px solid rgba(229,115,115,0.2);border-radius:8px;font-size:12px;color:var(--red)">${esc(ep.error_message)}</div>` : ''}
       </div>`;
     }
     el.innerHTML = html;
