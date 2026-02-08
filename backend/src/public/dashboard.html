@@ -821,6 +821,322 @@
       padding: 0 12px;
     }
   }
+
+  /* ========== PIPELINE MAP MODAL ========== */
+  .pipeline-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .pipeline-modal-overlay.active {
+    display: flex;
+  }
+  .pipeline-modal {
+    background: var(--bg);
+    border: 1px solid var(--border-solid);
+    border-radius: 16px;
+    width: 94vw;
+    max-width: 1200px;
+    height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .pipeline-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-solid);
+    flex-shrink: 0;
+  }
+  .pipeline-modal-header h2 {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--bone);
+  }
+  .pipeline-modal-header .subtitle {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--bone-faint);
+    margin-left: 12px;
+  }
+  .pipeline-modal-close {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    color: var(--bone-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .pipeline-modal-close:hover {
+    background: var(--surface-hover);
+    color: var(--bone);
+  }
+  .pipeline-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .pipeline-modal-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  .pipeline-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .pipeline-modal-body::-webkit-scrollbar-thumb {
+    background: var(--border-solid);
+    border-radius: 3px;
+  }
+
+  /* Pipeline flow layout */
+  .pipeline-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  /* Pipeline stage */
+  .pipeline-stage {
+    position: relative;
+    padding-left: 48px;
+    padding-bottom: 32px;
+  }
+  .pipeline-stage:last-child {
+    padding-bottom: 0;
+  }
+  /* Vertical connector line */
+  .pipeline-stage::before {
+    content: '';
+    position: absolute;
+    left: 17px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-solid);
+  }
+  .pipeline-stage:last-child::before {
+    bottom: 50%;
+  }
+
+  /* Stage icon node */
+  .pipeline-node {
+    position: absolute;
+    left: 6px;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 1;
+    border: 2px solid;
+  }
+
+  /* Stage header */
+  .pipeline-stage-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .pipeline-stage-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bone-faint);
+  }
+  .pipeline-stage-title {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--bone);
+  }
+  .pipeline-stage-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--bone-faint);
+  }
+
+  /* Node items (child cards) */
+  .pipeline-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+  .pipeline-item {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: border-color 0.15s;
+    cursor: default;
+  }
+  .pipeline-item:hover {
+    border-color: var(--bone-faint);
+  }
+  .pipeline-item-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .pipeline-item-content {
+    font-size: 13px;
+    color: var(--bone-dim);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .pipeline-item-content .evidence {
+    font-size: 11px;
+    color: var(--bone-faint);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* Connection badges */
+  .pipeline-connection {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--bone-faint);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 2px;
+  }
+
+  /* Segment card (expanded outline) */
+  .pipeline-segment {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 8px;
+  }
+  .pipeline-segment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .pipeline-segment-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .pipeline-segment-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--bone-faint);
+    text-transform: uppercase;
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .pipeline-segment-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--bone);
+  }
+  .pipeline-segment-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .pipeline-segment-points li {
+    font-size: 12px;
+    color: var(--bone-muted);
+    padding: 2px 0 2px 14px;
+    position: relative;
+  }
+  .pipeline-segment-points li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--bone-faint);
+  }
+
+  /* Script preview */
+  .pipeline-script-preview {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 13px;
+    color: var(--bone-dim);
+    line-height: 1.8;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  /* Color themes per stage */
+  .stage-goals .pipeline-node { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .stage-goals .pipeline-stage-label { color: var(--amber); }
+  .stage-goals .pipeline-item-label { color: var(--amber); }
+
+  .stage-observations .pipeline-node { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+  .stage-observations .pipeline-stage-label { color: var(--blue); }
+  .stage-observations .pipeline-item-label { color: var(--blue); }
+
+  .stage-insights .pipeline-node { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+  .stage-insights .pipeline-stage-label { color: var(--purple); }
+  .stage-insights .pipeline-item-label { color: var(--purple); }
+
+  .stage-outline .pipeline-node { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .stage-outline .pipeline-stage-label { color: var(--green); }
+
+  .stage-research .pipeline-node { background: rgba(126,184,226,0.12); border-color: var(--blue); color: var(--blue); }
+  .stage-research .pipeline-stage-label { color: var(--blue); }
+  .stage-research .pipeline-item-label { color: var(--blue); }
+
+  .stage-script .pipeline-node { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .stage-script .pipeline-stage-label { color: var(--amber); }
+
+  .stage-audio .pipeline-node { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .stage-audio .pipeline-stage-label { color: var(--green); }
+
+  @media (max-width: 768px) {
+    .pipeline-modal {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+    }
+    .pipeline-items {
+      grid-template-columns: 1fr;
+    }
+    .pipeline-modal-body {
+      padding: 16px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1844,6 +2160,11 @@ async function loadPodcastList() {
         </details>
         ` : ''}
 
+        <!-- Pipeline Map Button -->
+        <button class="btn btn-ghost btn-sm" onclick="openPipelineMap('${ep.id}')" style="margin-top:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.04em;width:100%">
+          &#128268; VIEW DATA PIPELINE
+        </button>
+
         <!-- Error message if failed -->
         ${ep.error_message ? `<div style="margin-top:8px;padding:8px 12px;background:var(--red-dim);border:1px solid rgba(229,115,115,0.2);border-radius:8px;font-size:12px;color:var(--red)">${esc(ep.error_message)}</div>` : ''}
       </div>`;
@@ -1976,6 +2297,315 @@ function fmtDate(d) {
   if (!d) return '-';
   try { return new Date(d).toLocaleString(); } catch { return d; }
 }
+
+// ============================================
+// Pipeline Map
+// ============================================
+
+// Cache for fetched episode data
+let pipelineCache = {};
+
+async function openPipelineMap(episodeId) {
+  const overlay = document.getElementById('pipelineMapOverlay');
+  const body = document.getElementById('pipelineMapBody');
+  const titleEl = document.getElementById('pipelineMapTitle');
+  const subtitleEl = document.getElementById('pipelineMapSubtitle');
+
+  overlay.classList.add('active');
+  body.innerHTML = '<div style="text-align:center;padding:60px;color:var(--bone-muted)"><div class="podcast-spinner" style="margin:0 auto 16px"></div>Loading pipeline data...</div>';
+  document.body.style.overflow = 'hidden';
+
+  try {
+    // Find the episode in the current podcast list (it was already fetched)
+    const episodesRes = await api('GET', `/podcasts?userId=${currentUserId}`);
+    const ep = (episodesRes.data || []).find(e => e.id === episodeId);
+    if (!ep) throw new Error('Episode not found');
+
+    titleEl.textContent = `Pipeline: ${ep.title || 'Untitled'}`;
+    subtitleEl.textContent = `Ep #${ep.episode_number || '?'} · ${fmtDate(ep.created_at)}`;
+
+    // Fetch related data in parallel
+    const [goalsRes, insightsRes, observationsRes] = await Promise.all([
+      api('GET', `/goals?userId=${currentUserId}`),
+      api('GET', `/insights?userId=${currentUserId}`),
+      api('GET', `/observations?userId=${currentUserId}`),
+    ]);
+
+    const allGoals = goalsRes.data || [];
+    const allInsights = insightsRes.data || [];
+    const allObservations = observationsRes.data || [];
+
+    // Filter to what this episode used
+    const episodeGoalIds = ep.goal_ids || [];
+    const episodeInsightIds = ep.insight_ids || [];
+    const goals = allGoals.filter(g => episodeGoalIds.includes(g.id));
+    const insights = allInsights.filter(i => episodeInsightIds.includes(i.id));
+
+    // Observations that support these insights
+    const supportingObsIds = new Set();
+    for (const ins of insights) {
+      for (const obsId of (ins.supporting_observation_ids || [])) {
+        supportingObsIds.add(obsId);
+      }
+    }
+    const observations = allObservations.filter(o => supportingObsIds.has(o.id));
+
+    // If we have a period, also grab observations from that period
+    let periodObservations = observations;
+    if (observations.length === 0 && ep.covers_period_start) {
+      periodObservations = allObservations.filter(o => {
+        const t = new Date(o.created_at).getTime();
+        const start = new Date(ep.covers_period_start).getTime();
+        const end = ep.covers_period_end ? new Date(ep.covers_period_end).getTime() : Date.now();
+        return t >= start && t <= end;
+      }).slice(0, 30);
+    }
+
+    const outline = ep.outline || {};
+    const segments = outline.segments || [];
+    const citations = ep.research_citations || [];
+    const script = ep.script || '';
+    const metadata = ep.metadata || {};
+
+    // Build the pipeline HTML
+    body.innerHTML = renderPipelineMap({
+      ep, goals, insights,
+      observations: periodObservations.length > observations.length ? periodObservations : observations,
+      segments, citations, script, metadata,
+    });
+
+  } catch (e) {
+    body.innerHTML = `<div style="text-align:center;padding:60px;color:var(--red)">Error loading pipeline: ${esc(e.message)}</div>`;
+  }
+}
+
+function closePipelineMap() {
+  document.getElementById('pipelineMapOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function renderPipelineMap({ ep, goals, insights, observations, segments, citations, script, metadata }) {
+  let html = '<div class="pipeline-flow">';
+
+  // ── STAGE 1: GOALS (Input) ──
+  html += `
+    <div class="pipeline-stage stage-goals">
+      <div class="pipeline-node">&#9733;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 1 · Input</span>
+        <span class="pipeline-stage-title">Active Goals</span>
+        <span class="pipeline-stage-meta">${goals.length} goal${goals.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="pipeline-items">
+        ${goals.length > 0 ? goals.map(g => `
+          <div class="pipeline-item">
+            <div class="pipeline-item-label">Goal</div>
+            <div class="pipeline-item-content">
+              <strong>${esc(g.title)}</strong>
+              ${g.description ? `<div class="evidence">${esc(g.description)}</div>` : ''}
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--bone-faint);font-size:12px">No goals tracked for this episode</div>'}
+      </div>
+    </div>`;
+
+  // ── STAGE 2: OBSERVATIONS (Raw Data) ──
+  html += `
+    <div class="pipeline-stage stage-observations">
+      <div class="pipeline-node">&#9679;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 2 · Raw Data</span>
+        <span class="pipeline-stage-title">Observations</span>
+        <span class="pipeline-stage-meta">${observations.length} observation${observations.length !== 1 ? 's' : ''}${ep.covers_period_start ? ' · ' + fmtDate(ep.covers_period_start).split(',')[0] + ' → ' + fmtDate(ep.covers_period_end || new Date().toISOString()).split(',')[0] : ''}</span>
+      </div>
+      <div class="pipeline-items">
+        ${observations.length > 0 ? observations.slice(0, 20).map(o => `
+          <div class="pipeline-item">
+            <div class="pipeline-item-label" style="display:flex;justify-content:space-between">
+              <span>Observation</span>
+              <span style="color:var(--bone-faint);font-weight:400;text-transform:none">${fmtDate(o.created_at).split(',')[0]}</span>
+            </div>
+            <div class="pipeline-item-content">
+              ${esc((o.content || '').slice(0, 200))}${(o.content || '').length > 200 ? '...' : ''}
+              ${o.reason_why ? `<div class="evidence">Why: ${esc(o.reason_why)}</div>` : ''}
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--bone-faint);font-size:12px">No supporting observations found</div>'}
+        ${observations.length > 20 ? `<div style="color:var(--bone-faint);font-size:11px;font-family:var(--font-mono)">+ ${observations.length - 20} more</div>` : ''}
+      </div>
+    </div>`;
+
+  // ── STAGE 3: INSIGHTS (Synthesis) ──
+  html += `
+    <div class="pipeline-stage stage-insights">
+      <div class="pipeline-node">&#9830;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 3 · Synthesis</span>
+        <span class="pipeline-stage-title">Insights</span>
+        <span class="pipeline-stage-meta">${insights.length} insight${insights.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="pipeline-items">
+        ${insights.length > 0 ? insights.map(ins => `
+          <div class="pipeline-item">
+            <div class="pipeline-item-label" style="display:flex;justify-content:space-between">
+              <span>Insight</span>
+              <span style="color:var(--bone-faint);font-weight:400;text-transform:none">conf: ${(ins.confidence_score || 0).toFixed(2)}</span>
+            </div>
+            <div class="pipeline-item-content">
+              <strong>${esc(ins.title)}</strong>
+              <div style="margin-top:4px">${esc((ins.content || '').slice(0, 250))}${(ins.content || '').length > 250 ? '...' : ''}</div>
+              ${ins.evidence_summary ? `<div class="evidence">${esc(ins.evidence_summary.slice(0, 150))}${ins.evidence_summary.length > 150 ? '...' : ''}</div>` : ''}
+              ${(ins.supporting_observation_ids || []).length > 0 ? `<div style="margin-top:6px">${(ins.supporting_observation_ids || []).slice(0, 4).map(id => `<span class="pipeline-connection">&#8594; obs:${id.slice(0,8)}</span>`).join('')}</div>` : ''}
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--bone-faint);font-size:12px">No insights for this episode</div>'}
+      </div>
+    </div>`;
+
+  // ── STAGE 4: OUTLINE (Structure) ──
+  html += `
+    <div class="pipeline-stage stage-outline">
+      <div class="pipeline-node">&#9638;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 4 · Structure</span>
+        <span class="pipeline-stage-title">Episode Outline</span>
+        <span class="pipeline-stage-meta">${segments.length} segment${segments.length !== 1 ? 's' : ''}${ep.outline?.theme ? ' · "' + esc(ep.outline.theme) + '"' : ''}${ep.outline?.estimatedMinutes ? ' · ~' + ep.outline.estimatedMinutes + ' min' : ''}</span>
+      </div>
+      <div>
+        ${segments.length > 0 ? segments.map((seg, i) => `
+          <div class="pipeline-segment">
+            <div class="pipeline-segment-header">
+              <span class="pipeline-segment-num">${i + 1}</span>
+              <span class="pipeline-segment-type">${esc(seg.type || '')}</span>
+              <span class="pipeline-segment-title">${esc(seg.title || '')}</span>
+              <span class="pipeline-stage-meta" style="margin-left:auto">${seg.estimatedSeconds ? '~' + seg.estimatedSeconds + 's' : ''}</span>
+            </div>
+            ${(seg.talkingPoints || []).length > 0 ? `<ul class="pipeline-segment-points">${seg.talkingPoints.map(tp => `<li>${esc(tp)}</li>`).join('')}</ul>` : ''}
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+              ${(seg.insightIds || []).map(id => `<span class="pipeline-connection" style="border-color:var(--purple);color:var(--purple)">&#9830; insight:${id.slice(0,8)}</span>`).join('')}
+              ${(seg.goalIds || []).map(id => `<span class="pipeline-connection" style="border-color:var(--amber);color:var(--amber)">&#9733; goal:${id.slice(0,8)}</span>`).join('')}
+              ${(seg.researchQueries || []).map(q => `<span class="pipeline-connection" style="border-color:var(--blue);color:var(--blue)">&#127760; "${esc(q.slice(0,40))}${q.length > 40 ? '...' : ''}"</span>`).join('')}
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--bone-faint);font-size:12px">No outline data stored</div>'}
+      </div>
+    </div>`;
+
+  // ── STAGE 5: RESEARCH (Enrichment) ──
+  html += `
+    <div class="pipeline-stage stage-research">
+      <div class="pipeline-node">&#127760;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 5 · Enrichment</span>
+        <span class="pipeline-stage-title">Research Citations</span>
+        <span class="pipeline-stage-meta">${citations.length} citation${citations.length !== 1 ? 's' : ''} via Perplexity Sonar Pro</span>
+      </div>
+      <div class="pipeline-items">
+        ${citations.length > 0 ? citations.map(c => `
+          <div class="pipeline-item">
+            <div class="pipeline-item-label">Citation</div>
+            <div class="pipeline-item-content">
+              <div style="font-weight:600;margin-bottom:2px">${esc(c.query || '')}</div>
+              <div>${esc((c.snippet || '').slice(0, 200))}${(c.snippet || '').length > 200 ? '...' : ''}</div>
+              <div style="margin-top:4px;font-family:var(--font-mono);font-size:10px;color:var(--blue)">${c.url ? `<a href="${esc(c.url)}" target="_blank" style="color:var(--blue);text-decoration:none">${esc(c.source || c.url)}</a>` : esc(c.source || '')}</div>
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--bone-faint);font-size:12px">No research citations (research may have been skipped or had no queries)</div>'}
+      </div>
+    </div>`;
+
+  // ── STAGE 6: SCRIPT (Narrative) ──
+  const wordCount = metadata.word_count || script.split(/\s+/).filter(Boolean).length;
+  const audioTagCount = (script.match(/\[.*?\]/g) || []).length;
+  html += `
+    <div class="pipeline-stage stage-script">
+      <div class="pipeline-node">&#9997;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 6 · Narrative</span>
+        <span class="pipeline-stage-title">Final Script</span>
+        <span class="pipeline-stage-meta">${wordCount} words · ${audioTagCount} audio tags · persona: ${esc(metadata.voice_name || metadata.voice_persona || 'default')}</span>
+      </div>
+      <details>
+        <summary style="cursor:pointer;color:var(--bone-muted);font-size:12px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;padding:6px 0;margin-bottom:8px">Expand full script</summary>
+        <div class="pipeline-script-preview">${esc(script)}</div>
+      </details>
+    </div>`;
+
+  // ── STAGE 7: AUDIO (Output) ──
+  const durationText = ep.duration_seconds ? Math.round(ep.duration_seconds / 60) + ':' + String(ep.duration_seconds % 60).padStart(2, '0') : '';
+  html += `
+    <div class="pipeline-stage stage-audio">
+      <div class="pipeline-node">&#127911;</div>
+      <div class="pipeline-stage-header">
+        <span class="pipeline-stage-label">Stage 7 · Output</span>
+        <span class="pipeline-stage-title">Audio Episode</span>
+        <span class="pipeline-stage-meta">${ep.audio_url ? durationText + ' · ElevenLabs v3 TTS' : 'No audio (TTS skipped)'}</span>
+      </div>
+      ${ep.audio_url ? `
+        <div style="background:var(--surface);border:1px solid var(--border-solid);border-radius:10px;padding:14px">
+          <audio controls preload="metadata" src="${esc(ep.audio_url)}" style="width:100%;height:40px;border-radius:6px"></audio>
+        </div>
+      ` : `
+        <div style="padding:12px 14px;background:var(--surface);border:1px solid var(--border-solid);border-radius:10px;font-size:12px;color:var(--bone-faint)">
+          &#128263; Audio not generated — episode was created with Skip TTS enabled
+        </div>
+      `}
+    </div>`;
+
+  html += '</div>';
+
+  // Summary stats bar at top
+  const summaryHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));gap:8px;margin-bottom:24px;padding:14px;background:var(--surface);border:1px solid var(--border-solid);border-radius:10px">
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--amber)">${goals.length}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Goals</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--blue)">${observations.length}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Observations</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--purple)">${insights.length}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Insights</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--green)">${segments.length}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Segments</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--blue)">${citations.length}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Citations</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--amber)">${wordCount}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Words</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--green)">${durationText || '—'}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--bone-faint);text-transform:uppercase;letter-spacing:0.06em">Duration</div>
+      </div>
+    </div>`;
+
+  return summaryHtml + html;
+}
 </script>
+
+<!-- Pipeline Map Modal -->
+<div class="pipeline-modal-overlay" id="pipelineMapOverlay" onclick="if(event.target===this)closePipelineMap()">
+  <div class="pipeline-modal">
+    <div class="pipeline-modal-header">
+      <div style="display:flex;align-items:center">
+        <h2 id="pipelineMapTitle">Data Pipeline</h2>
+        <span class="subtitle" id="pipelineMapSubtitle"></span>
+      </div>
+      <button class="pipeline-modal-close" onclick="closePipelineMap()">&times;</button>
+    </div>
+    <div class="pipeline-modal-body" id="pipelineMapBody">
+      <div class="empty">Select an episode to view its pipeline.</div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
