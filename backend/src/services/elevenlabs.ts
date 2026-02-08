@@ -180,18 +180,33 @@ async function generateChunk(
     body.next_text = nextText.slice(0, 500);
   }
 
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': config.elevenlabs.apiKey,
-        'Accept': 'audio/mpeg',
-      },
-      body: JSON.stringify(body),
+  // v3 is higher latency — allow up to 120s per chunk
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': config.elevenlabs.apiKey,
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+  } catch (err: unknown) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('ElevenLabs v3 request timed out after 120s');
     }
-  );
+    throw err;
+  }
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const errorText = await response.text();

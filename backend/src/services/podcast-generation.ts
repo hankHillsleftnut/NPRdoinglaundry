@@ -533,32 +533,30 @@ export async function generatePodcastEpisode(
     let durationSeconds: number | null = null;
 
     if (!skipTTS) {
-      try {
-        console.log('[Podcast] Generating TTS audio...');
-        const audioBuffer = await textToSpeech(script, { persona });
-        durationSeconds = estimateDuration(script);
+      console.log('[Podcast] Generating TTS audio via ElevenLabs v3...');
+      const audioBuffer = await textToSpeech(script, { persona });
+      durationSeconds = estimateDuration(script);
+      console.log(`[Podcast] TTS complete: ${audioBuffer.length} bytes, ~${durationSeconds}s estimated`);
 
-        // Upload to Supabase storage
-        const audioPath = `podcasts/${userId}/${episodeId}.mp3`;
-        const { error: uploadError } = await supabaseAdmin.storage
-          .from('podcast-audio')
-          .upload(audioPath, audioBuffer, {
-            contentType: 'audio/mpeg',
-            upsert: true,
-          });
+      // Upload to Supabase storage
+      const audioPath = `podcasts/${userId}/${episodeId}.mp3`;
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('podcast-audio')
+        .upload(audioPath, audioBuffer, {
+          contentType: 'audio/mpeg',
+          upsert: true,
+        });
 
-        if (uploadError) {
-          console.error('[Podcast] Audio upload failed:', uploadError);
-        } else {
-          const { data: publicUrl } = supabaseAdmin.storage
-            .from('podcast-audio')
-            .getPublicUrl(audioPath);
-          audioUrl = publicUrl.publicUrl;
-          console.log(`[Podcast] Audio uploaded: ${audioUrl}`);
-        }
-      } catch (ttsErr) {
-        console.error('[Podcast] TTS failed (episode saved without audio):', ttsErr);
+      if (uploadError) {
+        console.error('[Podcast] Audio upload failed:', uploadError);
+        throw new Error(`Audio upload to Supabase storage failed: ${uploadError.message}`);
       }
+
+      const { data: publicUrl } = supabaseAdmin.storage
+        .from('podcast-audio')
+        .getPublicUrl(audioPath);
+      audioUrl = publicUrl.publicUrl;
+      console.log(`[Podcast] Audio uploaded: ${audioUrl}`);
     } else {
       durationSeconds = estimateDuration(script);
     }

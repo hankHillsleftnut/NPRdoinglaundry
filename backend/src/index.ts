@@ -154,9 +154,13 @@ cron.schedule('0 6 * * 0', async () => {
 });
 
 // Start server
-app.listen(config.server.port, () => {
+const server = app.listen(config.server.port, () => {
   console.log(`Server running on port ${config.server.port}`);
   console.log(`Environment: ${config.server.nodeEnv}`);
 });
+
+// Podcast generation with v3 TTS can take several minutes
+server.timeout = 300_000; // 5 minutes
+server.keepAliveTimeout = 120_000;
 
 export default app;
