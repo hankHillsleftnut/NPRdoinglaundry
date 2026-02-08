@@ -2,39 +2,51 @@
  * ElevenLabs TTS Service — Eleven v3
  *
  * Uses eleven_v3, the most expressive model with native audio tag support.
- * v3 understands inline tags like [laughs], [sighs], [whispers], [excited],
- * [sad], [angry], etc. and renders them as natural vocal expressions.
  *
- * Key v3 details:
+ * v3 CRITICAL CONSTRAINTS (differs from v2):
+ *   - Stability: MUST be exactly 0.0 (Creative), 0.5 (Natural), or 1.0 (Robust)
+ *   - No SSML break tags — use audio tags, ellipses (…), and CAPS for expression
+ *   - No previous_request_ids, previous_text, or next_text (v2-only)
  *   - 5,000 char limit per request (we use 4,800 as buffer)
- *   - Scripts over 4,800 chars are chunked independently and concatenated
- *   - NOTE: v3 does NOT support previous_request_ids or next_text (v2-only)
- *   - voice_settings still supported (stability, similarity_boost, style)
- *   - Higher latency than v2 — not for real-time, perfect for pre-generated podcasts
+ *   - Audio tags rendered natively: [laughs], [whispers], [sighs], [excited], etc.
+ *   - Higher latency than v2 — perfect for pre-generated podcasts
+ *
+ * Official v3 audio tags (from ElevenLabs docs):
+ *   Voice: [laughs], [laughs harder], [starts laughing], [wheezing],
+ *          [whispers], [sighs], [exhales], [sarcastic], [curious],
+ *          [excited], [crying], [snorts], [mischievously]
+ *   Effects: [applause], [clapping]
+ *   Special: [strong X accent], [sings]
+ *   Compound: [frustrated sigh], [happy gasp], etc. (adjective + action)
  *
  * Voice Personas:
- *   1. Thoughtful Friend — warm, conversational, natural rhythm
- *   2. Wise Mentor — calm, grounded, measured delivery
- *   3. Energetic Host — dynamic pacing, genuinely curious
+ *   1. Thoughtful Friend — Creative (0.0), warm, expressive
+ *   2. Wise Mentor — Natural (0.5), grounded, balanced
+ *   3. Energetic Host — Creative (0.0), dynamic, maximum expression
  */
 
 import { config } from '../utils/config.js';
 
 // ============================================
-// VOICE PERSONAS
+// VOICE PERSONAS (v3-compatible)
 // ============================================
 
 export type VoicePersona = 'thoughtful_friend' | 'wise_mentor' | 'energetic_host';
+
+/**
+ * v3 stability is discrete:
+ *   0.0 = Creative (most expressive, responds best to audio tags, may hallucinate)
+ *   0.5 = Natural (balanced, closest to original voice)
+ *   1.0 = Robust (most stable, least responsive to tags, similar to v2)
+ */
+type V3Stability = 0.0 | 0.5 | 1.0;
 
 export interface PersonaConfig {
   id: VoicePersona;
   displayName: string;
   description: string;
-  voiceId: string;        // ElevenLabs voice ID
-  stability: number;      // 0–1: lower = more expressive, higher = more consistent
-  similarityBoost: number; // 0–1: higher = closer to original voice
-  style: number;          // 0–1: higher = more stylistic variation (expressiveness)
-  speakerBoost: boolean;
+  voiceId: string;       // ElevenLabs voice ID
+  stability: V3Stability; // v3 discrete stability setting
 }
 
 export const VOICE_PERSONAS: Record<VoicePersona, PersonaConfig> = {
@@ -43,30 +55,21 @@ export const VOICE_PERSONAS: Record<VoicePersona, PersonaConfig> = {
     displayName: 'Thoughtful Friend',
     description: 'Warm and conversational, like catching up over coffee. Natural laughs, vocal warmth, genuine engagement.',
     voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel — warm, conversational
-    stability: 0.35,       // Lower stability = more expressive variation
-    similarityBoost: 0.70,
-    style: 0.65,           // High style = more emotional range
-    speakerBoost: true,
+    stability: 0.0, // Creative — maximum expressiveness for warmth and natural emotion
   },
   wise_mentor: {
     id: 'wise_mentor',
     displayName: 'Wise Mentor',
     description: 'Calm and grounded with gravitas. Lets insights land. Measured pacing with purposeful emphasis.',
     voiceId: 'pNInz6obpgDQGcFmaJgB', // Adam — calm, grounded
-    stability: 0.50,       // Moderate stability for consistent gravitas
-    similarityBoost: 0.80,
-    style: 0.45,           // Moderate style — expressive but controlled
-    speakerBoost: true,
+    stability: 0.5, // Natural — balanced delivery, grounded but still responsive to tags
   },
   energetic_host: {
     id: 'energetic_host',
     displayName: 'Energetic Host',
     description: 'Dynamic and engaging. Varied pacing, genuinely curious tone, celebrates wins audibly.',
     voiceId: 'ErXwobaYiN019PkySvjV', // Antoni — dynamic, engaging
-    stability: 0.28,       // Low stability = maximum expressiveness
-    similarityBoost: 0.65,
-    style: 0.80,           // Very high style = full emotional range
-    speakerBoost: true,
+    stability: 0.0, // Creative — maximum expressiveness for dynamic, varied delivery
   },
 };
 
@@ -85,8 +88,9 @@ export function getPersonaConfig(persona?: string): PersonaConfig {
 // ============================================
 
 /**
- * Split text into chunks that fit within v3's character limit.
+ * Split text into chunks that fit within v3's 5,000 character limit.
  * Splits at sentence boundaries to maintain natural speech flow.
+ * We use 4,800 chars as the max to leave buffer.
  */
 function chunkText(text: string, maxChars: number): string[] {
   if (text.length <= maxChars) {
@@ -144,23 +148,23 @@ interface TTSOptions {
 }
 
 /**
- * Generate speech for a single chunk via the ElevenLabs API.
- * v3 does NOT support previous_request_ids or next_text — each chunk is independent.
+ * Generate speech for a single chunk via the ElevenLabs v3 API.
+ *
+ * v3 voice_settings only uses `stability` (0.0 | 0.5 | 1.0).
+ * Other v2 params (similarity_boost, style, use_speaker_boost) are NOT sent
+ * to avoid potential validation errors with v3.
  */
 async function generateChunk(
   text: string,
   voiceId: string,
   modelId: string,
-  persona: PersonaConfig,
+  stability: V3Stability,
 ): Promise<Buffer> {
   const body: Record<string, unknown> = {
     text,
     model_id: modelId,
     voice_settings: {
-      stability: persona.stability,
-      similarity_boost: persona.similarityBoost,
-      style: persona.style,
-      use_speaker_boost: persona.speakerBoost,
+      stability,
     },
   };
 
@@ -202,14 +206,14 @@ async function generateChunk(
 }
 
 /**
- * Generate speech audio from an emotion-annotated script using Eleven v3.
+ * Generate speech audio from a script using Eleven v3.
  *
  * For scripts under 4,800 chars: single API call.
  * For longer scripts: chunks the text at sentence boundaries, generates
  * each chunk independently, and concatenates the resulting MP3 buffers.
  *
- * NOTE: v3 does not support request stitching (previous_request_ids / next_text).
- * We split at sentence boundaries to keep transitions natural.
+ * v3 does NOT support request stitching (previous_request_ids / next_text).
+ * Sentence-boundary splitting keeps transitions natural.
  *
  * Returns raw audio bytes (mp3 format).
  */
@@ -228,10 +232,10 @@ export async function textToSpeech(
 
   const chunks = chunkText(text, maxChars);
 
-  console.log(`[ElevenLabs v3] Generating with persona "${persona.displayName}" (voice: ${voiceId}, model: ${modelId}, chunks: ${chunks.length}, total chars: ${text.length})`);
+  console.log(`[ElevenLabs v3] Generating with persona "${persona.displayName}" (voice: ${voiceId}, model: ${modelId}, stability: ${persona.stability}, chunks: ${chunks.length}, total chars: ${text.length})`);
 
   if (chunks.length === 1) {
-    const audio = await generateChunk(chunks[0]!, voiceId, modelId, persona);
+    const audio = await generateChunk(chunks[0]!, voiceId, modelId, persona.stability);
     console.log(`[ElevenLabs v3] Single-chunk generation complete (${audio.length} bytes).`);
     return audio;
   }
@@ -243,7 +247,7 @@ export async function textToSpeech(
     const chunk = chunks[i]!;
     console.log(`[ElevenLabs v3] Generating chunk ${i + 1}/${chunks.length} (${chunk.length} chars)...`);
 
-    const audio = await generateChunk(chunk, voiceId, modelId, persona);
+    const audio = await generateChunk(chunk, voiceId, modelId, persona.stability);
     audioBuffers.push(audio);
 
     console.log(`[ElevenLabs v3] Chunk ${i + 1} complete (${audio.length} bytes).`);
@@ -255,11 +259,11 @@ export async function textToSpeech(
 
 /**
  * Estimate the duration of speech for given text.
- * Strips emotion annotations before counting words.
+ * Strips audio tags before counting words.
  * ~150 words per minute for natural speech.
  */
 export function estimateDuration(text: string): number {
-  // Strip inline annotations like [warm tone], [laughs], etc.
+  // Strip inline audio tags like [laughs], [excited], etc.
   const cleaned = text.replace(/\[.*?\]/g, '');
   const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
   return Math.round((wordCount / 150) * 60); // seconds
