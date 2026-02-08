@@ -40,11 +40,12 @@ export const config = {
     model: 'sonar-pro',
   },
 
-  // ElevenLabs — text-to-speech for podcast audio
+  // ElevenLabs — text-to-speech for podcast audio (v3: most expressive, native audio tags)
   elevenlabs: {
     apiKey: optionalEnv('ELEVENLABS_API_KEY', ''),
     voiceId: optionalEnv('ELEVENLABS_VOICE_ID', 'pNInz6obpgDQGcFmaJgB'), // Default: Adam
-    model: 'eleven_multilingual_v2',
+    model: 'eleven_v3',
+    maxCharsPerRequest: 4800, // v3 limit is 5,000; leave buffer for safety
   },
 
   // JWT

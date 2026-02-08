@@ -1,17 +1,20 @@
 /**
- * ElevenLabs TTS Service
+ * ElevenLabs TTS Service — Eleven v3
  *
- * Converts emotion-annotated podcast scripts to expressive audio using
- * ElevenLabs eleven_multilingual_v2 (highest quality, most expressive).
+ * Uses eleven_v3, the most expressive model with native audio tag support.
+ * v3 understands inline tags like [laughs], [sighs], [whispers], [excited],
+ * [sad], [angry], etc. and renders them as natural vocal expressions.
+ *
+ * Key v3 details:
+ *   - 5,000 char limit per request (we use 4,800 as buffer)
+ *   - Scripts over 4,800 chars are chunked and stitched via previous_request_ids
+ *   - voice_settings still supported (stability, similarity_boost, style)
+ *   - Higher latency than v2 — not for real-time, perfect for pre-generated podcasts
  *
  * Voice Personas:
  *   1. Thoughtful Friend — warm, conversational, natural rhythm
  *   2. Wise Mentor — calm, grounded, measured delivery
  *   3. Energetic Host — dynamic pacing, genuinely curious
- *
- * The script is expected to contain inline emotion annotations like:
- *   [warm, reflective tone] ... [brightening] ... [gentle laugh] ...
- * ElevenLabs v2 interprets these natively alongside ellipses, em-dashes, etc.
  */
 
 import { config } from '../utils/config.js';
@@ -77,7 +80,60 @@ export function getPersonaConfig(persona?: string): PersonaConfig {
 }
 
 // ============================================
-// TEXT-TO-SPEECH
+// TEXT CHUNKING
+// ============================================
+
+/**
+ * Split text into chunks that fit within v3's character limit.
+ * Splits at sentence boundaries to maintain natural speech flow.
+ */
+function chunkText(text: string, maxChars: number): string[] {
+  if (text.length <= maxChars) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxChars) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Find the best split point: end of sentence within maxChars
+    let splitAt = maxChars;
+
+    // Try splitting at sentence endings (. ! ?) followed by space or newline
+    const searchRegion = remaining.slice(0, maxChars);
+    const sentenceEndPattern = /[.!?]\s/g;
+    let lastSentenceEnd = -1;
+    let match: RegExpExecArray | null;
+
+    while ((match = sentenceEndPattern.exec(searchRegion)) !== null) {
+      lastSentenceEnd = match.index + 1; // Include the punctuation
+    }
+
+    if (lastSentenceEnd > maxChars * 0.5) {
+      // Found a good sentence boundary in the latter half
+      splitAt = lastSentenceEnd;
+    } else {
+      // Fallback: split at last space
+      const lastSpace = searchRegion.lastIndexOf(' ');
+      if (lastSpace > maxChars * 0.3) {
+        splitAt = lastSpace;
+      }
+    }
+
+    chunks.push(remaining.slice(0, splitAt).trim());
+    remaining = remaining.slice(splitAt).trim();
+  }
+
+  return chunks;
+}
+
+// ============================================
+// TEXT-TO-SPEECH (v3)
 // ============================================
 
 interface TTSOptions {
@@ -86,9 +142,78 @@ interface TTSOptions {
   modelId?: string;
 }
 
+interface TTSChunkResponse {
+  audio: Buffer;
+  requestId: string | null;
+}
+
 /**
- * Generate speech audio from an emotion-annotated script.
- * Uses the persona's voice settings for optimal expressiveness.
+ * Generate speech for a single chunk via the ElevenLabs API.
+ * Returns the audio buffer and the request ID for stitching.
+ */
+async function generateChunk(
+  text: string,
+  voiceId: string,
+  modelId: string,
+  persona: PersonaConfig,
+  previousRequestIds: string[],
+  nextText?: string,
+): Promise<TTSChunkResponse> {
+  const body: Record<string, unknown> = {
+    text,
+    model_id: modelId,
+    voice_settings: {
+      stability: persona.stability,
+      similarity_boost: persona.similarityBoost,
+      style: persona.style,
+      use_speaker_boost: persona.speakerBoost,
+    },
+  };
+
+  // Request stitching for multi-chunk continuity
+  if (previousRequestIds.length > 0) {
+    body.previous_request_ids = previousRequestIds.slice(-3); // Max 3
+  }
+
+  // Provide next text hint for better continuity at chunk boundary
+  if (nextText) {
+    body.next_text = nextText.slice(0, 500);
+  }
+
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'xi-api-key': config.elevenlabs.apiKey,
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
+  }
+
+  const requestId = response.headers.get('request-id');
+  const arrayBuffer = await response.arrayBuffer();
+
+  return {
+    audio: Buffer.from(arrayBuffer),
+    requestId,
+  };
+}
+
+/**
+ * Generate speech audio from an emotion-annotated script using Eleven v3.
+ *
+ * For scripts under 4,800 chars: single API call.
+ * For longer scripts: chunks the text at sentence boundaries and stitches
+ * them together using previous_request_ids for seamless continuity.
+ *
  * Returns raw audio bytes (mp3 format).
  */
 export async function textToSpeech(
@@ -102,38 +227,49 @@ export async function textToSpeech(
   const persona = getPersonaConfig(options.persona);
   const voiceId = options.voiceId ?? persona.voiceId;
   const modelId = options.modelId ?? config.elevenlabs.model;
+  const maxChars = config.elevenlabs.maxCharsPerRequest;
 
-  console.log(`[ElevenLabs] Generating with persona "${persona.displayName}" (voice: ${voiceId}, style: ${persona.style})`);
+  const chunks = chunkText(text, maxChars);
 
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': config.elevenlabs.apiKey,
-        'Accept': 'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: modelId,
-        voice_settings: {
-          stability: persona.stability,
-          similarity_boost: persona.similarityBoost,
-          style: persona.style,
-          use_speaker_boost: persona.speakerBoost,
-        },
-      }),
-    }
-  );
+  console.log(`[ElevenLabs v3] Generating with persona "${persona.displayName}" (voice: ${voiceId}, model: ${modelId}, chunks: ${chunks.length}, total chars: ${text.length})`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
+  if (chunks.length === 1) {
+    // Single chunk — simple case
+    const result = await generateChunk(chunks[0]!, voiceId, modelId, persona, []);
+    console.log(`[ElevenLabs v3] Single-chunk generation complete.`);
+    return result.audio;
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  // Multi-chunk: generate sequentially with request stitching
+  const audioBuffers: Buffer[] = [];
+  const previousRequestIds: string[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]!;
+    const nextText = i < chunks.length - 1 ? chunks[i + 1] : undefined;
+
+    console.log(`[ElevenLabs v3] Generating chunk ${i + 1}/${chunks.length} (${chunk.length} chars)...`);
+
+    const result = await generateChunk(
+      chunk,
+      voiceId,
+      modelId,
+      persona,
+      previousRequestIds,
+      nextText,
+    );
+
+    audioBuffers.push(result.audio);
+
+    if (result.requestId) {
+      previousRequestIds.push(result.requestId);
+    }
+  }
+
+  console.log(`[ElevenLabs v3] All ${chunks.length} chunks generated. Concatenating audio...`);
+
+  // Concatenate all MP3 buffers
+  return Buffer.concat(audioBuffers);
 }
 
 /**
