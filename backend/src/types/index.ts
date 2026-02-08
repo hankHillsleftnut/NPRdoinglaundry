@@ -392,6 +392,59 @@ export interface IncrementalSynthesisResult {
 }
 
 // ============================================
+// Podcast Types
+// ============================================
+
+export interface DbPodcastEpisode {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  script: string;
+  audio_url: string | null;
+  duration_seconds: number | null;
+  mood: string | null;
+  generation_type: 'weekly' | 'on_demand' | 'milestone';
+  status: 'generating' | 'ready' | 'failed';
+  insight_ids: string[];
+  goal_ids: string[];
+  research_citations: ResearchCitation[];
+  outline: PodcastOutline;
+  episode_number: number | null;
+  covers_period_start: string | null;
+  covers_period_end: string | null;
+  previous_episode_id: string | null;
+  topics_covered: string[];
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResearchCitation {
+  query: string;
+  source: string;
+  snippet: string;
+  url?: string;
+}
+
+export interface PodcastOutline {
+  theme: string;
+  segments: PodcastSegment[];
+  estimatedMinutes: number;
+}
+
+export interface PodcastSegment {
+  title: string;
+  type: 'intro' | 'goal_update' | 'insight_deep_dive' | 'research' | 'reflection' | 'outro';
+  insightIds: string[];
+  goalIds: string[];
+  talkingPoints: string[];
+  researchQueries: string[];
+  estimatedSeconds: number;
+}
+
+// ============================================
 // Auth Types
 // ============================================
 export interface AuthUser {

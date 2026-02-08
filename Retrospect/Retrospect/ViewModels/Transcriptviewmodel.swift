@@ -182,6 +182,43 @@ class TranscriptViewModel: ObservableObject {
         } catch {
             print("❌ Failed to load podcasts: \(error.localizedDescription)")
         }
+        
+        // Also fetch from backend
+        fetchBackendPodcasts()
+    }
+    
+    // MARK: - Backend Podcast Fetching
+    
+    /// Fetch podcast episodes from the Retrospect backend and merge with local podcasts.
+    func fetchBackendPodcasts() {
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        
+        Task {
+            do {
+                let episodes = try await RetrospectAPIClient.shared.fetchPodcasts()
+                let backendTranscripts = episodes.map { $0.toTranscriptModel() }
+                
+                await MainActor.run {
+                    // Merge: add backend podcasts that aren't already in saved list
+                    for transcript in backendTranscripts {
+                        if !savedPodcasts.contains(where: { $0.id == transcript.id }) {
+                            savedPodcasts.append(transcript)
+                        }
+                    }
+                    // Re-sort by date (newest first)
+                    savedPodcasts.sort { $0.createdAt > $1.createdAt }
+                    
+                    // Update current transcript if none set
+                    if self.transcript == nil, let mostRecent = savedPodcasts.first {
+                        self.transcript = mostRecent
+                    }
+                    
+                    print("Fetched \(episodes.count) backend episodes, total: \(savedPodcasts.count)")
+                }
+            } catch {
+                print("Backend podcast fetch failed: \(error.localizedDescription)")
+            }
+        }
     }
     
     // MARK: - Supercharge Methods

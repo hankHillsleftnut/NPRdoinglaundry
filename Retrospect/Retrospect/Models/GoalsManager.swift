@@ -59,6 +59,22 @@ class GoalsManager: ObservableObject {
             guard let self = self else { return }
             self.userDefaults.set(currentGoals, forKey: self.goalsKey)
         }
+        // Sync to backend if authenticated
+        syncToBackend()
+    }
+    
+    /// Sync goals to the Retrospect backend (non-blocking).
+    func syncToBackend() {
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        let currentGoals = self.goals
+        Task {
+            do {
+                try await RetrospectAPIClient.shared.syncGoals(currentGoals)
+                print("Goals synced to backend (\(currentGoals.count) goals)")
+            } catch {
+                print("Goal sync failed: \(error.localizedDescription)")
+            }
+        }
     }
     
     private func loadGoals() {

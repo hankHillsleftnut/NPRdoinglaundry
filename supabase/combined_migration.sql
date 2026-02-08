@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     apple_user_id TEXT UNIQUE NOT NULL,
     email TEXT,
+    voice_persona TEXT DEFAULT 'thoughtful_friend' CHECK (voice_persona IN ('thoughtful_friend', 'wise_mentor', 'energetic_host')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -521,6 +522,49 @@ BEGIN
         (SELECT COUNT(*) FROM patterns WHERE user_id = p_user_id AND is_active = true);
 END;
 $$;
+
+-- ============================================
+-- PODCAST EPISODES TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS podcast_episodes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    script TEXT NOT NULL,
+    audio_url TEXT,
+    duration_seconds INTEGER,
+    mood TEXT,
+    generation_type TEXT DEFAULT 'weekly' CHECK (generation_type IN ('weekly', 'on_demand', 'milestone')),
+    status TEXT DEFAULT 'generating' CHECK (status IN ('generating', 'ready', 'failed')),
+    -- What went into this episode
+    insight_ids UUID[] DEFAULT '{}',
+    goal_ids UUID[] DEFAULT '{}',
+    research_citations JSONB DEFAULT '[]',
+    outline JSONB DEFAULT '{}',
+    -- Episode metadata
+    episode_number INTEGER,
+    covers_period_start TIMESTAMPTZ,
+    covers_period_end TIMESTAMPTZ,
+    previous_episode_id UUID REFERENCES podcast_episodes(id),
+    -- Tracking
+    topics_covered TEXT[] DEFAULT '{}',
+    error_message TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_podcast_episodes_user ON podcast_episodes(user_id);
+CREATE INDEX IF NOT EXISTS idx_podcast_episodes_status ON podcast_episodes(status);
+CREATE INDEX IF NOT EXISTS idx_podcast_episodes_created ON podcast_episodes(created_at DESC);
+
+ALTER TABLE podcast_episodes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own episodes" ON podcast_episodes FOR ALL USING (user_id = auth.uid());
+
+CREATE TRIGGER update_podcast_episodes_updated_at
+    BEFORE UPDATE ON podcast_episodes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- DONE! All tables, functions, and policies created.

@@ -1,7 +1,8 @@
 import SwiftUI
+import AuthenticationServices
 
 // === AUTHENTICATION SCREEN ===
-// All-in-one sign-up UI with email, phone, and Google options (placeholder functionality)
+// Apple Sign-In + skip option for onboarding
 
 struct AuthenticationScreen: View {
     let currentStep: Int
@@ -15,10 +16,13 @@ struct AuthenticationScreen: View {
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
     @State private var selectedMethod: AuthMethod? = nil
+    @State private var isSigningIn = false
+    @State private var signInError: String?
     @FocusState private var focusedField: Field?
+    @ObservedObject private var apiClient = RetrospectAPIClient.shared
     
     enum AuthMethod {
-        case email, phone, google
+        case email, phone, google, apple
     }
     
     enum Field {
@@ -216,7 +220,37 @@ struct AuthenticationScreen: View {
     // MARK: - Method Selection Buttons
     private var methodSelectionButtons: some View {
         VStack(spacing: 16) {
-            // Email button
+            // Apple Sign In (primary)
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.email, .fullName]
+            } onCompletion: { result in
+                handleAppleSignIn(result: result)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 56)
+            .cornerRadius(16)
+            
+            if isSigningIn {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.accent))
+                        .scaleEffect(0.8)
+                    Text("Connecting...")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(LinearColors.textSecondary)
+                }
+                .padding(.top, 4)
+            }
+            
+            if let error = signInError {
+                Text(error)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(.red.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
+            }
+            
+            // Email button (secondary)
             Button(action: {
                 playButtonTapHaptic()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -251,77 +285,52 @@ struct AuthenticationScreen: View {
                 )
             }
             .buttonStyle(PlainButtonStyle())
-            
-            // Phone button
-            Button(action: {
-                playButtonTapHaptic()
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedMethod = .phone
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "phone.fill")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(LinearColors.accent)
-                    
-                    Text("Sign Up with Phone")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(LinearColors.textTertiary)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 60)
-                .padding(.horizontal, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(LinearColors.inputBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(LinearColors.cardBorder, lineWidth: 1)
-                )
+        }
+    }
+    
+    // MARK: - Apple Sign In Handler
+    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                signInError = "Invalid credential type"
+                return
             }
-            .buttonStyle(PlainButtonStyle())
             
-            // Google button
-            Button(action: {
-                playButtonTapHaptic()
-                // Google sign-in proceeds directly
-                onNext()
-            }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "g.circle.fill")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(LinearColors.accent)
+            let appleUserId = credential.user
+            let email = credential.email
+            let identityToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
+            
+            isSigningIn = true
+            signInError = nil
+            
+            Task {
+                do {
+                    let _ = try await apiClient.signIn(
+                        appleUserId: appleUserId,
+                        email: email,
+                        identityToken: identityToken
+                    )
                     
-                    Text("Sign in with Google")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.textPrimary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(LinearColors.textTertiary)
+                    await MainActor.run {
+                        isSigningIn = false
+                        playButtonTapHaptic()
+                        onNext()
+                    }
+                } catch {
+                    await MainActor.run {
+                        isSigningIn = false
+                        signInError = error.localizedDescription
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 60)
-                .padding(.horizontal, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(LinearColors.inputBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(LinearColors.cardBorder, lineWidth: 1)
-                )
             }
-            .buttonStyle(PlainButtonStyle())
+            
+        case .failure(let error):
+            // ASAuthorizationError.canceled is normal (user dismissed the sheet)
+            if (error as NSError).code == ASAuthorizationError.canceled.rawValue {
+                return
+            }
+            signInError = error.localizedDescription
         }
     }
     

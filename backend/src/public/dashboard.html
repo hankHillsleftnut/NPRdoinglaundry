@@ -647,6 +647,7 @@
       <button onclick="switchTab('goals', this)"><span class="icon">&#9733;</span> GOALS</button>
       <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> DATA</button>
       <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> PIPELINE</button>
+      <button onclick="switchTab('podcasts', this)"><span class="icon">&#9836;</span> PODCASTS</button>
       <button onclick="switchTab('logs', this)"><span class="icon">&#9998;</span> LOGS</button>
     </nav>
     <div class="sidebar-footer">V1.0 &middot; 2026</div>
@@ -811,6 +812,38 @@
             <div id="playInsList"></div>
           </div>
         </div>
+      </div>
+
+      <!-- PODCASTS TAB -->
+      <div id="tab-podcasts" class="tab-content">
+        <div class="section-title">Podcast Episodes</div>
+        <div class="card" style="margin-bottom:16px">
+          <h3>Generate Podcast</h3>
+          <p style="color:var(--bone-muted);font-size:13px;margin-bottom:12px">
+            Trigger 3-pass podcast generation for the selected user. Uses insights + observations from the past N days.
+          </p>
+          <div class="form-group">
+            <label>Days of data to include</label>
+            <input type="text" id="podcastDays" value="7" style="width:80px">
+          </div>
+          <div class="form-group">
+            <label>Voice Persona</label>
+            <select id="podcastPersona">
+              <option value="">User Default</option>
+              <option value="thoughtful_friend">Thoughtful Friend</option>
+              <option value="wise_mentor">Wise Mentor</option>
+              <option value="energetic_host">Energetic Host</option>
+            </select>
+          </div>
+          <div class="form-group" style="display:flex;gap:8px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="podcastSkipTTS" checked> Skip TTS (text only)
+            </label>
+          </div>
+          <button class="btn btn-primary" onclick="generatePodcast()">Generate Episode</button>
+        </div>
+        <div class="section-title">Episodes</div>
+        <div id="podcastList"><div class="empty">No episodes yet. Select a user and generate one above.</div></div>
       </div>
 
       <!-- LOGS TAB -->
@@ -1483,6 +1516,7 @@ function switchTab(tabId, btnEl) {
   if (tabId === 'review') { loadReview(); }
   if (tabId === 'goals') { loadGoals(); }
   if (tabId === 'browser') { loadBrowserData(currentBrowserView); }
+  if (tabId === 'podcasts') { loadPodcastList(); }
 }
 
 function refreshAll() {
@@ -1509,6 +1543,62 @@ async function runDiagnose() {
     log('info', '=== DIAGNOSTICS COMPLETE ===');
   } catch (e) {
     log('error', `Diagnose failed: ${e.message}`);
+  }
+}
+
+// ============================================
+// Podcasts
+// ============================================
+async function loadPodcastList() {
+  if (!currentUserId) return;
+  const el = document.getElementById('podcastList');
+  el.innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const res = await api('GET', `/podcasts?userId=${currentUserId}`);
+    const eps = res.data || [];
+    if (eps.length === 0) { el.innerHTML = '<div class="empty">No episodes yet.</div>'; return; }
+    let html = '';
+    for (const ep of eps) {
+      const status = ep.status === 'ready' ? '&#10003;' : ep.status === 'generating' ? '&#9203;' : '&#10007;';
+      html += `<div class="card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0">${status} ${esc(ep.title)}</h3>
+          <span class="badge">${esc(ep.mood || ep.status)}</span>
+        </div>
+        <p style="color:var(--bone-muted);font-size:13px;margin-bottom:6px">${esc(ep.description || '')}</p>
+        <div style="font-size:11px;color:var(--bone-faint);font-family:var(--font-mono)">
+          Ep #${ep.episode_number || '?'} &middot; ${ep.duration_seconds ? Math.round(ep.duration_seconds/60) + ' min' : 'No audio'} &middot; ${fmtDate(ep.created_at)}
+          &middot; ${(ep.insight_ids || []).length} insights &middot; ${(ep.research_citations || []).length} citations
+        </div>
+        ${ep.audio_url ? `<div style="margin-top:8px"><audio controls src="${esc(ep.audio_url)}" style="width:100%;height:32px"></audio></div>` : ''}
+        <details style="margin-top:8px">
+          <summary style="cursor:pointer;color:var(--bone-muted);font-size:12px">View Script</summary>
+          <pre style="white-space:pre-wrap;font-size:12px;color:var(--bone-muted);margin-top:8px;max-height:300px;overflow-y:auto">${esc(ep.script)}</pre>
+        </details>
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function generatePodcast() {
+  if (!currentUserId) { alert('Select a user first'); return; }
+  const days = parseInt(document.getElementById('podcastDays').value) || 7;
+  const skipTTS = document.getElementById('podcastSkipTTS').checked;
+  const persona = document.getElementById('podcastPersona').value || undefined;
+
+  log('info', `Generating podcast for ${currentUserId} (${days} days, skipTTS: ${skipTTS}, persona: ${persona || 'user default'})...`);
+
+  try {
+    const body = { userId: currentUserId, daysSince: days, skipTTS };
+    if (persona) body.persona = persona;
+    const res = await api('POST', '/podcasts/generate', body);
+    log('success', `Podcast generated: "${res.data.title}" (${res.data.id})`);
+    loadPodcastList();
+  } catch (e) {
+    log('error', `Podcast generation failed: ${e.message}`);
   }
 }
 

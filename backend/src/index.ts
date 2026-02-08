@@ -18,6 +18,9 @@ import { adminRouter } from './routes/admin.js';
 import { runDailyPatternDetection } from './jobs/daily-patterns.js';
 import { runWeeklyPatternDetection } from './jobs/weekly-patterns.js';
 import { runObservationInsightsPipeline } from './jobs/observation-insights-pipeline.js';
+import { runWeeklyPodcastGeneration } from './jobs/weekly-podcast-generation.js';
+import { podcastsRouter } from './routes/podcasts.js';
+import { profileRouter } from './routes/profile.js';
 
 
 const app = express();
@@ -76,6 +79,8 @@ app.use('/patterns', authMiddleware, patternsRouter);
 app.use('/analytics', authMiddleware, analyticsRouter);
 app.use('/goals', authMiddleware, goalsRouter);
 app.use('/pipeline', authMiddleware, pipelineRouter);
+app.use('/podcasts', authMiddleware, podcastsRouter);
+app.use('/profile', authMiddleware, profileRouter);
 
 // Error handling middleware
 app.use(
@@ -134,6 +139,17 @@ cron.schedule('0 5 * * *', async () => {
     console.log('Observations → insights pipeline completed');
   } catch (error) {
     console.error('Observations → insights pipeline failed:', error);
+  }
+});
+
+// Weekly podcast generation at 6 AM UTC on Sundays
+cron.schedule('0 6 * * 0', async () => {
+  console.log('Running weekly podcast generation...');
+  try {
+    await runWeeklyPodcastGeneration();
+    console.log('Weekly podcast generation completed');
+  } catch (error) {
+    console.error('Weekly podcast generation failed:', error);
   }
 });
 

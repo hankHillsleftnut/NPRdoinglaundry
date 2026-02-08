@@ -34,6 +34,19 @@ export const config = {
     embeddingModel: 'text-embedding-3-large',
   },
 
+  // Perplexity (Sonar Pro) — used for research enrichment in podcast generation
+  perplexity: {
+    apiKey: optionalEnv('PERPLEXITY_API_KEY', ''),
+    model: 'sonar-pro',
+  },
+
+  // ElevenLabs — text-to-speech for podcast audio
+  elevenlabs: {
+    apiKey: optionalEnv('ELEVENLABS_API_KEY', ''),
+    voiceId: optionalEnv('ELEVENLABS_VOICE_ID', 'pNInz6obpgDQGcFmaJgB'), // Default: Adam
+    model: 'eleven_multilingual_v2',
+  },
+
   // JWT
   jwt: {
     secret: requireEnv('JWT_SECRET'),

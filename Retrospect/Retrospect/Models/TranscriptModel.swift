@@ -45,6 +45,8 @@ struct TranscriptModel: Identifiable, Equatable, Codable {
     var citations: [Citation]? // Citations from Supercharge mode
     var researchQueries: [String]? // Queries used during research
     var createdAt: Date = Date() // When the transcript was generated
+    var backendEpisodeId: String? // UUID from backend if this came from server
+    var insightIds: [String]? // Backend insight IDs associated with this episode
     
     // Equatable conformance - compare by ID for onChange detection
     static func == (lhs: TranscriptModel, rhs: TranscriptModel) -> Bool {

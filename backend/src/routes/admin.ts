@@ -4,6 +4,7 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
 import { processAllPendingContent, processContentForObservations, listObservations } from '../services/observations.js';
 import { generateInsightsForAllGoals, listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
+import { generatePodcastEpisode, listPodcastEpisodes, getLatestEpisode } from '../services/podcast-generation.js';
 
 export const adminRouter = Router();
 
@@ -541,19 +542,65 @@ adminRouter.post('/diagnose', async (req: Request, res: Response) => {
 });
 
 // ============================================
+// Podcasts
+// ============================================
+
+// GET /admin/podcasts?userId= — list podcast episodes
+adminRouter.get('/podcasts', async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string;
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'userId is required' });
+      return;
+    }
+    const { episodes, total } = await listPodcastEpisodes(userId);
+    res.json({ success: true, data: episodes, total });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// POST /admin/podcasts/generate — trigger podcast generation for a user
+adminRouter.post('/podcasts/generate', async (req: Request, res: Response) => {
+  try {
+    const { userId, daysSince, skipTTS, persona } = req.body;
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'userId is required' });
+      return;
+    }
+
+    const latestEp = await getLatestEpisode(userId);
+
+    const episode = await generatePodcastEpisode({
+      userId,
+      daysSince: daysSince ?? 7,
+      previousEpisodeId: latestEp?.id,
+      generationType: 'on_demand',
+      skipTTS: skipTTS ?? true, // Default to skip TTS in admin to save costs
+      persona: persona ?? undefined,
+    });
+
+    res.json({ success: true, data: episode });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// ============================================
 // Stats
 // ============================================
 
 // GET /admin/stats — overall system stats
 adminRouter.get('/stats', async (_req: Request, res: Response) => {
   try {
-    const [users, content, goals, observations, insights, runs] = await Promise.all([
+    const [users, content, goals, observations, insights, runs, podcasts] = await Promise.all([
       supabaseAdmin.from(Tables.USERS).select('id', { count: 'exact', head: true }),
       supabaseAdmin.from(Tables.RAW_CONTENT).select('id', { count: 'exact', head: true }),
       supabaseAdmin.from(Tables.GOALS).select('id', { count: 'exact', head: true }),
       supabaseAdmin.from(Tables.OBSERVATIONS).select('id', { count: 'exact', head: true }),
       supabaseAdmin.from(Tables.INSIGHTS).select('id', { count: 'exact', head: true }),
       supabaseAdmin.from(Tables.PIPELINE_RUNS).select('id', { count: 'exact', head: true }),
+      supabaseAdmin.from(Tables.PODCAST_EPISODES).select('id', { count: 'exact', head: true }),
     ]);
 
     res.json({
@@ -565,6 +612,7 @@ adminRouter.get('/stats', async (_req: Request, res: Response) => {
         observations: observations.count || 0,
         insights: insights.count || 0,
         pipelineRuns: runs.count || 0,
+        podcastEpisodes: podcasts.count || 0,
       },
     });
   } catch (error) {

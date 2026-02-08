@@ -41,6 +41,7 @@ export const Tables = {
   OBSERVATIONS: 'observations',
   INSIGHTS: 'insights',
   PIPELINE_RUNS: 'pipeline_runs',
+  PODCAST_EPISODES: 'podcast_episodes',
 } as const;
 
 // Helper to handle Supabase errors

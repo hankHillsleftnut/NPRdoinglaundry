@@ -87,6 +87,26 @@ class EntryManager: ObservableObject {
         entries.append(entry)
         saveEntry(entry)
         print("✅ Added entry: \(entry.id) - Type: \(entry.type.rawValue)")
+        
+        // Sync to backend (non-blocking)
+        syncEntryToBackend(entry)
+    }
+    
+    /// Upload an entry to the Retrospect backend for the observation/insight pipeline.
+    private func syncEntryToBackend(_ entry: Entry) {
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        Task {
+            do {
+                try await RetrospectAPIClient.shared.uploadContent(
+                    contentType: entry.type.rawValue,
+                    content: entry.content,
+                    contentDate: entry.date
+                )
+                print("Entry \(entry.id) synced to backend")
+            } catch {
+                print("Entry sync failed: \(error.localizedDescription)")
+            }
+        }
     }
     
     func getAllEntries() -> [Entry] {

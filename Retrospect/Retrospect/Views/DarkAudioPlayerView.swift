@@ -19,6 +19,9 @@ struct DarkAudioPlayerView: View {
     @State private var isDragging = false
     @State private var showTranscript = false
     @State private var animateGradient = false
+    @State private var showInsights = false
+    @State private var insights: [BackendInsight] = []
+    @State private var isLoadingInsights = false
     
     private var hasAudio: Bool {
         transcript.audioFileURL != nil && audioManager.audioPlayer != nil
@@ -77,14 +80,30 @@ struct DarkAudioPlayerView: View {
                     
                     Spacer()
                     
-                    Button(action: {
-                        HapticManager.shared.playLightImpact()
-                        showTranscript = true
-                    }) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
+                    HStack(spacing: 4) {
+                        // Insights button
+                        if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
+                            Button(action: {
+                                HapticManager.shared.playLightImpact()
+                                showInsights = true
+                                if insights.isEmpty { loadInsights() }
+                            }) {
+                                Image(systemName: "lightbulb.fill")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                        }
+                        
+                        Button(action: {
+                            HapticManager.shared.playLightImpact()
+                            showTranscript = true
+                        }) {
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -322,6 +341,29 @@ struct DarkAudioPlayerView: View {
         .sheet(isPresented: $showTranscript) {
             DarkTranscriptSheet(transcript: transcript)
         }
+        .sheet(isPresented: $showInsights) {
+            DarkInsightsSheet(insights: insights, isLoading: isLoadingInsights)
+        }
+    }
+    
+    private func loadInsights() {
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        isLoadingInsights = true
+        Task {
+            do {
+                let allInsights = try await RetrospectAPIClient.shared.fetchInsights()
+                let episodeInsightIds = Set(transcript.insightIds ?? [])
+                let filtered = allInsights.filter { episodeInsightIds.contains($0.id) }
+                await MainActor.run {
+                    self.insights = filtered.isEmpty ? allInsights : filtered
+                    self.isLoadingInsights = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoadingInsights = false
+                }
+            }
+        }
     }
     
     private var animatedBackground: some View {
@@ -425,6 +467,165 @@ struct DarkTranscriptSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Insights Sheet
+struct DarkInsightsSheet: View {
+    let insights: [BackendInsight]
+    let isLoading: Bool
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        ZStack {
+            LinearColors.Minimal.sheetBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Handle
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearColors.Minimal.textTertiary)
+                    .frame(width: 36, height: 4)
+                    .padding(.top, 12)
+                
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Insights")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                        Text("\(insights.count) insights behind this episode")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+                
+                if isLoading {
+                    Spacer()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
+                    Text("Loading insights...")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .padding(.top, 8)
+                    Spacer()
+                } else if insights.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "lightbulb")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                        Text("No insights available")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textSecondary)
+                    }
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(insights) { insight in
+                                InsightCard(insight: insight)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
+                    }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - Insight Card
+struct InsightCard: View {
+    let insight: BackendInsight
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Title row
+            HStack(alignment: .top) {
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.yellow.opacity(0.9))
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(insight.title)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                    
+                    // Confidence pill
+                    HStack(spacing: 6) {
+                        Text("\(Int(insight.confidenceScore * 100))% confidence")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                        
+                        Text(formatDate(insight.updatedAt))
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.7))
+                    }
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isExpanded.toggle()
+                    }
+                }) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                }
+            }
+            
+            // Content (always visible)
+            Text(insight.content)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(LinearColors.Minimal.textSecondary)
+                .lineLimit(isExpanded ? nil : 3)
+            
+            // Evidence (expanded only)
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Evidence")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.accent)
+                    
+                    Text(insight.evidenceSummary)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LinearColors.Minimal.backgroundCard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                )
+        )
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
