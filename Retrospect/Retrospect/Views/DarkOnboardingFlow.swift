@@ -23,7 +23,7 @@ struct DarkOnboardingFlow: View {
         "Welcome to Retrospect.\n\nWe take all the information you touch, & generate a podcast about your life meant to give you memory superpowers."
     ]
     
-    private let totalStepsIncludingExtras = 11 // 6 onboarding + 1 privacy + 1 Google Docs + 1 Apple Health + 1 voice persona + 1 goals
+    private let totalStepsIncludingExtras = 12 // 6 onboarding + 1 privacy + 1 auth + 1 Google Docs + 1 Apple Health + 1 voice persona + 1 goals
     
     var body: some View {
         ZStack {
@@ -50,7 +50,16 @@ struct DarkOnboardingFlow: View {
                 )
                 .transition(.opacity)
             } else if currentStep == onboardingSteps.count + 2 {
-                // Google Docs integration screen (step 8)
+                // Authentication screen (step 8) — required, no skip
+                AuthenticationScreen(
+                    currentStep: currentStep,
+                    totalSteps: totalStepsIncludingExtras,
+                    onNext: { nextStep() },
+                    onExit: nil // No exit — auth is mandatory
+                )
+                .transition(.opacity)
+            } else if currentStep == onboardingSteps.count + 3 {
+                // Google Docs integration screen (step 9)
                 DarkGoogleDocsOnboardingScreen(
                     currentStep: currentStep,
                     totalSteps: totalStepsIncludingExtras,
@@ -59,8 +68,8 @@ struct DarkOnboardingFlow: View {
                     onExit: { completeOnboarding() }
                 )
                 .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 3 {
-                // Apple Health integration screen (step 9)
+            } else if currentStep == onboardingSteps.count + 4 {
+                // Apple Health integration screen (step 10)
                 DarkAppleHealthOnboardingScreen(
                     currentStep: currentStep,
                     totalSteps: totalStepsIncludingExtras,
@@ -69,8 +78,8 @@ struct DarkOnboardingFlow: View {
                     onExit: { completeOnboarding() }
                 )
                 .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 4 {
-                // Voice persona selection screen (step 10)
+            } else if currentStep == onboardingSteps.count + 5 {
+                // Voice persona selection screen (step 11)
                 DarkVoicePersonaOnboardingScreen(
                     currentStep: currentStep,
                     totalSteps: totalStepsIncludingExtras,
@@ -79,7 +88,7 @@ struct DarkOnboardingFlow: View {
                 )
                 .transition(.opacity)
             } else if currentStep == totalStepsIncludingExtras {
-                // Goals setup screen (step 11)
+                // Goals setup screen (step 12)
                 DarkGoalsOnboardingScreen(
                     onComplete: { completeOnboarding() }
                 )

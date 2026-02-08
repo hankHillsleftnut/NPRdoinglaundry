@@ -15,7 +15,9 @@ struct DarkSettingsView: View {
     @State private var showPrivacySecurity = false
     @State private var showIntegrationsData = false
     @State private var showAdvanced = false
+    @State private var showLogoutConfirmation = false
     
+    @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @State private var headerOpacity: Double = 0
     
     // Header styling
@@ -155,6 +157,31 @@ struct DarkSettingsView: View {
                             .foregroundColor(LinearColors.Minimal.placeholderText)
                     }
                     .padding(.top, 32)
+                    
+                    // Log Out Button (at the very bottom)
+                    Button(action: {
+                        HapticManager.shared.playLightImpact()
+                        showLogoutConfirmation = true
+                    }) {
+                        HStack {
+                            Spacer()
+                            Text("Log Out")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                        .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.red.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(Color.red.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.top, 16)
                     .padding(.bottom, 100)
                 }
                 .padding(.horizontal, 20)
@@ -201,6 +228,14 @@ struct DarkSettingsView: View {
         }
         .sheet(isPresented: $showAdvanced) {
             DarkAdvancedSettingsView()
+        }
+        .alert("Log Out", isPresented: $showLogoutConfirmation) {
+            Button("Log Out", role: .destructive) {
+                apiClient.signOut()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to log out? You'll need to sign in again to access your data and podcasts.")
         }
     }
 }

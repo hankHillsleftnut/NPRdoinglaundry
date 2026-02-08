@@ -619,6 +619,26 @@
     height: 24px;
     background: var(--border-solid);
   }
+
+  /* Podcast generation spinner */
+  .podcast-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--surface-3);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: podcast-spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes podcast-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .btn.btn-generating {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+  }
 </style>
 </head>
 <body>
@@ -840,7 +860,17 @@
               <input type="checkbox" id="podcastSkipTTS" checked> Skip TTS (text only)
             </label>
           </div>
-          <button class="btn btn-primary" onclick="generatePodcast()">Generate Episode</button>
+          <button class="btn btn-primary" id="podcastGenBtn" onclick="generatePodcast()">Generate Episode</button>
+          <div id="podcastGenStatus" style="display:none;margin-top:12px">
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border-solid);border-radius:8px">
+              <div class="podcast-spinner"></div>
+              <div>
+                <div id="podcastGenStatusTitle" style="font-family:var(--font-mono);font-size:12px;font-weight:600;text-transform:uppercase;color:var(--amber);letter-spacing:0.05em">Generating...</div>
+                <div id="podcastGenStatusDetail" style="font-size:12px;color:var(--bone-muted);margin-top:2px">Starting 3-pass podcast pipeline</div>
+              </div>
+            </div>
+            <div id="podcastGenLog" style="margin-top:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border-solid);border-radius:6px;font-family:var(--font-mono);font-size:11px;color:var(--bone-muted);max-height:160px;overflow-y:auto;line-height:1.6"></div>
+          </div>
         </div>
         <div class="section-title">Episodes</div>
         <div id="podcastList"><div class="empty">No episodes yet. Select a user and generate one above.</div></div>
@@ -1589,16 +1619,105 @@ async function generatePodcast() {
   const skipTTS = document.getElementById('podcastSkipTTS').checked;
   const persona = document.getElementById('podcastPersona').value || undefined;
 
+  // Show loading state
+  const btn = document.getElementById('podcastGenBtn');
+  const statusBox = document.getElementById('podcastGenStatus');
+  const statusTitle = document.getElementById('podcastGenStatusTitle');
+  const statusDetail = document.getElementById('podcastGenStatusDetail');
+  const genLog = document.getElementById('podcastGenLog');
+
+  btn.textContent = 'Generating...';
+  btn.classList.add('btn-generating');
+  statusBox.style.display = 'block';
+  genLog.innerHTML = '';
+
+  const startTime = Date.now();
+
+  function genLogLine(icon, text) {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    genLog.innerHTML += `<div><span style="color:var(--bone-faint)">[${elapsed}s]</span> ${icon} ${text}</div>`;
+    genLog.scrollTop = genLog.scrollHeight;
+  }
+
+  genLogLine('&#9654;', `Starting generation for user <span style="color:var(--bone-dim)">${currentUserId.slice(0,8)}...</span>`);
+  genLogLine('&#128203;', `Collecting ${days} days of insights &amp; observations`);
+
+  // Simulate progress steps while waiting
+  const steps = [
+    { delay: 3000,  icon: '&#128270;', title: 'Analyzing...', detail: 'Pass 1: Building outline from insights', msg: 'Pass 1 — Outline generation in progress' },
+    { delay: 8000,  icon: '&#127760;', title: 'Researching...', detail: 'Pass 2: Enriching with web research', msg: 'Pass 2 — Perplexity research enrichment' },
+    { delay: 16000, icon: '&#9997;',   title: 'Writing...', detail: 'Pass 3: Generating expressive script', msg: 'Pass 3 — Script generation with emotion cues' },
+    { delay: 25000, icon: '&#127908;', title: 'Synthesizing...', detail: 'Converting script to audio via ElevenLabs', msg: 'Audio synthesis via ElevenLabs TTS' },
+  ];
+
+  const timers = [];
+  for (const step of steps) {
+    const t = setTimeout(() => {
+      statusTitle.textContent = step.title;
+      statusDetail.textContent = step.detail;
+      genLogLine(step.icon, step.msg);
+    }, step.delay);
+    timers.push(t);
+  }
+
   log('info', `Generating podcast for ${currentUserId} (${days} days, skipTTS: ${skipTTS}, persona: ${persona || 'user default'})...`);
 
   try {
     const body = { userId: currentUserId, daysSince: days, skipTTS };
     if (persona) body.persona = persona;
     const res = await api('POST', '/podcasts/generate', body);
+
+    // Clear pending timers
+    timers.forEach(t => clearTimeout(t));
+
+    // Success state
+    statusTitle.textContent = 'Complete';
+    statusTitle.style.color = 'var(--green)';
+    statusDetail.textContent = `"${res.data.title}" generated successfully`;
+    genLogLine('&#9989;', `<span style="color:var(--green)">Done — episode "${esc(res.data.title)}" (${res.data.id.slice(0,8)}...)</span>`);
+
+    const spinnerEl = statusBox.querySelector('.podcast-spinner');
+    if (spinnerEl) spinnerEl.style.display = 'none';
+
     log('success', `Podcast generated: "${res.data.title}" (${res.data.id})`);
     loadPodcastList();
+
+    // Reset button
+    btn.textContent = 'Generate Episode';
+    btn.classList.remove('btn-generating');
+
+    // Fade out status after a few seconds
+    setTimeout(() => {
+      statusTitle.style.color = '';
+      statusBox.style.display = 'none';
+      if (spinnerEl) spinnerEl.style.display = '';
+    }, 8000);
+
   } catch (e) {
+    // Clear pending timers
+    timers.forEach(t => clearTimeout(t));
+
+    // Error state
+    statusTitle.textContent = 'Failed';
+    statusTitle.style.color = 'var(--red)';
+    statusDetail.textContent = e.message;
+    genLogLine('&#10060;', `<span style="color:var(--red)">Error: ${esc(e.message)}</span>`);
+
+    const spinnerEl = statusBox.querySelector('.podcast-spinner');
+    if (spinnerEl) spinnerEl.style.display = 'none';
+
     log('error', `Podcast generation failed: ${e.message}`);
+
+    // Reset button
+    btn.textContent = 'Generate Episode';
+    btn.classList.remove('btn-generating');
+
+    // Keep error visible longer
+    setTimeout(() => {
+      statusTitle.style.color = '';
+      statusBox.style.display = 'none';
+      if (spinnerEl) spinnerEl.style.display = '';
+    }, 15000);
   }
 }
 

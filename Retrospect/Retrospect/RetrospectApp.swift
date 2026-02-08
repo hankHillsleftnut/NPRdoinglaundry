@@ -54,9 +54,11 @@ struct RetrospectApp: App {
     @State private var isAuthenticated = false
     @State private var showPodcastFromNotification = false
     @State private var notificationPodcastId: String?
+    @State private var needsBackendAuth = false // true when onboarding done but no backend JWT
     @StateObject private var googleDocsService = GoogleDocsService.shared
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var notificationService = PodcastNotificationService.shared
+    @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @Environment(\.scenePhase) private var scenePhase
     
     private var isGoogleConfigured: Bool {
@@ -85,6 +87,16 @@ struct RetrospectApp: App {
                             hasCompletedOnboarding = true
                             // Auto-authenticate after onboarding (don't require Face ID immediately)
                             isAuthenticated = true
+                            needsBackendAuth = false
+                        }
+                    })
+                    .transition(.opacity)
+                } else if !apiClient.isAuthenticated {
+                    // Backend auth gate — user completed onboarding but has no valid JWT
+                    BackendAuthGateView(onAuthenticated: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            needsBackendAuth = false
+                            isAuthenticated = true
                         }
                     })
                     .transition(.opacity)
@@ -98,7 +110,7 @@ struct RetrospectApp: App {
                         .transition(.opacity)
                 }
                 
-                if showGoogleAuth && isGoogleConfigured && hasCompletedOnboarding && isAuthenticated {
+                if showGoogleAuth && isGoogleConfigured && hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {
                     GoogleAuthView(isPresented: $showGoogleAuth)
                         .transition(.opacity)
                         .zIndex(1)
@@ -107,9 +119,10 @@ struct RetrospectApp: App {
             .animation(.easeInOut(duration: 0.5), value: hasCompletedOnboarding)
             .animation(.easeInOut(duration: 0.5), value: showGoogleAuth)
             .animation(.easeInOut(duration: 0.4), value: isAuthenticated)
+            .animation(.easeInOut(duration: 0.4), value: apiClient.isAuthenticated)
             .animation(.easeOut(duration: 0.2), value: isProcessingStopFromWidget)
             .environmentObject(themeManager)
-            .preferredColorScheme(themeManager.currentColorScheme)
+            .preferredColorScheme(.dark)
             .animatedThemeTransition()
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
@@ -132,8 +145,8 @@ struct RetrospectApp: App {
                     }
                 }
                 
-                // Show Google auth if properly configured, not connected, and onboarding is complete
-                if hasCompletedOnboarding && isAuthenticated && !googleDocsService.isConnected && isGoogleConfigured {
+                // Show Google auth if properly configured, not connected, onboarding is complete, and backend-authenticated
+                if hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated && !googleDocsService.isConnected && isGoogleConfigured {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         showGoogleAuth = true
                     }
@@ -195,7 +208,7 @@ struct RetrospectApp: App {
             }
             .onChange(of: isAuthenticated) { _, newValue in
                 // Show Google auth after authentication
-                if newValue && hasCompletedOnboarding && !googleDocsService.isConnected && isGoogleConfigured {
+                if newValue && hasCompletedOnboarding && apiClient.isAuthenticated && !googleDocsService.isConnected && isGoogleConfigured {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         showGoogleAuth = true
                     }
