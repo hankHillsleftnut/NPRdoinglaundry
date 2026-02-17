@@ -105,7 +105,7 @@ struct AudioControlButton: View {
                     Text(audioState.isAudioPlaying ? "Pause" : "Play Audio")
                         .font(.serifLabel).fontWeight(.medium)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
             }
             .coStarPrimaryButton()
             .animation(.easeInOut(duration: 0.2), value: audioState.isAudioPlaying)

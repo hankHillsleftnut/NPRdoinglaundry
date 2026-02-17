@@ -101,7 +101,7 @@ struct VoiceRecordingView: View {
             // Status
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Color.red)
+                    .fill(LinearColors.Minimal.recordingActive)
                     .frame(width: 8, height: 8)
                     .opacity(audioManager.isRecording ? 1 : 0)
                     .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: audioManager.isRecording)
@@ -168,7 +168,7 @@ struct VoiceRecordingView: View {
                 
                 Image(systemName: "waveform")
                     .font(.system(size: 50, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .symbolEffect(.variableColor.iterative, isActive: audioManager.isRecording)
             }
         }
@@ -253,20 +253,20 @@ struct VoiceRecordingView: View {
                 Text(isSaving ? "Saving..." : "Stop Recording")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
             }
-            .foregroundColor(.white)
+            .foregroundColor(LinearColors.Minimal.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(height: 60)
             .background(
                 RoundedRectangle(cornerRadius: 30)
                     .fill(
                         LinearGradient(
-                            colors: [Color.red, Color.red.opacity(0.8)],
+                            colors: [LinearColors.Minimal.recordingActive, LinearColors.Minimal.recordingActive.opacity(0.8)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .shadow(
-                        color: Color.red.opacity(0.3),
+                        color: LinearColors.Minimal.recordingPulse,
                         radius: 15, x: 0, y: 8
                     )
             )
@@ -295,7 +295,18 @@ struct VoiceRecordingView: View {
             Task { @MainActor in
                 switch result {
                 case .success(let (audioURL, transcription)):
-                    await saveVoiceEntry(audioURL: audioURL, transcription: transcription)
+                    let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
+                    let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
+                    
+                    guard !trimmed.isEmpty || hasUsableAudio else {
+                        audioManager.errorMessage = "Recording was empty — nothing to save."
+                        showError = true
+                        isSaving = false
+                        return
+                    }
+                    
+                    await saveVoiceEntry(audioURL: audioURL, transcription: trimmed)
                     
                 case .failure(let error):
                     print("❌ Recording failed: \(error.localizedDescription)")

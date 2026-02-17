@@ -131,7 +131,7 @@ struct VideoJournalView: View {
                             }
                             .padding(8)
                             .background(Color.black.opacity(0.7))
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .cornerRadius(8)
                             Spacer()
                         }
@@ -205,7 +205,7 @@ struct VideoJournalView: View {
                                     .animation(.easeInOut(duration: 0.6).repeatForever(), value: true)
                                 Text(timeString(from: recordingDuration))
                                     .font(.serifCaption).fontWeight(.semibold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -223,7 +223,7 @@ struct VideoJournalView: View {
                         } label: {
                             Image(systemName: "list.bullet.rectangle.portrait.fill")
                                 .font(.serifLabel)
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(width: 32, height: 32)
                                 .background(
                                     Circle()
@@ -386,7 +386,7 @@ struct VideoJournalView: View {
                                 .animation(.easeInOut(duration: 0.6).repeatForever(), value: true)
                             Text(timeString(from: recordingDuration))
                                 .font(.serifLabel).fontWeight(.semibold)
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
@@ -412,7 +412,7 @@ struct VideoJournalView: View {
                     VStack(spacing: 8) {
                         Text("\(countdownValue)")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning).fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .contentTransition(.numericText())
                         Text("Recording will start soon...")
                             .font(.serifBody)

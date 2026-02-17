@@ -213,7 +213,7 @@ struct PodcastFlowPreview: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(
                         LinearGradient(
-                            colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.4)],
+                            colors: [LinearColors.Minimal.iconPurple.opacity(0.6), LinearColors.Minimal.iconBlue.opacity(0.4)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -280,7 +280,7 @@ struct PodcastFlowPreview: View {
                         
                         Image(systemName: "pause.fill")
                             .font(.system(size: 24, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                         }
                     }
                     
@@ -330,7 +330,7 @@ struct PodcastFlowPreview: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(
                         LinearGradient(
-                            colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.4)],
+                            colors: [LinearColors.Minimal.iconPurple.opacity(0.6), LinearColors.Minimal.iconBlue.opacity(0.4)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )

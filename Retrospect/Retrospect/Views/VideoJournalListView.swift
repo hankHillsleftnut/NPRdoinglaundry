@@ -194,7 +194,7 @@ struct StatCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(Color.white)
+                .fill(LinearColors.Minimal.pureWhite)
                 .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
         )
         .overlay(
@@ -276,7 +276,7 @@ struct JournalEntryCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(Color.white)
+                .fill(LinearColors.Minimal.pureWhite)
                 .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
         )
         .overlay(
@@ -305,10 +305,10 @@ struct VideoPlayerView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Video Journal")
                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                     Text(entry.date, formatter: Self.dateFormatter)
                         .font(.serifLabel)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.8))
                 }
                 
                 Spacer()
@@ -319,11 +319,11 @@ struct VideoPlayerView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 28))
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.8))
                 }
             }
             .padding()
-            .background(Color.black)
+            .background(LinearColors.Minimal.background)
             
             // Video Player
             AVPlayerViewControllerRepresentable(player: player)
@@ -345,21 +345,21 @@ struct VideoPlayerView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Transcription")
                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Text(entry.transcription)
                             .font(.serifBody)
-                            .foregroundColor(.white.opacity(0.9))
+                            .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.9))
                             .lineSpacing(4)
                     }
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .background(Color.black)
+                .background(LinearColors.Minimal.background)
                 .frame(maxHeight: 200)
             }
         }
-        .background(Color.black.ignoresSafeArea(.all))
+        .background(LinearColors.Minimal.background.ignoresSafeArea(.all))
     }
 }
 

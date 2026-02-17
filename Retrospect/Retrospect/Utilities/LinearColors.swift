@@ -1,7 +1,7 @@
 import SwiftUI
 
-// === ADAPTIVE TERRA-COTTA & CHARCOAL DESIGN SYSTEM ===
-// Rich terra-cotta palette with adaptive backgrounds: warm cream (light) / charcoal grey (dark)
+// === ADAPTIVE IVORY & CHARCOAL DESIGN SYSTEM ===
+// Creamy ivory palette with adaptive backgrounds: warm cream (light) / charcoal grey (dark)
 struct LinearColors {
     // === FOUNDATION COLORS ===
     static let pureWhite = Color.white
@@ -16,11 +16,11 @@ struct LinearColors {
     static let charcoalCard = Color(red: 0.13, green: 0.13, blue: 0.14) // #212122 - Card charcoal
     static let metalGray = Color(red: 0.17, green: 0.17, blue: 0.18) // #2B2B2E - Metal gray
     
-    // === TERRA-COTTA PALETTE (Consistent across themes) ===
-    static let terraCottaPrimary = Color(red: 0.85, green: 0.47, blue: 0.35) // #D9785A - Bright terra-cotta main
-    static let terraCottaLight = Color(red: 0.90, green: 0.55, blue: 0.45) // #E68C73 - Lighter terra-cotta
-    static let terraCottaDark = Color(red: 0.75, green: 0.35, blue: 0.25) // #BF5940 - Deeper terra-cotta
-    static let terraCottaSubtle = Color(red: 0.85, green: 0.47, blue: 0.35).opacity(0.15) // Subtle terra-cotta tint
+    // === IVORY PALETTE (Consistent across themes) ===
+    static let terraCottaPrimary = Color(red: 0.93, green: 0.88, blue: 0.80) // #EDE0CC - Creamy ivory main
+    static let terraCottaLight = Color(red: 0.96, green: 0.92, blue: 0.86) // #F5EADB - Lighter ivory
+    static let terraCottaDark = Color(red: 0.80, green: 0.74, blue: 0.65) // #CCBDA6 - Deeper warm ivory
+    static let terraCottaSubtle = Color(red: 0.93, green: 0.88, blue: 0.80).opacity(0.15) // Subtle ivory tint
     
     // === WARM NEUTRALS (Light mode) ===
     static let warmCharcoal = Color(red: 0.28, green: 0.24, blue: 0.22) // #473D38 - Warm dark brown
@@ -40,7 +40,7 @@ struct LinearColors {
             : UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1) // Pure white
     })
     
-    static let accent = terraCottaPrimary // Terra-cotta accent consistent across themes
+    static let accent = terraCottaPrimary // Ivory accent consistent across themes
     
     // === ADAPTIVE CARD SYSTEM ===
     static let cardBackground = Color(UIColor { traitCollection in
@@ -58,7 +58,7 @@ struct LinearColors {
     static let cardShadow = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark 
             ? UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.25) // Black shadow for dark mode
-            : UIColor(red: 0.75, green: 0.35, blue: 0.25, alpha: 0.08) // Terra-cotta shadow for light
+            : UIColor(red: 0.80, green: 0.74, blue: 0.65, alpha: 0.12) // Ivory shadow for light
     })
     
     // === ADAPTIVE TYPOGRAPHY HIERARCHY ===
@@ -107,12 +107,12 @@ struct LinearColors {
     })
     
     static let inputBorder = cardBorder // Consistent with card borders
-    static let inputFocusBorder = terraCottaPrimary // Terra-cotta focus ring (consistent)
+    static let inputFocusBorder = terraCottaPrimary // Ivory focus ring (consistent)
     static let border = cardBorder // Generic border color
     
     // === ADAPTIVE BUTTON SYSTEM ===
-    static let buttonBackground = terraCottaPrimary // Terra-cotta primary buttons (consistent)
-    static let buttonText = pureWhite // White text on terra-cotta (consistent)
+    static let buttonBackground = terraCottaPrimary // Ivory primary buttons (consistent)
+    static let buttonText = Color(red: 0.12, green: 0.12, blue: 0.13) // Dark text on ivory buttons
     
     static let buttonBorder = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark 
@@ -123,7 +123,7 @@ struct LinearColors {
     static let buttonShadow = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark 
             ? UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.3) // Black shadow
-            : UIColor(red: 0.75, green: 0.35, blue: 0.25, alpha: 0.20) // Terra-cotta shadow
+            : UIColor(red: 0.80, green: 0.74, blue: 0.65, alpha: 0.20) // Ivory shadow
     })
     
     static let buttonSecondaryBackground = Color(UIColor { traitCollection in
@@ -134,15 +134,15 @@ struct LinearColors {
     
     static let buttonSecondaryText = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark 
-            ? UIColor(red: 0.85, green: 0.47, blue: 0.35, alpha: 1) // Terra-cotta on dark
-            : UIColor(red: 0.85, green: 0.47, blue: 0.35, alpha: 1) // Terra-cotta on light
+            ? UIColor(red: 0.93, green: 0.88, blue: 0.80, alpha: 1) // Ivory on dark
+            : UIColor(red: 0.80, green: 0.74, blue: 0.65, alpha: 1) // Deeper ivory on light
     })
     
-    static let buttonSecondaryBorder = terraCottaPrimary // Terra-cotta borders (consistent)
+    static let buttonSecondaryBorder = terraCottaPrimary // Ivory borders (consistent)
     
     // === ADAPTIVE STATES & INTERACTIONS ===
     static let focusRing = terraCottaPrimary.opacity(0.3) // Warm focus indicators (consistent)
-    static let hoverState = terraCottaSubtle // Subtle terra-cotta hover (consistent)
+    static let hoverState = terraCottaSubtle // Subtle ivory hover (consistent)
     static let pressedState = terraCottaPrimary.opacity(0.12) // Pressed states (consistent)
     
     static let disabledBackground = Color(UIColor { traitCollection in
@@ -173,7 +173,7 @@ struct LinearColors {
             : UIColor(red: 0.28, green: 0.24, blue: 0.22, alpha: 1) // Warm charcoal in light
     })
     
-    static let deepAccent = terraCottaDark // Legacy deep accent mapped to dark terra-cotta
+    static let deepAccent = terraCottaDark // Legacy deep accent mapped to deeper ivory
     
     // === ADAPTIVE GRADIENTS & HIGHLIGHTS ===
     static let warmHighlight = Color(UIColor { traitCollection in
@@ -182,8 +182,8 @@ struct LinearColors {
             : UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1) // White highlight
     })
     
-    static let gradientStart = terraCottaLight // Warm gradient start (consistent)
-    static let gradientEnd = terraCottaPrimary // Warm gradient end (consistent)
+    static let gradientStart = terraCottaLight // Ivory gradient start (consistent)
+    static let gradientEnd = terraCottaPrimary // Ivory gradient end (consistent)
     
     // === MINIMAL/DARK UI THEME COLORS ===
     // Static dark theme for the new minimal interface (not adaptive - always dark)
@@ -211,23 +211,23 @@ struct LinearColors {
         // === BORDERS & DIVIDERS ===
         static let border = Color(red: 0.20, green: 0.20, blue: 0.22) // #333338 - Standard border
         static let borderSubtle = Color(red: 0.15, green: 0.15, blue: 0.17) // #26262B - Subtle border
-        static let borderFocus = Color(red: 0.85, green: 0.47, blue: 0.35) // Terra-cotta focus
+        static let borderFocus = Color(red: 0.93, green: 0.88, blue: 0.80) // Ivory focus
         static let inputBorder = Color(red: 0.25, green: 0.25, blue: 0.26) // #404042 - Input border
         static let divider = Color(red: 0.18, green: 0.18, blue: 0.20) // #2E2E33 - Divider lines
         
         // === ACCENT COLORS ===
-        static let accent = Color(red: 0.85, green: 0.47, blue: 0.35) // #D9785A - Terra-cotta accent
-        static let accentLight = Color(red: 0.90, green: 0.55, blue: 0.45) // #E68C73 - Light accent
-        static let accentDark = Color(red: 0.75, green: 0.35, blue: 0.25) // #BF5940 - Dark accent
-        static let accentSubtle = Color(red: 0.85, green: 0.47, blue: 0.35).opacity(0.15) // Subtle accent tint
+        static let accent = Color(red: 0.93, green: 0.88, blue: 0.80) // #EDE0CC - Creamy ivory accent
+        static let accentLight = Color(red: 0.96, green: 0.92, blue: 0.86) // #F5EADB - Lighter ivory
+        static let accentDark = Color(red: 0.80, green: 0.74, blue: 0.65) // #CCBDA6 - Deeper ivory
+        static let accentSubtle = Color(red: 0.93, green: 0.88, blue: 0.80).opacity(0.15) // Subtle ivory tint
         
         // === TAB & SELECTION STATES ===
         static let tabSelectedBackground = Color(red: 0.20, green: 0.20, blue: 0.21) // #333336 - Selected tab bg
-        static let selectionHighlight = Color(red: 0.85, green: 0.47, blue: 0.35).opacity(0.12) // Selection bg
+        static let selectionHighlight = Color(red: 0.93, green: 0.88, blue: 0.80).opacity(0.12) // Selection bg
         
         // === BUTTON SYSTEM ===
-        static let buttonPrimary = Color(red: 0.85, green: 0.47, blue: 0.35) // #D9785A - Primary button
-        static let buttonPrimaryText = Color.white
+        static let buttonPrimary = Color(red: 0.93, green: 0.88, blue: 0.80) // #EDE0CC - Primary button (ivory)
+        static let buttonPrimaryText = Color(red: 0.10, green: 0.10, blue: 0.11) // Dark text on ivory
         static let buttonSecondary = Color(red: 0.16, green: 0.16, blue: 0.17) // #2A2A2B - Secondary button
         static let buttonSecondaryText = Color(red: 0.92, green: 0.92, blue: 0.94) // #EBECF0
         static let buttonSecondaryBorder = Color(red: 0.25, green: 0.25, blue: 0.27) // #404045
@@ -306,8 +306,28 @@ struct LinearColors {
         
         // === PLAYER COLORS ===
         static let progressTrack = Color(red: 0.20, green: 0.20, blue: 0.22) // #333338
-        static let progressFill = Color(red: 0.85, green: 0.47, blue: 0.35) // Terra-cotta
-        static let waveformActive = Color(red: 0.85, green: 0.47, blue: 0.35)
+        static let progressFill = Color(red: 0.93, green: 0.88, blue: 0.80) // Ivory
+        static let waveformActive = Color(red: 0.93, green: 0.88, blue: 0.80)
         static let waveformInactive = Color(red: 0.30, green: 0.30, blue: 0.32) // #4D4D52
+        
+        // === ICON TINTS (muted, gray-based for consistency) ===
+        static let iconPurple = Color(red: 0.58, green: 0.52, blue: 0.72)  // #948AB8 - Muted lavender
+        static let iconBlue = Color(red: 0.50, green: 0.62, blue: 0.78)    // #809EC7 - Muted steel blue
+        static let iconGreen = Color(red: 0.50, green: 0.70, blue: 0.58)   // #80B394 - Muted sage
+        static let iconOrange = Color(red: 0.82, green: 0.68, blue: 0.50)  // #D1AD80 - Warm tan
+        static let iconPink = Color(red: 0.75, green: 0.55, blue: 0.60)    // #BF8C99 - Dusty rose
+        
+        // === CHAT / ONBOARDING COLORS ===
+        static let chatBubbleIncoming = Color(red: 0.18, green: 0.18, blue: 0.20)   // #2E2E33 - Gray bubble
+        static let chatBubbleOutgoing = Color(red: 0.93, green: 0.88, blue: 0.80)    // Ivory bubble (= accent)
+        static let chatBubbleOutgoingText = Color(red: 0.10, green: 0.10, blue: 0.11) // Dark text on ivory
+        static let chatBarBackground = Color(red: 0.06, green: 0.06, blue: 0.08)     // #101014
+        static let chatInputField = Color(red: 0.14, green: 0.14, blue: 0.16)        // #242428
+        
+        // === GENERIC SEMANTIC COLORS ===
+        static let pureWhite = Color.white
+        static let pureBlack = Color.black
+        static let deleteRed = Color(red: 0.90, green: 0.35, blue: 0.35)             // #E65959 - Delete/destructive
+        static let deleteRedSubtle = Color(red: 0.90, green: 0.35, blue: 0.35).opacity(0.12)
     }
 }

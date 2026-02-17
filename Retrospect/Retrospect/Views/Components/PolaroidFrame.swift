@@ -27,7 +27,7 @@ struct PolaroidFrame: View {
             
             // Outer polaroid frame (white border) - traditional rectangular shape
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white)
+                .fill(LinearColors.Minimal.pureWhite)
                 .frame(width: frameWidth, height: frameHeight)
                 .shadow(
                     color: Color.black.opacity(0.15),
@@ -42,9 +42,9 @@ struct PolaroidFrame: View {
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color(red: 0.85, green: 0.75, blue: 0.95), // Light purple
-                            Color(red: 0.95, green: 0.85, blue: 0.75), // Light peach
-                            Color(red: 0.75, green: 0.90, blue: 0.85)  // Light mint
+                            LinearColors.Minimal.iconPurple.opacity(0.5), // Light purple
+                            LinearColors.terraCottaLight, // Light peach
+                            LinearColors.Minimal.iconGreen.opacity(0.5)  // Light mint
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -67,9 +67,9 @@ struct PolaroidFrame: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.white.opacity(0.3),
+                                LinearColors.Minimal.textTertiary.opacity(0.5),
                                 Color.clear,
-                                Color.white.opacity(0.2)
+                                LinearColors.Minimal.border
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing

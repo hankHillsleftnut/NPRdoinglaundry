@@ -21,14 +21,14 @@ struct TransformingLoadingPill: View {
             ZStack {
                 // Background circle
                 Circle()
-                    .stroke(Color.white.opacity(0.3), lineWidth: 3)
+                    .stroke(LinearColors.Minimal.textTertiary, lineWidth: 3)
                     .frame(width: 32, height: 32)
                 
                 // Progress circle
                 Circle()
                     .trim(from: 0, to: viewModel.currentProgress)
                     .stroke(
-                        Color.white,
+                        LinearColors.Minimal.pureWhite,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                     .frame(width: 32, height: 32)
@@ -38,7 +38,7 @@ struct TransformingLoadingPill: View {
                 // Center icon
                 Image(systemName: getCurrentPhaseIcon())
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .scaleEffect(pulseScale)
                     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulseScale)
             }
@@ -49,7 +49,7 @@ struct TransformingLoadingPill: View {
                 // Loading text
                 Text(getDisplayText())
                     .font(.geistLabel)
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .multilineTextAlignment(.center)
                     .animation(.easeInOut(duration: 0.5), value: viewModel.currentLoadingPhase)
                 
@@ -71,7 +71,7 @@ struct TransformingLoadingPill: View {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { index in
                     Circle()
-                        .fill(Color.white.opacity(0.6))
+                        .fill(LinearColors.Minimal.textSecondary)
                         .frame(width: 4, height: 4)
                         .scaleEffect(pulseScale)
                         .animation(
@@ -189,8 +189,8 @@ struct ReferenceChip: View {
         case .userText: return LinearColors.accent
         case .goals: return LinearColors.successGreen
         case .healthData: return LinearColors.warningRed
-        case .document: return Color(red: 0.65, green: 0.45, blue: 0.75) // Warm purple
-        case .journal: return Color(red: 0.90, green: 0.60, blue: 0.35) // Warm orange
+        case .document: return LinearColors.Minimal.iconPurple
+        case .journal: return LinearColors.Minimal.iconOrange
         }
     }
 }

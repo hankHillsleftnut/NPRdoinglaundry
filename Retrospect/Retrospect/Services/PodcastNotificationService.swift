@@ -211,6 +211,92 @@ class PodcastNotificationService: ObservableObject {
         }
     }
     
+    // MARK: - Weekly Reflection Reminder
+    
+    /// Schedule a recurring weekly notification that nudges the user to open the app.
+    /// This also triggers screen time data collection when they open it.
+    func scheduleWeeklyReflectionReminder() {
+        let content = UNMutableNotificationContent()
+        content.title = "Your weekly reflection is ready"
+        content.body = "Your patterns this week tell a story. Come hear what we found."
+        content.sound = .default
+        content.userInfo = ["type": "weeklyReflection"]
+        
+        // Every Sunday at 10 AM
+        var dateComponents = DateComponents()
+        dateComponents.weekday = 1 // Sunday
+        dateComponents.hour = 10
+        dateComponents.minute = 0
+        
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: dateComponents,
+            repeats: true
+        )
+        
+        let request = UNNotificationRequest(
+            identifier: "weekly-reflection-reminder",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule weekly reflection: \(error)")
+            } else {
+                print("✅ Weekly reflection reminder scheduled (Sundays 10 AM)")
+            }
+        }
+    }
+    
+    /// Schedule a mid-week check-in to keep data fresh
+    func scheduleMidWeekCheckIn() {
+        let content = UNMutableNotificationContent()
+        content.title = "Quick check-in"
+        content.body = "30 seconds. How's the week going so far?"
+        content.sound = .default
+        content.userInfo = ["type": "midWeekCheckIn"]
+        
+        // Wednesday at 8 PM
+        var dateComponents = DateComponents()
+        dateComponents.weekday = 4 // Wednesday
+        dateComponents.hour = 20
+        dateComponents.minute = 0
+        
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: dateComponents,
+            repeats: true
+        )
+        
+        let request = UNNotificationRequest(
+            identifier: "midweek-checkin",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule mid-week check-in: \(error)")
+            } else {
+                print("✅ Mid-week check-in scheduled (Wednesdays 8 PM)")
+            }
+        }
+    }
+    
+    /// Schedule all recurring notifications
+    func scheduleAllRecurringNotifications() {
+        guard isAuthorized else { return }
+        scheduleWeeklyReflectionReminder()
+        scheduleMidWeekCheckIn()
+    }
+    
+    /// Cancel all recurring reminders
+    func cancelRecurringNotifications() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: ["weekly-reflection-reminder", "midweek-checkin"]
+        )
+        print("✅ Recurring notifications cancelled")
+    }
+    
     // MARK: - Clear Notifications
     
     func clearPendingNotification() {

@@ -129,7 +129,7 @@ struct StorageInfoView: View {
                         RoundedRectangle(cornerRadius: BorderRadius.button)
                             .fill(LinearColors.accent)
                     )
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
                 .padding(.top, 8)
                 

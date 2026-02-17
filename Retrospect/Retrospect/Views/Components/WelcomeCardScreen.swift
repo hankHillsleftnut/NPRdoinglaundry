@@ -164,7 +164,7 @@ struct WelcomeFeaturePage: View {
             Text(currentPage == totalPages - 1 ? "Get Started" : "Next")
                 .font(.system(size: 17, weight: .medium, design: .rounded))
                 .kerning(0)
-                .foregroundColor(Color.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
                 .frame(maxWidth: .infinity)
                 .frame(height: 66)

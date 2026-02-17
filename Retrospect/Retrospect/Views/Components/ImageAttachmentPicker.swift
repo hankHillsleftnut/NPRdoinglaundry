@@ -183,7 +183,7 @@ struct ImageAttachmentPicker: View {
                                                 
                                                 Image(systemName: "xmark")
                                                     .font(.system(size: 10, weight: .bold))
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                                             }
                                         }
                                         .offset(x: 6, y: -6)

@@ -130,7 +130,7 @@ struct FullscreenPodcastCard: View {
                 
                 Image(systemName: "waveform")
                     .font(.geistHeadline)
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
             }
             
@@ -298,7 +298,7 @@ struct FullscreenPodcastCard: View {
         Button(action: togglePlayback) {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .font(.geistHeadline)
-                .foregroundColor(.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(width: 60, height: 60)
                 .background(
                     Circle()

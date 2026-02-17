@@ -34,7 +34,7 @@ struct MinimalJournalInput: View {
                 TextEditor(text: $text)
                     .scrollContentBackground(.hidden)
                     .font(.minimalInput)
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .focused($isFocused)
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
@@ -127,7 +127,7 @@ struct MinimalJournalInput: View {
                 // 2. Inner stroke (4pt) - thick stroke
                 RoundedRectangle(cornerRadius: 26)
                     .strokeBorder(
-                        Color.white.opacity(0.10),
+                        LinearColors.Minimal.border.opacity(0.5),
                         lineWidth: 4
                     )
                     .padding(1)
@@ -137,8 +137,8 @@ struct MinimalJournalInput: View {
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.55), // Lighter at top
-                                Color.white.opacity(0.35)  // Current gray at bottom
+                                LinearColors.Minimal.textSecondary, // Lighter at top
+                                LinearColors.Minimal.textTertiary  // Current gray at bottom
                             ],
                             startPoint: .top,
                             endPoint: .bottom

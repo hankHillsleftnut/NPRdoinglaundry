@@ -19,7 +19,7 @@ struct SquircleLogo: View {
         size: CGFloat,
         cornerRadiusRatio: CGFloat = 0.2237, // iOS app icon standard
         shadowEnabled: Bool = true,
-        backgroundColor: Color = Color.white
+        backgroundColor: Color = LinearColors.Minimal.pureWhite
     ) {
         self.size = size
         self.cornerRadiusRatio = cornerRadiusRatio
@@ -134,7 +134,7 @@ extension SquircleLogo {
     .padding(40)
     .background(
         LinearGradient(
-            gradient: Gradient(colors: [Color.gray.opacity(0.1), Color.white]),
+            gradient: Gradient(colors: [LinearColors.Minimal.backgroundCard, LinearColors.Minimal.pureWhite]),
             startPoint: .top,
             endPoint: .bottom
         )

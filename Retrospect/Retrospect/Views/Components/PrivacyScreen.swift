@@ -23,29 +23,27 @@ struct PrivacyScreen: View {
     
     // Inverted colors for privacy emphasis
     private var backgroundColor: Color {
-        themeManager.isDarkMode ? Color.white : Color.black
+        LinearColors.Minimal.background
     }
     
     private var textColor: Color {
-        themeManager.isDarkMode ? Color.black : Color.white
+        LinearColors.Minimal.textPrimary
     }
     
     private var subtitleColor: Color {
-        // Lighter gray for better contrast against titles
-        themeManager.isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.7)
+        LinearColors.Minimal.textTertiary
     }
     
     private var bodyTextColor: Color {
-        // Slightly lighter than title for better contrast
-        themeManager.isDarkMode ? Color.black.opacity(0.7) : Color.white.opacity(0.85)
+        LinearColors.Minimal.textPrimary
     }
     
     private var progressTrackColor: Color {
-        themeManager.isDarkMode ? Color.gray.opacity(0.3) : Color.white.opacity(0.3)
+        LinearColors.Minimal.border
     }
     
     private var progressFillColor: Color {
-        themeManager.isDarkMode ? Color.black : Color.white
+        LinearColors.Minimal.textPrimary
     }
     
     var body: some View {
@@ -260,7 +258,7 @@ struct PrivacyScreen: View {
             Text("Next")
                 .font(.system(size: 17, weight: .medium, design: .rounded))
                 .kerning(0)
-                .foregroundColor(Color.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
                 .frame(maxWidth: .infinity)
                 .frame(height: 66) // Full touch target height

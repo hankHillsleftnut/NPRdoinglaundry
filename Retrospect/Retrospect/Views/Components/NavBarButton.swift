@@ -47,7 +47,7 @@ struct NavBarButton: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [.white, Color(red: 0.98, green: 0.98, blue: 0.98)],
+                    colors: [LinearColors.Minimal.pureWhite, LinearColors.Minimal.pureWhite],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -57,7 +57,7 @@ struct NavBarButton: View {
     
     private var buttonBorder: some View {
         Circle()
-            .strokeBorder(Color(red: 0.82, green: 0.82, blue: 0.82)) // #D2D2D2
+            .strokeBorder(LinearColors.Minimal.border) // #D2D2D2
     }
     
     // Init
@@ -172,7 +172,7 @@ struct CompactTabButton: View {
                             .brightness(0.03)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 11)
-                                    .stroke(Color.gray.opacity(0.25), lineWidth: 0.5)
+                                    .stroke(LinearColors.Minimal.border, lineWidth: 0.5)
                             )
                             .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
                             .matchedGeometryEffect(id: "selectedTab", in: animation)

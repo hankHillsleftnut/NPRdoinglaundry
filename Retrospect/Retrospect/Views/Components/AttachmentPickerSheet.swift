@@ -20,7 +20,7 @@ struct AttachmentPickerSheet: View {
         VStack(spacing: 0) {
             // Drag indicator
             Capsule()
-                .fill(Color.gray.opacity(0.5))
+                .fill(LinearColors.Minimal.textTertiary)
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
                 .padding(.bottom, 16)

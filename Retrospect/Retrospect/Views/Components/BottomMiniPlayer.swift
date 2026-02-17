@@ -45,7 +45,7 @@ struct BottomMiniPlayer: View {
                     
                     Image(systemName: "waveform")
                         .font(.geistHeadline)
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
                 
                 // Info and controls
@@ -71,7 +71,7 @@ struct BottomMiniPlayer: View {
                             Button(action: togglePlayback) {
                                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                                     .font(.geistBody)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .frame(width: 32, height: 32)
                                     .background(
                                         Circle()

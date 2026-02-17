@@ -74,7 +74,7 @@ struct DarkSettingsView: View {
                             title: "Appearance",
                             subtitle: "Theme and display",
                             icon: "paintbrush.fill",
-                            iconColor: Color.purple
+                            iconColor: LinearColors.Minimal.iconPurple
                         ) {
                             showAppearance = true
                         }
@@ -85,7 +85,7 @@ struct DarkSettingsView: View {
                             title: "Audio & Playback",
                             subtitle: "Sound and voice settings",
                             icon: "speaker.wave.3.fill",
-                            iconColor: Color.blue
+                            iconColor: LinearColors.Minimal.iconBlue
                         ) {
                             showAudioPlayback = true
                         }
@@ -105,7 +105,7 @@ struct DarkSettingsView: View {
                             title: "Privacy & Security",
                             subtitle: "Face ID and permissions",
                             icon: "lock.shield.fill",
-                            iconColor: Color.green
+                            iconColor: LinearColors.Minimal.iconGreen
                         ) {
                             showPrivacySecurity = true
                         }
@@ -116,7 +116,7 @@ struct DarkSettingsView: View {
                             title: "Integrations & Data",
                             subtitle: "Connected services",
                             icon: "link.circle.fill",
-                            iconColor: Color.orange
+                            iconColor: LinearColors.Minimal.iconOrange
                         ) {
                             showIntegrationsData = true
                         }
@@ -167,16 +167,16 @@ struct DarkSettingsView: View {
                             Spacer()
                             Text("Log Out")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(.red)
+                                .foregroundColor(LinearColors.Minimal.deleteRed)
                             Spacer()
                         }
                         .frame(height: 50)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.red.opacity(0.08))
+                                .fill(LinearColors.Minimal.deleteRedSubtle)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .strokeBorder(Color.red.opacity(0.2), lineWidth: 1)
+                                        .strokeBorder(LinearColors.Minimal.deleteRed.opacity(0.2), lineWidth: 1)
                                 )
                         )
                     }
@@ -200,8 +200,8 @@ struct DarkSettingsView: View {
                         endPoint: .bottom
                     )
                     .frame(height: 16)
-                    Color.black
-                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    LinearColors.Minimal.pureBlack
+                    LinearGradient(colors: [LinearColors.Minimal.pureBlack, .clear], startPoint: .top, endPoint: .bottom)
                         .frame(height: 50)
                 }
             )
@@ -658,9 +658,11 @@ struct DarkPrivacyAndSecurityView: View {
 struct DarkIntegrationsDataView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var googleDocsService = GoogleDocsService.shared
+    @StateObject private var screenTimeService = ScreenTimeService.shared
     @AppStorage("healthKitEnabled") private var healthKitEnabled: Bool = false
     @State private var isConnectingGoogle = false
     @State private var isConnectingHealth = false
+    @State private var isConnectingScreenTime = false
     @State private var showGoogleError = false
     @State private var showHealthError = false
     @State private var healthErrorMessage = ""
@@ -673,7 +675,7 @@ struct DarkIntegrationsDataView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "doc.text.fill")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(LinearColors.Minimal.iconBlue)
                         
                         Text("Google Docs")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -724,7 +726,7 @@ struct DarkIntegrationsDataView: View {
                                 Text(isConnectingGoogle ? "Connecting..." : "Connect Account")
                                     .font(.system(size: 15, weight: .medium, design: .rounded))
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                             .background(
@@ -751,7 +753,7 @@ struct DarkIntegrationsDataView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "heart.fill")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.pink)
+                            .foregroundColor(LinearColors.Minimal.iconPink)
                         
                         Text("Apple Health")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -802,7 +804,7 @@ struct DarkIntegrationsDataView: View {
                                 Text(isConnectingHealth ? "Requesting..." : "Enable Access")
                                     .font(.system(size: 15, weight: .medium, design: .rounded))
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                             .background(
@@ -812,6 +814,166 @@ struct DarkIntegrationsDataView: View {
                         }
                         .disabled(isConnectingHealth)
                         .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(LinearColors.Minimal.backgroundCard)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                        )
+                )
+                
+                // Screen Time Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "hourglass")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(LinearColors.Minimal.iconPurple)
+                        
+                        Text("Screen Time")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                        
+                        Spacer()
+                        
+                        if screenTimeService.isAuthorized {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(LinearColors.Minimal.success)
+                                Text("Enabled")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(LinearColors.Minimal.success)
+                            }
+                        }
+                    }
+                    
+                    Text("Track app usage, pickups, and digital habits to surface patterns in how you spend your time on-screen.")
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                    
+                    if screenTimeService.isAuthorized {
+                        // Show latest summary if available
+                        if let summary = screenTimeService.latestSummary {
+                            HStack(spacing: 16) {
+                                VStack(spacing: 2) {
+                                    Text("\(summary.totalScreenTimeMinutes / 60)h \(summary.totalScreenTimeMinutes % 60)m")
+                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    Text("Screen Time")
+                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                                }
+                                
+                                VStack(spacing: 2) {
+                                    Text("\(summary.totalPickups)")
+                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    Text("Pickups")
+                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                                }
+                                
+                                VStack(spacing: 2) {
+                                    Text("\(summary.appUsage.count)")
+                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    Text("Apps")
+                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(LinearColors.Minimal.backgroundCardHover)
+                            )
+                        }
+                        
+                        HStack(spacing: 10) {
+                            Button(action: {
+                                screenTimeService.syncToBackend()
+                                HapticManager.shared.playLightImpact()
+                            }) {
+                                HStack(spacing: 6) {
+                                    if screenTimeService.isSyncing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.textPrimary))
+                                            .scaleEffect(0.7)
+                                    } else {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                            .font(.system(size: 13, weight: .medium))
+                                    }
+                                    Text(screenTimeService.isSyncing ? "Syncing..." : "Sync Now")
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                }
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(LinearColors.Minimal.accent)
+                                )
+                            }
+                            .disabled(screenTimeService.isSyncing)
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Button(action: {
+                                screenTimeService.revokeAuthorization()
+                            }) {
+                                Text("Disable")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundColor(LinearColors.Minimal.error)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 40)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(LinearColors.Minimal.error.opacity(0.12))
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    } else {
+                        Button(action: {
+                            isConnectingScreenTime = true
+                            Task {
+                                await screenTimeService.requestAuthorization()
+                                isConnectingScreenTime = false
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                if isConnectingScreenTime {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.textPrimary))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "hourglass")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                Text(isConnectingScreenTime ? "Requesting..." : "Enable Screen Time")
+                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                            }
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(LinearColors.Minimal.accent)
+                            )
+                        }
+                        .disabled(isConnectingScreenTime)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        if let error = screenTimeService.authorizationError {
+                            Text(error)
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.error)
+                        }
                     }
                 }
                 .padding(16)
@@ -929,6 +1091,7 @@ struct DarkAdvancedSettingsView: View {
     @AppStorage("mockAPICalls") private var mockAPICalls: Bool = false
     @AppStorage("experimentalViewEnabled") private var experimentalViewEnabled: Bool = false
     @State private var showOnboarding = false
+    @State private var onboardingReplayId = 0
     @State private var showLegacyUI = false
     @State private var showPodcastFlowPreview = false
     @State private var isGeneratingTestPodcast = false
@@ -1005,6 +1168,42 @@ struct DarkAdvancedSettingsView: View {
                 .buttonStyle(PlainButtonStyle())
                 .disabled(isGeneratingTestPodcast)
                 
+                // Resync Entries to Backend
+                if devMode {
+                    Button(action: {
+                        HapticManager.shared.playMediumImpact()
+                        EntryManager.shared.resyncAllEntriesToBackend()
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Resync Entries to Backend")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                                
+                                Text("\(entryManager.entries.count) entries will be pushed to Supabase")
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(LinearColors.Minimal.accent)
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(LinearColors.Minimal.backgroundCard)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                
                 // Create Test Podcast (only when devMode is on)
                 if devMode {
                     Button(action: createTestPodcast) {
@@ -1052,7 +1251,11 @@ struct DarkAdvancedSettingsView: View {
                 }
                 
                 // Replay Onboarding
-                Button(action: { showOnboarding = true }) {
+                Button(action: {
+                    onboardingReplayId += 1
+                    UserDefaults.standard.set(1, forKey: "onboardingCurrentStep")
+                    showOnboarding = true
+                }) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Replay Onboarding")
@@ -1229,6 +1432,7 @@ struct DarkAdvancedSettingsView: View {
             DarkOnboardingFlow(onComplete: {
                 showOnboarding = false
             })
+            .id(onboardingReplayId)
         }
         .fullScreenCover(isPresented: $showLegacyUI) {
             LegacyHomeScreen()

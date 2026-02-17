@@ -208,10 +208,10 @@ struct DarkPodcastsView: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.red.opacity(0.1))
+                        .fill(LinearColors.Minimal.errorSubtle)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(Color.red.opacity(0.3), lineWidth: 1)
+                                .strokeBorder(LinearColors.Minimal.error.opacity(0.3), lineWidth: 1)
                         )
                 )
             }
@@ -313,7 +313,7 @@ struct DarkPodcastsView: View {
                             Text(mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast")
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 14)
                         .background(
@@ -322,7 +322,7 @@ struct DarkPodcastsView: View {
                         )
                         .overlay(
                             Capsule()
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                                .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                         )
                         .shadow(color: LinearColors.Minimal.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
@@ -491,7 +491,7 @@ struct DarkPodcastCard: View {
                         HStack(spacing: 3) {
                             ForEach(0..<3, id: \.self) { index in
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white)
+                                    .fill(LinearColors.Minimal.pureWhite)
                                     .frame(width: 4, height: CGFloat.random(in: 12...24))
                             }
                         }

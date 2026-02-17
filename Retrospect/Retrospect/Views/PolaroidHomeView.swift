@@ -240,7 +240,7 @@ struct InputSheet: View {
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: BorderRadius.card)
-                            .fill(Color.white)
+                            .fill(LinearColors.Minimal.pureWhite)
                             .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
                     )
                     .overlay(

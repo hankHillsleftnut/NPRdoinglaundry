@@ -94,6 +94,7 @@ struct DarkEntryDetailView: View {
                         .font(.system(size: 16, weight: .regular, design: .rounded))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                         .lineSpacing(8)
+                        .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 40)
@@ -138,7 +139,7 @@ struct DarkEntryDetailView: View {
                 Button(action: togglePlayback) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()

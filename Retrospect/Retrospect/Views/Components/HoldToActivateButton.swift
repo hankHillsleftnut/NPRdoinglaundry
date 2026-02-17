@@ -51,7 +51,7 @@ struct HoldToActivateButton: View {
                 Text(isProcessing ? "Generating..." : text)
                     .font(.system(size: 14, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(
@@ -61,8 +61,8 @@ struct HoldToActivateButton: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color(red: 0.15, green: 0.15, blue: 0.15),
-                                    Color(red: 0.05, green: 0.05, blue: 0.05)
+                                    LinearColors.Minimal.backgroundCard,
+                                    LinearColors.Minimal.background
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom

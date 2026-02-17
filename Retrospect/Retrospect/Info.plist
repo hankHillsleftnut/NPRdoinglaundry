@@ -58,5 +58,7 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>NSFamilyControlsUsageDescription</key>
+	<string>Retrospect uses Screen Time data to understand your digital habits and surface insights about how you spend time on your device.</string>
 </dict>
 </plist>

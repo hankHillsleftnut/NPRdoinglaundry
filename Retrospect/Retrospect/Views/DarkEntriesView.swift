@@ -46,7 +46,6 @@ struct DarkEntriesView: View {
     @State private var selectedFilter: DarkEntryFilter = .all
     @State private var searchText = ""
     @State private var selectedEntry: Entry?
-    @State private var showingEntryDetail = false
     @State private var isSearching = false
     
     @State private var headerOpacity: Double = 0
@@ -87,7 +86,6 @@ struct DarkEntriesView: View {
                                     entries: periodEntries,
                                     onTap: { entry in
                                         selectedEntry = entry
-                                        showingEntryDetail = true
                                     },
                                     onDelete: { entry in
                                         deleteEntry(entry)
@@ -160,10 +158,8 @@ struct DarkEntriesView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEntryDetail) {
-            if let entry = selectedEntry {
-                DarkEntryDetailView(entry: entry)
-            }
+        .sheet(item: $selectedEntry) { entry in
+            DarkEntryDetailView(entry: entry)
         }
     }
     

@@ -118,8 +118,8 @@ struct NewPodcastArrivalView: View {
                     // Gradient background for album art
                     LinearGradient(
                         colors: [
-                            Color(red: 0.15, green: 0.15, blue: 0.2),
-                            Color(red: 0.08, green: 0.08, blue: 0.12)
+                            LinearColors.Minimal.backgroundCard,
+                            LinearColors.Minimal.background
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing

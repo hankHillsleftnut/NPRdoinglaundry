@@ -10,107 +10,13 @@ import GoogleSignIn
 
 // MARK: - Dark Onboarding Flow Container
 struct DarkOnboardingFlow: View {
-    @State private var currentStep = 1
-    @Environment(\.dismiss) private var dismiss
     var onComplete: (() -> Void)? = nil
     
-    private let onboardingSteps = [
-        "I know your dirty little secret.",
-        "You write notes, and you never get back to them.",
-        "Save content, on social that you never go back to.",
-        "Your life is scattered across so many products.\n\nYou don't even know how to make sense of it all...",
-        "But who can blame you?\n\nIt's not like there's an easy way to make sense of it all, and remember the important things at the perfect time....",
-        "Welcome to Retrospect.\n\nWe take all the information you touch, & generate a podcast about your life meant to give you memory superpowers."
-    ]
-    
-    private let totalStepsIncludingExtras = 12 // 6 onboarding + 1 privacy + 1 auth + 1 Google Docs + 1 Apple Health + 1 voice persona + 1 goals
-    
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-            
-            if currentStep <= onboardingSteps.count {
-                // Regular onboarding screens (steps 1-6)
-                DarkOnboardingScreenTemplate(
-                    title: onboardingSteps[currentStep - 1],
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onExit: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 1 {
-                // Privacy screen (step 7)
-                DarkPrivacyOnboardingScreen(
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onExit: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 2 {
-                // Authentication screen (step 8) — required, no skip
-                AuthenticationScreen(
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onExit: nil // No exit — auth is mandatory
-                )
-                .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 3 {
-                // Google Docs integration screen (step 9)
-                DarkGoogleDocsOnboardingScreen(
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onSkip: { nextStep() },
-                    onExit: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 4 {
-                // Apple Health integration screen (step 10)
-                DarkAppleHealthOnboardingScreen(
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onSkip: { nextStep() },
-                    onExit: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            } else if currentStep == onboardingSteps.count + 5 {
-                // Voice persona selection screen (step 11)
-                DarkVoicePersonaOnboardingScreen(
-                    currentStep: currentStep,
-                    totalSteps: totalStepsIncludingExtras,
-                    onNext: { nextStep() },
-                    onExit: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            } else if currentStep == totalStepsIncludingExtras {
-                // Goals setup screen (step 12)
-                DarkGoalsOnboardingScreen(
-                    onComplete: { completeOnboarding() }
-                )
-                .transition(.opacity)
-            }
-        }
-        .preferredColorScheme(.dark)
-        .navigationBarHidden(true)
-    }
-    
-    private func nextStep() {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            currentStep += 1
-        }
-    }
-    
-    private func completeOnboarding() {
-        if let onComplete = onComplete {
-            onComplete()
-        } else {
-            dismiss()
-        }
+        iMessageOnboardingView(onComplete: onComplete)
+            .preferredColorScheme(.dark)
+            .navigationBarHidden(true)
+            .interactiveDismissDisabled(true)
     }
 }
 
@@ -121,6 +27,7 @@ struct DarkOnboardingScreenTemplate: View {
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
+    var onSkipStory: (() -> Void)? = nil
     
     @State private var displayedText = ""
     @State private var isAnimating = false
@@ -142,7 +49,7 @@ struct DarkOnboardingScreenTemplate: View {
                 
                 Spacer()
                 
-                // Main text
+                // Main text — tap to complete animation instantly
                 Text(displayedText)
                     .font(.custom("EBGaramond12-Regular", size: 38))
                     .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
@@ -150,6 +57,17 @@ struct DarkOnboardingScreenTemplate: View {
                     .lineSpacing(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 28)
+                    .onTapGesture {
+                        if isAnimating {
+                            animationTimer?.invalidate()
+                            displayedText = title
+                            currentCharacterIndex = title.count
+                            withAnimation {
+                                showButton = true
+                                isAnimating = false
+                            }
+                        }
+                    }
                 
                 Spacer()
                 
@@ -170,27 +88,44 @@ struct DarkOnboardingScreenTemplate: View {
     
     private var topSection: some View {
         VStack(spacing: 20) {
-            if onExit != nil {
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(LinearColors.Minimal.textTertiary.opacity(0.4))
-                    .frame(width: 36, height: 4)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                if value.translation.height > 0 {
-                                    dragOffset = value.translation.height
-                                }
-                            }
-                            .onEnded { value in
-                                if value.translation.height > 100 {
-                                    onExit?()
-                                } else {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                        dragOffset = 0
+            // Skip button + drag handle row
+            ZStack {
+                if onExit != nil {
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(LinearColors.Minimal.textTertiary.opacity(0.4))
+                        .frame(width: 36, height: 4)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    if value.translation.height > 0 {
+                                        dragOffset = value.translation.height
                                     }
                                 }
-                            }
-                    )
+                                .onEnded { value in
+                                    if value.translation.height > 100 {
+                                        onExit?()
+                                    } else {
+                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                            dragOffset = 0
+                                        }
+                                    }
+                                }
+                        )
+                }
+                
+                if let skipAction = onSkipStory {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            animationTimer?.invalidate()
+                            skipAction()
+                        }) {
+                            Text("Skip")
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.textTertiary)
+                        }
+                    }
+                }
             }
             
             // Progress bar
@@ -453,7 +388,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                                     Text(isConnecting ? "Connecting..." : "Connect Google Account")
                                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 }
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
                                 .background(
@@ -633,7 +568,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                                     Text(isConnecting ? "Requesting..." : "Enable Health Access")
                                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 }
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
                                 .background(
@@ -711,7 +646,7 @@ struct DarkAppleHealthOnboardingScreen: View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(Color.pink)
+                .foregroundColor(LinearColors.Minimal.iconPink)
                 .frame(width: 24)
             
             Text(text)

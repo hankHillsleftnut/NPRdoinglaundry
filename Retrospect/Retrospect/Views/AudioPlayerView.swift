@@ -277,9 +277,9 @@ struct AudioPlayerView: View {
     
     private let wordsPerLine = 8
     private let gradientColors = [
-        Color(red: 0.85, green: 0.47, blue: 0.36),  // Main accent
-        Color(red: 0.95, green: 0.55, blue: 0.45),  // Lighter accent
-        Color(red: 0.75, green: 0.35, blue: 0.25)   // Darker accent
+        LinearColors.terraCottaPrimary,  // Main accent
+        LinearColors.terraCottaLight,    // Lighter accent
+        LinearColors.terraCottaDark      // Darker accent
     ]
     
     // Convert mood string to PodcastMood enum
@@ -316,7 +316,7 @@ struct AudioPlayerView: View {
                 .background(
                     ZStack {
                         if isExpanded {
-                            Color.white
+                            LinearColors.Minimal.pureWhite
                                 .edgesIgnoringSafeArea(.all)
                                 .opacity(1.0 - (Double(dragOffset.height) / 500.0))
                         } else {
@@ -409,7 +409,7 @@ struct AudioPlayerView: View {
             VStack(spacing: 4) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white)
+                        .fill(LinearColors.Minimal.pureWhite)
                         .frame(width: 40, height: 40)
                         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
                     
@@ -435,7 +435,7 @@ struct AudioPlayerView: View {
                         .padding(.vertical, 2)
                         .background(
                             Capsule()
-                                .fill(Color.gray.opacity(0.1))
+                                .fill(LinearColors.Minimal.backgroundCard)
                         )
                     }
                     
@@ -502,7 +502,7 @@ struct AudioPlayerView: View {
             .padding(.trailing, 8)
         }
         .frame(height: 64)
-        .background(Color.white.opacity(0.98))
+        .background(LinearColors.Minimal.pureWhite.opacity(0.98))
         .overlay(
             Rectangle()
                 .frame(height: 0.5)
@@ -515,7 +515,7 @@ struct AudioPlayerView: View {
         VStack(spacing: 0) {
             // Handle bar for drag gesture
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(Color.gray.opacity(0.3))
+                .fill(LinearColors.Minimal.border)
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
                 .padding(.bottom, 20)
@@ -526,7 +526,7 @@ struct AudioPlayerView: View {
                     VStack(spacing: 8) {
                         ZStack {
                             RoundedRectangle(cornerRadius: BorderRadius.card)
-                                .fill(Color.white)
+                                .fill(LinearColors.Minimal.pureWhite)
                                 .frame(width: min(geometry.size.width * 0.6, 240), height: min(geometry.size.width * 0.6, 240))
                                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
                             
@@ -537,7 +537,7 @@ struct AudioPlayerView: View {
                             } else {
                                 WaveformAnimationView(isPlaying: isPlaying)
                                     .frame(width: min(geometry.size.width * 0.3, 120))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                             }
                         }
                         
@@ -549,7 +549,7 @@ struct AudioPlayerView: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     Capsule()
-                                        .fill(Color.gray.opacity(0.1))
+                                        .fill(LinearColors.Minimal.backgroundCard)
                                 )
                         }
                         
@@ -626,7 +626,7 @@ struct AudioPlayerView: View {
                             HStack(alignment: .center, spacing: 10) {
                                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                                     .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .offset(x: isPlaying ? 0 : 2)
                             }
                             .padding(.horizontal, 140)
@@ -635,9 +635,9 @@ struct AudioPlayerView: View {
                             .background(
                                 LinearGradient(
                                     stops: [
-                                        Gradient.Stop(color: Color(hex: "000000"), location: 0.00),
-                                        Gradient.Stop(color: Color(hex: "171717"), location: 0.53),
-                                        Gradient.Stop(color: Color(hex: "444444"), location: 1.00),
+                                        Gradient.Stop(color: LinearColors.Minimal.pureBlack, location: 0.00),
+                                        Gradient.Stop(color: LinearColors.Minimal.background, location: 0.53),
+                                        Gradient.Stop(color: LinearColors.Minimal.backgroundCard, location: 1.00),
                                     ],
                                     startPoint: UnitPoint(x: 0.5, y: 0),
                                     endPoint: UnitPoint(x: 0.5, y: 1)
@@ -701,7 +701,7 @@ struct AudioPlayerView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(
                                 RoundedRectangle(cornerRadius: BorderRadius.card)
-                                    .fill(Color.white)
+                                    .fill(LinearColors.Minimal.pureWhite)
                                     .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
                             )
                             .padding(.horizontal)
@@ -725,7 +725,7 @@ struct AudioPlayerView: View {
                 HStack(spacing: 4) {
                     ForEach(0..<15) { index in
                         RoundedRectangle(cornerRadius: BorderRadius.card)
-                            .fill(.white)
+                            .fill(LinearColors.Minimal.pureWhite)
                             .frame(width: 3, height: isPlaying ? randomHeight(for: index) : 15)
                             .animation(
                                 Animation
@@ -776,7 +776,7 @@ struct AudioPlayerView: View {
                     
                     // Drag handle
                     Circle()
-                        .fill(Color.white)
+                        .fill(LinearColors.Minimal.pureWhite)
                         .frame(width: 20, height: 20)
                         .shadow(color: Color.black.opacity(0.15), radius: 4, x: 0, y: 2)
                         .offset(x: max(0, min(geometry.size.width - 20, geometry.size.width * value - 10)))

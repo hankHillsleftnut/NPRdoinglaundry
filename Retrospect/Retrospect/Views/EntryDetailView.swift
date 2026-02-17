@@ -148,7 +148,7 @@ struct EntryDetailView: View {
                             saveTitle()
                         }
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                         .background(
@@ -243,7 +243,7 @@ struct EntryDetailView: View {
     private var badgeBackground: Color {
         switch entry.type {
         case .video: return LinearColors.accent
-        case .voice: return Color.purple
+        case .voice: return LinearColors.Minimal.iconPurple
         case .text: return LinearColors.cardBorder.opacity(0.5)
         }
     }
@@ -400,6 +400,7 @@ struct EntryDetailView: View {
                 .foregroundColor(LinearColors.textPrimary)
                     .lineSpacing(6)
                 .multilineTextAlignment(.leading)
+                .textSelection(.enabled)
             }
         }
         .padding(20)
@@ -464,14 +465,14 @@ struct EntryDetailView: View {
                     Text("Delete")
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                 }
-                .foregroundColor(.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: BorderRadius.button)
-                        .fill(Color.red)
+                        .fill(LinearColors.Minimal.deleteRed)
                         .shadow(
-                            color: Color.red.opacity(0.3),
+                            color: LinearColors.Minimal.deleteRed.opacity(0.3),
                             radius: 4,
                             x: 0,
                             y: 2

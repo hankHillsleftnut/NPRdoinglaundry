@@ -29,9 +29,11 @@ export type Category = z.infer<typeof CategorySchema>;
 export const ContentTypeSchema = z.enum([
   'voice_recording',
   'text_entry',
+  'video_entry',
   'google_docs',
   'healthkit',
   'calendar',
+  'screen_time',
   'twitter_bookmarks',
 ]);
 

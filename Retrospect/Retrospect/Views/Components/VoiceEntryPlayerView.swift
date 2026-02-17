@@ -12,7 +12,7 @@ struct VoiceEntryPlayerView: View {
             // Waveform Icon
             Image(systemName: "waveform")
                 .font(.system(size: 48, weight: .medium))
-                .foregroundColor(Color.purple)
+                .foregroundColor(LinearColors.Minimal.iconPurple)
                 .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
                 .padding(.top, 20)
             
@@ -41,7 +41,7 @@ struct VoiceEntryPlayerView: View {
                     Capsule()
                         .fill(
                             LinearGradient(
-                                colors: [Color.purple, Color.purple.opacity(0.8)],
+                                colors: [LinearColors.Minimal.iconPurple, LinearColors.Minimal.iconPurple.opacity(0.8)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -50,9 +50,9 @@ struct VoiceEntryPlayerView: View {
                     
                     // Thumb
                     Circle()
-                        .fill(Color.purple)
+                        .fill(LinearColors.Minimal.iconPurple)
                         .frame(width: 16, height: 16)
-                        .shadow(color: Color.purple.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .shadow(color: LinearColors.Minimal.iconPurple.opacity(0.3), radius: 4, x: 0, y: 2)
                         .offset(x: progressWidth(in: geometry.size.width) - 8)
                 }
                 .gesture(
@@ -84,7 +84,7 @@ struct VoiceEntryPlayerView: View {
                 }) {
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 64, weight: .medium))
-                        .foregroundColor(Color.purple)
+                        .foregroundColor(LinearColors.Minimal.iconPurple)
                         .symbolEffect(.bounce, value: player.isPlaying)
                 }
                 
@@ -103,11 +103,11 @@ struct VoiceEntryPlayerView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(Color.purple.opacity(0.05))
+                .fill(LinearColors.Minimal.iconPurple.opacity(0.05))
         )
         .overlay(
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .strokeBorder(Color.purple.opacity(0.2), lineWidth: 1)
+                .strokeBorder(LinearColors.Minimal.iconPurple.opacity(0.2), lineWidth: 1)
         )
         .onAppear {
             player.load(url: audioURL)

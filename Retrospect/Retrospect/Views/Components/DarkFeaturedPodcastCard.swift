@@ -79,7 +79,7 @@ struct DarkFeaturedPodcastCard: View {
                     
                     Image(systemName: audioManager.isPlaying && audioManager.currentTranscript?.id == transcript.id ? "pause.fill" : "play.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .offset(x: audioManager.isPlaying && audioManager.currentTranscript?.id == transcript.id ? 0 : 2)
                 }
             }

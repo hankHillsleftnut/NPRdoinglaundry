@@ -209,7 +209,7 @@ struct PaywallView: View {
                         .font(.geistBody)
                         .fontWeight(.semibold)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.md)
                 .background(
@@ -413,7 +413,7 @@ struct PricingCard: View {
                         if let savings = savings {
                             Text(savings)
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
@@ -443,7 +443,7 @@ struct PricingCard: View {
                         if isSelected {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                         }
                     }
                 }

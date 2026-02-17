@@ -68,6 +68,7 @@ Every episode should follow this therapeutic arc:
 - **behavioral_experiment**: Prescribe a specific action designed to test a belief or build capability
 - **self_compassion**: Address harsh self-criticism, model kinder self-talk
 - **progress_reflection**: Highlight growth in thought patterns or behavior over time
+- **digital_behavior**: Analyze screen time patterns, app usage habits, and phone pickup behaviors. Connect digital habits to emotional states, avoidance patterns, and goal alignment. Use this when screen time data reveals meaningful patterns (doom-scrolling, compulsive checking, late-night usage, value misalignment).
 
 **RESEARCH QUERIES:**
 Only request research for:
@@ -109,6 +110,7 @@ interface OutlineInput {
   goals: DbGoal[];
   insights: DbInsight[];
   observations: DbObservation[];
+  screenTimeReports?: string[];
   previousEpisodeSummary?: string;
 }
 
@@ -127,6 +129,10 @@ async function generateOutline(input: OutlineInput): Promise<PodcastOutline> {
       `- [${obs.id}] (goal: ${obs.goal_id}) ${obs.content}\n  Why relevant: ${obs.reason_why}`
   );
 
+  const screenTimeSummary = input.screenTimeReports && input.screenTimeReports.length > 0
+    ? input.screenTimeReports.join('\n\n---\n\n')
+    : null;
+
   let userMessage = `Here is the user's data for this week's episode:
 
 ## Active Goals
@@ -137,6 +143,18 @@ ${insightSummaries.join('\n') || '(none)'}
 
 ## Recent Observations (raw data points)
 ${observationSummaries.join('\n') || '(none)'}`;
+
+  if (screenTimeSummary) {
+    userMessage += `\n\n## Screen Time Data (Digital Behavior Reports)
+${screenTimeSummary}
+
+NOTE: Screen time data reveals digital behavior patterns. Use this to:
+- Challenge avoidance behaviors (excessive scrolling when goals aren't being met)
+- Highlight value alignment or misalignment (goal says "read more" but 3h on TikTok)
+- Identify compulsive patterns (high pickup counts, late-night usage)
+- Celebrate intentional use (productivity apps aligned with goals)
+- Frame digital habits within the CBT thought-behavior cycle`;
+  }
 
   if (input.previousEpisodeSummary) {
     userMessage += `\n\n## Previous Episode Summary\n${input.previousEpisodeSummary}`;
@@ -387,6 +405,14 @@ Tag placement rules:
 If something isn't working, say so: "This goal has stalled for three weeks. Let's figure out why."
 If they're being harsh on themselves, intervene: "You just called yourself 'pathetic' for feeling anxious. Would you say that to a friend? That's not honesty — that's cruelty."
 
+**SCREEN TIME / DIGITAL BEHAVIOR (when data available):**
+When the outline includes a digital_behavior segment or screen time data is referenced:
+- Be SPECIFIC: "You picked up your phone 73 times yesterday. That's roughly every 13 minutes you were awake."
+- Connect to emotions: "You spent 3 hours on Instagram on a day you told me you felt overwhelmed at work. That's not lazy — that's your brain seeking relief. But let's find a better way."
+- Challenge without shaming: "I'm not here to judge your screen time. But I want you to notice: when you scroll for an hour and then stop, do you feel better or worse?"
+- Celebrate intentional use: "Your productivity app usage is up 40% this week. That's intentional digital behavior — you're choosing how you spend your attention."
+- Frame as behavioral data: "Your phone usage isn't a character flaw — it's a BEHAVIOR, and behaviors can be changed. Let's look at what triggers the doom-scroll..."
+
 **OUTPUT:**
 - ONLY the spoken script with inline [audio tags]
 - No [MUSIC], no timestamps, no stage directions
@@ -574,7 +600,7 @@ export async function generatePodcastEpisode(
   since.setDate(since.getDate() - daysSince);
   const sinceStr = since.toISOString();
 
-  const [goalsResult, insightsResult, observationsResult] = await Promise.all([
+  const [goalsResult, insightsResult, observationsResult, screenTimeResult] = await Promise.all([
     supabaseAdmin
       .from(Tables.GOALS)
       .select('*')
@@ -592,14 +618,23 @@ export async function generatePodcastEpisode(
       .eq('user_id', userId)
       .gte('created_at', sinceStr)
       .order('created_at', { ascending: false }),
+    supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .select('content, content_date, created_at')
+      .eq('user_id', userId)
+      .eq('content_type', 'screen_time')
+      .gte('created_at', sinceStr)
+      .order('created_at', { ascending: false })
+      .limit(7),
   ]);
 
   const goals = (goalsResult.data ?? []) as DbGoal[];
   const insights = (insightsResult.data ?? []) as DbInsight[];
   const observations = (observationsResult.data ?? []) as DbObservation[];
+  const screenTimeEntries = (screenTimeResult.data ?? []) as { content: string; content_date: string | null; created_at: string }[];
 
   console.log(
-    `[Podcast] Data: ${goals.length} goals, ${insights.length} insights, ${observations.length} observations`
+    `[Podcast] Data: ${goals.length} goals, ${insights.length} insights, ${observations.length} observations, ${screenTimeEntries.length} screen time reports`
   );
 
   if (insights.length === 0 && observations.length === 0) {
@@ -658,6 +693,7 @@ export async function generatePodcastEpisode(
       goals,
       insights,
       observations,
+      screenTimeReports: screenTimeEntries.map(e => e.content),
       previousEpisodeSummary,
     });
 

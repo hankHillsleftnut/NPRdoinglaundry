@@ -34,8 +34,8 @@ struct GoogleDocsIntegrationView: View {
                         Text("Connect Google Account")
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
+                            .background(LinearColors.Minimal.accent)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .cornerRadius(10)
                     }
                     .padding(.horizontal, 30)
@@ -64,8 +64,8 @@ struct GoogleDocsIntegrationView: View {
                     Text("Done")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
+                        .background(LinearColors.Minimal.accent)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .cornerRadius(10)
                 }
                 .padding(.horizontal, 30)

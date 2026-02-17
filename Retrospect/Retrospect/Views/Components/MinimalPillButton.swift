@@ -49,7 +49,7 @@ struct MinimalPillButton: View {
                     // 2. Inner stroke (4pt)
                     Capsule()
                         .strokeBorder(
-                            Color.white.opacity(0.10),
+                            LinearColors.Minimal.border.opacity(0.5),
                             lineWidth: 4
                         )
                         .padding(1)
@@ -76,8 +76,8 @@ struct MinimalPillButton: View {
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.55),
-                                    Color.white.opacity(0.35)
+                                    LinearColors.Minimal.textSecondary,
+                                    LinearColors.Minimal.textTertiary
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -130,7 +130,7 @@ struct MinimalPillButtonLarge: View {
                     // 2. Inner stroke (4pt)
                     Capsule()
                         .strokeBorder(
-                            Color.white.opacity(0.10),
+                            LinearColors.Minimal.border.opacity(0.5),
                             lineWidth: 4
                         )
                         .padding(1)
@@ -157,8 +157,8 @@ struct MinimalPillButtonLarge: View {
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.55),
-                                    Color.white.opacity(0.35)
+                                    LinearColors.Minimal.textSecondary,
+                                    LinearColors.Minimal.textTertiary
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom

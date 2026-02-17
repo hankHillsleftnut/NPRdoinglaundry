@@ -78,7 +78,7 @@ struct RetrospectApp: App {
             ZStack {
                 // Show transparent view when handling stop from widget
                 if isProcessingStopFromWidget {
-                    Color.black
+                    LinearColors.Minimal.pureBlack
                         .ignoresSafeArea()
                         .transition(.opacity)
                 } else if !hasCompletedOnboarding {
@@ -143,6 +143,11 @@ struct RetrospectApp: App {
                             shouldStartVoiceRecording = true
                         }
                     }
+                }
+                
+                // Schedule recurring notifications for existing users
+                if hasCompletedOnboarding {
+                    PodcastNotificationService.shared.scheduleAllRecurringNotifications()
                 }
                 
                 // Show Google auth if properly configured, not connected, onboarding is complete, and backend-authenticated
@@ -219,11 +224,11 @@ struct RetrospectApp: App {
                 if newPhase == .background {
                     print("📱 App moved to background - recording continues")
                 }
-                // Re-authenticate when app becomes active (optional - for higher security)
-                // Uncomment the following if you want to require Face ID every time app opens:
-                // if newPhase == .active && oldPhase == .background && faceIDEnabled {
-                //     isAuthenticated = false
-                // }
+                
+                // Refresh screen time data when app becomes active
+                if newPhase == .active {
+                    ScreenTimeService.shared.refreshData()
+                }
             }
             .onOpenURL { url in
                 guard url.scheme == "retrospect" else { return }
@@ -285,13 +290,21 @@ struct RetrospectApp: App {
     private func saveVoiceEntry(audioURL: URL, transcription: String) async {
         print("💾 Saving voice entry...")
         
+        let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
+        let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
+        
+        guard !trimmed.isEmpty || hasUsableAudio else {
+            print("⚠️ Discarding empty voice recording — no transcription and no usable audio")
+            return
+        }
+        
         // Generate simple title from transcription
         var title = "Voice Entry"
-        if !transcription.isEmpty {
-            // Use first few words of transcription as title
-            let words = transcription.split(separator: " ").prefix(10)
+        if !trimmed.isEmpty {
+            let words = trimmed.split(separator: " ").prefix(10)
             title = words.joined(separator: " ")
-            if transcription.split(separator: " ").count > 10 {
+            if trimmed.split(separator: " ").count > 10 {
                 title += "..."
             }
         }
@@ -310,7 +323,7 @@ struct RetrospectApp: App {
         let entry = Entry(
             id: entryId,
             type: .voice,
-            content: transcription,
+            content: trimmed,
             audioURL: FileStorageManager.shared.getAudioURL(for: entryId),
             aiGeneratedTitle: title,
             tags: []

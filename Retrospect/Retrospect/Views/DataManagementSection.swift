@@ -77,12 +77,12 @@ struct DataManagementSection: View {
                     HStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Reset All Data")
                                 .font(.serifBody).fontWeight(.semibold)
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Permanently delete all app data")
                                 .font(.serifCaption)
@@ -94,7 +94,7 @@ struct DataManagementSection: View {
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: BorderRadius.card)
-                            .fill(Color.red)
+                            .fill(LinearColors.Minimal.deleteRed)
                             .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 2)
                     )
                 }
@@ -899,7 +899,7 @@ struct GoogleDocsDetailView: View {
                     Text(googleDocsService.isLoading ? "Loading..." : "Refresh Data")
                         .font(.serifBody).fontWeight(.semibold)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
                 .background(
@@ -1347,7 +1347,7 @@ struct GoogleAuthView: View {
                                 Text(isAuthenticating ? "Connecting..." : "Connect with Google")
                                     .font(.serifBody).fontWeight(.semibold)
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(

@@ -34,7 +34,7 @@ struct LegacyHomeScreen: View {
                             Text("New UI")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(

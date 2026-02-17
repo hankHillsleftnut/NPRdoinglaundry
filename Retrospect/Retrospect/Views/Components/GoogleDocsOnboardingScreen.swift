@@ -231,7 +231,7 @@ struct GoogleDocsOnboardingScreen: View {
                 if isConnecting {
                     ProgressView()
                         .scaleEffect(0.8)
-                        .progressViewStyle(CircularProgressViewStyle(tint: Color.white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.textPrimary))
                 } else {
                     Image(systemName: "link")
                         .font(.system(size: 16, weight: .medium))
@@ -240,7 +240,7 @@ struct GoogleDocsOnboardingScreen: View {
                 Text(isConnecting ? "Connecting..." : "Connect Google Account")
                     .font(.system(size: 17, weight: .medium, design: .rounded))
             }
-            .foregroundColor(Color.white)
+            .foregroundColor(LinearColors.Minimal.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(
@@ -275,7 +275,7 @@ struct GoogleDocsOnboardingScreen: View {
             Text(googleDocsService.isConnected ? "Continue" : "Connect & Continue")
                 .font(.system(size: 17, weight: .medium, design: .rounded))
                 .kerning(0)
-                .foregroundColor(Color.white)
+                .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
                 .frame(maxWidth: .infinity)
                 .frame(height: 66)

@@ -139,7 +139,7 @@ struct VideoLogEntryCard: View {
                             .foregroundColor(LinearColors.accent)
                     } else {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundColor(LinearColors.Minimal.warning)
                     }
                     
                     Toggle("Include in Insights", isOn: Binding(

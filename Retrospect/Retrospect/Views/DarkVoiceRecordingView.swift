@@ -259,13 +259,22 @@ struct DarkVoiceRecordingView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let (audioURL, transcription)):
-                    // Create entry from recording result
+                    let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
+                    let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
+                    
+                    guard !trimmed.isEmpty || hasUsableAudio else {
+                        audioManager.errorMessage = "Recording was empty — nothing to save."
+                        showError = true
+                        isSaving = false
+                        return
+                    }
+                    
                     let entry = Entry(
                         type: .voice,
-                        content: transcription,
+                        content: trimmed,
                         audioURL: audioURL
                     )
-                    // Entry saved successfully
                     Task { @MainActor in
                         EntryManager.shared.addEntry(entry)
                     }

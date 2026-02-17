@@ -14,10 +14,10 @@ struct FramedCameraView: View {
         // Outer frame
         ZStack {
             RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(Color(red: 0.76, green: 0.69, blue: 0.62)) // #C2B09F
+                .fill(LinearColors.terraCottaDark)
                 .overlay(
                     RoundedRectangle(cornerRadius: BorderRadius.card)
-                        .stroke(Color(red: 0.75, green: 0.7, blue: 0.64), lineWidth: 2) // #BFB2A3
+                        .stroke(LinearColors.terraCottaDark.opacity(0.9), lineWidth: 2)
                 )
             // Camera preview inset
             VStack {
@@ -27,7 +27,7 @@ struct FramedCameraView: View {
                         .padding(18)
                 } else {
                     Rectangle()
-                        .fill(Color.black)
+                        .fill(LinearColors.Minimal.pureBlack)
                         .clipShape(RoundedRectangle(cornerRadius: BorderRadius.card))
                         .padding(18)
                         .overlay(
@@ -62,6 +62,6 @@ struct FramedCameraView_Previews: PreviewProvider {
                 .frame(width: 350, height: 262.5)
         }
         .padding()
-        .background(Color.gray.opacity(0.1))
+        .background(LinearColors.Minimal.backgroundCard)
     }
 } 

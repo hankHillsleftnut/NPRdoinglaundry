@@ -70,7 +70,7 @@ struct SimplePolaroid: View {
                 Text("Generate Polaroid")
                     .font(.system(size: 16, weight: .medium, design: .rounded))
             }
-            .foregroundColor(.white)
+            .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
@@ -92,9 +92,9 @@ struct SimplePolaroid: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(red: 0.85, green: 0.75, blue: 0.95), // Light purple
-                                Color(red: 0.95, green: 0.85, blue: 0.75), // Light peach
-                                Color(red: 0.75, green: 0.90, blue: 0.85)  // Light mint
+                                LinearColors.Minimal.iconPurple.opacity(0.5), // Light purple
+                                LinearColors.terraCottaLight, // Light peach
+                                LinearColors.Minimal.iconGreen.opacity(0.5)  // Light mint
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -105,11 +105,11 @@ struct SimplePolaroid: View {
                 
                 // Bottom white space for writing
                 Rectangle()
-                    .fill(Color.white)
+                    .fill(LinearColors.Minimal.pureWhite)
                     .frame(width: polaroidSize, height: polaroidSize * 0.07) // Smaller bottom section to fit square photo
             }
             .frame(width: polaroidSize, height: polaroidSize)
-            .background(Color.white)
+            .background(LinearColors.Minimal.pureWhite)
             .cornerRadius(8)
             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
             .opacity(isFlipped ? 0 : 1)
@@ -123,7 +123,7 @@ struct SimplePolaroid: View {
                 Spacer()
             }
             .frame(width: polaroidSize, height: polaroidSize)
-            .background(Color.white)
+            .background(LinearColors.Minimal.pureWhite)
             .cornerRadius(8)
             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
             .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))

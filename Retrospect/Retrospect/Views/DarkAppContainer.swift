@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AVFoundation
+import DeviceActivity
 
 /// Global audio state manager for the dark UI
 class DarkAudioManager: ObservableObject {
@@ -191,10 +192,10 @@ struct DarkAppContainer: View {
                 if selectedTab == .journal {
                     VStack(spacing: 0) {
                         Rectangle()
-                            .fill(Color.black)
+                            .fill(LinearColors.Minimal.pureBlack)
                             .frame(height: 1.5)
                         Rectangle()
-                            .fill(Color.gray.opacity(0.15))
+                            .fill(LinearColors.Minimal.border)
                             .frame(height: 1)
                     }
                     .padding(.horizontal, 0)
@@ -246,7 +247,7 @@ struct DarkAppContainer: View {
                         }) {
                             Text("Dismiss")
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
                                 .background(Capsule().fill(LinearColors.Minimal.accent))
@@ -273,6 +274,7 @@ enum HoldRecordingState {
     case idle
     case recording
     case saved
+    case tooShort
 }
 
 // MARK: - Session Tracker for Headline Animation
@@ -294,6 +296,8 @@ struct DarkJournalView: View {
     @ObservedObject var goalsManager: GoalsManager
     @ObservedObject var audioManager: DarkAudioManager
     @Binding var showingVoiceRecording: Bool
+    
+    @StateObject private var screenTimeService = ScreenTimeService.shared
     
     @State private var journalText = ""
     @State private var attachedImages: [UIImage] = []
@@ -317,8 +321,6 @@ struct DarkJournalView: View {
     @StateObject private var holdRecordingManager = AudioRecordingManager()
     @State private var isHoldRecording = false
     @State private var holdRecordingStarted = false
-    @State private var fingerPosition: CGPoint = .zero
-    @State private var isOverCancelZone = false
     @State private var recordingState: HoldRecordingState = .idle
     @State private var ellipsisCount = 0
     @State private var ellipsisTimer: Timer?
@@ -328,6 +330,25 @@ struct DarkJournalView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // Hidden DeviceActivityReport — triggers the extension silently
+                // so screen time data is written to App Group every time the app opens
+                if screenTimeService.isAuthorized {
+                    DeviceActivityReport(
+                        DeviceActivityReport.Context("Total Activity"),
+                        filter: DeviceActivityFilter(
+                            segment: .daily(
+                                during: DateInterval(
+                                    start: Calendar.current.startOfDay(for: Date()),
+                                    end: Date()
+                                )
+                            )
+                        )
+                    )
+                    .frame(width: 1, height: 1)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                }
+                
                 // Main content
                 VStack(spacing: 0) {
                     // Hold-to-record zone (headline + scroll area only)
@@ -336,6 +357,20 @@ struct DarkJournalView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             Spacer()
                                 .frame(height: 40)
+                            
+                            // Screen time ambient insight (only when authorized and data exists)
+                            if !isHoldRecording, screenTimeService.isAuthorized, let nugget = screenTimeNugget {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "hourglass")
+                                        .font(.system(size: 10, weight: .medium))
+                                    Text(nugget)
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                }
+                                .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
+                                .padding(.horizontal, 28)
+                                .padding(.bottom, 8)
+                                .transition(.opacity)
+                            }
                             
                             // Headline - changes to Recording indicator during hold recording
                             if isHoldRecording {
@@ -356,7 +391,29 @@ struct DarkJournalView: View {
                                             .fill(LinearColors.Minimal.backgroundCard)
                                             .overlay(
                                                 Capsule()
-                                                    .strokeBorder(Color.green.opacity(0.3), lineWidth: 1)
+                                                    .strokeBorder(LinearColors.Minimal.success.opacity(0.3), lineWidth: 1)
+                                            )
+                                    )
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 28)
+                                } else if recordingState == .tooShort {
+                                    // Too short feedback pill
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "hand.raised")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                                        Text("Hold longer to record")
+                                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                                            .foregroundColor(LinearColors.Minimal.textSecondary)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        Capsule()
+                                            .fill(LinearColors.Minimal.backgroundCard)
+                                            .overlay(
+                                                Capsule()
+                                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                                             )
                                     )
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -420,30 +477,18 @@ struct DarkJournalView: View {
                                     if !isHoldRecording && !isInFocusMode {
                                         startHoldRecording()
                                     }
-                                case .second(true, let drag):
-                                    // Dragging while recording
-                                    if let drag = drag, isHoldRecording {
-                                        fingerPosition = drag.location
-                                        // Check if over cancel zone (bottom right corner, closer to nav)
-                                        let cancelZone = CGRect(
-                                            x: geometry.size.width - 110,
-                                            y: geometry.size.height - 110,
-                                            width: 100,
-                                            height: 100
-                                        )
-                                        let wasOverCancel = isOverCancelZone
-                                        isOverCancelZone = cancelZone.contains(drag.location)
-                                        if isOverCancelZone && !wasOverCancel {
-                                            HapticManager.shared.playLightImpact()
-                                        }
-                                    }
+                                case .second(true, _):
+                                    // Holding — just keep recording, no drag tracking needed
+                                    break
                                 default:
                                     break
                                 }
                             }
-                            .onEnded { value in
+                            .onEnded { _ in
                                 if isHoldRecording {
-                                    endHoldRecording(cancelled: isOverCancelZone)
+                                    // Release = stop recording (cancel if under 2 seconds)
+                                    let tooShort = recordingDuration < 2.0
+                                    endHoldRecording(cancelled: tooShort)
                                 }
                             }
                     )
@@ -474,6 +519,15 @@ struct DarkJournalView: View {
                                 .transition(.scale.combined(with: .opacity))
                             }
                             
+                            // Hold to record hint
+                            HStack(spacing: 6) {
+                                Image(systemName: "hand.tap")
+                                    .font(.system(size: 11, weight: .medium))
+                                Text("Hold anywhere above to record")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                            }
+                            .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.5))
+                            
                             // Journal input - tappable to enter focus mode
                             MinimalJournalInput(
                                 text: $journalText,
@@ -498,47 +552,8 @@ struct DarkJournalView: View {
                     }
                 }
                 
-                // Cancel zone indicator (bottom right, closer to navigation)
-                if isHoldRecording && recordingState == .recording {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            VStack(spacing: 6) {
-                                Image(systemName: isOverCancelZone ? "trash.fill" : "xmark")
-                                    .font(.system(size: 24, weight: .medium))
-                                    .foregroundColor(isOverCancelZone ? .red : LinearColors.Minimal.textTertiary)
-                                if isOverCancelZone {
-                                    Text("Release to delete")
-                                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                                        .foregroundColor(.red)
-                                }
-                            }
-                            .frame(width: 80, height: 80)
-                            .background(
-                                Circle()
-                                    .fill(isOverCancelZone ? Color.red.opacity(0.15) : LinearColors.Minimal.backgroundCard.opacity(0.8))
-                                    .overlay(
-                                        Circle()
-                                            .strokeBorder(isOverCancelZone ? Color.red.opacity(0.5) : LinearColors.Minimal.border, lineWidth: 1)
-                                    )
-                            )
-                            .padding(.trailing, 20)
-                            .padding(.bottom, 20)
-                        }
-                    }
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .bottom)),
-                        removal: .opacity.combined(with: .move(edge: .bottom))
-                    ))
-                }
-                
-                // Waveform pill above finger
-                if isHoldRecording && recordingState == .recording {
-                    HoldRecordingWaveformPill()
-                        .position(x: fingerPosition.x, y: fingerPosition.y - 70)
-                        .transition(.scale.combined(with: .opacity))
-                }
+                // "Too short" feedback when released before 2 seconds
+                // (cancel zone and waveform pill removed — release to stop)
             
             // Focus Mode Overlay
             if isInFocusMode {
@@ -593,7 +608,7 @@ struct DarkJournalView: View {
                 // Full-screen overlay that covers everything including tab bar
                 ZStack {
                     // Dark overlay covering entire screen
-                    Color.black.opacity(0.6)
+                    LinearColors.Minimal.overlayHeavy
                         .ignoresSafeArea()
                         .onTapGesture {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -703,30 +718,58 @@ struct DarkJournalView: View {
         recordingTimer = nil
         
         if cancelled {
-            // Cancel recording
+            // Cancel recording (too short or explicit cancel)
             holdRecordingManager.cancelRecording()
-            HapticManager.shared.playErrorNotification()
+            HapticManager.shared.playLightImpact()
             
+            // Show "too short" feedback briefly
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                isHoldRecording = false
-                recordingState = .idle
-                isOverCancelZone = false
+                recordingState = .tooShort
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    isHoldRecording = false
+                    recordingState = .idle
+                }
             }
         } else {
             // Save recording
             holdRecordingManager.stopRecording { result in
                 switch result {
                 case .success(let (audioURL, transcription)):
+                    let trimmedTranscription = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    // Reject if transcription is empty and audio file doesn't exist or is tiny
+                    let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
+                    let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
+                    
+                    guard !trimmedTranscription.isEmpty || hasUsableAudio else {
+                        print("⚠️ Discarding empty voice recording — no transcription and no usable audio")
+                        HapticManager.shared.playErrorNotification()
+                        
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            recordingState = .tooShort
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isHoldRecording = false
+                                recordingState = .idle
+                            }
+                        }
+                        return
+                    }
+                    
                     // Create and save entry
                     let entryId = UUID()
                     do {
                         try FileStorageManager.shared.moveAudio(from: audioURL, to: entryId)
                         
                         var title = "Voice Note"
-                        if !transcription.isEmpty {
-                            let words = transcription.split(separator: " ").prefix(8)
+                        if !trimmedTranscription.isEmpty {
+                            let words = trimmedTranscription.split(separator: " ").prefix(8)
                             title = words.joined(separator: " ")
-                            if transcription.split(separator: " ").count > 8 {
+                            if trimmedTranscription.split(separator: " ").count > 8 {
                                 title += "..."
                             }
                         }
@@ -734,7 +777,7 @@ struct DarkJournalView: View {
                         let entry = Entry(
                             id: entryId,
                             type: .voice,
-                            content: transcription,
+                            content: trimmedTranscription,
                             audioURL: FileStorageManager.shared.getAudioURL(for: entryId),
                             aiGeneratedTitle: title,
                             tags: []
@@ -750,7 +793,6 @@ struct DarkJournalView: View {
                         recordingState = .saved
                     }
                     
-                    // Success haptic (double tap feel)
                     HapticManager.shared.playSuccessNotification()
                     
                     // Dismiss after showing saved state
@@ -758,7 +800,6 @@ struct DarkJournalView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             isHoldRecording = false
                             recordingState = .idle
-                            isOverCancelZone = false
                         }
                     }
                     
@@ -769,11 +810,66 @@ struct DarkJournalView: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         isHoldRecording = false
                         recordingState = .idle
-                        isOverCancelZone = false
                     }
                 }
             }
         }
+    }
+    
+    // MARK: - Screen Time Ambient Insight
+    
+    private var screenTimeNugget: String? {
+        guard let summary = screenTimeService.latestSummary else { return nil }
+        
+        let history = screenTimeService.weeklyHistory
+        let todayMinutes = summary.totalScreenTimeMinutes
+        
+        // If we have history, compute trend
+        if history.count >= 2 {
+            let previousDays = history.filter { $0.date != summary.date }
+            guard !previousDays.isEmpty else {
+                return formatSimpleNugget(summary)
+            }
+            let avgMinutes = previousDays.reduce(0) { $0 + $1.totalScreenTimeMinutes } / previousDays.count
+            
+            if avgMinutes > 0 {
+                let changePercent = Int(round(Double(todayMinutes - avgMinutes) / Double(avgMinutes) * 100))
+                
+                if changePercent > 15 {
+                    return "Screen time is up \(changePercent)% today"
+                } else if changePercent < -15 {
+                    return "Screen time is down \(abs(changePercent))% today"
+                } else {
+                    return "\(formatTime(todayMinutes)) on screen today"
+                }
+            }
+        }
+        
+        return formatSimpleNugget(summary)
+    }
+    
+    private func formatSimpleNugget(_ summary: ScreenTimeSummary) -> String? {
+        let minutes = summary.totalScreenTimeMinutes
+        if minutes < 5 { return nil }
+        
+        if summary.totalPickups > 60 {
+            return "\(summary.totalPickups) pickups today · \(formatTime(minutes)) on screen"
+        }
+        
+        if let topApp = summary.appUsage.first, topApp.minutes > 30 {
+            return "\(formatTime(minutes)) on screen · \(topApp.appName) \(formatTime(topApp.minutes))"
+        }
+        
+        return "\(formatTime(minutes)) on screen today"
+    }
+    
+    private func formatTime(_ minutes: Int) -> String {
+        if minutes >= 60 {
+            let h = minutes / 60
+            let m = minutes % 60
+            return m > 0 ? "\(h)h \(m)m" : "\(h)h"
+        }
+        return "\(minutes)m"
     }
     
     private func saveReflectionAsEntry() {
@@ -837,7 +933,7 @@ struct RecordingIndicatorPill: View {
         HStack(spacing: 14) {
             // Red recording dot (pulsing)
             Circle()
-                .fill(Color.red)
+                .fill(LinearColors.Minimal.recordingActive)
                 .frame(width: 10, height: 10)
                 .opacity(dotOpacity)
                 .onAppear {
@@ -875,7 +971,7 @@ struct RecordingIndicatorPill: View {
                 .fill(LinearColors.Minimal.backgroundCard)
                 .overlay(
                     Capsule()
-                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(LinearColors.Minimal.recordingPulse, lineWidth: 1)
                 )
         )
         .onAppear {

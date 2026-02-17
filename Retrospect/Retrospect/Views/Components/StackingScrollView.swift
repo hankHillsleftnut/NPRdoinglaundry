@@ -179,19 +179,19 @@ extension View {
     let items = (0..<20).map { PreviewItem(title: "Item \($0)") }
     
     return ZStack {
-        Color.black.ignoresSafeArea()
+        LinearColors.Minimal.background.ignoresSafeArea()
         
         StackingListView(items: items, itemHeight: 70, itemSpacing: 12) { item, index in
             HStack {
                 Text(item.title)
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                 Spacer()
             }
             .padding()
             .frame(height: 70)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.gray.opacity(0.3))
+                    .fill(LinearColors.Minimal.border)
             )
             .padding(.horizontal, 20)
         }

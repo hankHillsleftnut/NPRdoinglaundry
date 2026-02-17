@@ -30,7 +30,7 @@ struct PolaroidPlayingControls: View {
                         ZStack(alignment: .leading) {
                             // Background track
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.gray.opacity(0.3))
+                                .fill(LinearColors.Minimal.border)
                                 .frame(height: 4)
                             
                             // Progress fill
@@ -74,7 +74,7 @@ struct PolaroidPlayingControls: View {
                 Button(action: togglePlayback) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 28, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .frame(width: 60, height: 60)
                         .background(
                             Circle()
@@ -112,7 +112,7 @@ struct PolaroidPlayingControls: View {
                     .padding(.vertical, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.gray.opacity(0.1))
+                            .fill(LinearColors.Minimal.backgroundCard)
                     )
             }
         }

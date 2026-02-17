@@ -5,6 +5,15 @@ enum EntryType: String, Codable {
     case text
     case video
     case voice
+    
+    /// Maps to the backend's expected content type string
+    var backendContentType: String {
+        switch self {
+        case .text: return "text_entry"
+        case .voice: return "voice_recording"
+        case .video: return "video_entry"
+        }
+    }
 }
 
 // MARK: - Entry Model
@@ -57,6 +66,22 @@ struct Entry: Codable, Identifiable, Hashable {
         return "Entry from \(formatter.string(from: date))"
     }
     
+    // Whether this entry has any meaningful content worth saving
+    var hasValidContent: Bool {
+        let hasText = !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        
+        switch type {
+        case .text:
+            return hasText
+        case .voice:
+            let hasAudio = audioURL != nil && FileManager.default.fileExists(atPath: audioURL!.path)
+            return hasText || hasAudio
+        case .video:
+            let hasVideo = videoURL != nil && FileManager.default.fileExists(atPath: videoURL!.path)
+            return hasText || hasVideo
+        }
+    }
+    
     // Computed property for content preview (first 2 lines)
     var contentPreview: String {
         let lines = content.split(separator: "\n", maxSplits: 2, omittingEmptySubsequences: true)
@@ -84,6 +109,11 @@ class EntryManager: ObservableObject {
     // MARK: - Public Methods
     
     func addEntry(_ entry: Entry) {
+        guard entry.hasValidContent else {
+            print("⚠️ Rejected empty entry: \(entry.id) - Type: \(entry.type.rawValue) - no content or media")
+            return
+        }
+        
         entries.append(entry)
         saveEntry(entry)
         print("✅ Added entry: \(entry.id) - Type: \(entry.type.rawValue)")
@@ -94,18 +124,60 @@ class EntryManager: ObservableObject {
     
     /// Upload an entry to the Retrospect backend for the observation/insight pipeline.
     private func syncEntryToBackend(_ entry: Entry) {
-        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        guard RetrospectAPIClient.shared.isAuthenticated else {
+            print("⚠️ Skipping backend sync — not authenticated")
+            return
+        }
+        guard !entry.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("⚠️ Skipping backend sync — empty content for \(entry.id)")
+            return
+        }
         Task {
             do {
                 try await RetrospectAPIClient.shared.uploadContent(
-                    contentType: entry.type.rawValue,
+                    contentType: entry.type.backendContentType,
                     content: entry.content,
                     contentDate: entry.date
                 )
-                print("Entry \(entry.id) synced to backend")
+                print("✅ Entry \(entry.id) synced to backend as '\(entry.type.backendContentType)'")
             } catch {
-                print("Entry sync failed: \(error.localizedDescription)")
+                print("❌ Entry sync failed for \(entry.id): \(error.localizedDescription)")
             }
+        }
+    }
+    
+    /// Resync all existing entries to the backend. Call this once to push
+    /// entries that were never synced due to the content-type mismatch.
+    func resyncAllEntriesToBackend() {
+        guard RetrospectAPIClient.shared.isAuthenticated else {
+            print("⚠️ Cannot resync — not authenticated")
+            return
+        }
+        let validEntries = entries.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        print("🔄 Resyncing \(validEntries.count) entries to backend...")
+        
+        Task {
+            var successCount = 0
+            var failCount = 0
+            
+            for entry in validEntries {
+                do {
+                    try await RetrospectAPIClient.shared.uploadContent(
+                        contentType: entry.type.backendContentType,
+                        content: entry.content,
+                        contentDate: entry.date
+                    )
+                    successCount += 1
+                } catch {
+                    failCount += 1
+                    print("❌ Resync failed for \(entry.id): \(error.localizedDescription)")
+                }
+                
+                // Small delay to avoid hammering the API
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            
+            print("🔄 Resync complete: \(successCount) succeeded, \(failCount) failed out of \(validEntries.count)")
         }
     }
     

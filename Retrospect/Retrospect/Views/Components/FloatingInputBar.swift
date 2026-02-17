@@ -206,7 +206,7 @@ struct GoalsFloatingBar: View {
                         
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -426,7 +426,7 @@ struct FloatingSearchAddBar: View {
                     
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -447,7 +447,7 @@ struct ExpandedSearchOverlay<Content: View>: View {
         GeometryReader { geometry in
         ZStack {
                 // Dimmed background
-            Color.black.opacity(0.6)
+            LinearColors.Minimal.overlayHeavy
                 .ignoresSafeArea()
                 .onTapGesture {
                     dismissOverlay()
@@ -527,7 +527,7 @@ struct ExpandedAddGoalOverlay: View {
         GeometryReader { geometry in
         ZStack {
                 // Dimmed background
-            Color.black.opacity(0.6)
+            LinearColors.Minimal.overlayHeavy
                 .ignoresSafeArea()
                 .onTapGesture {
                     dismissOverlay()

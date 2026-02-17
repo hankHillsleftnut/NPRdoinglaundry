@@ -142,7 +142,7 @@ extension View {
     .padding(40)
     .background(
         LinearGradient(
-            gradient: Gradient(colors: [Color.gray.opacity(0.1), Color.white]),
+            gradient: Gradient(colors: [LinearColors.Minimal.backgroundCard, LinearColors.Minimal.pureWhite]),
             startPoint: .top,
             endPoint: .bottom
         )

@@ -86,7 +86,7 @@ struct DarkMiniPlayer: View {
                         }) {
                             Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(width: 36, height: 36)
                                 .background(
                                     Circle()

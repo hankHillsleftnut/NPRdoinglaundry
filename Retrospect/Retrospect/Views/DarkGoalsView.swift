@@ -31,12 +31,12 @@ enum GoalCategory: String, CaseIterable {
     
     var color: Color {
         switch self {
-        case .health: return Color.red
-        case .career: return Color.blue
-        case .relationships: return Color.pink
-        case .personal: return Color.purple
-        case .skills: return Color.orange
-        case .finance: return Color.green
+        case .health: return LinearColors.Minimal.error
+        case .career: return LinearColors.Minimal.iconBlue
+        case .relationships: return LinearColors.Minimal.iconPink
+        case .personal: return LinearColors.Minimal.iconPurple
+        case .skills: return LinearColors.Minimal.iconOrange
+        case .finance: return LinearColors.Minimal.iconGreen
         case .other: return LinearColors.Minimal.accent
         }
     }

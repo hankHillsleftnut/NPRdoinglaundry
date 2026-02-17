@@ -155,20 +155,20 @@ struct HomeScreen: View {
                                         Text("Voice Note")
                                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     }
-                                    .foregroundColor(.white)
+                                    .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 14)
                                     .background(
                                         Capsule()
                                             .fill(
                                                 LinearGradient(
-                                                    colors: [Color.purple, Color.purple.opacity(0.8)],
+                                                    colors: [LinearColors.Minimal.iconPurple, LinearColors.Minimal.iconPurple.opacity(0.8)],
                                                     startPoint: .leading,
                                                     endPoint: .trailing
                                                 )
                                             )
                                             .shadow(
-                                                color: Color.purple.opacity(0.3),
+                                                color: LinearColors.Minimal.iconPurple.opacity(0.3),
                                                 radius: 12, x: 0, y: 6
                                             )
                                     )
@@ -223,7 +223,7 @@ struct HomeScreen: View {
             if isInFocusMode {
                 ZStack {
                     // Blurred/darkened background
-                    Color.black
+                    LinearColors.Minimal.background
                         .opacity(0.4)
                         .ignoresSafeArea()
                         .background(.ultraThinMaterial)
@@ -1082,7 +1082,7 @@ struct HomeScreen: View {
         ZStack {
             // Name Input Popup
             if showingNamePrompt {
-                Color.black.opacity(0.3)
+                LinearColors.Minimal.background.opacity(0.3)
                     .edgesIgnoringSafeArea(.all)
                     .transition(.opacity)
                 
@@ -1111,7 +1111,7 @@ struct HomeScreen: View {
                     }) {
                         Text("Continue")
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(width: 200)
                     }
                     .coStarPrimaryButton(isDisabled: userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1132,7 +1132,7 @@ struct HomeScreen: View {
     private var editNamePopup: some View {
         Group {
             if isEditingName {
-                Color.black.opacity(0.3)
+                LinearColors.Minimal.background.opacity(0.3)
                     .edgesIgnoringSafeArea(.all)
                     .overlay(
                         VStack(spacing: 24) {
@@ -1174,7 +1174,7 @@ struct HomeScreen: View {
                                 }) {
                                     Text("Save")
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(LinearColors.Minimal.textPrimary)
                                         .frame(width: 120)
                                 }
                                 .coStarPrimaryButton(isDisabled: userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1603,7 +1603,7 @@ struct ExperimentalView: View {
                     // Play Icon
                     Image(systemName: isAudioPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                 }
                 .frame(width: 200, height: 200)
@@ -1664,10 +1664,10 @@ struct ExperimentalView: View {
                         .frame(height: 48)
                         .background(
                             RoundedRectangle(cornerRadius: BorderRadius.button)
-                                .fill(isRecordingVoice ? Color.red.opacity(0.1) : LinearColors.cardBackground)
+                                .fill(isRecordingVoice ? LinearColors.Minimal.errorSubtle : LinearColors.cardBackground)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: BorderRadius.button)
-                                        .stroke(isRecordingVoice ? Color.red.opacity(0.3) : LinearColors.cardBorder, lineWidth: BorderWidth.standard)
+                                        .stroke(isRecordingVoice ? LinearColors.Minimal.recordingPulse : LinearColors.cardBorder, lineWidth: BorderWidth.standard)
                                 )
                         )
                     }

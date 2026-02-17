@@ -297,6 +297,59 @@ class ClaudeService {
         let tags: [String]
     }
 
+    // MARK: - Onboarding Goals Conversation (contextual follow-ups)
+    
+    /// Sends the current goals conversation and returns one assistant reply. Used during onboarding so the bot feels in-context.
+    /// - Parameter conversationMessages: Array of [ "role": "user" | "assistant", "content": "..." ]
+    /// - Parameter completion: Result with the next assistant message text, or error.
+    func generateOnboardingGoalsReply(conversationMessages: [[String: Any]], completion: @escaping (Result<String, ClaudeError>) -> Void) {
+        let systemPrompt = """
+        You are Retrospect, a warm and thoughtful app that turns the user's life into a weekly podcast. Right now you're in a short onboarding conversation to learn about their goals. The user has just replied to your last message.
+
+        Your job: reply with exactly one short message (1-3 sentences). Be genuinely curious and reference what they said. Ask one thoughtful follow-up that helps you understand what they want to change or focus on—day-to-day behavior, a recent moment, obstacles, or another area of life. Sound like a real person, not a form. No bullet points, no "Great!", no generic praise. Be specific to their words.
+        """
+        
+        var request = URLRequest(url: baseURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 30
+        
+        let body: [String: Any] = [
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 256,
+            "system": systemPrompt,
+            "messages": conversationMessages
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            completion(.failure(.parseError))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(.networkError))
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let content = json["content"] as? [[String: Any]],
+                  let first = content.first,
+                  let text = first["text"] as? String else {
+                completion(.failure(.apiError("Invalid response")))
+                return
+            }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            completion(.success(trimmed))
+        }.resume()
+    }
+    
     func analyzeEntryForMetadata(content: String, completion: @escaping (Result<EntryMetadata, ClaudeError>) -> Void) {
         print("🏷️ Generating entry metadata (Claude)...")
 

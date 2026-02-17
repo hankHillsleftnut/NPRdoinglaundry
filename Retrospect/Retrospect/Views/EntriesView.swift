@@ -12,7 +12,6 @@ struct EntriesView: View {
     @State private var selectedFilter: EntryFilterType = .all
     @State private var searchText = ""
     @State private var selectedEntry: Entry?
-    @State private var showingEntryDetail = false
     
     var body: some View {
         NavigationView {
@@ -38,7 +37,6 @@ struct EntriesView: View {
                                     entry: entry,
                                     onTap: {
                                         selectedEntry = entry
-                                        showingEntryDetail = true
                                     },
                                     onDelete: {
                                         deleteEntry(entry)
@@ -56,10 +54,8 @@ struct EntriesView: View {
             .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showingEntryDetail) {
-            if let entry = selectedEntry {
-                EntryDetailView(entry: entry)
-            }
+        .sheet(item: $selectedEntry) { entry in
+            EntryDetailView(entry: entry)
         }
     }
     

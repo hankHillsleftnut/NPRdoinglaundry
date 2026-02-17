@@ -2,8 +2,9 @@
 //  DarkAudioPlayerView.swift
 //  Retrospect
 //
-//  Full screen audio player for the dark UI
-//  Animated gradient background based on mood, full playback controls
+//  Full screen podcast detail with teleprompter-style auto-scrolling transcript.
+//  Matches the reference UI: artwork top-left, metadata, large title, scrolling body,
+//  progress bar, and bottom playback controls.
 //
 
 import SwiftUI
@@ -17,18 +18,20 @@ struct DarkAudioPlayerView: View {
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isDragging = false
-    @State private var showTranscript = false
-    @State private var animateGradient = false
     @State private var showInsights = false
     @State private var insights: [BackendInsight] = []
     @State private var isLoadingInsights = false
+    @State private var playbackSpeed: Float = 1.0
+    @State private var scrollProxy: ScrollViewProxy?
+    
+    private let availableSpeeds: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
     
     private var hasAudio: Bool {
         transcript.audioFileURL != nil && audioManager.audioPlayer != nil
     }
     
     private var duration: TimeInterval {
-        audioManager.audioPlayer?.duration ?? 0
+        audioManager.audioPlayer?.duration ?? estimatedDuration
     }
     
     private var progress: Double {
@@ -54,295 +57,454 @@ struct DarkAudioPlayerView: View {
         }
     }
     
+    // Split transcript into sentences for teleprompter
+    private var sentences: [String] {
+        guard let script = transcript.processedTranscript else { return [] }
+        let cleaned = script.replacingOccurrences(
+            of: "\\[\\w+(?:\\s\\w+)*\\]",
+            with: "",
+            options: .regularExpression
+        )
+        var results: [String] = []
+        cleaned.enumerateSubstrings(in: cleaned.startIndex..., options: .bySentences) { substring, _, _, _ in
+            if let s = substring?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty {
+                results.append(s)
+            }
+        }
+        return results
+    }
+    
+    private var currentSentenceIndex: Int {
+        guard !sentences.isEmpty, duration > 0 else { return 0 }
+        let index = Int(progress * Double(sentences.count))
+        return min(index, sentences.count - 1)
+    }
+    
+    private var estimatedDuration: TimeInterval {
+        guard let script = transcript.processedTranscript else { return 0 }
+        let wordCount = script.split(separator: " ").count
+        return Double(wordCount) / 2.5
+    }
+    
+    private var episodeTitle: String {
+        guard let script = transcript.processedTranscript else { return "This Week's Episode" }
+        let firstChunk = script.prefix(150)
+        if let endIdx = firstChunk.firstIndex(where: { ".!?".contains($0) }) {
+            let title = String(firstChunk[...endIdx])
+            return title.replacingOccurrences(
+                of: "\\[\\w+(?:\\s\\w+)*\\]",
+                with: "",
+                options: .regularExpression
+            ).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return String(firstChunk).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
     var body: some View {
         ZStack {
-            // Animated gradient background
-            animatedBackground
+            LinearColors.Minimal.background
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header with close button
-                HStack {
-                    Button(action: {
-                        HapticManager.shared.playLightImpact()
-                        dismiss()
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Now Playing")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 4) {
-                        // Insights button
-                        if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
-                            Button(action: {
-                                HapticManager.shared.playLightImpact()
-                                showInsights = true
-                                if insights.isEmpty { loadInsights() }
-                            }) {
-                                Image(systemName: "lightbulb.fill")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(width: 44, height: 44)
-                            }
-                        }
-                        
-                        Button(action: {
-                            HapticManager.shared.playLightImpact()
-                            showTranscript = true
-                        }) {
-                            Image(systemName: "doc.text")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                // Top bar: back chevron
+                topBar
                 
-                Spacer()
-                
-                // Album artwork
-                ZStack {
-                    // Glowing background
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                gradient: Gradient(colors: [
-                                    moodColors[0].opacity(0.5),
-                                    Color.clear
-                                ]),
-                                center: .center,
-                                startRadius: 80,
-                                endRadius: 180
-                            )
-                        )
-                        .frame(width: 360, height: 360)
-                        .blur(radius: 40)
-                    
-                    // Main artwork
-                    RoundedRectangle(cornerRadius: 32)
-                        .fill(
+                // Scrollable content: artwork, metadata, title, transcript
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Artwork + action buttons
+                            artworkRow
+                                .padding(.top, 8)
+                            
+                            // Metadata line
+                            metadataLine
+                                .padding(.top, 16)
+                            
+                            // Large title
+                            Text(episodeTitle)
+                                .font(.custom("EBGaramond12-Regular", size: 34))
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .lineSpacing(6)
+                                .padding(.top, 20)
+                                .padding(.trailing, 16)
+                            
+                            // Divider
+                            Rectangle()
+                                .fill(LinearColors.Minimal.border.opacity(0.5))
+                                .frame(height: 0.5)
+                                .padding(.top, 28)
+                                .padding(.trailing, 16)
+                            
+                            // Transcript body (teleprompter)
+                            teleprompterBody
+                                .padding(.top, 24)
+                            
+                            Spacer(minLength: 220)
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                    .mask(
+                        VStack(spacing: 0) {
+                            Color.black
                             LinearGradient(
-                                gradient: Gradient(colors: moodColors + moodColors.reversed()),
-                                startPoint: animateGradient ? .topLeading : .bottomTrailing,
-                                endPoint: animateGradient ? .bottomTrailing : .topLeading
+                                colors: [.black, .black.opacity(0.5), .clear],
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
-                        )
-                        .frame(width: 280, height: 280)
-                        .overlay(
-                            Image(systemName: "waveform")
-                                .font(.system(size: 80, weight: .light))
-                                .foregroundColor(.white.opacity(0.9))
-                        )
-                        .shadow(color: moodColors[0].opacity(0.5), radius: 40, x: 0, y: 20)
-                }
-                .padding(.vertical, 40)
-                
-                Spacer()
-                
-                // Track info
-                VStack(spacing: 8) {
-                    Text("Weekly Insights")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    
-                    Text(podcastMood.displayName)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .padding(.bottom, 32)
-                
-                // Progress bar (only if audio is available)
-                if hasAudio {
-                    VStack(spacing: 8) {
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                // Track
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white.opacity(0.3))
-                                    .frame(height: 4)
-                                
-                                // Progress
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.white)
-                                    .frame(width: geometry.size.width * progress, height: 4)
-                                
-                                // Scrubber
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: isDragging ? 16 : 12, height: isDragging ? 16 : 12)
-                                    .offset(x: (geometry.size.width * progress) - (isDragging ? 8 : 6))
-                                    .gesture(
-                                        DragGesture(minimumDistance: 0)
-                                            .onChanged { value in
-                                                isDragging = true
-                                                let newProgress = min(max(value.location.x / geometry.size.width, 0), 1)
-                                                currentTime = duration * newProgress
-                                                audioManager.seekTo(progress: newProgress)
-                                            }
-                                            .onEnded { _ in
-                                                isDragging = false
-                                            }
-                                    )
-                            }
+                            .frame(height: 80)
                         }
-                        .frame(height: 16)
-                        
-                        // Time labels
-                        HStack {
-                            Text(formatTime(currentTime))
-                                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.6))
-                            
-                            Spacer()
-                            
-                            Text(formatTime(duration))
-                                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 24)
-                } else {
-                    // No audio - show transcript preview
-                    VStack(spacing: 8) {
-                        Text("Transcript Preview")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        Text(transcript.processedTranscript?.prefix(200).description ?? "No transcript available")
-                            .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                            .lineLimit(4)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("...")
-                            .foregroundColor(.white.opacity(0.4))
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 24)
-                }
-                
-                // Error message if any
-                if let error = audioManager.lastError {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 14, weight: .medium))
-                        Text(error)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                    }
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.orange.opacity(0.15))
                     )
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 16)
+                    .onAppear { scrollProxy = proxy }
+                    .onChange(of: currentSentenceIndex) { _, newIndex in
+                        withAnimation(.easeInOut(duration: 0.8)) {
+                            proxy.scrollTo("sentence-\(max(0, newIndex - 1))", anchor: .top)
+                        }
+                    }
                 }
                 
-                // Playback controls (only if audio is available)
-                if hasAudio {
-                    HStack(spacing: 48) {
-                        // Rewind 15s
-                        Button(action: {
-                            HapticManager.shared.playLightImpact()
-                            let newTime = max(currentTime - 15, 0)
-                            audioManager.audioPlayer?.currentTime = newTime
-                            currentTime = newTime
-                        }) {
-                            Image(systemName: "gobackward.15")
-                                .font(.system(size: 28, weight: .medium))
-                                .foregroundColor(.white)
-                        }
-                        
-                        // Play/Pause
-                        Button(action: {
-                            HapticManager.shared.playMediumImpact()
-                            audioManager.togglePlayback()
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 72, height: 72)
-                                
-                                Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(moodColors[0])
-                                    .offset(x: audioManager.isPlaying ? 0 : 2)
-                            }
-                        }
-                        
-                        // Forward 15s
-                        Button(action: {
-                            HapticManager.shared.playLightImpact()
-                            let newTime = min(currentTime + 15, duration)
-                            audioManager.audioPlayer?.currentTime = newTime
-                            currentTime = newTime
-                        }) {
-                            Image(systemName: "goforward.15")
-                                .font(.system(size: 28, weight: .medium))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .padding(.bottom, 60)
-                } else {
-                    // No audio - show "Read Transcript" button instead
-                    VStack(spacing: 16) {
-                        Text("Audio not available")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        Button(action: {
-                            HapticManager.shared.playMediumImpact()
-                            showTranscript = true
-                        }) {
-                            HStack(spacing: 10) {
-                                Image(systemName: "doc.text")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text("Read Transcript")
-                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            }
-                            .foregroundColor(moodColors[0])
-                            .padding(.horizontal, 32)
-                            .padding(.vertical, 16)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white)
-                            )
-                        }
-                    }
-                    .padding(.bottom, 60)
-                }
+                // Bottom section: progress + controls
+                bottomControls
             }
         }
         .preferredColorScheme(.dark)
         .onAppear {
             setupTimer()
-            withAnimation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
-                animateGradient = true
-            }
         }
         .onDisappear {
             timer?.invalidate()
             timer = nil
         }
-        .sheet(isPresented: $showTranscript) {
-            DarkTranscriptSheet(transcript: transcript)
-        }
         .sheet(isPresented: $showInsights) {
             DarkInsightsSheet(insights: insights, isLoading: isLoadingInsights)
+        }
+    }
+    
+    // MARK: - Top Bar
+    
+    private var topBar: some View {
+        HStack {
+            Button(action: {
+                HapticManager.shared.playLightImpact()
+                dismiss()
+            }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                    .frame(width: 40, height: 40)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+    }
+    
+    // MARK: - Artwork Row
+    
+    private var artworkRow: some View {
+        HStack(alignment: .top) {
+            // Album artwork (mood gradient)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: moodColors + moodColors.reversed()),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "waveform")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundColor(LinearColors.Minimal.pureWhite.opacity(0.9))
+            }
+            .shadow(color: moodColors[0].opacity(0.4), radius: 12, x: 0, y: 6)
+            
+            Spacer()
+            
+            // Action buttons
+            HStack(spacing: 16) {
+                if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
+                    Button(action: {
+                        HapticManager.shared.playLightImpact()
+                        showInsights = true
+                        if insights.isEmpty { loadInsights() }
+                    }) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(LinearColors.Minimal.textSecondary)
+                    }
+                }
+                
+                Button(action: {
+                    HapticManager.shared.playLightImpact()
+                    shareTranscript()
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                }
+                
+                Button(action: {
+                    HapticManager.shared.playLightImpact()
+                }) {
+                    Image(systemName: "heart")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Metadata Line
+    
+    private var metadataLine: some View {
+        HStack(spacing: 6) {
+            Text("Retrospect")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(LinearColors.Minimal.textTertiary)
+            
+            Text("·")
+                .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
+            
+            Text(formatFullDate(transcript.createdAt))
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(LinearColors.Minimal.textTertiary)
+            
+            if transcript.isDeepResearch {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(LinearColors.Minimal.accent)
+            }
+        }
+    }
+    
+    // MARK: - Teleprompter Body
+    
+    private var teleprompterBody: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if sentences.isEmpty {
+                Text(transcript.processedTranscript ?? "No transcript available.")
+                    .font(.system(size: 18, weight: .regular, design: .rounded))
+                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                    .lineSpacing(10)
+            } else {
+                ForEach(Array(sentences.enumerated()), id: \.offset) { index, sentence in
+                    Text(sentence)
+                        .font(.system(size: 18, weight: .regular, design: .rounded))
+                        .lineSpacing(10)
+                        .foregroundColor(colorForSentence(at: index))
+                        .multilineTextAlignment(.leading)
+                        .id("sentence-\(index)")
+                        .animation(.easeInOut(duration: 0.5), value: currentSentenceIndex)
+                }
+            }
+        }
+        .textSelection(.enabled)
+    }
+    
+    // MARK: - Bottom Controls
+    
+    private var bottomControls: some View {
+        VStack(spacing: 0) {
+            // Subtle separator
+            Rectangle()
+                .fill(LinearColors.Minimal.border)
+                .frame(height: 0.5)
+            
+            VStack(spacing: 16) {
+                // Progress bar
+                VStack(spacing: 8) {
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(LinearColors.Minimal.progressTrack)
+                                .frame(height: 3)
+                            
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(LinearColors.Minimal.accent)
+                                .frame(width: geometry.size.width * progress, height: 3)
+                        }
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    isDragging = true
+                                    let newProgress = min(max(value.location.x / geometry.size.width, 0), 1)
+                                    currentTime = duration * newProgress
+                                    if hasAudio {
+                                        audioManager.seekTo(progress: newProgress)
+                                    }
+                                }
+                                .onEnded { _ in
+                                    isDragging = false
+                                }
+                        )
+                    }
+                    .frame(height: 14)
+                    
+                    // Time labels
+                    HStack {
+                        Text(formatTime(currentTime))
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                        
+                        Spacer()
+                        
+                        Text("-" + formatTime(max(0, duration - currentTime)))
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                    }
+                }
+                
+                // Playback controls row
+                HStack(alignment: .center) {
+                    // More menu
+                    Menu {
+                        if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
+                            Button(action: {
+                                showInsights = true
+                                if insights.isEmpty { loadInsights() }
+                            }) {
+                                Label("View Insights", systemImage: "lightbulb")
+                            }
+                        }
+                        
+                        Button(action: { shareTranscript() }) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .frame(width: 40, height: 40)
+                    }
+                    
+                    Spacer()
+                    
+                    // Center transport: rewind, play, forward
+                    HStack(spacing: 32) {
+                        Button(action: {
+                            HapticManager.shared.playLightImpact()
+                            if hasAudio {
+                                let newTime = max(currentTime - 15, 0)
+                                audioManager.audioPlayer?.currentTime = newTime
+                                currentTime = newTime
+                            }
+                        }) {
+                            Image(systemName: "gobackward.15")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .frame(width: 40, height: 40)
+                        }
+                        .disabled(!hasAudio)
+                        .opacity(hasAudio ? 1 : 0.35)
+                        
+                        Button(action: {
+                            HapticManager.shared.playMediumImpact()
+                            if hasAudio {
+                                audioManager.togglePlayback()
+                            }
+                        }) {
+                            Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .offset(x: audioManager.isPlaying ? 0 : 2)
+                                .frame(width: 48, height: 48)
+                        }
+                        .disabled(!hasAudio)
+                        .opacity(hasAudio ? 1 : 0.35)
+                        
+                        Button(action: {
+                            HapticManager.shared.playLightImpact()
+                            if hasAudio {
+                                let newTime = min(currentTime + 30, duration)
+                                audioManager.audioPlayer?.currentTime = newTime
+                                currentTime = newTime
+                            }
+                        }) {
+                            Image(systemName: "goforward.30")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .frame(width: 40, height: 40)
+                        }
+                        .disabled(!hasAudio)
+                        .opacity(hasAudio ? 1 : 0.35)
+                    }
+                    
+                    Spacer()
+                    
+                    // Speed control
+                    Button(action: {
+                        HapticManager.shared.playLightImpact()
+                        cycleSpeed()
+                    }) {
+                        Text(formatSpeed(playbackSpeed))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(LinearColors.Minimal.backgroundCard)
+                            )
+                    }
+                    .frame(width: 40, alignment: .center)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
+            .background(LinearColors.Minimal.background)
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private func colorForSentence(at index: Int) -> Color {
+        guard hasAudio, audioManager.isPlaying || currentTime > 0 else {
+            return LinearColors.Minimal.textSecondary
+        }
+        
+        let distance = index - currentSentenceIndex
+        
+        if distance < 0 {
+            return LinearColors.Minimal.textPrimary
+        } else if distance == 0 {
+            return LinearColors.Minimal.textPrimary
+        } else if distance <= 2 {
+            return LinearColors.Minimal.textTertiary
+        } else {
+            return LinearColors.Minimal.textTertiary.opacity(0.4)
+        }
+    }
+    
+    private func cycleSpeed() {
+        guard let currentIdx = availableSpeeds.firstIndex(of: playbackSpeed) else {
+            playbackSpeed = 1.0
+            audioManager.audioPlayer?.rate = 1.0
+            return
+        }
+        let nextIdx = (currentIdx + 1) % availableSpeeds.count
+        playbackSpeed = availableSpeeds[nextIdx]
+        audioManager.audioPlayer?.enableRate = true
+        audioManager.audioPlayer?.rate = playbackSpeed
+    }
+    
+    private func formatSpeed(_ speed: Float) -> String {
+        if speed == Float(Int(speed)) {
+            return String(format: "%.1f", speed)
+        }
+        return String(format: "%.2g", speed)
+    }
+    
+    private func shareTranscript() {
+        guard let text = transcript.processedTranscript else { return }
+        let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            rootVC.present(activityVC, animated: true)
         }
     }
     
@@ -366,44 +528,6 @@ struct DarkAudioPlayerView: View {
         }
     }
     
-    private var animatedBackground: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-            
-            // Animated gradient orbs
-            Circle()
-                .fill(moodColors[0].opacity(0.3))
-                .frame(width: 300, height: 300)
-                .blur(radius: 80)
-                .offset(
-                    x: animateGradient ? 50 : -50,
-                    y: animateGradient ? -100 : 100
-                )
-            
-            Circle()
-                .fill(moodColors[1].opacity(0.2))
-                .frame(width: 250, height: 250)
-                .blur(radius: 60)
-                .offset(
-                    x: animateGradient ? -80 : 80,
-                    y: animateGradient ? 150 : -50
-                )
-            
-            if moodColors.count > 2 {
-                Circle()
-                    .fill(moodColors[2].opacity(0.15))
-                    .frame(width: 200, height: 200)
-                    .blur(radius: 50)
-                    .offset(
-                        x: animateGradient ? 100 : -100,
-                        y: animateGradient ? 50 : -150
-                    )
-            }
-        }
-        .animation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true), value: animateGradient)
-    }
-    
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             if !isDragging {
@@ -414,9 +538,20 @@ struct DarkAudioPlayerView: View {
     }
     
     private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        let totalSeconds = Int(time)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+    
+    private func formatFullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
     }
 }
 
@@ -431,13 +566,11 @@ struct DarkTranscriptSheet: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Handle
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.textTertiary)
                     .frame(width: 36, height: 4)
                     .padding(.top, 12)
                 
-                // Header
                 HStack {
                     Text("Transcript")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
@@ -455,12 +588,12 @@ struct DarkTranscriptSheet: View {
                 .padding(.top, 20)
                 .padding(.bottom, 16)
                 
-                // Content
                 ScrollView {
                     Text(transcript.processedTranscript ?? "No transcript available")
                         .font(.system(size: 16, weight: .regular, design: .rounded))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                         .lineSpacing(8)
+                        .textSelection(.enabled)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 40)
                 }
@@ -482,13 +615,11 @@ struct DarkInsightsSheet: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Handle
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.textTertiary)
                     .frame(width: 36, height: 4)
                     .padding(.top, 12)
                 
-                // Header
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Insights")
@@ -555,18 +686,16 @@ struct InsightCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Title row
             HStack(alignment: .top) {
                 Image(systemName: "lightbulb.fill")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.yellow.opacity(0.9))
+                    .foregroundColor(LinearColors.Minimal.accent)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(insight.title)
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
-                    // Confidence pill
                     HStack(spacing: 6) {
                         Text("\(Int(insight.confidenceScore * 100))% confidence")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -591,13 +720,11 @@ struct InsightCard: View {
                 }
             }
             
-            // Content (always visible)
             Text(insight.content)
                 .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
                 .lineLimit(isExpanded ? nil : 3)
             
-            // Evidence (expanded only)
             if isExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Evidence")
@@ -635,4 +762,3 @@ struct InsightCard: View {
         audioManager: DarkAudioManager.shared
     )
 }
-

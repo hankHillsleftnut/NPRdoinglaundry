@@ -52,12 +52,21 @@ struct StopRecordingIntent: AppIntent {
     // Helper to save entry
     @MainActor
     private func saveVoiceEntry(audioURL: URL, transcription: String) async {
+        let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
+        let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
+        
+        guard !trimmed.isEmpty || hasUsableAudio else {
+            print("⚠️ Discarding empty voice recording from Live Activity — no content")
+            return
+        }
+        
         // Generate simple title
         var title = "Voice Entry"
-        if !transcription.isEmpty {
-            let words = transcription.split(separator: " ").prefix(10)
+        if !trimmed.isEmpty {
+            let words = trimmed.split(separator: " ").prefix(10)
             title = words.joined(separator: " ")
-            if transcription.split(separator: " ").count > 10 {
+            if trimmed.split(separator: " ").count > 10 {
                 title += "..."
             }
         }
@@ -67,11 +76,10 @@ struct StopRecordingIntent: AppIntent {
         do {
             try FileStorageManager.shared.moveAudio(from: audioURL, to: entryId)
             
-            // Create entry
             let entry = Entry(
                 id: entryId,
                 type: .voice,
-                content: transcription,
+                content: trimmed,
                 audioURL: FileStorageManager.shared.getAudioURL(for: entryId),
                 aiGeneratedTitle: title,
                 tags: []

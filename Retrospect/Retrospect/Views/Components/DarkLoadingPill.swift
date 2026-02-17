@@ -46,7 +46,7 @@ struct DarkLoadingPill: View {
                 
                 Image(systemName: "sparkles")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(LinearColors.Minimal.textPrimary)
                     .rotationEffect(.degrees(animateGradient ? 360 : 0))
             }
             

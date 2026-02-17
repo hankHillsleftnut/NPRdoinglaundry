@@ -58,7 +58,7 @@ struct GeneratingLoadingView: View {
                 VStack(spacing: 12) {
                     Text(currentLoadingIndex < loadingMessages.count ? loadingMessages[currentLoadingIndex] : "Finalizing...")
                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .multilineTextAlignment(.center)
                         .animation(.easeInOut(duration: 0.5), value: currentLoadingIndex)
                     
@@ -168,7 +168,7 @@ struct DeepResearchGeneratingView: View {
                     // Brain icon with pulse
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 40))
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .scaleEffect(brainPulse)
                     
                     // Rotating search rings
@@ -208,7 +208,7 @@ struct DeepResearchGeneratingView: View {
                             
                             Text(phase.title)
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .multilineTextAlignment(.leading)
                             
                             Spacer()
@@ -374,7 +374,7 @@ struct InsightGeneratingView: View {
                 VStack(spacing: 12) {
                     Text(currentLoadingIndex < loadingMessages.count ? loadingMessages[currentLoadingIndex] : "Finalizing...")
                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                        .foregroundColor(.white)
+                        .foregroundColor(LinearColors.Minimal.textPrimary)
                         .multilineTextAlignment(.center)
                         .animation(.easeInOut(duration: 0.5), value: currentLoadingIndex)
                     

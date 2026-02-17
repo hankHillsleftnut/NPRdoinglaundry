@@ -160,7 +160,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                             }
                             Text(isSaving ? "Saving..." : "Continue")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)

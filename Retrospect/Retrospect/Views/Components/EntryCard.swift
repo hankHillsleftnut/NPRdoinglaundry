@@ -117,7 +117,7 @@ struct EntryCard: View {
         case .video:
             return LinearColors.accent
         case .voice:
-            return Color.purple
+            return LinearColors.Minimal.iconPurple
         case .text:
             return LinearColors.textPrimary
         }
@@ -128,7 +128,7 @@ struct EntryCard: View {
         case .video:
             return LinearColors.accent.opacity(0.15)
         case .voice:
-            return Color.purple.opacity(0.15)
+            return LinearColors.Minimal.iconPurple.opacity(0.15)
         case .text:
             return LinearColors.cardBorder.opacity(0.5)
         }
