@@ -33,6 +33,10 @@
 	<string>YOUR_ANTHROPIC_API_KEY_HERE</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
+	<key>XClientID</key>
+	<string>YOUR_X_CLIENT_ID_HERE</string>
+	<key>XRedirectURI</key>
+	<string>retrospect://x-auth-callback</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>GeistSans-Regular.otf</string>

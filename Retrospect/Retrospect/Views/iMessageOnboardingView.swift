@@ -25,6 +25,7 @@ enum ChatMessageSender {
 enum QuickReplyAction: Equatable {
     case advance
     case appleSignIn
+    case connectXBookmarks
     case connectGoogleDocs
     case enableHealth
     case enableScreenTime
@@ -54,14 +55,15 @@ private enum OnboardingPhase: Int, CaseIterable {
     case story = 1
     case privacy = 2
     case auth = 3
-    case googleDocs = 4
-    case appleHealth = 5
-    case screenTime = 6
-    case voicePersona = 7
-    case goals = 8
-    case closing = 9
+    case xBookmarks = 4
+    case googleDocs = 5
+    case appleHealth = 6
+    case screenTime = 7
+    case voicePersona = 8
+    case goals = 9
+    case closing = 10
     
-    static let totalPhases = 9
+    static let totalPhases = 10
 }
 
 // MARK: - Send Button Style (for input bar)
@@ -78,6 +80,7 @@ struct iMessageOnboardingView: View {
     var onComplete: (() -> Void)?
     
     @AppStorage("onboardingCurrentStep") private var persistedStep: Int = 1
+    @AppStorage("onboardingSchemaVersion") private var onboardingSchemaVersion: Int = 1
     @State private var phase: OnboardingPhase = .story
     @State private var messages: [ChatMessage] = []
     @State private var showTypingIndicator = false
@@ -117,6 +120,7 @@ struct iMessageOnboardingView: View {
     @StateObject private var onboardingAudioManager = AudioRecordingManager()
     
     @StateObject private var apiClient = RetrospectAPIClient.shared
+    @StateObject private var xBookmarksService = XBookmarksService.shared
     @StateObject private var googleDocsService = GoogleDocsService.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
     @StateObject private var goalsManager = GoalsManager.shared
@@ -126,6 +130,7 @@ struct iMessageOnboardingView: View {
     @State private var isSigningIn = false
     @State private var signInError: String?
     @State private var appleSignInCoordinator: AppleSignInCoordinator?
+    @State private var isConnectingX = false
     @State private var isConnectingGoogle = false
     @State private var googleError: String?
     @State private var isRequestingHealth = false
@@ -234,6 +239,15 @@ struct iMessageOnboardingView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
+            // Migration: a new X bookmarks step was inserted after auth.
+            // Preserve prior in-progress onboarding positions from older builds.
+            if onboardingSchemaVersion < 2 {
+                if persistedStep >= 4 && persistedStep <= 9 {
+                    persistedStep += 1
+                }
+                onboardingSchemaVersion = 2
+            }
+
             let raw = max(1, persistedStep)
             phase = OnboardingPhase(rawValue: raw) ?? .story
             replayMessagesForPhase()
@@ -432,6 +446,14 @@ struct iMessageOnboardingView: View {
             if trimmed.lowercased().contains("sign in") {
                 triggerAppleSignIn()
             }
+        case .xBookmarks:
+            if trimmed.lowercased().contains("connect")
+                || trimmed.lowercased().contains("x")
+                || trimmed.lowercased().contains("twitter") {
+                connectXBookmarks()
+            } else if trimmed.lowercased().contains("skip") {
+                advancePhase()
+            }
         case .googleDocs:
             if trimmed.lowercased().contains("connect") || trimmed.lowercased().contains("google") {
                 connectGoogleDocs()
@@ -613,6 +635,11 @@ struct iMessageOnboardingView: View {
                 ChatMessage(sender: .retrospect, text: "Let's make this yours."),
                 ChatMessage(sender: .retrospect, text: "Sign in so your reflections and podcasts stay with you across devices."),
             ]
+        case .xBookmarks:
+            return [
+                ChatMessage(sender: .retrospect, text: "Want me to read your X bookmarks too?"),
+                ChatMessage(sender: .retrospect, text: "Connect X and I'll pull saved posts into your weekly reflection so your best finds don't disappear."),
+            ]
         case .googleDocs:
             return [
                 ChatMessage(sender: .retrospect, text: "Your Google Docs are full of unfinished thoughts and half-written ideas."),
@@ -722,6 +749,10 @@ struct iMessageOnboardingView: View {
         case .auth:
             deliverMessageGroup(scriptMessages(for: .auth), typingDuration: 1.2) {
                 autoFillInputBar(text: "Sign in with Apple", style: .apple, showSkip: false)
+            }
+        case .xBookmarks:
+            deliverMessageGroup(scriptMessages(for: .xBookmarks), typingDuration: 1.6) {
+                autoFillInputBar(text: "Connect X Bookmarks", style: .default, showSkip: true)
             }
         case .googleDocs:
             deliverMessageGroup(scriptMessages(for: .googleDocs), typingDuration: 1.8) {
@@ -893,6 +924,35 @@ struct iMessageOnboardingView: View {
                     isConnectingGoogle = false
                     googleError = "Failed to connect. Please try again."
                     autoFillInputBar(text: "Connect Google Docs", style: .default, showSkip: true)
+                }
+            }
+        }
+    }
+
+    private func connectXBookmarks() {
+        guard !isConnectingX else { return }
+        isConnectingX = true
+        Task {
+            do {
+                let bookmarkCount = try await xBookmarksService.connectAndInitialSync()
+                await MainActor.run {
+                    isConnectingX = false
+                    HapticManager.shared.playSuccessNotification()
+                    messages.append(ChatMessage(
+                        sender: .retrospect,
+                        text: "Connected. Imported \(bookmarkCount) recent bookmarks.",
+                        isSpecial: true
+                    ))
+                    advancePhase()
+                }
+            } catch {
+                await MainActor.run {
+                    isConnectingX = false
+                    messages.append(ChatMessage(
+                        sender: .retrospect,
+                        text: "Couldn't connect X right now. You can try again or skip for now."
+                    ))
+                    autoFillInputBar(text: "Connect X Bookmarks", style: .default, showSkip: true)
                 }
             }
         }

@@ -56,6 +56,7 @@ struct RetrospectApp: App {
     @State private var notificationPodcastId: String?
     @State private var needsBackendAuth = false // true when onboarding done but no backend JWT
     @StateObject private var googleDocsService = GoogleDocsService.shared
+    @StateObject private var xBookmarksService = XBookmarksService.shared
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var notificationService = PodcastNotificationService.shared
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
@@ -156,6 +157,11 @@ struct RetrospectApp: App {
                         showGoogleAuth = true
                     }
                 }
+
+                Task {
+                    await xBookmarksService.checkAuthenticationStatus()
+                    xBookmarksService.refreshIfNeeded()
+                }
                 
                 // Listen for voice recording shortcut trigger (when app is already running)
                 NotificationCenter.default.addObserver(
@@ -228,6 +234,7 @@ struct RetrospectApp: App {
                 // Refresh screen time data when app becomes active
                 if newPhase == .active {
                     ScreenTimeService.shared.refreshData()
+                    xBookmarksService.refreshIfNeeded()
                 }
             }
             .onOpenURL { url in
