@@ -241,7 +241,8 @@ INSERT INTO data_sources (name, display_name, description, extraction_prompt) VA
     ('google_docs', 'Google Docs', 'Documents from Google Drive', 'Extract atomic insight units from this Google Doc.'),
     ('healthkit', 'Apple HealthKit', 'Health and fitness data from Apple Health', 'Extract atomic insight units from this HealthKit data.'),
     ('calendar', 'Calendar', 'Calendar events and schedule data', 'Extract atomic insight units from this calendar data.'),
-    ('twitter_bookmarks', 'Twitter Bookmarks', 'Saved tweets and threads', 'Extract atomic insight units from these Twitter bookmarks.')
+    ('twitter_bookmarks', 'Twitter Bookmarks', 'Saved tweets and threads', 'Extract atomic insight units from these Twitter bookmarks.'),
+    ('x/twitter', 'X/Twitter', 'Saved X/Twitter bookmarks and threads', 'Extract atomic insight units from these Twitter bookmarks.')
 ON CONFLICT (name) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     description = EXCLUDED.description;

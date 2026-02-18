@@ -8,6 +8,19 @@ import type {
 } from '../types/index.js';
 
 // Source-specific extraction prompts
+const twitterBookmarksPrompt = `You are an expert at extracting atomic insight units from Twitter/X bookmarks.
+Focus on interests, aspirations, values, and topics the user cares about based on what they save.
+
+RULES:
+1. Each insight = ONE atomic observation about user interests/values
+2. Identify recurring themes across bookmarks
+3. Consider emotional resonance (why might they have saved this?)
+4. These are all inferences - set is_inferred: true with reasoning
+5. Suggest categories based on content themes
+6. Look for aspirational content vs informational vs entertainment
+
+OUTPUT FORMAT: Return a JSON object with insights array and processingNotes.`;
+
 const extractionPrompts: Record<ContentType, string> = {
   voice_recording: `You are an expert at extracting atomic insight units from voice transcripts.
 The user is speaking stream-of-consciousness, so look for emotional undertones, implied states, and both explicit and inferred insights.
@@ -142,18 +155,8 @@ RULES:
 
 OUTPUT FORMAT: Return a JSON object with insights array and processingNotes.`,
 
-  twitter_bookmarks: `You are an expert at extracting atomic insight units from Twitter/X bookmarks.
-Focus on interests, aspirations, values, and topics the user cares about based on what they save.
-
-RULES:
-1. Each insight = ONE atomic observation about user interests/values
-2. Identify recurring themes across bookmarks
-3. Consider emotional resonance (why might they have saved this?)
-4. These are all inferences - set is_inferred: true with reasoning
-5. Suggest categories based on content themes
-6. Look for aspirational content vs informational vs entertainment
-
-OUTPUT FORMAT: Return a JSON object with insights array and processingNotes.`,
+  twitter_bookmarks: twitterBookmarksPrompt,
+  'x/twitter': twitterBookmarksPrompt,
 };
 
 // Validate extracted insights have required fields

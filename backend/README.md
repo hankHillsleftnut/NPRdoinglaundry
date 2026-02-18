@@ -112,6 +112,8 @@ Knowledge Graph API for the Retrospect personal insights system. Extracts atomic
    ```
    supabase/migrations/001_initial_schema.sql
    supabase/migrations/002_seed_categories.sql
+   supabase/migrations/003_goals_observations_insights.sql
+   supabase/migrations/004_add_x_twitter_data_source.sql
    ```
 
 4. Apply the vector search functions:
@@ -143,6 +145,7 @@ The API supports the following content types for insight extraction:
 | `healthkit` | Apple HealthKit data |
 | `calendar` | Calendar events |
 | `twitter_bookmarks` | Twitter/X bookmarks |
+| `x/twitter` | X/Twitter integration alias for bookmarks |
 
 Each content type has a tailored GPT-4 extraction prompt optimized for that data source.
 
