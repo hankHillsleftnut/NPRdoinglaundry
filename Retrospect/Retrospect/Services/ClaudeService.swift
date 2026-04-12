@@ -306,7 +306,7 @@ class ClaudeService {
         let systemPrompt = """
         You are Retrospect, a warm and thoughtful app that turns the user's life into a weekly podcast. Right now you're in a short onboarding conversation to learn about their goals. The user has just replied to your last message.
 
-        Your job: reply with exactly one short message (1-3 sentences). Be genuinely curious and reference what they said. Ask one thoughtful follow-up that helps you understand what they want to change or focus on—day-to-day behavior, a recent moment, obstacles, or another area of life. Sound like a real person, not a form. No bullet points, no "Great!", no generic praise. Be specific to their words.
+        Your job: reply with exactly one short message (1-3 sentences). Reference their exact words or a specific detail they shared; do not give a generic reply. Be genuinely curious. Ask one thoughtful follow-up that helps you understand what they want to change or focus on—day-to-day behavior, a recent moment, obstacles, or another area of life. Sound like a real person, not a form. No bullet points, no "Great!", no generic praise.
         """
         
         var request = URLRequest(url: baseURL)
@@ -347,6 +347,90 @@ class ClaudeService {
             }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             completion(.success(trimmed))
+        }.resume()
+    }
+    
+    /// Extracts goals intelligently from a goals conversation using Claude API
+    func extractGoalsFromConversation(conversationHistory: [[String: Any]], completion: @escaping (Result<[String], ClaudeError>) -> Void) {
+        let systemPrompt = """
+        You are analyzing a conversation where Retrospect asked the user about their goals for the next couple of months. Extract 2-4 specific, actionable goals from what the user said.
+        
+        CRITICAL REQUIREMENTS:
+        - Be ACCURATE: Don't misclassify. If they say "I want to be better in the gym", extract "Exercise more" or "Fitness goals", NOT something unrelated.
+        - Capture NUANCE: If they mention wanting to feel more confident at work, extract "Career growth" or "Professional confidence", not just "Work".
+        - Be SPECIFIC: "Better sleep" not "Sleep", "Exercise more" not "Gym".
+        - NO SHORTCUTS: Read the full conversation context. Don't miss important details.
+        - Common goals: Exercise more, Better sleep, Read daily, Learn something new, Reduce stress, Eat healthier, Save money, Be more present, Improve focus, Build habits, Improve relationships, Career growth, Creativity
+        
+        Return ONLY a JSON array of goal strings, like: ["Exercise more", "Better sleep", "Career growth"]
+        Do not include any other text or explanation.
+        """
+        
+        // Build user message from conversation
+        let conversationText = conversationHistory.map { msg in
+            let role = msg["role"] as? String ?? ""
+            let content = msg["content"] as? String ?? ""
+            return "\(role.capitalized): \(content)"
+        }.joined(separator: "\n\n")
+        
+        let userMessage = "Conversation:\n\(conversationText)\n\nExtract 2-4 specific goals from this conversation."
+        
+        var request = URLRequest(url: baseURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 30
+        
+        let body: [String: Any] = [
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 200,
+            "system": systemPrompt,
+            "messages": [
+                ["role": "user", "content": userMessage]
+            ]
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            completion(.failure(.parseError))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(.networkError))
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let content = json["content"] as? [[String: Any]],
+                  let first = content.first,
+                  let text = first["text"] as? String else {
+                completion(.failure(.apiError("Invalid response")))
+                return
+            }
+            
+            // Parse JSON array from response
+            if let jsonData = text.data(using: .utf8),
+               let goalsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
+                completion(.success(goalsArray))
+            } else {
+                // Fallback: try to extract from text
+                let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if cleaned.hasPrefix("[") && cleaned.hasSuffix("]") {
+                    let inner = String(cleaned.dropFirst().dropLast())
+                    let goals = inner.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) }
+                        .filter { !$0.isEmpty }
+                    completion(.success(goals))
+                } else {
+                    completion(.failure(.parseError))
+                }
+            }
         }.resume()
     }
     

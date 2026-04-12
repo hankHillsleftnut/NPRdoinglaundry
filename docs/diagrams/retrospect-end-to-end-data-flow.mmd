@@ -1,0 +1,140 @@
+flowchart TB
+  classDef tbl fill:#e1f5fe,stroke:#01579b
+  classDef step fill:#fff8e1,stroke:#ff6f00
+  classDef model fill:#f3e5f5,stroke:#4a148c
+  classDef store fill:#e8f5e9,stroke:#1b5e20
+
+  subgraph S1["1. On-device capture: turn life signals into uploadable text"]
+    direction TB
+    s1a[Apple Sign In]:::step
+    s1b[Mic / camera / keyboard / Screen Time UI]:::step
+    s1c[SFSpeechRecognizer to transcript string]:::step
+    s1d[Screen Time ext: DeviceActivity to App Group JSON]:::step
+    s1e[Main app: natural-language screen time summary]:::step
+    s1f[Optional AIServiceManager: local titles/tags only]:::step
+    s1g[Local-only: HealthKit + Google Docs for on-device podcast path]:::step
+  end
+
+  subgraph S2["2. Render API edge: auth + JSON I/O"]
+    direction TB
+    s2a[HTTPS Express retrospect-api + Bearer JWT]:::step
+    s2b[POST /auth/signin maps apple_user_id to internal UUID]:::step
+    s2c[JWT middleware scopes /content,/insights,/pipeline,...]:::step
+  end
+
+  subgraph S3["3. Ingestion hub: who + what raw text"]
+    direction TB
+    U[("DB: users<br/>id, apple_user_id, email, voice_persona")]:::tbl
+    DS[("DB: data_sources<br/>row per channel; name = API content_type")]:::tbl
+    RC[("DB: raw_content<br/>content, content_type, dates, metadata JSONB, processing_status")]:::tbl
+    s3a[POST /content Zod validate; lookup data_sources by name]:::step
+    s3b[INSERT raw_content status pending]:::step
+  end
+
+  s1a --> s2b --> U
+  s1b --> s1c --> s2a --> s2c --> s3a --> s3b --> RC
+  s1d --> s1e --> s2a
+  DS -.->|optional FK source_id| RC
+  U -.->|FK user_id| RC
+
+  subgraph S4["4. Legacy graph pipeline: runs immediately after content upload succeeds"]
+    direction TB
+    s4a["extraction.ts: Claude Sonnet, prompt per content_type<br/>Atomic insight rows + sentiment, intensity, categories, inferred"]:::model
+    s4b[UPDATE raw_content processing_status completed or failed]:::step
+    IU[("DB: insight_units<br/>one atomic memory per row, pgvector 3072d, FK raw_content")]:::tbl
+    s4c[connections.ts batch after extraction]:::step
+    s4d[OpenAI text-embedding-3-large: bracket category bracket + content]:::model
+    s4e[Vector neighbor search vs existing units config similarityThreshold ~0.7]:::step
+    s4f[Claude: CBT edge labels strength reasoning bidirectional flag]:::model
+    IC[("DB: insight_connections<br/>source_insight_id, target_insight_id, type, strength")]:::tbl
+  end
+
+  RC --> s4a
+  s4a --> IU
+  s4a --> s4b --> RC
+  IU --> s4c --> s4d --> s4e --> s4f --> IC
+  U -.-> IU
+
+  subgraph S5["5. Goals pipeline: daily 05:00 UTC cron + POST /pipeline"]
+    direction TB
+    G[("DB: goals<br/>title, description, is_active, embedding 3072d")]:::tbl
+    s5a["goals routes: Claude extract goals, OpenAI embed goal text"]:::step
+    s5b["observations.ts chunkContent ~1500 chars: bound LLM context"]:::step
+    s5c["filterChunksByGoal: embed chunks, cosine to goal vector >= 0.35"]:::model
+    s5d["Claude: goal-linked observations CBT lenses capability, self-talk, behavior"]:::model
+    OBS[("DB: observations<br/>user_id, goal_id, raw_content_id, text, reason_why, embedding")]:::tbl
+    s5e[OpenAI embed each observation]:::model
+    s5f["clusterObservations cosine >= 0.65, min size 2: dedupe evidence"]:::step
+    s5g["insight-synthesis.ts Claude incremental create_new or update_existing"]:::model
+    INS[("DB: insights<br/>goal-level synthesis title body evidence_summary, embedding")]:::tbl
+    PR[("DB: pipeline_runs<br/>audit run_type status counts timestamps")]:::tbl
+  end
+
+  U -.-> G
+  s5a --> G
+  RC --> s5b
+  G --> s5c --> s5d --> OBS --> s5e --> s5f --> s5g --> INS
+  s5g -.-> PR
+  U -.-> OBS
+  U -.-> INS
+
+  subgraph S6["6. Patterns from legacy graph: 03:00 daily, Sun 04:00 weekly, or manual detect"]
+    direction TB
+    s6a[Select users with recent insight_units 7d or 30d window]:::step
+    s6b["patterns.ts Claude writes patterns + pattern_insights links"]:::model
+    P[("DB: patterns")]:::tbl
+    PI[("DB: pattern_insights junction pattern_id + insight_unit id")]:::tbl
+  end
+
+  IU --> s6a --> s6b --> P
+  s6b --> PI
+  IU -.-> PI
+  U -.-> P
+
+  subgraph S7["7. Server podcast: Sun 06:00 UTC cron + POST /podcasts/generate"]
+    direction TB
+    s7a[Assemble inputs: INS, OBS, G, users.voice_persona, prior episode, screen_time strings]:::step
+    s7b[Pass1 Claude: outline JSON segments research queries]:::model
+    s7c[Pass2 Perplexity sonar-pro batched research citations]:::model
+    s7d[Pass3 Claude: script + ElevenLabs v3 inline audio tags + persona]:::model
+    s7e[Pass4 ElevenLabs v3 TTS chunk ~4800 chars sentence split concat MP3]:::model
+    ST[("Supabase Storage: podcast-audio bucket")]:::store
+    POD[("DB: podcast_episodes audio_url outline script citations JSONB status")]:::tbl
+  end
+
+  INS --> s7a
+  OBS --> s7a
+  G --> s7a
+  U --> s7a
+  s7a --> s7b --> s7c --> s7d --> s7e --> ST --> POD
+  ST -.->|URL stored on row| POD
+
+  subgraph S8["8. Read paths map"]
+    direction TB
+    s8a[GET /content reads raw_content]:::step
+    s8b[GET /insights reads insight_units NOT table insights]:::step
+    s8c[GET /pipeline/insights reads synthesized insights table]:::step
+    s8d[GET /analytics aggregates units connections patterns]:::step
+    s8e[GET /podcasts reads podcast_episodes streams audio_url]:::step
+  end
+
+  RC --> s8a
+  IU --> s8b
+  IC --> s8b
+  INS --> s8c
+  IU --> s8d
+  IC --> s8d
+  P --> s8d
+  POD --> s8e
+
+  subgraph S9["9. Other tables: taxonomy and ops"]
+    CAT[("DB: categories taxonomy")]:::tbl
+    PQ[("DB: processing_queue async jobs placeholder")]:::tbl
+    AC[("DB: analytics_cache key TTL JSON")]:::tbl
+  end
+
+  subgraph MEM["ML memory framing"]
+    M1[Embeddings: OpenAI only; Claude for language. Shared 3072d geometry across goals units observations insights.]:::step
+    M2[Dual derivation from raw_content: fast legacy graph vs slower goal-conditioned synthesis.]:::step
+    M3[Naming: REST /insights equals insight_units rows; table insights is goal synthesizer output only.]:::step
+  end

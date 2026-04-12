@@ -174,7 +174,7 @@ struct PolaroidHomeView: View {
     }
     
     private func generatePodcast() {
-        let goals = goalsManager.goals // Goals are already strings
+        let goals = goalsManager.goalContextForGeneration
         viewModel.generateTranscript(text: inputText, goals: goals)
     }
     

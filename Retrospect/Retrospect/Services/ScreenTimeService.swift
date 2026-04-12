@@ -25,6 +25,9 @@ class ScreenTimeService: ObservableObject {
     @Published var weeklyHistory: [ScreenTimeSummary] = []
     @Published var isSyncing: Bool = false
     @Published var lastSyncDate: Date?
+    /// True while 30-day retroactive backfill is running (hidden report in app root).
+    @Published var isBackfilling: Bool = false
+    @Published var backfillDayIndex: Int = 0
     
     // MARK: - Private
     
@@ -33,7 +36,14 @@ class ScreenTimeService: ObservableObject {
     private let summaryKey = "screenTimeDailySummary"
     private let historyKey = "screenTimeWeeklyHistory"
     private let lastSyncKey = "screenTimeLastSyncDate"
+    /// Persisted so we stay "authorized" across app launches (system can report .notDetermined until re-request).
+    private let userApprovedKey = "screenTimeUserApproved"
+    /// Set by main app before rendering DeviceActivityReport for retroactive backfill; extension uses it as summary date.
+    private let requestedDateKey = "screenTimeRequestedDate"
     private var refreshTimer: Timer?
+    private var backfillTimer: Timer?
+    private let backfillTotalDays = 30
+    private let backfillDelayPerDay: TimeInterval = 1.5
     
     private init() {
         checkAuthorizationStatus()
@@ -45,6 +55,52 @@ class ScreenTimeService: ObservableObject {
     
     deinit {
         refreshTimer?.invalidate()
+        backfillTimer?.invalidate()
+    }
+    
+    // MARK: - Retroactive Backfill (background, no UI)
+    
+    /// Interval for the current backfill day; nil when not backfilling or when done.
+    var currentBackfillDateInterval: DateInterval? {
+        guard isBackfilling, backfillDayIndex < backfillTotalDays else { return nil }
+        guard let day = Calendar.current.date(byAdding: .day, value: -backfillDayIndex, to: Date()) else { return nil }
+        let start = Calendar.current.startOfDay(for: day)
+        if backfillDayIndex == 0 {
+            return DateInterval(start: start, end: Date())
+        }
+        guard let end = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: day) else {
+            return DateInterval(start: start, end: start.addingTimeInterval(86400 - 1))
+        }
+        return DateInterval(start: start, end: end)
+    }
+    
+    /// Start 30-day retroactive backfill; runs in background via hidden report in app root.
+    func startRetroactiveBackfill() {
+        guard isAuthorized else { return }
+        backfillTimer?.invalidate()
+        isBackfilling = true
+        backfillDayIndex = 0
+        setRequestedDateForExtension(Date())
+        backfillTimer = Timer.scheduledTimer(withTimeInterval: backfillDelayPerDay, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.advanceBackfillOneDay()
+            }
+        }
+        RunLoop.main.add(backfillTimer!, forMode: .common)
+    }
+    
+    private func advanceBackfillOneDay() {
+        backfillDayIndex += 1
+        if backfillDayIndex >= backfillTotalDays {
+            backfillTimer?.invalidate()
+            backfillTimer = nil
+            isBackfilling = false
+            setRequestedDateForExtension(nil)
+            refreshData()
+            return
+        }
+        guard let day = Calendar.current.date(byAdding: .day, value: -backfillDayIndex, to: Date()) else { return }
+        setRequestedDateForExtension(day)
     }
     
     // MARK: - Authorization
@@ -53,6 +109,7 @@ class ScreenTimeService: ObservableObject {
         do {
             try await authCenter.requestAuthorization(for: .individual)
             isAuthorized = true
+            UserDefaults.standard.set(true, forKey: userApprovedKey)
             authorizationError = nil
             print("✅ Screen Time: Authorization granted")
             
@@ -65,13 +122,36 @@ class ScreenTimeService: ObservableObject {
     }
     
     func checkAuthorizationStatus() {
-        switch authCenter.authorizationStatus {
+        let status = authCenter.authorizationStatus
+        switch status {
         case .approved:
             isAuthorized = true
-        case .denied, .notDetermined:
-            isAuthorized = false
+            UserDefaults.standard.set(true, forKey: userApprovedKey)
+            print("✅ Screen Time: Auth status = .approved")
+        case .denied:
+            let previouslyApproved = UserDefaults.standard.bool(forKey: userApprovedKey)
+            isAuthorized = previouslyApproved
+            print("⚠️ Screen Time: Auth status = .denied (using cached=\(previouslyApproved))")
+        case .notDetermined:
+            let previouslyApproved = UserDefaults.standard.bool(forKey: userApprovedKey)
+            isAuthorized = previouslyApproved
+            print("⚠️ Screen Time: Auth status = .notDetermined (using cached=\(previouslyApproved))")
         @unknown default:
-            isAuthorized = false
+            let previouslyApproved = UserDefaults.standard.bool(forKey: userApprovedKey)
+            isAuthorized = previouslyApproved
+            print("⚠️ Screen Time: Auth status = unknown (using cached=\(previouslyApproved))")
+        }
+    }
+    
+    /// Set the date the extension should stamp on the next report (for 30-day backfill). Pass nil to clear.
+    func setRequestedDateForExtension(_ date: Date?) {
+        guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
+        if let date = date {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            defaults.set(formatter.string(from: date), forKey: requestedDateKey)
+        } else {
+            defaults.removeObject(forKey: requestedDateKey)
         }
     }
     
@@ -81,6 +161,7 @@ class ScreenTimeService: ObservableObject {
                 switch result {
                 case .success:
                     self.isAuthorized = false
+                    UserDefaults.standard.set(false, forKey: self.userApprovedKey)
                     self.cancelDailyMonitor()
                     self.latestSummary = nil
                     self.weeklyHistory = []
@@ -134,6 +215,7 @@ class ScreenTimeService: ObservableObject {
         guard isAuthorized else { return }
         loadLatestSummary()
         loadWeeklyHistory()
+        readExtensionDiagnostics()
         autoSyncIfNeeded()
     }
     
@@ -145,7 +227,10 @@ class ScreenTimeService: ObservableObject {
             return
         }
         
-        guard let data = defaults.data(forKey: summaryKey) else { return }
+        guard let data = defaults.data(forKey: summaryKey) else {
+            print("⚠️ Screen Time: No data at key '\(summaryKey)' in App Group (extension hasn't written yet)")
+            return
+        }
         
         do {
             let summary = try JSONDecoder().decode(ScreenTimeSummary.self, from: data)
@@ -153,6 +238,18 @@ class ScreenTimeService: ObservableObject {
             print("📊 Screen Time: Loaded summary for \(summary.date) — \(summary.totalScreenTimeMinutes)min, \(summary.totalPickups) pickups, \(summary.appUsage.count) apps")
         } catch {
             print("❌ Screen Time: Failed to decode summary — \(error.localizedDescription)")
+        }
+    }
+
+    /// Reads diagnostic breadcrumbs left by the ScreenTimeReport extension in the App Group.
+    private func readExtensionDiagnostics() {
+        guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
+        guard let log = defaults.stringArray(forKey: "screenTimeExtensionLog"), !log.isEmpty else {
+            print("🔍 Screen Time Extension: No diagnostic log found — extension may not have run")
+            return
+        }
+        for entry in log {
+            print("🔍 Screen Time Extension: \(entry)")
         }
     }
     

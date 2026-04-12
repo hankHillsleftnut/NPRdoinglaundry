@@ -396,7 +396,7 @@ struct DarkPodcastsView: View {
         
         // Real API calls - Get real entries from the past week
         let weekEntries = entryManager.getEntriesForWeek()
-        let goals = goalsManager.goals
+        let goals = goalsManager.goalContextForGeneration
         
         // Build combined text from entries
         var combinedText = ""

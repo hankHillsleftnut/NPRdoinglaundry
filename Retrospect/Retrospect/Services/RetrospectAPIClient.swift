@@ -120,22 +120,23 @@ class RetrospectAPIClient: ObservableObject {
     /// Sync a list of goal titles to the backend.
     /// Fetches existing goals, adds new ones, deactivates removed ones.
     func syncGoals(_ goals: [String]) async throws {
-        // Get existing goals from backend
+        try await syncRichGoals(goals.map { RichGoal(title: $0) })
+    }
+
+    func syncRichGoals(_ goals: [RichGoal]) async throws {
         let existing: GoalsListResponse = try await get(path: "/goals")
         let existingTitles = Set((existing.data ?? []).map { $0.title.lowercased() })
-        let localTitles = Set(goals.map { $0.lowercased() })
+        let localTitles = Set(goals.map { $0.title.lowercased() })
 
-        // Add new goals
         for goal in goals {
-            if !existingTitles.contains(goal.lowercased()) {
+            if !existingTitles.contains(goal.title.lowercased()) {
                 let _: GenericResponse = try await post(path: "/goals", body: [
-                    "title": goal,
-                    "description": "",
+                    "title": goal.title,
+                    "description": goal.backendDescription,
                 ])
             }
         }
 
-        // Deactivate goals removed locally
         for existingGoal in (existing.data ?? []) {
             if !localTitles.contains(existingGoal.title.lowercased()) && existingGoal.isActive {
                 let _: GenericResponse = try await patch(
@@ -144,6 +145,26 @@ class RetrospectAPIClient: ObservableObject {
                 )
             }
         }
+    }
+
+    // MARK: - Goal Extraction (Backend)
+
+    /// Send a voice transcription to the backend for CBT-informed goal extraction.
+    /// The backend extracts goals, saves them to Supabase with embeddings, and returns both
+    /// the extracted analysis and the saved goal records.
+    func extractAndSaveGoals(text: String) async throws -> GoalExtractionResponse {
+        let response: GoalExtractionAPIResponse = try await post(
+            path: "/goals/extract-and-save",
+            body: ["text": text]
+        )
+        guard response.success, let data = response.data else {
+            throw APIError.serverError(response.error ?? "Goal extraction failed")
+        }
+        return GoalExtractionResponse(
+            extracted: data.extracted,
+            saved: data.saved,
+            processingNotes: response.processingNotes
+        )
     }
 
     // MARK: - Voice Persona
@@ -398,6 +419,32 @@ private struct ProfileResponse: Codable {
     let success: Bool
     let data: UserProfile?
     let error: String?
+}
+
+// MARK: - Goal Extraction Response Models
+
+private struct GoalExtractionAPIResponse: Codable {
+    let success: Bool
+    let data: GoalExtractionData?
+    let error: String?
+    let processingNotes: String?
+
+    struct GoalExtractionData: Codable {
+        let extracted: [ExtractedGoalFromBackend]
+        let saved: [BackendGoal]
+    }
+}
+
+struct ExtractedGoalFromBackend: Codable {
+    let title: String
+    let description: String
+    let reasoning: String
+}
+
+struct GoalExtractionResponse {
+    let extracted: [ExtractedGoalFromBackend]
+    let saved: [BackendGoal]
+    let processingNotes: String?
 }
 
 // MARK: - Public Profile Model

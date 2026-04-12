@@ -2,372 +2,610 @@
 //  iMessageOnboardingView.swift
 //  Retrospect
 //
-//  iMessage-style onboarding: conversation with "Retrospect", quick-reply responses, auto-timed messages.
+//  Rebuilt iMessage-style onboarding. State lives in OnboardingState (ObservableObject)
+//  owned by DarkOnboardingFlow so it survives view recreation.
+//  Sign-in happens on WelcomeSignInPage before this view is shown.
 //
 
 import SwiftUI
-import AuthenticationServices
+import Combine
 
-// Alias design-system chat colors for convenience
+// MARK: - Color aliases
+
 private enum iMessageBubble {
     static let incoming = LinearColors.Minimal.chatBubbleIncoming
     static let outgoing = LinearColors.Minimal.chatBubbleOutgoing
     static let outgoingText = LinearColors.Minimal.chatBubbleOutgoingText
 }
 
-// MARK: - Data Model
+// MARK: - Scroll target
 
-enum ChatMessageSender {
-    case retrospect
-    case user
+private enum ScrollTarget: Hashable {
+    case message(UUID)
+    case typing
+    case bottomPadding
 }
 
-enum QuickReplyAction: Equatable {
-    case advance
-    case appleSignIn
-    case connectGoogleDocs
-    case enableHealth
-    case enableScreenTime
-    case selectPersona(String)
-    case addGoal(String)
-    case customGoalInput
-    case confirmGoals
-    case complete
-}
-
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let sender: ChatMessageSender
-    let text: String
-    var isSpecial: Bool = false
-}
-
-struct QuickReplyItem: Identifiable {
-    let id = UUID()
-    let label: String
-    let action: QuickReplyAction
-}
-
-// MARK: - Onboarding Phase
-
-private enum OnboardingPhase: Int, CaseIterable {
-    case story = 1
-    case privacy = 2
-    case auth = 3
-    case googleDocs = 4
-    case appleHealth = 5
-    case screenTime = 6
-    case voicePersona = 7
-    case goals = 8
-    case closing = 9
-    
-    static let totalPhases = 9
-}
-
-// MARK: - Send Button Style (for input bar)
-
-private enum SendButtonStyle: Equatable {
-    case `default`
-    case apple
-    case sparkle
-}
-
-// MARK: - iMessage Onboarding View
+// MARK: - iMessageOnboardingView
 
 struct iMessageOnboardingView: View {
+    @ObservedObject var state: OnboardingState
     var onComplete: (() -> Void)?
-    
-    @AppStorage("onboardingCurrentStep") private var persistedStep: Int = 1
-    @State private var phase: OnboardingPhase = .story
-    @State private var messages: [ChatMessage] = []
-    @State private var showTypingIndicator = false
-    @State private var scrollToId: ScrollTarget?
-    /// Message IDs that have finished their typing animation — show static text so scroll doesn't re-trigger animation.
-    @State private var completedAnimationIds: Set<UUID> = []
-    
-    private enum ScrollTarget: Hashable {
-        case message(UUID)
-        case typing
-        case bottomPadding
-    }
-    
-    /// Height of the bottom "safe" area so the last message stays above the blur/input. Must match blur + clearance.
-    private static let scrollBottomPadding: CGFloat = 120
-    @State private var inputBarText = ""
+
+    // MARK: View-local UI state (safe to lose on recreation)
+
+    @State private var scrollTrigger: Int = 0
+    @State private var inputBarText: String = ""
     @FocusState private var isInputFocused: Bool
-    
-    // Input bar state (auto-fill, send button style, skip link)
-    @State private var isAutoFillLocked: Bool = false
-    @State private var showSkipLink: Bool = false
-    @State private var sendButtonOverride: SendButtonStyle = .default
-    
-    // Goals multi-turn state (3 user turns + 1 summary)
-    @State private var goalsTurn: Int = 1
-    @State private var goalTurn1Text: String = ""
-    @State private var goalTurn2Text: String = ""
-    @State private var goalTurn3Text: String = ""
-    @State private var goalTurn2BotMessage: String = ""
-    @State private var goalTurn3BotMessage: String = ""
-    @State private var extractedGoalsFromConversation: [String] = []
-    @State private var isLoadingGoalsReply: Bool = false
-    
-    static let goalsFirstQuestion = "If you could change one thing about your life in the next year, what would it be?"
-    
-    // Voice recording for goals brain-dump
+
     @StateObject private var onboardingAudioManager = AudioRecordingManager()
-    
+
     @StateObject private var apiClient = RetrospectAPIClient.shared
     @StateObject private var googleDocsService = GoogleDocsService.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
     @StateObject private var goalsManager = GoalsManager.shared
     @AppStorage("healthKitEnabled") private var healthKitEnabled = false
     @AppStorage("voice_persona") private var voicePersona: String = "thoughtful_friend"
-    
-    @State private var isSigningIn = false
-    @State private var signInError: String?
-    @State private var appleSignInCoordinator: AppleSignInCoordinator?
-    @State private var isConnectingGoogle = false
-    @State private var googleError: String?
-    @State private var isRequestingHealth = false
-    @State private var isConnectingScreenTime = false
-    @State private var isSavingPersona = false
-    
-    private let totalSteps = OnboardingPhase.totalPhases
-    private let goalSuggestions = [
-        "Exercise more", "Better sleep", "Read daily", "Learn something new",
-        "Reduce stress", "Eat healthier", "Save money", "Be more present",
-        "Improve focus", "Build habits"
-    ]
-    
+
+    // MARK: Body
+
     var body: some View {
         ZStack {
-            LinearColors.Minimal.chatBarBackground
-                .ignoresSafeArea()
-            
+            background
+
             VStack(spacing: 0) {
                 contactHeader
-                
+
                 ZStack(alignment: .bottomTrailing) {
                     ZStack(alignment: .bottom) {
-                        ScrollViewReader { proxy in
-                            ScrollView(.vertical, showsIndicators: false) {
-                                LazyVStack(alignment: .leading, spacing: 4) {
-                                    Spacer(minLength: 0)
-                                        .frame(minHeight: 20)
-                                    ForEach(messages) { msg in
-                                        ChatBubbleView(
-                                            message: msg,
-                                            animationCompleted: completedAnimationIds.contains(msg.id),
-                                            onAnimationComplete: { completedAnimationIds.insert(msg.id) }
-                                        )
-                                        .id(ScrollTarget.message(msg.id))
-                                    }
-                                    if showTypingIndicator {
-                                        TypingIndicatorView()
-                                            .id(ScrollTarget.typing)
-                                    }
-                                if phase == .voicePersona {
-                                    PersonaCardStack(onSelect: { personaId in
-                                        let name = personaDisplayName(personaId)
-                                        inputBarText = name
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                            addUserBubble(name)
-                                            savePersonaAndAdvance(personaId)
-                                        }
-                                    })
-                                }
-                                    Color.clear
-                                        .frame(height: Self.scrollBottomPadding)
-                                        .id(ScrollTarget.bottomPadding)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 16)
-                            }
-                            .scrollDismissesKeyboard(.interactively)
-                            .onChange(of: scrollToId) { _, target in
-                                guard let target = target else { return }
-                                DispatchQueue.main.async {
-                                    withAnimation(.easeOut(duration: 0.25)) {
-                                        proxy.scrollTo(target, anchor: .bottom)
-                                    }
-                                }
-                            }
-                            .onChange(of: messages.count) { _, _ in
-                                scrollToBottom()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { scrollToBottom() }
-                            }
-                            .onChange(of: showTypingIndicator) { _, _ in
-                                scrollToBottom()
-                            }
-                        }
-                        
-                        VariableBlurView()
-                            .frame(height: 80)
-                            .allowsHitTesting(false)
-                        
-                        LinearGradient(
-                            colors: [Color.clear, LinearColors.Minimal.chatBarBackground],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: 80)
-                        .allowsHitTesting(false)
+                        scrollArea
+                        blurOverlay
                     }
-                    
-                    if messages.count >= 4 || showTypingIndicator {
-                        Button(action: {
-                            HapticManager.shared.playLightImpact()
-                            scrollToBottom()
-                        }) {
-                            Image(systemName: "chevron.down.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundStyle(LinearColors.Minimal.textPrimary.opacity(0.9))
-                                .shadow(color: LinearColors.Minimal.shadowLight, radius: 2, x: 0, y: 1)
-                        }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 8)
-                    }
+                    scrollToBottomButton
                 }
-                
+
                 bottomBar
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear {
-            let raw = max(1, persistedStep)
-            phase = OnboardingPhase(rawValue: raw) ?? .story
-            replayMessagesForPhase()
-            startOrResumeConversation()
+        .onAppear(perform: onFirstAppear)
+        .onReceive(keyboardWillShowPublisher) { info in
+            if let frame = info.frame, let duration = info.duration {
+                withAnimation(.easeOut(duration: duration)) {
+                    state.keyboardHeight = frame.height
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) {
+                    scrollToBottom()
+                }
+            }
         }
-        .alert("Sign-in failed", isPresented: Binding(get: { signInError != nil }, set: { if !$0 { signInError = nil } })) {
-            Button("OK") { signInError = nil }
-        } message: {
-            if let err = signInError { Text(err) }
+        .onReceive(keyboardWillHidePublisher) { info in
+            let duration = info.duration ?? 0.25
+            withAnimation(.easeOut(duration: duration)) {
+                state.keyboardHeight = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
+                scrollToBottom()
+            }
         }
-        .alert("Connection Error", isPresented: Binding(get: { googleError != nil }, set: { if !$0 { googleError = nil } })) {
-            Button("OK") { googleError = nil }
+        .alert("Connection Error", isPresented: Binding(
+            get: { state.googleError != nil },
+            set: { if !$0 { state.googleError = nil } }
+        )) {
+            Button("OK") { state.googleError = nil }
         } message: {
-            if let err = googleError { Text(err) }
+            if let err = state.googleError { Text(err) }
         }
     }
-    
-    // MARK: - Contact Header (iMessage-style, minimal)
-    
+
+    // MARK: - First Appear
+
+    private func onFirstAppear() {
+        guard !state.hasStartedConversation else { return }
+        state.hasStartedConversation = true
+        state.replayMessagesForPhase()
+        startOrResumeConversation()
+    }
+
+    // MARK: - Keyboard publishers
+
+    private struct KeyboardInfo {
+        var frame: CGRect?
+        var duration: Double?
+    }
+
+    private var keyboardWillShowPublisher: AnyPublisher<KeyboardInfo, Never> {
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+            .map { notification in
+                KeyboardInfo(
+                    frame: notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                    duration: notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+                )
+            }
+            .eraseToAnyPublisher()
+    }
+
+    private var keyboardWillHidePublisher: AnyPublisher<KeyboardInfo, Never> {
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+            .map { notification in
+                KeyboardInfo(
+                    frame: nil,
+                    duration: notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+                )
+            }
+            .eraseToAnyPublisher()
+    }
+
+    // MARK: - Background
+
+    private var background: some View {
+        ZStack {
+            LinearColors.Minimal.background
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    LinearColors.Minimal.background.opacity(0.3),
+                    LinearColors.Minimal.background.opacity(0.5),
+                    LinearColors.Minimal.background.opacity(0.7)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    // MARK: - Scroll Area
+
+    private var scrollArea: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    Spacer(minLength: 0)
+                        .frame(minHeight: 20)
+
+                    ForEach(state.messages) { msg in
+                        ChatBubbleView(
+                            message: msg,
+                            animationCompleted: state.completedAnimationIds.contains(msg.id),
+                            onAnimationComplete: { state.completedAnimationIds.insert(msg.id) }
+                        )
+                        .id(ScrollTarget.message(msg.id))
+                    }
+
+                    if state.showTypingIndicator {
+                        TypingIndicatorView()
+                            .id(ScrollTarget.typing)
+                    }
+
+                    if state.phase == .voicePersona && state.showActionButton {
+                        PersonaCardStack(onSelect: { personaId in
+                            let name = state.personaDisplayName(personaId)
+                            inputBarText = name
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                state.addUserBubble(name)
+                                scrollToBottomAfterSend()
+                                savePersonaAndAdvance(personaId)
+                            }
+                        })
+                    }
+
+                    if state.phase == .integrations && state.showActionButton {
+                        IntegrationCardStack(
+                            googleConnected: googleDocsService.isConnected,
+                            healthConnected: healthKitEnabled,
+                            screenTimeConnected: screenTimeService.isAuthorized,
+                            isConnectingGoogle: state.isConnectingGoogle,
+                            isRequestingHealth: state.isRequestingHealth,
+                            isConnectingScreenTime: state.isConnectingScreenTime,
+                            onConnectGoogle: { connectGoogleDocs() },
+                            onConnectHealth: { requestHealthAccess() },
+                            onConnectScreenTime: { requestScreenTimeAccess() }
+                        )
+                    }
+
+                    Color.clear
+                        .frame(height: state.keyboardHeight > 0
+                            ? OnboardingState.scrollBottomPaddingWithKeyboard
+                            : OnboardingState.scrollBottomPadding)
+                        .id(ScrollTarget.bottomPadding)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: scrollTrigger) { _, _ in
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(ScrollTarget.bottomPadding, anchor: .bottom)
+                    }
+                }
+            }
+            .onChange(of: state.messages.count) { _, _ in
+                scrollToBottom()
+            }
+            .onChange(of: state.showTypingIndicator) { _, _ in
+                scrollToBottom()
+            }
+        }
+    }
+
+    // MARK: - Blur overlay
+
+    private var blurOverlay: some View {
+        ZStack(alignment: .bottom) {
+            VariableBlurView()
+                .frame(height: 80)
+                .allowsHitTesting(false)
+
+            LinearGradient(
+                colors: [Color.clear, LinearColors.Minimal.chatBarBackground],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 80)
+            .allowsHitTesting(false)
+        }
+    }
+
+    // MARK: - Scroll-to-bottom button
+
+    @ViewBuilder
+    private var scrollToBottomButton: some View {
+        if state.messages.count >= 4 || state.showTypingIndicator {
+            Button(action: {
+                HapticManager.shared.playLightImpact()
+                scrollToBottom()
+            }) {
+                Image(systemName: "chevron.down.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(LinearColors.Minimal.textPrimary.opacity(0.9))
+                    .shadow(color: LinearColors.Minimal.shadowLight, radius: 2, x: 0, y: 1)
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 8)
+        }
+    }
+
+    // MARK: - Contact Header (back button only)
+
     private var contactHeader: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(LinearColors.Minimal.accent)
-                Text("Retrospect")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
-            
-            HStack(spacing: 6) {
-                ForEach(1...OnboardingPhase.totalPhases, id: \.self) { step in
-                    Circle()
-                        .fill(step <= phase.rawValue ? LinearColors.Minimal.accent.opacity(0.9) : LinearColors.Minimal.border)
-                        .frame(width: 5, height: 5)
-                }
-            }
-            .padding(.bottom, 12)
-        }
-        .background(LinearColors.Minimal.chatBarBackground)
-    }
-    
-    // MARK: - Bottom Bar (always input bar + optional skip link)
-    
-    private var bottomBar: some View {
-        VStack(spacing: 0) {
-            inputBar
-            if showSkipLink {
-                Button("or skip") {
-                    addUserBubble("Skip for now")
-                    advancePhase()
-                }
-                .font(.system(size: 14, weight: .regular))
-                .foregroundColor(LinearColors.Minimal.textTertiary)
-                .padding(.top, 6)
-                .padding(.bottom, 8)
-            }
-        }
-        .background(LinearColors.Minimal.chatBarBackground)
-    }
-    
-    // MARK: - Input Bar (iMessage-style)
-    
-    private var inputBar: some View {
-        let isAutoFillActive = isAutoFillLocked && !inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return HStack(alignment: .center, spacing: 10) {
-            if phase == .goals {
-                Button(action: { toggleVoiceRecording() }) {
-                    Image(systemName: onboardingAudioManager.isRecording ? "mic.fill" : "mic")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(onboardingAudioManager.isRecording ? Color.red : LinearColors.Minimal.textTertiary)
+        HStack(spacing: 0) {
+            if state.phase.rawValue > OnboardingPhase.integrations.rawValue && !state.isBusyWithAction {
+                Button(action: { goBackPhase() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .frame(width: 32, height: 32)
             }
-            
-            TextField("Message", text: $inputBarText)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(LinearColors.Minimal.chatBarBackground)
+    }
+
+    // MARK: - Bottom Bar
+
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            if state.phase == .closing {
+                pullUpToEnterBar
+            } else {
+                inputBar
+
+                if state.phase == .integrations && state.showActionButton {
+                    Button("Skip all") {
+                        state.addUserBubble("Skip for now")
+                        scrollToBottomAfterSend()
+                        appendSkipIntegrationsAcknowledgment()
+                        advancePhase()
+                    }
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                } else if state.phase == .goals {
+                    Button("or skip") {
+                        state.addUserBubble("Skip for now")
+                        scrollToBottomAfterSend()
+                        let msg = ChatMessage(sender: .retrospect, text: "You can always set goals later.")
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            state.messages.append(msg)
+                        }
+                        scrollToBottomAfterSend()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            state.phase = .closing
+                            state.persistPhase()
+                            startOrResumeConversation()
+                        }
+                    }
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                } else if state.showSkipLink {
+                    Button("or skip") {
+                        state.addUserBubble("Skip for now")
+                        scrollToBottomAfterSend()
+                        advancePhase()
+                    }
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                }
+            }
+        }
+        .background(LinearColors.Minimal.chatBarBackground)
+    }
+
+    // MARK: - Input Bar
+
+    @ViewBuilder
+    private var inputBar: some View {
+        if state.phase == .integrations && state.showActionButton {
+            actionPillButton
+        } else {
+            regularInputBar
+        }
+    }
+
+    // MARK: Action Pill (integrations continue)
+
+    private var actionPillButton: some View {
+        HStack {
+            Spacer(minLength: 20)
+            Button(action: actionForCurrentPhase) {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 20, weight: .medium))
+                    Text("Continue")
+                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(LinearColors.Minimal.textPrimary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(LinearColors.Minimal.inputBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28)
+                        .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            Spacer(minLength: 20)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(LinearColors.Minimal.chatBarBackground)
+        .transition(.asymmetric(
+            insertion: .opacity.combined(with: .move(edge: .bottom)).combined(with: .scale(scale: 0.95)),
+            removal: .opacity.combined(with: .scale(scale: 0.95))
+        ))
+    }
+
+    // MARK: Regular Input Bar
+
+    private var regularInputBar: some View {
+        let isAutoFillActive = state.isAutoFillLocked && !inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        return HStack(alignment: .center, spacing: 12) {
+            TextField("Share with Retrospect...", text: $inputBarText)
                 .font(.system(size: 17, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .focused($isInputFocused)
                 .submitLabel(.send)
                 .onSubmit { sendInputBarMessage() }
-                .padding(.horizontal, 14)
-                .frame(minHeight: 40)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(LinearColors.Minimal.chatInputField)
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(LinearColors.Minimal.inputBackground)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(isAutoFillActive ? LinearColors.Minimal.accent : Color.clear, lineWidth: isAutoFillActive ? 2 : 0)
+                    RoundedRectangle(cornerRadius: 24)
+                        .strokeBorder(
+                            isAutoFillActive ? LinearColors.Minimal.accent.opacity(0.4) : Color.clear,
+                            lineWidth: isAutoFillActive ? 1.5 : 0
+                        )
                 )
-            
-            Button(action: {
-                if sendButtonOverride == .apple {
-                    triggerAppleSignIn()
-                } else {
-                    sendInputBarMessage()
-                }
-            }) {
-                Group {
-                    switch sendButtonOverride {
-                    case .default:
-                        Image(systemName: "arrow.up.circle.fill")
-                    case .apple:
-                        Image(systemName: "apple.logo")
-                            .font(.system(size: 22, weight: .medium))
-                    case .sparkle:
-                        Image(systemName: "sparkles")
+
+            if state.phase == .goals {
+                VStack(spacing: 2) {
+                    Button(action: { toggleVoiceRecording() }) {
+                        Image(systemName: onboardingAudioManager.isRecording ? "mic.fill" : "mic")
                             .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(onboardingAudioManager.isRecording ? Color.red : LinearColors.Minimal.textTertiary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    Text("Tap to speak")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                }
+            } else {
+                Button(action: { sendInputBarMessage() }) {
+                    Group {
+                        switch state.sendButtonOverride {
+                        case .default:
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 24, weight: .medium))
+                        case .sparkle:
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 18, weight: .medium))
+                        }
+                    }
+                    .foregroundStyle(
+                        state.sendButtonOverride == .sparkle || !inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? LinearColors.Minimal.textPrimary
+                        : LinearColors.Minimal.textTertiary
+                    )
+                }
+                .disabled(state.sendButtonOverride == .default && inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(LinearColors.Minimal.chatBarBackground)
+    }
+
+    // MARK: Pull-up-to-enter bar
+
+    private var pullUpToEnterBar: some View {
+        let progress = min(1.0, state.pullToEnterOffset / OnboardingState.pullToEnterThreshold)
+        let atOrOverThreshold = state.pullToEnterOffset >= OnboardingState.pullToEnterThreshold
+
+        return VStack(spacing: 12) {
+            Button(action: {
+                SpringHapticController.shared.triggerSuccessHaptic()
+                completeOnboarding()
+            }) {
+                Text("Start Journaling")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 28)
+                            .fill(LinearColors.Minimal.accent)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 20)
+
+            RoundedRectangle(cornerRadius: 2)
+                .fill(LinearColors.Minimal.textTertiary.opacity(atOrOverThreshold ? 0.7 : 0.3))
+                .frame(width: 36, height: 4)
+                .padding(.bottom, 4)
+                .scaleEffect(atOrOverThreshold ? 1.08 : 1.0)
+
+            Text(atOrOverThreshold ? "Release to start" : "Pull up to start")
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(atOrOverThreshold ? LinearColors.Minimal.textPrimary : LinearColors.Minimal.textSecondary)
+
+            Image(systemName: atOrOverThreshold ? "checkmark.circle.fill" : "chevron.up")
+                .font(.system(size: atOrOverThreshold ? 18 : 14, weight: .semibold))
+                .foregroundColor(atOrOverThreshold ? LinearColors.Minimal.accent : LinearColors.Minimal.textTertiary)
+                .scaleEffect(1.0 + progress * 0.15)
+        }
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .offset(y: -state.pullToEnterOffset * 0.3)
+        .animation(.easeOut(duration: 0.25), value: atOrOverThreshold)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    let pullUp = max(0, -value.translation.height)
+                    let stretched = min(pullUp, OnboardingState.pullToEnterMaxStretch)
+                    state.pullToEnterOffset = stretched
+
+                    if stretched > 0 && !state.pullGestureDidPrepare {
+                        SpringHapticController.shared.prepare()
+                        SpringHapticController.shared.reset()
+                        state.pullGestureDidPrepare = true
+                    }
+                    if stretched > 0 {
+                        SpringHapticController.shared.triggerSpringHaptic(
+                            pullDistance: stretched,
+                            maxDistance: kSpringHapticMaxPullDistance
+                        )
                     }
                 }
-                .font(.system(size: sendButtonOverride == .default ? 32 : 24))
-                .foregroundStyle(
-                    (sendButtonOverride == .apple || sendButtonOverride == .sparkle) || !inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? (sendButtonOverride == .apple ? Color.primary : iMessageBubble.outgoing)
-                    : LinearColors.Minimal.textTertiary
-                )
-                .frame(width: 32, height: 32)
-                .contentShape(Rectangle())
-                .scaleEffect(isAutoFillActive ? 1.08 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAutoFillActive)
-            }
-            .disabled(sendButtonOverride == .default && inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(height: 56)
+                .onEnded { value in
+                    let pullUp = max(0, -value.translation.height)
+                    SpringHapticController.shared.reset()
+                    state.pullGestureDidPrepare = false
+
+                    if pullUp >= OnboardingState.pullToEnterThreshold {
+                        SpringHapticController.shared.triggerSuccessHaptic()
+                        completeOnboarding()
+                    } else {
+                        SpringHapticController.shared.triggerSnapBack()
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) {
+                            state.pullToEnterOffset = 0
+                        }
+                    }
+                }
+        )
     }
-    
+
+    // MARK: - Actions
+
+    private func actionForCurrentPhase() {
+        HapticManager.shared.playMediumImpact()
+        switch state.phase {
+        case .integrations:
+            state.addUserBubble("Continue")
+            scrollToBottomAfterSend()
+            state.showActionButton = false
+            let anyConnected = googleDocsService.isConnected || healthKitEnabled || screenTimeService.isAuthorized
+            if !anyConnected {
+                appendSkipIntegrationsAcknowledgment()
+            }
+            advancePhase()
+        default:
+            break
+        }
+    }
+
+    private func appendSkipIntegrationsAcknowledgment() {
+        let msg = ChatMessage(sender: .retrospect, text: "No worries — you can connect these anytime in Settings.")
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            state.messages.append(msg)
+        }
+        scrollToBottomAfterSend()
+    }
+
+    // MARK: - Send input
+
+    private func sendInputBarMessage() {
+        let trimmed = inputBarText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        inputBarText = ""
+        state.isAutoFillLocked = false
+        state.showSkipLink = false
+        state.sendButtonOverride = .default
+        state.addUserBubble(trimmed)
+        scrollToBottomAfterSend()
+        HapticManager.shared.playMediumImpact()
+
+        switch state.phase {
+        case .integrations:
+            break
+        case .voicePersona:
+            break
+        case .goals:
+            if state.goalsTurn == 4 {
+                for g in state.extractedGoalsFromConversation {
+                    goalsManager.addGoal(g)
+                }
+                if !trimmed.lowercased().contains("perfect") && trimmed.count > 2 {
+                    goalsManager.addGoal(trimmed)
+                }
+                HapticManager.shared.playSuccessNotification()
+                state.phase = .closing
+                state.persistPhase()
+                startOrResumeConversation()
+            } else {
+                handleGoalsTurnResponse(trimmed)
+            }
+        case .closing:
+            if trimmed.lowercased().contains("start") || trimmed.lowercased().contains("journal") {
+                completeOnboarding()
+            }
+        }
+    }
+
+    // MARK: - Voice recording
+
     private func toggleVoiceRecording() {
         if onboardingAudioManager.isRecording {
             onboardingAudioManager.stopRecording { result in
@@ -392,18 +630,19 @@ struct iMessageOnboardingView: View {
             }
         }
     }
-    
-    /// Auto-fill the input bar with text (e.g. "I'm in", "Sign in with Apple") and set send button style. Optionally show skip link. Animates character-by-character.
+
+    // MARK: - Auto-fill input bar
+
     private func autoFillInputBar(text: String, style: SendButtonStyle, showSkip: Bool) {
-        isAutoFillLocked = true
-        sendButtonOverride = style
-        showSkipLink = showSkip
+        state.isAutoFillLocked = true
+        state.sendButtonOverride = style
+        state.showSkipLink = showSkip
         inputBarText = ""
         let intervalPerChar: Double = 0.03
         let characters = Array(text)
-        for (index, char) in characters.enumerated() {
+        for (index, _) in characters.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + intervalPerChar * Double(index)) { [self] in
-                guard isAutoFillLocked else { return }
+                guard state.isAutoFillLocked else { return }
                 if index < inputBarText.count { return }
                 inputBarText = String(characters.prefix(index + 1))
             }
@@ -411,128 +650,224 @@ struct iMessageOnboardingView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + intervalPerChar * Double(characters.count) + 0.1) {
             scrollToBottom()
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + intervalPerChar * Double(characters.count) + 0.6) {
+            scrollToBottom()
+        }
     }
-    
-    private func sendInputBarMessage() {
-        let trimmed = inputBarText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        inputBarText = ""
-        isAutoFillLocked = false
-        showSkipLink = false
-        sendButtonOverride = .default
-        addUserBubble(trimmed)
-        HapticManager.shared.playMediumImpact()
-        
-        switch phase {
-        case .story:
-            advancePhase()
-        case .privacy:
-            advancePhase()
-        case .auth:
-            if trimmed.lowercased().contains("sign in") {
-                triggerAppleSignIn()
-            }
-        case .googleDocs:
-            if trimmed.lowercased().contains("connect") || trimmed.lowercased().contains("google") {
-                connectGoogleDocs()
-            } else if trimmed.lowercased().contains("skip") {
-                advancePhase()
-            }
-        case .appleHealth:
-            if trimmed.lowercased().contains("enable") || trimmed.lowercased().contains("health") {
-                requestHealthAccess()
-            } else if trimmed.lowercased().contains("skip") {
-                advancePhase()
-            }
-        case .screenTime:
-            if trimmed.lowercased().contains("enable") || trimmed.lowercased().contains("screen time") {
-                requestScreenTimeAccess()
-            } else if trimmed.lowercased().contains("skip") {
-                advancePhase()
+
+    // MARK: - Conversation Engine
+
+    private func startOrResumeConversation() {
+        state.showTypingIndicator = false
+        state.showSkipLink = false
+        state.sendButtonOverride = .default
+        state.isAutoFillLocked = false
+        state.showActionButton = false
+
+        switch state.phase {
+        case .integrations:
+            deliverMessageGroup(state.scriptMessages(for: .integrations), typingDuration: 0.8) {
+                showActionButtonAfterMessages()
             }
         case .voicePersona:
-            break
+            inputBarText = ""
+            deliverMessageGroup(state.scriptMessages(for: .voicePersona), typingDuration: 0.8) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    state.showActionButton = true
+                }
+            }
         case .goals:
-            if goalsTurn == 4 {
-                for g in extractedGoalsFromConversation {
-                    goalsManager.addGoal(g)
+            state.goalsTurn = 1
+            state.goalTurn1Text = ""
+            state.goalTurn2Text = ""
+            state.goalTurn2BotMessage = ""
+            inputBarText = ""
+            deliverMessageGroup(state.goalsIntroMessages(), typingDuration: 0.6) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    isInputFocused = true
                 }
-                if !trimmed.lowercased().contains("perfect") && trimmed.count > 2 {
-                    goalsManager.addGoal(trimmed)
-                }
-                HapticManager.shared.playSuccessNotification()
-                phase = .closing
-                persistedStep = OnboardingPhase.closing.rawValue
-                startOrResumeConversation()
-            } else {
-                handleGoalsTurnResponse(trimmed)
             }
         case .closing:
-            if trimmed.lowercased().contains("start") || trimmed.lowercased().contains("journal") {
-                completeOnboarding()
+            deliverMessageGroup(state.scriptMessages(for: .closing), typingDuration: 1.0) {
+                state.pullToEnterOffset = 0
+                state.pullGestureDidPrepare = false
             }
         }
     }
-    
+
+    private func deliverMessageGroup(_ group: [ChatMessage], typingDuration: Double, then: @escaping () -> Void) {
+        let existingTexts = Set(state.messages.map { "\($0.sender):\($0.text)" })
+        let toAppend = group.filter { !existingTexts.contains("\($0.sender):\($0.text)") }
+        guard !toAppend.isEmpty else {
+            then()
+            return
+        }
+
+        state.showTypingIndicator = true
+        scrollToBottom()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + typingDuration) {
+            state.showTypingIndicator = false
+            scrollToBottom()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                var delay: Double = 0
+                for msg in toAppend {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            state.messages.append(msg)
+                        }
+                        HapticManager.shared.playSoftImpact()
+                    }
+                    delay += OnboardingState.messageUnblurDuration
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.35) {
+                    scrollToBottom()
+                    HapticManager.shared.playSelectionChanged()
+                    then()
+                }
+            }
+        }
+    }
+
+    private func showActionButtonAfterMessages() {
+        let totalDelay = OnboardingState.messageUnblurDuration + 0.2
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                state.showActionButton = true
+            }
+            HapticManager.shared.playSelectionChanged()
+        }
+    }
+
+    private func advancePhase() {
+        guard let next = OnboardingPhase(rawValue: state.phase.rawValue + 1) else {
+            completeOnboarding()
+            return
+        }
+        state.phase = next
+        state.persistPhase()
+        startOrResumeConversation()
+    }
+
+    private func goBackPhase() {
+        guard state.phase.rawValue > OnboardingPhase.integrations.rawValue,
+              !state.isBusyWithAction,
+              let prev = OnboardingPhase(rawValue: state.phase.rawValue - 1) else { return }
+        HapticManager.shared.playLightImpact()
+        state.phase = prev
+        state.persistPhase()
+        state.replayMessagesForPhase()
+        startOrResumeConversation()
+    }
+
+    private func scrollToBottom() {
+        scrollTrigger += 1
+    }
+
+    private func scrollToBottomAfterSend() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            scrollToBottom()
+        }
+    }
+
+    // MARK: - Integrations
+
+    private func connectGoogleDocs() {
+        state.isConnectingGoogle = true
+        Task {
+            do {
+                try await googleDocsService.authenticate()
+                await MainActor.run {
+                    state.isConnectingGoogle = false
+                    HapticManager.shared.playSuccessNotification()
+                    state.messages.append(ChatMessage(sender: .retrospect, text: "Connected.", isSpecial: true))
+                    if state.phase != .integrations { advancePhase() }
+                    else { scrollToBottomAfterSend() }
+                }
+            } catch {
+                await MainActor.run {
+                    state.isConnectingGoogle = false
+                    state.googleError = "Failed to connect. Please try again."
+                    state.showActionButton = true
+                }
+            }
+        }
+    }
+
+    private func requestHealthAccess() {
+        state.isRequestingHealth = true
+        HealthKitManager.shared.requestAuthorization { success in
+            DispatchQueue.main.async {
+                state.isRequestingHealth = false
+                if success {
+                    healthKitEnabled = true
+                    HapticManager.shared.playSuccessNotification()
+                    state.messages.append(ChatMessage(sender: .retrospect, text: "Health access enabled.", isSpecial: true))
+                    if state.phase != .integrations { advancePhase() }
+                    else { scrollToBottomAfterSend() }
+                } else if state.phase != .integrations {
+                    advancePhase()
+                }
+            }
+        }
+    }
+
+    private func requestScreenTimeAccess() {
+        state.isConnectingScreenTime = true
+        Task {
+            await screenTimeService.requestAuthorization()
+            await MainActor.run {
+                state.isConnectingScreenTime = false
+                if screenTimeService.isAuthorized {
+                    HapticManager.shared.playSuccessNotification()
+                    screenTimeService.startRetroactiveBackfill()
+                    state.messages.append(ChatMessage(sender: .retrospect, text: "Screen Time enabled. I'll start noticing your digital patterns.", isSpecial: true))
+                    if state.phase != .integrations { advancePhase() }
+                    else { scrollToBottomAfterSend() }
+                } else {
+                    if let error = screenTimeService.authorizationError {
+                        state.messages.append(ChatMessage(sender: .retrospect, text: "Couldn't connect Screen Time: \(error). You can enable this later in Settings."))
+                    }
+                    if state.phase != .integrations { advancePhase() }
+                    else { scrollToBottomAfterSend() }
+                }
+            }
+        }
+    }
+
+    // MARK: - Goals
+
     private func handleGoalsTurnResponse(_ text: String) {
-        switch goalsTurn {
+        switch state.goalsTurn {
         case 1:
-            goalTurn1Text = text
-            goalsTurn = 2
+            state.goalTurn1Text = text
+            state.goalsTurn = 2
             fetchGoalsReplyAndAppend(
                 messages: [
-                    ["role": "assistant", "content": Self.goalsFirstQuestion],
+                    ["role": "assistant", "content": OnboardingState.goalsFirstQuestion],
                     ["role": "user", "content": text]
                 ],
-                fallback: fallbackGoalsReplyForTurn(2),
-                storeIn: { goalTurn2BotMessage = $0 }
+                fallback: state.fallbackGoalsReplyForTurn(2),
+                storeIn: { state.goalTurn2BotMessage = $0 }
             )
         case 2:
-            goalTurn2Text = text
-            goalsTurn = 3
-            let turn2Bot = goalTurn2BotMessage.isEmpty ? fallbackGoalsReplyForTurn(2) : goalTurn2BotMessage
-            fetchGoalsReplyAndAppend(
-                messages: [
-                    ["role": "assistant", "content": Self.goalsFirstQuestion],
-                    ["role": "user", "content": goalTurn1Text],
-                    ["role": "assistant", "content": turn2Bot],
-                    ["role": "user", "content": text]
-                ],
-                fallback: fallbackGoalsReplyForTurn(3),
-                storeIn: { goalTurn3BotMessage = $0 }
-            )
-        case 3:
-            goalTurn3Text = text
-            extractedGoalsFromConversation = extractGoalsFromTurns()
-            goalsTurn = 4
-            appendGoalsBotMessage(goalsIntroMessages())
-            autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
+            state.goalTurn2Text = text
+            state.goalsTurn = 4
+            extractGoalsWithClaude()
         default:
             break
         }
     }
-    
-    private func fallbackGoalsReplyForTurn(_ turn: Int) -> String {
-        if turn == 2 {
-            let lead = goalTurn1Text.prefix(50)
-            let suffix = goalTurn1Text.count > 50 ? "…" : ""
-            return "\(lead)\(suffix) — got it. What does that look like day-to-day for you? What would be different?"
-        }
-        if turn == 3 {
-            return "Tell me about a moment recently where you felt closest to — or furthest from — that."
-        }
-        return "What else matters to you right now?"
-    }
-    
+
     private func fetchGoalsReplyAndAppend(messages apiMessages: [[String: Any]], fallback: String, storeIn: @escaping (String) -> Void) {
-        showTypingIndicator = true
-        isLoadingGoalsReply = true
+        state.showTypingIndicator = true
+        state.isLoadingGoalsReply = true
         scrollToBottom()
-        
-        ClaudeService.shared.generateOnboardingGoalsReply(conversationMessages: apiMessages) { [self] result in
+
+        ClaudeService.shared.generateOnboardingGoalsReply(conversationMessages: apiMessages) { result in
             DispatchQueue.main.async {
-                showTypingIndicator = false
-                isLoadingGoalsReply = false
+                state.showTypingIndicator = false
+                state.isLoadingGoalsReply = false
                 let replyText: String
                 switch result {
                 case .success(let text):
@@ -544,7 +879,7 @@ struct iMessageOnboardingView: View {
                 }
                 let msg = ChatMessage(sender: .retrospect, text: replyText)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                    messages.append(msg)
+                    state.messages.append(msg)
                 }
                 HapticManager.shared.playSoftImpact()
                 scrollToBottomAfterSend()
@@ -554,386 +889,59 @@ struct iMessageOnboardingView: View {
             }
         }
     }
-    
-    private func appendGoalsBotMessage(_ group: [ChatMessage]) {
-        guard let msg = group.first else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            messages.append(msg)
-        }
-        HapticManager.shared.playSoftImpact()
-        scrollToBottomAfterSend()
-        if phase == .goals {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                isInputFocused = true
-            }
-        }
-    }
-    
-    // MARK: - Conversation Engine
-    
-    private func replayMessagesForPhase() {
-        messages = []
-        for p in OnboardingPhase.allCases {
-            if p.rawValue < phase.rawValue {
-                if p == .goals && phase == .closing {
-                    continue
-                }
-                appendPhaseMessages(for: p, animated: false)
-            } else if p == phase {
-                break
-            }
-        }
-        completedAnimationIds = Set(messages.map(\.id))
-    }
-    
-    private func appendPhaseMessages(for p: OnboardingPhase, animated: Bool) {
-        let newMessages = scriptMessages(for: p)
-        for msg in newMessages {
-            if !messages.contains(where: { $0.id == msg.id }) {
-                messages.append(msg)
-            }
-        }
-    }
-    
-    private func scriptMessages(for p: OnboardingPhase) -> [ChatMessage] {
-        switch p {
-        case .story:
-            return [
-                ChatMessage(sender: .retrospect, text: "I know your dirty little secret."),
-                ChatMessage(sender: .retrospect, text: "Notes you never revisit. Content you save and forget. Your life is scattered across a dozen apps."),
-                ChatMessage(sender: .retrospect, text: "Retrospect turns all of it into a weekly podcast about your life — so nothing gets lost."),
-            ]
-        case .privacy:
-            return [
-                ChatMessage(sender: .retrospect, text: "Before anything — your data is yours. Period."),
-                ChatMessage(sender: .retrospect, text: "Everything stays on your device. Encrypted. Private. You choose exactly what Retrospect sees."),
-            ]
-        case .auth:
-            return [
-                ChatMessage(sender: .retrospect, text: "Let's make this yours."),
-                ChatMessage(sender: .retrospect, text: "Sign in so your reflections and podcasts stay with you across devices."),
-            ]
-        case .googleDocs:
-            return [
-                ChatMessage(sender: .retrospect, text: "Your Google Docs are full of unfinished thoughts and half-written ideas."),
-                ChatMessage(sender: .retrospect, text: "Connect them, and I'll weave those threads into your weekly reflections — nothing leaves your device."),
-            ]
-        case .appleHealth:
-            return [
-                ChatMessage(sender: .retrospect, text: "Your body keeps score even when you don't."),
-                ChatMessage(sender: .retrospect, text: "Sleep patterns, activity streaks, mindful minutes — connecting Health lets me spot the patterns you'd miss."),
-            ]
-        case .screenTime:
-            return [
-                ChatMessage(sender: .retrospect, text: "This one's interesting — Screen Time."),
-                ChatMessage(sender: .retrospect, text: "I can see which apps you spend time on, how often you pick up your phone, and what categories dominate your day."),
-                ChatMessage(sender: .retrospect, text: "It helps me notice patterns — like if you're doom-scrolling when stressed, or reaching for your phone when you're avoiding something."),
-            ]
-        case .voicePersona:
-            return [
-                ChatMessage(sender: .retrospect, text: "One more thing — who do you want speaking to you each week?"),
-            ]
-        case .goals:
-            return goalsIntroMessages()
-        case .closing:
-            return [
-                ChatMessage(sender: .retrospect, text: "You just told me more about yourself in five minutes than most apps learn in five months."),
-                ChatMessage(sender: .retrospect, text: "Every journal entry, every voice note, every stray thought — I'll turn them into something you actually want to hear."),
-                ChatMessage(sender: .retrospect, text: "Your first podcast drops after your first week of entries."),
-                ChatMessage(sender: .retrospect, text: "Ready when you are."),
-            ]
-        }
-    }
-    
-    private func goalsIntroMessages() -> [ChatMessage] {
-        if goalsTurn == 1 {
-            return [ChatMessage(sender: .retrospect, text: Self.goalsFirstQuestion)]
-        }
-        if goalsTurn == 4 {
-            let list = extractedGoalsFromConversation.prefix(3).joined(separator: ", ")
-            return [ChatMessage(sender: .retrospect, text: "From what you've told me, it sounds like your focus areas are: \(list). Sound right?")]
-        }
-        return []
-    }
-    
-    private func extractGoalsFromTurns() -> [String] {
-        var combined = [goalTurn1Text, goalTurn2Text, goalTurn3Text]
-            .joined(separator: " ")
-            .lowercased()
-        var goals: [String] = []
-        let themes: [(keywords: [String], goal: String)] = [
-            (["exercise", "workout", "gym", "fitness", "run", "move"], "Exercise more"),
-            (["sleep", "rest", "tired", "energy"], "Better sleep"),
-            (["read", "book", "reading"], "Read daily"),
-            (["learn", "skill", "study", "course"], "Learn something new"),
-            (["stress", "calm", "anxiety", "overwhelm"], "Reduce stress"),
-            (["eat", "food", "diet", "healthier"], "Eat healthier"),
-            (["money", "save", "spend", "financial"], "Save money"),
-            (["present", "moment", "mindful"], "Be more present"),
-            (["focus", "concentrate", "distract"], "Improve focus"),
-            (["habit", "routine", "consistent"], "Build habits"),
-            (["relationship", "friend", "family", "connect"], "Improve relationships"),
-            (["career", "work", "job", "professional"], "Career growth"),
-            (["creative", "create", "write", "art"], "Creativity"),
-        ]
-        for (keywords, goal) in themes {
-            if keywords.contains(where: { combined.contains($0) }), !goals.contains(goal) {
-                goals.append(goal)
-            }
-        }
-        if goals.isEmpty {
-            let sentences = goalTurn1Text.components(separatedBy: CharacterSet(charactersIn: ".!?"))
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { $0.count > 10 }
-            goals = sentences.prefix(3).map { String($0.prefix(40)) }
-            if goals.isEmpty { goals = ["Personal growth"] }
-        }
-        return Array(goals.prefix(3))
-    }
-    
-    private func personaDisplayName(_ id: String) -> String {
-        switch id {
-        case "wise_mentor": return "Wise Mentor"
-        case "energetic_host": return "Energetic Host"
-        default: return "Thoughtful Friend"
-        }
-    }
-    
-    private func startOrResumeConversation() {
-        showTypingIndicator = false
-        showSkipLink = false
-        sendButtonOverride = .default
-        isAutoFillLocked = false
-        
-        switch phase {
-        case .story:
-            inputBarText = ""
-            deliverMessageGroup(scriptMessages(for: .story), typingDuration: 1.2) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                    if phase == .story {
-                        advancePhase()
-                    }
-                }
-            }
-        case .privacy:
-            deliverMessageGroup(scriptMessages(for: .privacy), typingDuration: 1.8) {
-                autoFillInputBar(text: "I'm in", style: .default, showSkip: false)
-            }
-        case .auth:
-            deliverMessageGroup(scriptMessages(for: .auth), typingDuration: 1.2) {
-                autoFillInputBar(text: "Sign in with Apple", style: .apple, showSkip: false)
-            }
-        case .googleDocs:
-            deliverMessageGroup(scriptMessages(for: .googleDocs), typingDuration: 1.8) {
-                autoFillInputBar(text: "Connect Google Docs", style: .default, showSkip: true)
-            }
-        case .appleHealth:
-            deliverMessageGroup(scriptMessages(for: .appleHealth), typingDuration: 1.8) {
-                autoFillInputBar(text: "Enable Apple Health", style: .default, showSkip: true)
-            }
-        case .screenTime:
-            deliverMessageGroup(scriptMessages(for: .screenTime), typingDuration: 2.2) {
-                autoFillInputBar(text: "Enable Screen Time", style: .default, showSkip: true)
-            }
-        case .voicePersona:
-            inputBarText = ""
-            deliverMessageGroup(scriptMessages(for: .voicePersona), typingDuration: 1.2) { }
-        case .goals:
-            goalsTurn = 1
-            goalTurn1Text = ""
-            goalTurn2Text = ""
-            goalTurn3Text = ""
-            goalTurn2BotMessage = ""
-            goalTurn3BotMessage = ""
-            inputBarText = ""
-            deliverMessageGroup(goalsIntroMessages(), typingDuration: 0.8) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    isInputFocused = true
-                }
-            }
-        case .closing:
-            deliverMessageGroup(scriptMessages(for: .closing), typingDuration: 2.0) {
-                autoFillInputBar(text: "Start Journaling", style: .sparkle, showSkip: false)
-            }
-        }
-    }
-    
-    private func deliverMessageGroup(_ group: [ChatMessage], typingDuration: Double, then: @escaping () -> Void) {
-        let existingIds = Set(messages.map { $0.id })
-        let toAppend = group.filter { !existingIds.contains($0.id) }
-        guard !toAppend.isEmpty else {
-            then()
-            return
-        }
-        
-        showTypingIndicator = true
+
+    private func extractGoalsWithClaude() {
+        state.showTypingIndicator = true
+        state.isLoadingGoalsReply = true
         scrollToBottom()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + typingDuration) {
-            showTypingIndicator = false
-            var delay: Double = 0
-            for (index, msg) in toAppend.enumerated() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+
+        let conversationHistory: [[String: Any]] = [
+            ["role": "assistant", "content": OnboardingState.goalsFirstQuestion],
+            ["role": "user", "content": state.goalTurn1Text],
+            ["role": "assistant", "content": state.goalTurn2BotMessage.isEmpty ? state.fallbackGoalsReplyForTurn(2) : state.goalTurn2BotMessage],
+            ["role": "user", "content": state.goalTurn2Text]
+        ]
+
+        ClaudeService.shared.extractGoalsFromConversation(conversationHistory: conversationHistory) { result in
+            DispatchQueue.main.async {
+                state.showTypingIndicator = false
+                state.isLoadingGoalsReply = false
+
+                switch result {
+                case .success(let goals):
+                    state.extractedGoalsFromConversation = goals
+                    let list = goals.prefix(3).joined(separator: ", ")
+                    let summaryMessage = goals.isEmpty
+                        ? "Got it. Let's get started."
+                        : "From what you've told me, it sounds like your focus areas are: \(list). Sound right?"
+                    let msg = ChatMessage(sender: .retrospect, text: summaryMessage)
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        messages.append(msg)
+                        state.messages.append(msg)
                     }
                     HapticManager.shared.playSoftImpact()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { scrollToBottom() }
-                }
-                delay += 0.8
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.5) {
-                HapticManager.shared.playSelectionChanged()
-                then()
-                scrollToBottom()
-            }
-        }
-    }
-    
-    private func scrollToBottom() {
-        scrollToId = .bottomPadding
-    }
-    
-    private func scrollToBottomAfterSend() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            scrollToBottom()
-        }
-    }
-    
-    private func triggerAppleSignIn() {
-        let provider = ASAuthorizationAppleIDProvider()
-        let request = provider.createRequest()
-        request.requestedScopes = [.email, .fullName]
-        let coordinator = AppleSignInCoordinator()
-        coordinator.onComplete = { [self] result in
-            DispatchQueue.main.async {
-                handleAppleSignIn(result: result)
-            }
-        }
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = coordinator
-        controller.presentationContextProvider = coordinator
-        controller.performRequests()
-        appleSignInCoordinator = coordinator
-    }
-    
-    private func addUserBubble(_ text: String) {
-        let msg = ChatMessage(sender: .user, text: text)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            messages.append(msg)
-        }
-        HapticManager.shared.playMediumImpact()
-        scrollToBottomAfterSend()
-    }
-    
-    private func advancePhase() {
-        guard let next = OnboardingPhase(rawValue: phase.rawValue + 1) else {
-            completeOnboarding()
-            return
-        }
-        persistedStep = next.rawValue
-        phase = next
-        startOrResumeConversation()
-    }
-    
-    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                signInError = "Invalid credential type"
-                return
-            }
-            let appleUserId = credential.user
-            let email = credential.email
-            let identityToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
-            isSigningIn = true
-            signInError = nil
-            
-            Task {
-                do {
-                    _ = try await apiClient.signIn(
-                        appleUserId: appleUserId,
-                        email: email,
-                        identityToken: identityToken
-                    )
-                    await MainActor.run {
-                        isSigningIn = false
-                        HapticManager.shared.playSuccessNotification()
-                        addUserBubble("Signed in")
-                        messages.append(ChatMessage(sender: .retrospect, text: "Welcome aboard."))
-                        advancePhase()
+                    scrollToBottomAfterSend()
+                    autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
+                case .failure:
+                    state.extractedGoalsFromConversation = state.extractGoalsFromTurnsFallback()
+                    let list = state.extractedGoalsFromConversation.prefix(3).joined(separator: ", ")
+                    let msg = ChatMessage(sender: .retrospect, text: "From what you've told me, it sounds like your focus areas are: \(list). Sound right?")
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        state.messages.append(msg)
                     }
-                } catch {
-                    await MainActor.run {
-                        isSigningIn = false
-                        signInError = error.localizedDescription
-                    }
-                }
-            }
-        case .failure(let error):
-            if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
-                signInError = error.localizedDescription
-            }
-        }
-    }
-    
-    private func connectGoogleDocs() {
-        isConnectingGoogle = true
-        Task {
-            do {
-                try await googleDocsService.authenticate()
-                await MainActor.run {
-                    isConnectingGoogle = false
-                    HapticManager.shared.playSuccessNotification()
-                    messages.append(ChatMessage(sender: .retrospect, text: "Connected.", isSpecial: true))
-                    advancePhase()
-                }
-            } catch {
-                await MainActor.run {
-                    isConnectingGoogle = false
-                    googleError = "Failed to connect. Please try again."
-                    autoFillInputBar(text: "Connect Google Docs", style: .default, showSkip: true)
+                    HapticManager.shared.playSoftImpact()
+                    scrollToBottomAfterSend()
+                    autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
                 }
             }
         }
     }
-    
-    private func requestHealthAccess() {
-        isRequestingHealth = true
-        HealthKitManager.shared.requestAuthorization { success in
-            DispatchQueue.main.async {
-                isRequestingHealth = false
-                if success {
-                    healthKitEnabled = true
-                    HapticManager.shared.playSuccessNotification()
-                    messages.append(ChatMessage(sender: .retrospect, text: "Health access enabled.", isSpecial: true))
-                }
-                advancePhase()
-            }
-        }
-    }
-    
-    private func requestScreenTimeAccess() {
-        isConnectingScreenTime = true
-        Task {
-            await screenTimeService.requestAuthorization()
-            await MainActor.run {
-                isConnectingScreenTime = false
-                if screenTimeService.isAuthorized {
-                    HapticManager.shared.playSuccessNotification()
-                    messages.append(ChatMessage(sender: .retrospect, text: "Screen Time enabled. I'll start noticing your digital patterns.", isSpecial: true))
-                } else if let error = screenTimeService.authorizationError {
-                    messages.append(ChatMessage(sender: .retrospect, text: "Couldn't connect Screen Time: \(error). You can enable this later in Settings."))
-                }
-                advancePhase()
-            }
-        }
-    }
-    
+
+    // MARK: - Persona
+
     private func savePersonaAndAdvance(_ personaId: String) {
         voicePersona = personaId
         UserDefaults.standard.set(personaId, forKey: "voice_persona")
-        isSavingPersona = true
+        state.isSavingPersona = true
         Task {
             if apiClient.isAuthenticated {
                 do {
@@ -943,74 +951,64 @@ struct iMessageOnboardingView: View {
                 }
             }
             await MainActor.run {
-                isSavingPersona = false
-                let preview = personaPreviewText(personaId)
-                messages.append(ChatMessage(sender: .retrospect, text: preview, isSpecial: true))
+                state.isSavingPersona = false
+                let preview = state.personaPreviewText(personaId)
+                state.messages.append(ChatMessage(sender: .retrospect, text: preview, isSpecial: true))
+                scrollToBottomAfterSend()
                 advancePhase()
             }
         }
     }
-    
-    private func personaPreviewText(_ id: String) -> String {
-        switch id {
-        case "wise_mentor": return "Calm and grounded. I'll let insights land with weight."
-        case "energetic_host": return "Dynamic and engaging. I'll celebrate your wins."
-        default: return "Warm and conversational. Like catching up over coffee."
-        }
-    }
-    
+
+    // MARK: - Complete
+
     private func completeOnboarding() {
-        UserDefaults.standard.removeObject(forKey: "onboardingCurrentStep")
+        state.clearPersistedStep()
         goalsManager.syncToBackend()
-        
-        // Schedule recurring notifications now that onboarding is done
+
         Task {
             let granted = await PodcastNotificationService.shared.requestAuthorization()
             if granted {
                 PodcastNotificationService.shared.scheduleAllRecurringNotifications()
             }
         }
-        
+
         onComplete?()
     }
 }
 
-// MARK: - Word-by-Word Reveal (typing animation for incoming messages; runs once, then onComplete marks as done)
+// MARK: - Unblur Text Reveal
 
 private struct TypingRevealText: View {
     let fullText: String
     let textColor: Color
     var onComplete: (() -> Void)? = nil
-    let intervalPerWord: Double = 0.06
-    
-    @State private var revealedWordCount: Int = 0
-    @State private var words: [String] = []
+
+    private static let unblurDuration: Double = 0.7
+
+    @State private var blurRadius: CGFloat = 20
+    @State private var opacity: Double = 0.3
     @State private var hasCompleted: Bool = false
-    
+
     var body: some View {
-        let displayed = words.prefix(revealedWordCount).joined(separator: " ")
-        Text(displayed)
-            .font(.system(size: 16, weight: .regular))
+        Text(fullText)
+            .font(.system(size: 17, weight: .regular, design: .serif))
             .foregroundColor(textColor)
             .fixedSize(horizontal: false, vertical: true)
-            .lineSpacing(2)
+            .lineSpacing(6)
+            .blur(radius: blurRadius)
+            .opacity(opacity)
             .onAppear {
                 guard !hasCompleted else { return }
-                words = fullText.split(separator: " ", omittingEmptySubsequences: true)
-                    .map { String($0) }
-                guard !words.isEmpty else {
-                    onComplete?()
-                    return
+                hasCompleted = true
+
+                withAnimation(.easeOut(duration: Self.unblurDuration)) {
+                    blurRadius = 0
+                    opacity = 1.0
                 }
-                for index in 1...words.count {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + intervalPerWord * Double(index)) {
-                        guard !hasCompleted else { return }
-                        revealedWordCount = index
-                        if index == words.count {
-                            hasCompleted = true
-                            onComplete?()
-                        }
-                    }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.unblurDuration) {
+                    onComplete?()
                 }
             }
     }
@@ -1022,112 +1020,205 @@ private struct ChatBubbleView: View {
     let message: ChatMessage
     let animationCompleted: Bool
     let onAnimationComplete: () -> Void
-    
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if message.sender == .user { Spacer(minLength: 60) }
-            bubbleContent
-            if message.sender == .retrospect { Spacer(minLength: 60) }
-        }
-        .transition(.asymmetric(
-            insertion: .opacity.combined(with: .scale(scale: 0.96).combined(with: .move(edge: .bottom))),
-            removal: .opacity
-        ))
-    }
-    
-    private var bubbleContent: some View {
-        HStack(alignment: .center, spacing: 6) {
-            if message.sender == .retrospect && message.isSpecial {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(LinearColors.Minimal.success)
+        if message.sender == .retrospect {
+            HStack(alignment: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if message.isSpecial {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(LinearColors.Minimal.success)
+                        }
+                        .padding(.bottom, 2)
+                    }
+                    if animationCompleted {
+                        Text(message.text)
+                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineSpacing(6)
+                    } else {
+                        TypingRevealText(
+                            fullText: message.text,
+                            textColor: LinearColors.Minimal.textPrimary,
+                            onComplete: onAnimationComplete
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, 60)
             }
-            if message.sender == .retrospect && !message.isSpecial {
-                if animationCompleted {
+            .padding(.vertical, 4)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                removal: .opacity
+            ))
+        } else {
+            HStack(alignment: .bottom, spacing: 8) {
+                Spacer(minLength: 60)
+                HStack(alignment: .center, spacing: 0) {
                     Text(message.text)
                         .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                        .foregroundColor(iMessageBubble.outgoingText)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)
-                } else {
-                    TypingRevealText(
-                        fullText: message.text,
-                        textColor: LinearColors.Minimal.textPrimary,
-                        onComplete: onAnimationComplete
-                    )
                 }
-            } else {
-                Text(message.text)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(message.sender == .user ? iMessageBubble.outgoingText : LinearColors.Minimal.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(2)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(iMessageBubble.outgoing)
+                )
             }
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .scale(scale: 0.96).combined(with: .move(edge: .bottom))),
+                removal: .opacity
+            ))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(bubbleBackground)
-    }
-    
-    @ViewBuilder private var bubbleBackground: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(message.sender == .user ? iMessageBubble.outgoing : iMessageBubble.incoming)
     }
 }
 
-// MARK: - Persona Card Stack (voice persona selection in message area)
+// MARK: - Persona Card Stack
 
 private struct PersonaCardStack: View {
     let onSelect: (String) -> Void
-    
-    private let personas: [(id: String, name: String, icon: String, description: String, sample: String)] = [
-        ("thoughtful_friend", "Thoughtful Friend", "cup.and.saucer", "Warm and curious. Like catching up over coffee.", "I noticed something interesting in what you shared this week..."),
-        ("wise_mentor", "Wise Mentor", "graduationcap", "Calm and grounded. Insights that land with weight.", "Let's look at what's really driving this pattern..."),
-        ("energetic_host", "Energetic Host", "bolt", "Dynamic and direct. Celebrates wins, challenges comfort zones.", "Okay, let's talk about that breakthrough moment!"),
+
+    private let personas: [(id: String, name: String, icon: String, description: String, detail: String)] = [
+        ("thoughtful_friend", "Thoughtful Friend", "cup.and.saucer", "Warm and curious", "Like catching up over coffee; gentle and reflective."),
+        ("wise_mentor", "Wise Mentor", "graduationcap", "Calm and grounded", "Thoughtful and steady; good for big-picture reflection."),
+        ("energetic_host", "Energetic Host", "bolt", "Dynamic and direct", "Upbeat and motivating; great for energy and momentum."),
     ]
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(spacing: 8) {
             ForEach(personas, id: \.id) { p in
                 Button(action: { onSelect(p.id) }) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 12) {
-                            Image(systemName: p.icon)
-                                .font(.system(size: 22, weight: .medium))
-                                .foregroundColor(LinearColors.Minimal.accent)
-                                .frame(width: 32, alignment: .center)
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: p.icon)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(LinearColors.Minimal.accent)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(p.name)
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
+                            Text(p.description)
+                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                            Text(p.detail)
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
-                        Text(p.description)
-                            .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textSecondary)
-                        Text(p.sample)
-                            .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .italic()
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                        Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(LinearColors.Minimal.backgroundCard)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
                             )
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 0)
+        .padding(.vertical, 8)
     }
 }
 
-// MARK: - Variable Blur (progressive blur toward bottom, iMessage-style)
+// MARK: - Integration Card Stack
+
+private struct IntegrationCardStack: View {
+    let googleConnected: Bool
+    let healthConnected: Bool
+    let screenTimeConnected: Bool
+    let isConnectingGoogle: Bool
+    let isRequestingHealth: Bool
+    let isConnectingScreenTime: Bool
+    let onConnectGoogle: () -> Void
+    let onConnectHealth: () -> Void
+    let onConnectScreenTime: () -> Void
+
+    private let rows: [(id: String, icon: String, title: String, subtitle: String)] = [
+        ("google", "doc.text.fill", "Google Docs", "Your notes and docs"),
+        ("health", "heart.fill", "Apple Health", "Sleep, activity, mindfulness"),
+        ("screentime", "chart.bar.fill", "Screen Time", "App usage patterns"),
+    ]
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(rows, id: \.id) { row in
+                let (connected, loading) = stateFor(row.id)
+                Button(action: { actionFor(row.id)() }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: row.icon)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(LinearColors.Minimal.accent)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title)
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                            Text(row.subtitle)
+                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                        }
+                        Spacer()
+                        if loading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.textTertiary))
+                                .scaleEffect(0.8)
+                        } else if connected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(LinearColors.Minimal.success)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(LinearColors.Minimal.backgroundCard)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(loading || connected)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private func stateFor(_ id: String) -> (connected: Bool, loading: Bool) {
+        switch id {
+        case "google": return (googleConnected, isConnectingGoogle)
+        case "health": return (healthConnected, isRequestingHealth)
+        case "screentime": return (screenTimeConnected, isConnectingScreenTime)
+        default: return (false, false)
+        }
+    }
+
+    private func actionFor(_ id: String) -> () -> Void {
+        switch id {
+        case "google": return onConnectGoogle
+        case "health": return onConnectHealth
+        case "screentime": return onConnectScreenTime
+        default: return {}
+        }
+    }
+}
+
+// MARK: - Variable Blur
 
 private struct VariableBlurView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIVisualEffectView {
@@ -1140,35 +1231,10 @@ private struct VariableBlurView: UIViewRepresentable {
         view.layer.mask = gradient
         return view
     }
-    
+
     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
         guard let mask = uiView.layer.mask as? CAGradientLayer else { return }
         mask.frame = uiView.bounds
-    }
-}
-
-// MARK: - Apple Sign-In Coordinator (programmatic ASAuthorizationController)
-
-private class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    var onComplete: ((Result<ASAuthorization, Error>) -> Void)?
-    
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        onComplete?(.success(authorization))
-    }
-    
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        onComplete?(.failure(error))
-    }
-    
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }),
-              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
-            return UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap { $0.windows }
-                .first { $0.isKeyWindow } ?? UIWindow()
-        }
-        return window
     }
 }
 
@@ -1176,9 +1242,9 @@ private class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegat
 
 private struct TypingIndicatorView: View {
     @State private var animating = false
-    
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
+        HStack(alignment: .top, spacing: 0) {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
@@ -1193,18 +1259,15 @@ private struct TypingIndicatorView: View {
                         )
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(iMessageBubble.incoming)
-            )
+            .padding(.vertical, 8)
             Spacer(minLength: 60)
         }
         .onAppear { animating = true }
     }
 }
 
+// MARK: - Preview
+
 #Preview {
-    iMessageOnboardingView(onComplete: {})
+    DarkOnboardingFlow(onComplete: {})
 }

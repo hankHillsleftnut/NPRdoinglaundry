@@ -943,7 +943,12 @@ struct DarkIntegrationsDataView: View {
                             isConnectingScreenTime = true
                             Task {
                                 await screenTimeService.requestAuthorization()
-                                isConnectingScreenTime = false
+                                await MainActor.run {
+                                    isConnectingScreenTime = false
+                                    if screenTimeService.isAuthorized {
+                                        screenTimeService.startRetroactiveBackfill()
+                                    }
+                                }
                             }
                         }) {
                             HStack(spacing: 8) {
@@ -1254,6 +1259,8 @@ struct DarkAdvancedSettingsView: View {
                 Button(action: {
                     onboardingReplayId += 1
                     UserDefaults.standard.set(1, forKey: "onboardingCurrentStep")
+                    UserDefaults.standard.removeObject(forKey: "onboardingSignedIn")
+                    UserDefaults.standard.removeObject(forKey: "onboardingIntegrationsCompleted")
                     showOnboarding = true
                 }) {
                     HStack {
@@ -1604,8 +1611,8 @@ struct DarkAdvancedSettingsView: View {
         
         // Real API calls - Get real entries from the past week
         let weekEntries = entryManager.getEntriesForWeek()
-        let goals = goalsManager.goals
-        
+        let goals = goalsManager.goalContextForGeneration
+
         // Build combined text from entries
         var combinedText = ""
         

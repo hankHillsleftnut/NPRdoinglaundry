@@ -22,8 +22,9 @@ class BackgroundAudioRecordingManager: NSObject, ObservableObject {
     private var outputURL: URL?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     
-    // Live Activity
+    // Live Activity (started only when app enters background)
     private var activity: Activity<VoiceRecordingAttributes>?
+    private var didEnterBackgroundObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     
@@ -31,6 +32,22 @@ class BackgroundAudioRecordingManager: NSObject, ObservableObject {
         super.init()
         // Pre-configure audio session for faster startup
         configureAudioSessionForBackground()
+        didEnterBackgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            if self.isRecording, self.activity == nil {
+                self.startLiveActivity()
+            }
+        }
+    }
+    
+    deinit {
+        if let observer = didEnterBackgroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     private func configureAudioSessionForBackground() {
@@ -159,8 +176,7 @@ class BackgroundAudioRecordingManager: NSObject, ObservableObject {
             // Start duration timer
             startTimer()
             
-            // Start Live Activity
-            startLiveActivity()
+            // Live Activity is started only when app enters background (see init observer)
             
             print("🎤 Started background recording (no real-time transcription)")
             
@@ -327,7 +343,7 @@ class BackgroundAudioRecordingManager: NSObject, ObservableObject {
         
         let attributes = VoiceRecordingAttributes(startTime: Date())
         let initialState = VoiceRecordingAttributes.ContentState(
-            recordingDuration: 0,
+            recordingDuration: recordingDuration,
             isRecording: true
         )
         

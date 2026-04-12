@@ -1,0 +1,99 @@
+flowchart TB
+    subgraph iosInput [iOS Data Collection]
+        VoiceRec["Voice Recording\nAudioRecordingManager"]
+        TextEntry["Text Entry\nHome screen reflections"]
+        VideoJournal["Video Journal\nVideoJournalViewModel"]
+        ScreenTimeExt["Screen Time\nDeviceActivityReport extension"]
+    end
+
+    subgraph onDevice [On-Device Processing]
+        Transcribe["SFSpeechRecognizer\nOn-device transcription"]
+        AIMetadata["AIServiceManager\nTitle + tags generation"]
+        STProcess["Screen Time Extension\nApp Group: group.com.retrospect.shared"]
+    end
+
+    VoiceRec --> Transcribe
+    VideoJournal --> Transcribe
+    Transcribe --> AIMetadata
+    TextEntry --> AIMetadata
+    ScreenTimeExt --> STProcess
+    STProcess -->|"toNaturalLanguage"| STUpload["Natural language summary"]
+
+    subgraph backendUpload [Backend API - Immediate]
+        ContentAPI["POST /content\nInserts into raw_content\nTriggers legacy pipeline"]
+        GoalAPI["POST /goals/extract-and-save\nClaude: CBT goal extraction\nOpenAI: goal embedding"]
+    end
+
+    AIMetadata -->|"uploadContent"| ContentAPI
+    STUpload -->|"syncToBackend"| ContentAPI
+
+    ContentAPI --> RawContent[(raw_content)]
+    GoalAPI --> GoalsDB[(goals)]
+
+    subgraph legacyPipeline [Legacy Pipeline -- Runs Immediately on Content Upload]
+        L1["extraction.ts\nClaude claude-sonnet-4-20250514\nSource-specific prompts per content_type"]
+        L2[(insight_units)]
+        L3["processConnectionsBatch\nOpenAI text-embedding-3-large\nCosine similarity matching"]
+        L4[(insight_connections)]
+        L1 --> L2 --> L3 --> L4
+    end
+
+    RawContent --> L1
+
+    subgraph goalsPipeline [Goals Pipeline -- Daily 5 AM UTC Cron]
+        G1["chunkContent\nParagraph segmentation, max 1500 chars"]
+        G2["filterChunksByGoal\nOpenAI text-embedding-3-large\nCosine similarity >= 0.35"]
+        G3["observations.ts\nClaude claude-sonnet-4-20250514\nCBT types: capability, negative self-talk, behavioral data"]
+        G4[(observations)]
+        G5["generateObservationEmbeddings\nOpenAI text-embedding-3-large"]
+        G6["clusterObservations\nCosine similarity >= 0.65, min cluster 2"]
+        G7["insight-synthesis.ts\nClaude claude-sonnet-4-20250514\nIncremental: create_new or update_existing"]
+        G8[(insights)]
+        G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8
+    end
+
+    RawContent --> G1
+    GoalsDB --> G2
+
+    subgraph patternDetection [Pattern Detection -- Daily 3 AM + Sunday 4 AM UTC]
+        P1Pat["patterns.ts\nClaude claude-sonnet-4-20250514\nCBT types: distortion_habit, hidden_strength,\ndiscounting_system, thought_behavior_cycle,\nprogress_signal, self_esteem_blocker"]
+        P2Pat[(patterns)]
+        P3Pat[(pattern_insights)]
+        P4Pat["validateExistingPatterns\nWeekly: deactivate if less than 50% support"]
+        P1Pat --> P2Pat
+        P1Pat --> P3Pat
+        P2Pat --> P4Pat
+    end
+
+    L2 --> P1Pat
+
+    subgraph podcastGeneration [Podcast Generation -- Sunday 6 AM UTC Cron]
+        Pod1["Pass 1: generateOutline\nClaude: CBT episode structure\nOutput: theme, segments, research queries"]
+        Pod2["Pass 2: enrichWithResearch\nPerplexity sonar-pro\nBatch research queries with citations"]
+        Pod3["Pass 3: generateScript\nClaude: 1200-1500 words\nElevenLabs v3 emotion tags + user persona"]
+        Pod4["Metadata: title, description, mood\nClaude"]
+        Pod5["Pass 4: textToSpeech\nElevenLabs eleven_v3\nChunked at sentence boundaries, max 4800 chars"]
+        PodDB[(podcast_episodes)]
+        Pod1 --> Pod2 --> Pod3 --> Pod4
+        Pod3 --> Pod5 --> PodDB
+        Pod4 --> PodDB
+    end
+
+    G8 --> Pod1
+    G4 --> Pod1
+    GoalsDB --> Pod1
+
+    subgraph onDevicePodcast [On-Device Podcast -- Separate Path]
+        HK["HealthKit\nSteps, energy, heart rate,\nsleep, mindfulness - 7 days"]
+        GDocs["Google Docs\nLast 2 weeks, 5 most recent docs"]
+        BuildInput["buildCombinedInput\nReflections + goals + health + docs"]
+        LocalGen["TranscriptViewModel\nOpenAI or Claude"]
+        HK --> BuildInput
+        GDocs --> BuildInput
+        BuildInput --> LocalGen
+    end
+
+    subgraph tracking [Pipeline Tracking]
+        PRuns[(pipeline_runs)]
+        PQueue[(processing_queue)]
+    end

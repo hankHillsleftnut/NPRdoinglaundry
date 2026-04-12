@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retrospect — Data model and pipeline</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; max-width: 1200px; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.2rem; margin-top: 2rem; }
+    p.note { color: #444; font-size: 0.9rem; }
+    .mermaid { margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Retrospect data model and pipeline</h1>
+  <p class="note">Open this file in a browser. Diagrams use Mermaid.js from jsDelivr. Full text reference: <code>docs/retrospect-data-model-and-pipeline.md</code></p>
+
+  <h2>1. Entity-relationship model</h2>
+  <div class="mermaid">
+erDiagram
+    users {
+        UUID id PK
+        TEXT apple_user_id UK
+        TEXT email
+        TEXT voice_persona
+    }
+    data_sources {
+        UUID id PK
+        TEXT name UK
+        TEXT display_name
+        TEXT extraction_prompt
+        BOOL is_active
+    }
+    categories {
+        UUID id PK
+        TEXT name UK
+        TEXT display_name
+        UUID parent_category_id FK
+    }
+    raw_content {
+        UUID id PK
+        UUID user_id FK
+        TEXT content_type
+        TEXT content
+        TIMESTAMP content_date
+        TEXT processing_status
+        UUID source_id FK
+        JSONB metadata
+    }
+    goals {
+        UUID id PK
+        UUID user_id FK
+        TEXT title
+        TEXT description
+        BOOL is_active
+        VECTOR embedding
+    }
+    insight_units {
+        UUID id PK
+        UUID user_id FK
+        UUID raw_content_id FK
+        TEXT content
+        TEXT primary_category
+        TEXT sentiment
+        DECIMAL confidence_score
+        DECIMAL intensity
+        BOOL is_inferred
+        VECTOR embedding
+    }
+    insight_connections {
+        UUID id PK
+        UUID source_insight_id FK
+        UUID target_insight_id FK
+        TEXT connection_type
+        DECIMAL strength
+        TEXT reasoning
+    }
+    patterns {
+        UUID id PK
+        UUID user_id FK
+        TEXT title
+        TEXT description
+        TEXT pattern_type
+        TEXT frequency
+        DECIMAL confidence_score
+        BOOL is_active
+        TEXT user_feedback
+    }
+    pattern_insights {
+        UUID pattern_id PK
+        UUID insight_id PK
+        DECIMAL relevance_score
+    }
+    observations {
+        UUID id PK
+        UUID user_id FK
+        UUID goal_id FK
+        UUID raw_content_id FK
+        TEXT content
+        TEXT reason_why
+        DECIMAL confidence_score
+        TIMESTAMP observation_date
+        VECTOR embedding
+    }
+    insights {
+        UUID id PK
+        UUID user_id FK
+        UUID goal_id FK
+        TEXT title
+        TEXT content
+        TEXT evidence_summary
+        DECIMAL confidence_score
+        VECTOR embedding
+    }
+    pipeline_runs {
+        UUID id PK
+        UUID user_id FK
+        TEXT run_type
+        TEXT status
+        INT observations_created
+        INT insights_created
+    }
+    podcast_episodes {
+        UUID id PK
+        UUID user_id FK
+        TEXT title
+        TEXT script
+        TEXT audio_url
+        INT duration_seconds
+        TEXT mood
+        TEXT generation_type
+        TEXT status
+        UUID previous_episode_id FK
+        JSONB outline
+        JSONB research_citations
+    }
+    processing_queue {
+        UUID id PK
+        TEXT job_type
+        JSONB payload
+        TEXT status
+        INT priority
+    }
+    analytics_cache {
+        UUID id PK
+        UUID user_id FK
+        TEXT cache_key
+        JSONB cache_value
+        TIMESTAMP expires_at
+    }
+
+    users ||--o{ raw_content : "uploads"
+    users ||--o{ goals : "sets"
+    users ||--o{ insight_units : "has"
+    users ||--o{ observations : "has"
+    users ||--o{ insights : "has"
+    users ||--o{ patterns : "has"
+    users ||--o{ podcast_episodes : "receives"
+    users ||--o{ pipeline_runs : "triggers"
+    users ||--o{ analytics_cache : "cached"
+    data_sources ||--o{ raw_content : "provides"
+    raw_content ||--o{ insight_units : "legacy extraction"
+    raw_content ||--o{ observations : "goals extraction"
+    goals ||--o{ observations : "tracked by"
+    goals ||--o{ insights : "synthesized for"
+    insight_units ||--o{ insight_connections : "source"
+    insight_units ||--o{ insight_connections : "target"
+    patterns ||--o{ pattern_insights : "has"
+    insight_units ||--o{ pattern_insights : "supports"
+
+  </div>
+
+  <h2>2. Processing pipeline</h2>
+  <div class="mermaid">
+flowchart TB
+    subgraph iosInput [iOS Data Collection]
+        VoiceRec["Voice Recording\nAudioRecordingManager"]
+        TextEntry["Text Entry\nHome screen reflections"]
+        VideoJournal["Video Journal\nVideoJournalViewModel"]
+        ScreenTimeExt["Screen Time\nDeviceActivityReport extension"]
+    end
+
+    subgraph onDevice [On-Device Processing]
+        Transcribe["SFSpeechRecognizer\nOn-device transcription"]
+        AIMetadata["AIServiceManager\nTitle + tags generation"]
+        STProcess["Screen Time Extension\nApp Group: group.com.retrospect.shared"]
+    end
+
+    VoiceRec --> Transcribe
+    VideoJournal --> Transcribe
+    Transcribe --> AIMetadata
+    TextEntry --> AIMetadata
+    ScreenTimeExt --> STProcess
+    STProcess -->|"toNaturalLanguage"| STUpload["Natural language summary"]
+
+    subgraph backendUpload [Backend API - Immediate]
+        ContentAPI["POST /content\nInserts into raw_content\nTriggers legacy pipeline"]
+        GoalAPI["POST /goals/extract-and-save\nClaude: CBT goal extraction\nOpenAI: goal embedding"]
+    end
+
+    AIMetadata -->|"uploadContent"| ContentAPI
+    STUpload -->|"syncToBackend"| ContentAPI
+
+    ContentAPI --> RawContent[(raw_content)]
+    GoalAPI --> GoalsDB[(goals)]
+
+    subgraph legacyPipeline [Legacy Pipeline -- Runs Immediately on Content Upload]
+        L1["extraction.ts\nClaude claude-sonnet-4-20250514\nSource-specific prompts per content_type"]
+        L2[(insight_units)]
+        L3["processConnectionsBatch\nOpenAI text-embedding-3-large\nCosine similarity matching"]
+        L4[(insight_connections)]
+        L1 --> L2 --> L3 --> L4
+    end
+
+    RawContent --> L1
+
+    subgraph goalsPipeline [Goals Pipeline -- Daily 5 AM UTC Cron]
+        G1["chunkContent\nParagraph segmentation, max 1500 chars"]
+        G2["filterChunksByGoal\nOpenAI text-embedding-3-large\nCosine similarity >= 0.35"]
+        G3["observations.ts\nClaude claude-sonnet-4-20250514\nCBT types: capability, negative self-talk, behavioral data"]
+        G4[(observations)]
+        G5["generateObservationEmbeddings\nOpenAI text-embedding-3-large"]
+        G6["clusterObservations\nCosine similarity >= 0.65, min cluster 2"]
+        G7["insight-synthesis.ts\nClaude claude-sonnet-4-20250514\nIncremental: create_new or update_existing"]
+        G8[(insights)]
+        G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8
+    end
+
+    RawContent --> G1
+    GoalsDB --> G2
+
+    subgraph patternDetection [Pattern Detection -- Daily 3 AM + Sunday 4 AM UTC]
+        P1Pat["patterns.ts\nClaude claude-sonnet-4-20250514\nCBT types: distortion_habit, hidden_strength,\ndiscounting_system, thought_behavior_cycle,\nprogress_signal, self_esteem_blocker"]
+        P2Pat[(patterns)]
+        P3Pat[(pattern_insights)]
+        P4Pat["validateExistingPatterns\nWeekly: deactivate if less than 50% support"]
+        P1Pat --> P2Pat
+        P1Pat --> P3Pat
+        P2Pat --> P4Pat
+    end
+
+    L2 --> P1Pat
+
+    subgraph podcastGeneration [Podcast Generation -- Sunday 6 AM UTC Cron]
+        Pod1["Pass 1: generateOutline\nClaude: CBT episode structure\nOutput: theme, segments, research queries"]
+        Pod2["Pass 2: enrichWithResearch\nPerplexity sonar-pro\nBatch research queries with citations"]
+        Pod3["Pass 3: generateScript\nClaude: 1200-1500 words\nElevenLabs v3 emotion tags + user persona"]
+        Pod4["Metadata: title, description, mood\nClaude"]
+        Pod5["Pass 4: textToSpeech\nElevenLabs eleven_v3\nChunked at sentence boundaries, max 4800 chars"]
+        PodDB[(podcast_episodes)]
+        Pod1 --> Pod2 --> Pod3 --> Pod4
+        Pod3 --> Pod5 --> PodDB
+        Pod4 --> PodDB
+    end
+
+    G8 --> Pod1
+    G4 --> Pod1
+    GoalsDB --> Pod1
+
+    subgraph onDevicePodcast [On-Device Podcast -- Separate Path]
+        HK["HealthKit\nSteps, energy, heart rate,\nsleep, mindfulness - 7 days"]
+        GDocs["Google Docs\nLast 2 weeks, 5 most recent docs"]
+        BuildInput["buildCombinedInput\nReflections + goals + health + docs"]
+        LocalGen["TranscriptViewModel\nOpenAI or Claude"]
+        HK --> BuildInput
+        GDocs --> BuildInput
+        BuildInput --> LocalGen
+    end
+
+    subgraph tracking [Pipeline Tracking]
+        PRuns[(pipeline_runs)]
+        PQueue[(processing_queue)]
+    end
+
+  </div>
+</body>
+</html>

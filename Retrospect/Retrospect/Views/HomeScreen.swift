@@ -1053,8 +1053,8 @@ struct HomeScreen: View {
             }
         }
         
-                    let goalsList = goalsManager.goals
-        
+                    let goalsList = goalsManager.goalContextForGeneration
+
         // Choose generation method based on Deep Research mode
         if viewModel.deepResearchMode {
             viewModel.generateDeepResearchTranscript(text: combinedInput, goals: goalsList)

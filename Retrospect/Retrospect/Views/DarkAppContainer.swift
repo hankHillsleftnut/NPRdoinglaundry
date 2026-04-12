@@ -331,7 +331,8 @@ struct DarkJournalView: View {
         GeometryReader { geometry in
             ZStack {
                 // Hidden DeviceActivityReport — triggers the extension silently
-                // so screen time data is written to App Group every time the app opens
+                // so screen time data is written to App Group every time the app opens.
+                // The extension takes 1-3s to process; delayed refreshes below pick up the result.
                 if screenTimeService.isAuthorized {
                     DeviceActivityReport(
                         DeviceActivityReport.Context("Total Activity"),
@@ -347,6 +348,9 @@ struct DarkJournalView: View {
                     .frame(width: 1, height: 1)
                     .opacity(0)
                     .allowsHitTesting(false)
+                    .onAppear {
+                        scheduleScreenTimeRefreshes()
+                    }
                 }
                 
                 // Main content
@@ -358,18 +362,31 @@ struct DarkJournalView: View {
                             Spacer()
                                 .frame(height: 40)
                             
-                            // Screen time ambient insight (only when authorized and data exists)
-                            if !isHoldRecording, screenTimeService.isAuthorized, let nugget = screenTimeNugget {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "hourglass")
-                                        .font(.system(size: 10, weight: .medium))
-                                    Text(nugget)
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                            // Screen time: show nugget when data exists, or short "connected" line when authorized
+                            if !isHoldRecording, screenTimeService.isAuthorized {
+                                if let nugget = screenTimeNugget {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "hourglass")
+                                            .font(.system(size: 10, weight: .medium))
+                                        Text(nugget)
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    }
+                                    .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
+                                    .padding(.horizontal, 28)
+                                    .padding(.bottom, 8)
+                                    .transition(.opacity)
+                                } else {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "hourglass")
+                                            .font(.system(size: 10, weight: .medium))
+                                        Text("Screen Time connected · data will appear after you use your device")
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    }
+                                    .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
+                                    .padding(.horizontal, 28)
+                                    .padding(.bottom, 8)
+                                    .transition(.opacity)
                                 }
-                                .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
-                                .padding(.horizontal, 28)
-                                .padding(.bottom, 8)
-                                .transition(.opacity)
                             }
                             
                             // Headline - changes to Recording indicator during hold recording
@@ -466,41 +483,15 @@ struct DarkJournalView: View {
                         }
                         .opacity(isHoldRecording ? 0.3 : 1.0)
                     }
-                    .contentShape(Rectangle())
-                    .gesture(
-                        LongPressGesture(minimumDuration: 0.5)
-                            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-                            .onChanged { value in
-                                switch value {
-                                case .first(true):
-                                    // Long press detected, start recording
-                                    if !isHoldRecording && !isInFocusMode {
-                                        startHoldRecording()
-                                    }
-                                case .second(true, _):
-                                    // Holding — just keep recording, no drag tracking needed
-                                    break
-                                default:
-                                    break
-                                }
-                            }
-                            .onEnded { _ in
-                                if isHoldRecording {
-                                    // Release = stop recording (cancel if under 2 seconds)
-                                    let tooShort = recordingDuration < 2.0
-                                    endHoldRecording(cancelled: tooShort)
-                                }
-                            }
-                    )
                     
-                    // Input area at bottom (NOT part of hold-to-record zone)
+                    // Input area at bottom with dedicated hold-to-record control
                     if !isHoldRecording {
                         VStack(spacing: 16) {
                             // Generate button (when ready)
                             if !journalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && goalsManager.goalsCount > 0 && !viewModel.isProcessing {
                                 Button(action: {
                                     HapticManager.shared.playMediumImpact()
-                                    viewModel.generateTranscript(text: journalText, goals: goalsManager.goals)
+                                    viewModel.generateTranscript(text: journalText, goals: goalsManager.goalContextForGeneration)
                                 }) {
                                     HStack(spacing: 8) {
                                         Image(systemName: "sparkles")
@@ -519,14 +510,47 @@ struct DarkJournalView: View {
                                 .transition(.scale.combined(with: .opacity))
                             }
                             
-                            // Hold to record hint
-                            HStack(spacing: 6) {
-                                Image(systemName: "hand.tap")
-                                    .font(.system(size: 11, weight: .medium))
-                                Text("Hold anywhere above to record")
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                            // Dedicated hold-to-record pill (1.0s hold to avoid accidental triggers)
+                            HStack(spacing: 8) {
+                                Image(systemName: "mic.fill")
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("Hold to record")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
                             }
-                            .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.5))
+                            .foregroundColor(LinearColors.Minimal.textSecondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(LinearColors.Minimal.backgroundCard)
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    )
+                            )
+                            .contentShape(Capsule())
+                            .gesture(
+                                LongPressGesture(minimumDuration: 1.0)
+                                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                                    .onChanged { value in
+                                        switch value {
+                                        case .first(true):
+                                            if !isHoldRecording && !isInFocusMode {
+                                                startHoldRecording()
+                                            }
+                                        case .second(true, _):
+                                            break
+                                        default:
+                                            break
+                                        }
+                                    }
+                                    .onEnded { _ in
+                                        if isHoldRecording {
+                                            let tooShort = recordingDuration < 2.0
+                                            endHoldRecording(cancelled: tooShort)
+                                        }
+                                    }
+                            )
                             
                             // Journal input - tappable to enter focus mode
                             MinimalJournalInput(
@@ -602,6 +626,11 @@ struct DarkJournalView: View {
         .onDisappear {
             removeKeyboardObservers()
             ellipsisTimer?.invalidate()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("StopVoiceRecordingFromLiveActivity"))) { _ in
+            if isHoldRecording {
+                endHoldRecording(cancelled: false)
+            }
         }
         .overlay {
             if showImagePicker {
@@ -870,6 +899,17 @@ struct DarkJournalView: View {
             return m > 0 ? "\(h)h \(m)m" : "\(h)h"
         }
         return "\(minutes)m"
+    }
+
+    /// The Screen Time extension writes data to the App Group asynchronously after the
+    /// hidden DeviceActivityReport renders. These staggered refreshes give the extension
+    /// time to finish before the main app re-reads.
+    private func scheduleScreenTimeRefreshes() {
+        for delay in [2.0, 5.0, 10.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                screenTimeService.refreshData()
+            }
+        }
     }
     
     private func saveReflectionAsEntry() {

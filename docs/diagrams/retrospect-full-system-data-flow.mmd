@@ -1,0 +1,202 @@
+%% Full-system data flow: iOS, Render, Supabase, external AI, cron, admin, local-only paths
+%% Validate: npx @mermaid-js/mermaid-cli@11.4.0 -i docs/diagrams/retrospect-full-system-data-flow.mmd -o /tmp/test.png
+%% High-res PNG: npx @mermaid-js/mermaid-cli@11.4.0 -i docs/diagrams/retrospect-full-system-data-flow.mmd -o docs/diagrams/retrospect-full-system-data-flow.png -w 3600 -H 24000 -s 3 -b white
+
+flowchart TB
+  classDef tbl fill:#e1f5fe,stroke:#01579b
+  classDef step fill:#fff8e1,stroke:#ff6f00
+  classDef model fill:#f3e5f5,stroke:#4a148c
+  classDef store fill:#e8f5e9,stroke:#1b5e20
+  classDef ext fill:#fce4ec,stroke:#880e4f
+  classDef warn fill:#ffebee,stroke:#c62828
+
+  subgraph LP [Device local stores not Postgres]
+    KC[Keychain JWT user id session]:::step
+    FS[FileStorage disk entries audio video]:::step
+    AG[App Group UserDefaults Screen Time handoff]:::step
+  end
+
+  KC -.->|Authorization Bearer| s2a
+  FS -.-> s1b
+  AG -.-> s1d
+
+  subgraph S1 [1. On-device capture to uploadable text]
+    direction TB
+    s1a[Apple Sign In]:::step
+    s1b[Mic camera keyboard Screen Time UI]:::step
+    s1c[SFSpeechRecognizer to transcript]:::step
+    s1d[Screen Time ext DeviceActivity to App Group JSON]:::step
+    s1e[Main app NL screen time summary]:::step
+    s1f[Optional AIServiceManager local titles tags]:::step
+    s1g[Local HealthKit Google Docs context]:::step
+  end
+
+  odp[On-device podcast TranscriptViewModel Claude or OpenAI optional TTS no server raw_content unless journaled]:::step
+  s1g --> odp
+
+  subgraph S2 [2. Render API Express edge]
+    direction TB
+    s2a[HTTPS retrospect-api CORS rate limit helmet]:::step
+    s2b[POST /auth/signin refresh JWT]:::step
+    s2prof[GET PATCH /profile persona to users.voice_persona]:::step
+    s2c[JWT middleware /content /insights /goals /pipeline /patterns /analytics /podcasts]:::step
+    s2adm[POST /admin ADMIN_SECRET not JWT ops dashboard]:::warn
+  end
+
+  subgraph SCHN [Scheduled jobs node-cron backend src index.ts UTC]
+    direction TB
+    cr3[03:00 daily runDailyPatternDetection]:::step
+    cr4[04:00 Sun runWeeklyPatternDetection]:::step
+    cr5[05:00 daily runObservationInsightsPipeline]:::step
+    cr6[06:00 Sun runWeeklyPodcastGeneration]:::step
+    warnR[Also render.yaml Cron jobs for daily weekly patterns only may duplicate 03:00 04:00 if web cron also on]:::warn
+  end
+
+  subgraph extAI [External AI APIs]
+    direction TB
+    CLAUDE[Anthropic Claude Sonnet language]:::ext
+    OAI[OpenAI text-embedding-3-large 3072d]:::ext
+    PPLX[Perplexity sonar-pro research]:::ext
+    EL[ElevenLabs eleven_v3 TTS]:::ext
+  end
+
+  subgraph S3 [3. Ingestion hub]
+    direction TB
+    U[("DB users id apple_user_id email voice_persona")]:::tbl
+    DS[("DB data_sources name matches content_type")]:::tbl
+    RC[("DB raw_content content content_type metadata processing_status")]:::tbl
+    s3a[POST /content Zod lookup data_sources]:::step
+    s3b[INSERT raw_content pending]:::step
+  end
+
+  s1a --> s2b --> U
+  s1b --> s1c --> s2a
+  s1d --> s1e --> s2a
+  s2a --> s2prof --> U
+  s2a --> s2c --> s3a --> s3b --> RC
+  s2adm -.-> U
+  s2adm -.-> RC
+  s2adm -.-> G
+
+  subgraph S4 [4. Legacy graph immediate on POST /content success]
+    direction TB
+    s4a[extraction.ts Claude per content_type atomic units]:::model
+    s4b[UPDATE raw_content status]:::step
+    IU[("DB insight_units pgvector FK raw_content")]:::tbl
+    s4c[connections.ts batch]:::step
+    s4d[Embed bracket category bracket plus content]:::model
+    s4e[Vector neighbors config similarityThreshold 0.7]:::step
+    s4f[Claude CBT edges between units]:::model
+    IC[("DB insight_connections")]:::tbl
+  end
+
+  RC --> s4a
+  s4a --> IU
+  s4a --> s4b --> RC
+  IU --> s4c --> s4d --> s4e --> s4f --> IC
+  U -.-> IU
+
+  subgraph S5 [5. Goals pipeline cron 05:00 and POST /pipeline]
+    direction TB
+    G[("DB goals embedding 3072d")]:::tbl
+    s5a[goals CRUD extract-and-save Claude plus OpenAI goal embed]:::step
+    s5b[observations.ts chunkContent 1500 chars]:::step
+    s5c[filterChunksByGoal cosine to goal 0.35]:::model
+    s5d[Claude observations CBT lenses]:::model
+    OBS[("DB observations")]:::tbl
+    s5e[OpenAI embed observations]:::model
+    s5f[clusterObservations 0.65 min 2]:::step
+    s5g[insight-synthesis.ts Claude incremental]:::model
+    INS[("DB insights goal synthesis")]:::tbl
+    PR[("DB pipeline_runs")]:::tbl
+  end
+
+  U -.-> G
+  s5a --> G
+  RC --> s5b
+  G --> s5c --> s5d --> OBS --> s5e --> s5f --> s5g --> INS
+  s5g -.-> PR
+  U -.-> OBS
+  U -.-> INS
+
+  cr5 -.->|triggers| s5b
+
+  subgraph S6 [6. Patterns from insight_units]
+    direction TB
+    s6a[Users with recent insight_units 7d or 30d]:::step
+    s6b[patterns.ts Claude patterns pattern_insights]:::model
+    P[("DB patterns")]:::tbl
+    PI[("DB pattern_insights junction")]:::tbl
+  end
+
+  IU --> s6a --> s6b --> P
+  s6b --> PI
+  IU -.-> PI
+  U -.-> P
+
+  cr3 --> s6a
+  cr4 --> s6a
+
+  subgraph S7 [7. Server podcast cron 06:00 and POST /podcasts/generate]
+    direction TB
+    s7a[Inputs INS OBS G voice_persona prior episode screen_time]:::step
+    s7b[Pass1 Claude outline JSON]:::model
+    s7c[Pass2 Perplexity research]:::model
+    s7d[Pass3 Claude script tags persona]:::model
+    s7e[Pass4 ElevenLabs chunked MP3]:::model
+    ST[("Storage bucket podcast-audio")]:::store
+    POD[("DB podcast_episodes audio_url")]:::tbl
+  end
+
+  INS --> s7a
+  OBS --> s7a
+  G --> s7a
+  U --> s7a
+  s7a --> s7b --> s7c --> s7d --> s7e --> ST --> POD
+  ST -.-> POD
+  cr6 -.->|triggers| s7a
+
+  subgraph S8 [8. Read API surfaces]
+    direction TB
+    s8a[GET /content]:::step
+    s8b[GET /insights insight_units not table insights]:::step
+    s8c[GET /pipeline/insights synthesized]:::step
+    s8d[GET /analytics]:::step
+    s8e[GET /podcasts]:::step
+  end
+
+  RC --> s8a
+  IU --> s8b
+  IC --> s8b
+  INS --> s8c
+  IU --> s8d
+  IC --> s8d
+  P --> s8d
+  POD --> s8e
+
+  subgraph S9 [9. Other Postgres tables]
+    CAT[("DB categories")]:::tbl
+    PQ[("DB processing_queue placeholder")]:::tbl
+    AC[("DB analytics_cache TTL JSON")]:::tbl
+  end
+
+  subgraph MEM [Contracts]
+    M1[Embeddings OpenAI only Claude language shared 3072d geometry]:::step
+    M2[Dual pipeline from raw_content legacy fast vs goals batch]:::step
+    M3[REST /insights maps to insight_units table insights is goal synthesis]:::step
+  end
+
+  s4a -.-> CLAUDE
+  s4d -.-> OAI
+  s4f -.-> CLAUDE
+  s5a -.-> CLAUDE
+  s5a -.-> OAI
+  s5c -.-> OAI
+  s5d -.-> CLAUDE
+  s5e -.-> OAI
+  s5g -.-> CLAUDE
+  s6b -.-> CLAUDE
+  s7b -.-> CLAUDE
+  s7c -.-> PPLX
+  s7d -.-> CLAUDE
+  s7e -.-> EL

@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import DeviceActivity
 
 // MARK: - App Delegate for Notifications
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -59,6 +60,7 @@ struct RetrospectApp: App {
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var notificationService = PodcastNotificationService.shared
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
+    @StateObject private var screenTimeService = ScreenTimeService.shared
     @Environment(\.scenePhase) private var scenePhase
     
     private var isGoogleConfigured: Bool {
@@ -76,6 +78,18 @@ struct RetrospectApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
+                if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
+                    DeviceActivityReport(
+                        DeviceActivityReport.Context("Total Activity"),
+                        filter: DeviceActivityFilter(segment: .daily(during: interval))
+                    )
+                    .frame(width: 1, height: 1)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .zIndex(-1)
+                }
+                
                 // Show transparent view when handling stop from widget
                 if isProcessingStopFromWidget {
                     LinearColors.Minimal.pureBlack
@@ -225,9 +239,15 @@ struct RetrospectApp: App {
                     print("📱 App moved to background - recording continues")
                 }
                 
-                // Refresh screen time data when app becomes active
+                // Re-check Screen Time auth and refresh data when app becomes active.
+                // Delayed refresh gives the hidden DeviceActivityReport time to trigger
+                // the extension and write fresh data to the App Group.
                 if newPhase == .active {
+                    ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        ScreenTimeService.shared.refreshData()
+                    }
                 }
             }
             .onOpenURL { url in

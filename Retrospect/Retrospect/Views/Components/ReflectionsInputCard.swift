@@ -161,7 +161,7 @@ struct ReflectionsInputCard: View {
         inputState.startGeneration()
         focusedField = nil // Dismiss keyboard
         
-        viewModel.generateTranscript(text: inputState.inputText, goals: goalsManager.goals)
+        viewModel.generateTranscript(text: inputState.inputText, goals: goalsManager.goalContextForGeneration)
         
         // Monitor completion
         let cancellable = viewModel.$isProcessing

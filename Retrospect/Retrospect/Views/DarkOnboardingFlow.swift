@@ -11,12 +11,55 @@ import GoogleSignIn
 // MARK: - Dark Onboarding Flow Container
 struct DarkOnboardingFlow: View {
     var onComplete: (() -> Void)? = nil
-    
+
+    @StateObject private var onboardingState = OnboardingState()
+
+    private var screenIndex: Int {
+        if !onboardingState.hasSignedIn { return 0 }
+        if !onboardingState.integrationsCompleted { return 1 }
+        if !onboardingState.personaCompleted { return 2 }
+        return 3
+    }
+
     var body: some View {
-        iMessageOnboardingView(onComplete: onComplete)
-            .preferredColorScheme(.dark)
-            .navigationBarHidden(true)
-            .interactiveDismissDisabled(true)
+        ZStack {
+            if !onboardingState.hasSignedIn {
+                WelcomeSignInPage(state: onboardingState)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+            } else if !onboardingState.integrationsCompleted {
+                IntegrationsSetupPage(state: onboardingState)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+            } else if !onboardingState.personaCompleted {
+                PersonaPickerPage(state: onboardingState, onComplete: {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        onboardingState.markPersonaCompleted()
+                    }
+                })
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+            } else {
+                VoiceGoalsPage(onComplete: {
+                    onboardingState.clearPersistedStep()
+                    onComplete?()
+                })
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screenIndex)
+        .preferredColorScheme(.dark)
+        .navigationBarHidden(true)
+        .interactiveDismissDisabled(true)
     }
 }
 

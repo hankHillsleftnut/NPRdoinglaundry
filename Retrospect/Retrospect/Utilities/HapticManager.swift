@@ -144,6 +144,21 @@ class HapticManager {
         }
     }
     
+    /// Continuous, snappy pull feedback: intensity 0.0–1.0 maps to impact strength. Use for pull-to-activate.
+    /// Call at small distance intervals as user pulls; intensity should increase with pull distance.
+    func playPullProgressHaptic(intensity: Double) {
+        let clamped = min(1.0, max(0.0, intensity))
+        if #available(iOS 13.0, *) {
+            let generator = UIImpactFeedbackGenerator(style: .rigid)
+            generator.prepare()
+            // Map 0–1 to ~0.35–1.0 for snappier feel (avoid too-soft start)
+            let systemIntensity = 0.35 + (clamped * 0.65)
+            generator.impactOccurred(intensity: CGFloat(systemIntensity))
+        } else {
+            playProgressiveHaptic(intensity: clamped)
+        }
+    }
+    
     func playHoldActivationSuccess() {
         // Special success pattern for hold activation
         playSuccessNotification()

@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import Speech
 import ActivityKit
+import UIKit
 
 /// Manages audio recording with simultaneous transcription
 /// Records to .m4a format while providing real-time speech-to-text
@@ -23,14 +24,31 @@ class AudioRecordingManager: NSObject, ObservableObject {
     private var timer: Timer?
     private var outputURL: URL?
     
-    // Live Activity
+    // Live Activity (started only when app enters background so it doesn't show while in-app)
     private var activity: Activity<VoiceRecordingAttributes>?
+    private var didEnterBackgroundObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     
     override init() {
         super.init()
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+        didEnterBackgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            if self.isRecording, self.activity == nil {
+                self.startLiveActivity()
+            }
+        }
+    }
+    
+    deinit {
+        if let observer = didEnterBackgroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     // MARK: - Permission Handling
@@ -189,8 +207,7 @@ class AudioRecordingManager: NSObject, ObservableObject {
             // Start duration timer
             startTimer()
             
-            // Start Live Activity
-            startLiveActivity()
+            // Live Activity is started only when app enters background (see init observer)
             
             print("🎤 Started recording audio")
             
@@ -333,7 +350,7 @@ class AudioRecordingManager: NSObject, ObservableObject {
         
         let attributes = VoiceRecordingAttributes(startTime: Date())
         let initialState = VoiceRecordingAttributes.ContentState(
-            recordingDuration: 0,
+            recordingDuration: recordingDuration,
             isRecording: true
         )
         

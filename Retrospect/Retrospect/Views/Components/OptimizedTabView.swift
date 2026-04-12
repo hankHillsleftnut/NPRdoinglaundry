@@ -130,8 +130,8 @@ struct FloatingGenerateButton: View {
     }
     
     private func generateFromGoals() {
-        let goalsText = goalsManager.goals.map { "- \($0)" }.joined(separator: "\n")
-        viewModel.generateTranscript(text: goalsText, goals: goalsManager.goals)
+        let goalsText = goalsManager.goalContextForGeneration.map { "- \($0)" }.joined(separator: "\n")
+        viewModel.generateTranscript(text: goalsText, goals: goalsManager.goalContextForGeneration)
     }
 }
 

@@ -48,13 +48,18 @@ struct TotalActivityReport: DeviceActivityReportScene {
     let content: (String) -> TotalActivityView
     
     func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> String {
+        // Write a heartbeat so the main app can verify the extension was invoked
+        writeExtensionDiagnostic("started", detail: "makeConfiguration entered")
+
         var totalDuration: TimeInterval = 0
         var totalPickups: Int = 0
         var appMap: [String: (name: String, bundle: String?, minutes: Int, pickups: Int, category: String?)] = [:]
         var categoryMap: [String: Int] = [:]
-        
+        var segmentCount = 0
+
         for await activityData in data {
             for await segment in activityData.activitySegments {
+                segmentCount += 1
                 totalDuration += segment.totalActivityDuration
                 
                 for await categoryActivity in segment.categories {
@@ -98,7 +103,9 @@ struct TotalActivityReport: DeviceActivityReportScene {
         let categories = categoryMap
             .map { CategoryUsageData(categoryName: $0.key, minutes: $0.value) }
             .sorted { $0.minutes > $1.minutes }
-        
+
+        writeExtensionDiagnostic("processed", detail: "segments=\(segmentCount) mins=\(totalMinutes) apps=\(apps.count) cats=\(categories.count) pickups=\(totalPickups)")
+
         // Save to shared App Group for the main app
         saveSummaryToAppGroup(
             totalMinutes: totalMinutes,
@@ -137,8 +144,14 @@ struct TotalActivityReport: DeviceActivityReportScene {
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let todayStr = dateFormatter.string(from: Date())
         
+        guard let defaults = UserDefaults(suiteName: "group.com.retrospect.shared") else {
+            writeExtensionDiagnostic("error", detail: "UserDefaults(suiteName:) returned nil — App Group not accessible")
+            return
+        }
+        let dateStr = defaults.string(forKey: "screenTimeRequestedDate") ?? todayStr
+        
         let summary = ScreenTimeDailySummary(
-            date: todayStr,
+            date: dateStr,
             totalScreenTimeMinutes: totalMinutes,
             totalPickups: totalPickups,
             firstPickupTime: nil,
@@ -146,22 +159,36 @@ struct TotalActivityReport: DeviceActivityReportScene {
             categoryBreakdown: categories
         )
         
-        guard let defaults = UserDefaults(suiteName: "group.com.retrospect.shared") else { return }
-        
-        if let encoded = try? JSONEncoder().encode(summary) {
+        do {
+            let encoded = try JSONEncoder().encode(summary)
             defaults.set(encoded, forKey: "screenTimeDailySummary")
             
-            // Append to history array (keep last 7 days)
             var history = loadHistory(from: defaults)
-            history.removeAll { $0.date == todayStr }
+            history.removeAll { $0.date == dateStr }
             history.append(summary)
-            if history.count > 7 {
-                history = Array(history.suffix(7))
+            if history.count > 30 {
+                history = Array(history.suffix(30))
             }
             if let historyData = try? JSONEncoder().encode(history) {
                 defaults.set(historyData, forKey: "screenTimeWeeklyHistory")
             }
+            
+            defaults.synchronize()
+            writeExtensionDiagnostic("saved", detail: "date=\(dateStr) mins=\(totalMinutes) apps=\(apps.count) bytes=\(encoded.count)")
+        } catch {
+            writeExtensionDiagnostic("error", detail: "JSON encode failed: \(error.localizedDescription)")
         }
+    }
+
+    private func writeExtensionDiagnostic(_ status: String, detail: String) {
+        guard let defaults = UserDefaults(suiteName: "group.com.retrospect.shared") else { return }
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let entry = "[\(timestamp)] \(status): \(detail)"
+        var log = defaults.stringArray(forKey: "screenTimeExtensionLog") ?? []
+        log.append(entry)
+        if log.count > 20 { log = Array(log.suffix(20)) }
+        defaults.set(log, forKey: "screenTimeExtensionLog")
+        defaults.synchronize()
     }
     
     private func loadHistory(from defaults: UserDefaults) -> [ScreenTimeDailySummary] {
