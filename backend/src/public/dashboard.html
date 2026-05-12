@@ -385,6 +385,237 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
+  /* ========== MONITORING TAB ========== */
+  .mon-subtabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-solid);
+  }
+  .mon-subtab {
+    background: transparent;
+    border: none;
+    color: var(--bone-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .mon-subtab:hover { color: var(--bone); }
+  .mon-subtab.active {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+  }
+  .mon-pane { display: none; }
+  .mon-pane.active { display: block; }
+
+  .mon-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .mon-controls select {
+    background: var(--surface);
+    color: var(--bone);
+    border: 1px solid var(--border-solid);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-family: var(--font-body);
+    font-size: 12px;
+  }
+  .mon-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--bone-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .mon-split {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 16px;
+    height: 70vh;
+    min-height: 480px;
+  }
+  @media (max-width: 1100px) {
+    .mon-split { grid-template-columns: 1fr; height: auto; }
+  }
+  .mon-runs-list {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 4px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+  .mon-run-row {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-solid);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .mon-run-row:hover { background: var(--surface-2); }
+  .mon-run-row.selected {
+    background: var(--purple-dim);
+    border-left: 2px solid var(--purple);
+  }
+  .mon-run-row .rr-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .mon-run-row .rr-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--purple);
+  }
+  .mon-run-row .rr-status {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .mon-run-row .rr-status.completed { background: var(--green-dim); color: var(--green); }
+  .mon-run-row .rr-status.failed    { background: var(--red-dim);   color: var(--red); }
+  .mon-run-row .rr-status.running   { background: var(--blue-dim);  color: var(--blue); }
+  .mon-run-row .rr-time {
+    font-size: 11px;
+    color: var(--bone-muted);
+  }
+  .mon-run-row .rr-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--bone-dim);
+    margin-top: 4px;
+  }
+
+  .mon-run-detail {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 4px;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .mon-detail-section {
+    margin-bottom: 20px;
+  }
+  .mon-detail-section h4 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--bone-muted);
+    margin: 0 0 8px;
+  }
+  .mon-trace-row {
+    background: var(--surface-2);
+    border: 1px solid var(--border-solid);
+    border-radius: 3px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .mon-trace-row .tr-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .mon-trace-row .tr-tool {
+    color: var(--purple);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .mon-trace-row .tr-dur { color: var(--bone-muted); font-size: 10px; }
+  .mon-trace-row .tr-body {
+    color: var(--bone-dim);
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .mon-trace-row .tr-error {
+    color: var(--red);
+    margin-top: 4px;
+  }
+
+  .mon-prompt-card {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .mon-prompt-head {
+    background: var(--surface-2);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  .mon-prompt-head:hover { background: var(--surface-3); }
+  .mon-prompt-name {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--purple);
+  }
+  .mon-prompt-meta { font-size: 11px; color: var(--bone-muted); }
+  .mon-prompt-body {
+    padding: 14px;
+    background: var(--bg);
+    color: var(--bone);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    display: none;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .mon-prompt-body.open { display: block; }
+
+  .mon-harness-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .mon-harness-grid { grid-template-columns: 1fr; }
+  }
+  .mon-harness-card {
+    background: var(--surface);
+    border: 1px solid var(--border-solid);
+    border-radius: 4px;
+    padding: 16px;
+  }
+  .mon-result {
+    background: var(--bg);
+    color: var(--bone-dim);
+    border: 1px solid var(--border-solid);
+    border-radius: 3px;
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-top: 12px;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    min-height: 40px;
+  }
+
   /* ========== SECTIONS ========== */
   .section { margin-bottom: 32px; }
   .section-title {
@@ -1167,6 +1398,7 @@
       <button onclick="switchTab('browser', this)"><span class="icon">&#9776;</span> DATA</button>
       <button onclick="switchTab('playground', this)"><span class="icon">&#9654;</span> PIPELINE</button>
       <button onclick="switchTab('podcasts', this)"><span class="icon">&#9836;</span> PODCASTS</button>
+      <button onclick="switchTab('monitoring', this)"><span class="icon">&#9883;</span> MONITORING</button>
       <button onclick="switchTab('logs', this)"><span class="icon">&#9998;</span> LOGS</button>
     </nav>
     <div class="sidebar-footer">V1.0 &middot; 2026</div>
@@ -1374,6 +1606,102 @@
         </div>
         <div class="section-title">Episodes</div>
         <div id="podcastList"><div class="empty">No episodes yet. Select a user and generate one above.</div></div>
+      </div>
+
+      <!-- MONITORING TAB (v2 agent pipeline) -->
+      <div id="tab-monitoring" class="tab-content">
+        <div class="section-title">
+          v2 Agent Monitoring
+          <span class="badge badge-purple" style="margin-left:auto;font-size:10px">TWO SYSTEMS, ONE AGENT</span>
+        </div>
+        <p style="color:var(--bone-dim);font-size:13px;margin-bottom:16px;line-height:1.6">
+          System A (Ingestion) is a single Claude call. System B (Podcast) is a 4-stage pipeline where ONLY Stage 2 is an actual agent (Claude tool-use loop, 5 research tools). Use the subtabs to inspect runs, tool traces, system prompts, and the test harness.
+        </p>
+
+        <div class="mon-subtabs">
+          <button class="mon-subtab active" onclick="switchMonSubtab('runs', this)">Runs</button>
+          <button class="mon-subtab" onclick="switchMonSubtab('prompts', this)">Prompts</button>
+          <button class="mon-subtab" onclick="switchMonSubtab('harness', this)">Test Harness</button>
+        </div>
+
+        <!-- RUNS SUBTAB -->
+        <div id="mon-runs" class="mon-pane active">
+          <div class="mon-controls">
+            <select id="monRunTypeFilter" onchange="loadMonRuns()">
+              <option value="">All v2 runs</option>
+              <option value="v2_ingestion">v2 Ingestion only</option>
+              <option value="v2_podcast">v2 Podcast only</option>
+            </select>
+            <button class="btn" onclick="loadMonRuns()">Refresh</button>
+            <span id="monRunsStatus" class="mon-status"></span>
+          </div>
+          <div class="mon-split">
+            <div class="mon-runs-list" id="monRunsList">
+              <div class="empty">Loading runs...</div>
+            </div>
+            <div class="mon-run-detail" id="monRunDetail">
+              <div class="empty">Select a run to see its tool trace and metadata.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROMPTS SUBTAB -->
+        <div id="mon-prompts" class="mon-pane">
+          <div class="mon-controls">
+            <button class="btn" onclick="loadMonPrompts()">Refresh from server</button>
+            <span class="mon-status" id="monPromptsStatus"></span>
+          </div>
+          <p style="color:var(--bone-muted);font-size:12px;margin:8px 0 16px;line-height:1.6">
+            Read-only view of every system prompt the v2 stages currently use, straight from the deployed binary. Edit-and-replay (via <code>agent_prompts_overrides</code>) is a follow-up.
+          </p>
+          <div id="monPromptsList"><div class="empty">Click "Refresh from server" to load.</div></div>
+        </div>
+
+        <!-- TEST HARNESS SUBTAB -->
+        <div id="mon-harness" class="mon-pane">
+          <p style="color:var(--bone-dim);font-size:13px;margin-bottom:16px;line-height:1.6">
+            Trigger a v2 run against the selected user (top of page). Ingestion sweeps recent raw_content into observations/insights/suggested_goals. Podcast runs all four stages; <strong>skipTTS</strong> is on by default so you don't burn ElevenLabs credits during testing.
+          </p>
+
+          <div class="mon-harness-grid">
+            <div class="mon-harness-card">
+              <div class="agent-card-title">Ingestion (System A)</div>
+              <p style="font-size:12px;color:var(--bone-muted);margin:4px 0 12px">
+                One Claude call. Reads recent raw_content + active goals + last 14d insights → writes observations/insights/suggested_goals.
+              </p>
+              <div class="form-group">
+                <label>Sweep hours</label>
+                <input type="number" id="harnessIngestionHours" value="24" min="1" max="168" />
+              </div>
+              <div class="form-group">
+                <label>Max raw content rows</label>
+                <input type="number" id="harnessIngestionMax" value="10" min="1" max="50" />
+              </div>
+              <button class="btn btn-primary" onclick="harnessRunIngestion()" id="harnessIngestionBtn">Run Ingestion</button>
+              <pre id="harnessIngestionResult" class="mon-result"></pre>
+            </div>
+
+            <div class="mon-harness-card">
+              <div class="agent-card-title">Podcast (System B)</div>
+              <p style="font-size:12px;color:var(--bone-muted);margin:4px 0 12px">
+                Stage 1 (current context) → Stage 2 (historical agent) → Stage 3 (script) → Stage 4 (TTS).
+              </p>
+              <div class="form-group">
+                <label>Days window</label>
+                <input type="number" id="harnessPodcastDays" value="14" min="1" max="60" />
+              </div>
+              <div class="form-group">
+                <label>Stage 2 max steps</label>
+                <input type="number" id="harnessPodcastMaxSteps" value="8" min="1" max="20" />
+              </div>
+              <div class="form-group">
+                <label><input type="checkbox" id="harnessPodcastSkipTTS" checked /> Skip TTS (recommended for testing)</label>
+              </div>
+              <button class="btn btn-primary" onclick="harnessRunPodcast()" id="harnessPodcastBtn">Run Podcast</button>
+              <pre id="harnessPodcastResult" class="mon-result"></pre>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- LOGS TAB -->
@@ -2060,6 +2388,258 @@ function switchTab(tabId, btnEl) {
   if (tabId === 'goals') { loadGoals(); }
   if (tabId === 'browser') { loadBrowserData(currentBrowserView); }
   if (tabId === 'podcasts') { loadPodcastList(); }
+  if (tabId === 'monitoring') { initMonitoring(); }
+}
+
+// ============================================
+// Monitoring tab (v2 agent pipeline)
+// ============================================
+let monRunsCache = [];
+let monSelectedRunId = null;
+
+function switchMonSubtab(name, btnEl) {
+  document.querySelectorAll('.mon-pane').forEach(el => el.classList.remove('active'));
+  document.getElementById(`mon-${name}`).classList.add('active');
+  document.querySelectorAll('.mon-subtab').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  if (name === 'runs') loadMonRuns();
+  if (name === 'prompts') loadMonPrompts();
+}
+
+function initMonitoring() {
+  loadMonRuns();
+}
+
+async function adminV2(method, path, body) {
+  const url = `${BASE}/admin/v2${path}${path.includes('?') ? '&' : '?'}secret=${encodeURIComponent(API_SECRET)}`;
+  const opts = { method, headers: {} };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opts);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'admin/v2 call failed');
+  return json.data;
+}
+
+async function loadMonRuns() {
+  const status = document.getElementById('monRunsStatus');
+  status.textContent = 'Loading...';
+  try {
+    const type = document.getElementById('monRunTypeFilter').value;
+    const query = new URLSearchParams();
+    if (type) query.set('type', type);
+    if (currentUserId) query.set('userId', currentUserId);
+    query.set('limit', '60');
+    const data = await adminV2('GET', `/runs?${query.toString()}`);
+    monRunsCache = data || [];
+    renderMonRunsList();
+    status.textContent = `${monRunsCache.length} run(s)`;
+  } catch (err) {
+    status.textContent = `ERROR: ${err.message}`;
+    document.getElementById('monRunsList').innerHTML = `<div class="empty">${err.message}</div>`;
+  }
+}
+
+function renderMonRunsList() {
+  const container = document.getElementById('monRunsList');
+  if (monRunsCache.length === 0) {
+    container.innerHTML = '<div class="empty">No v2 runs yet. Use the Test Harness to kick one off.</div>';
+    return;
+  }
+
+  const rows = monRunsCache.map(run => {
+    const started = run.started_at ? new Date(run.started_at).toLocaleString() : '—';
+    const status = (run.status || 'running').toLowerCase();
+    const meta = run.run_type === 'v2_podcast'
+      ? buildPodcastRunMeta(run)
+      : buildIngestionRunMeta(run);
+    const selected = run.id === monSelectedRunId ? ' selected' : '';
+    return `
+      <div class="mon-run-row${selected}" data-run-id="${run.id}" onclick="selectMonRun('${run.id}')">
+        <div class="rr-top">
+          <span class="rr-type">${run.run_type}</span>
+          <span class="rr-status ${status}">${status}</span>
+        </div>
+        <div class="rr-time">${started}</div>
+        <div class="rr-meta">${meta}</div>
+      </div>`;
+  });
+  container.innerHTML = rows.join('');
+}
+
+function buildIngestionRunMeta(run) {
+  const obs = run.observations_created ?? 0;
+  const ins = run.insights_created ?? 0;
+  const raw = (run.raw_content_ids || []).length;
+  return `raw=${raw}  obs=${obs}  ins=${ins}`;
+}
+
+function buildPodcastRunMeta(run) {
+  const md = run.metadata || {};
+  const s2 = md.stage2 || {};
+  const total = md.total_ms ?? 0;
+  return `stage2_steps=${s2.steps_used ?? '?'}  tools=${s2.tool_calls_count ?? '?'}  total=${Math.round(total/1000)}s`;
+}
+
+async function selectMonRun(runId) {
+  monSelectedRunId = runId;
+  renderMonRunsList();
+  const detail = document.getElementById('monRunDetail');
+  detail.innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const data = await adminV2('GET', `/runs/${runId}`);
+    detail.innerHTML = renderMonRunDetail(data);
+  } catch (err) {
+    detail.innerHTML = `<div class="empty">ERROR: ${err.message}</div>`;
+  }
+}
+
+function renderMonRunDetail(payload) {
+  const { run, traces, episode } = payload;
+  const md = run.metadata || {};
+
+  let html = '';
+
+  html += `<div class="mon-detail-section">
+    <h4>Run</h4>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--bone-dim);line-height:1.7">
+      id: ${run.id}<br>
+      type: ${run.run_type}<br>
+      status: ${run.status}<br>
+      started: ${run.started_at ? new Date(run.started_at).toLocaleString() : '—'}<br>
+      completed: ${run.completed_at ? new Date(run.completed_at).toLocaleString() : '—'}<br>
+      observations_created: ${run.observations_created ?? 0}<br>
+      insights_created: ${run.insights_created ?? 0}<br>
+      ${run.error_message ? `<span style="color:var(--red)">error: ${escapeHtml(run.error_message)}</span>` : ''}
+    </div>
+  </div>`;
+
+  if (run.run_type === 'v2_podcast' && md.stage_timings_ms) {
+    html += `<div class="mon-detail-section">
+      <h4>Stage Timings</h4>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--bone-dim);line-height:1.7">
+        ${Object.entries(md.stage_timings_ms).map(([k,v]) => `${k}: ${Math.round(v)} ms`).join('<br>')}
+      </div>
+    </div>`;
+  }
+
+  if (episode) {
+    html += `<div class="mon-detail-section">
+      <h4>Episode</h4>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--bone-dim);line-height:1.7">
+        title: ${escapeHtml(episode.title || '—')}<br>
+        mood: ${escapeHtml(episode.mood || '—')}<br>
+        duration: ${episode.duration_seconds ?? '—'} s<br>
+        ${episode.audio_url ? `<a href="${episode.audio_url}" target="_blank" style="color:var(--blue)">audio</a><br>` : ''}
+      </div>
+      ${episode.description ? `<p style="font-size:12px;color:var(--bone-muted);margin-top:8px">${escapeHtml(episode.description)}</p>` : ''}
+      ${episode.script ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:11px;color:var(--purple);letter-spacing:1px;text-transform:uppercase">Show script</summary>
+        <pre style="background:var(--bg);border:1px solid var(--border-solid);border-radius:3px;padding:10px;margin-top:8px;font-size:11px;white-space:pre-wrap;max-height:400px;overflow:auto">${escapeHtml(episode.script)}</pre>
+      </details>` : ''}
+    </div>`;
+  }
+
+  if (traces && traces.length > 0) {
+    html += `<div class="mon-detail-section">
+      <h4>Stage 2 Tool Trace (${traces.length})</h4>
+      ${traces.map(t => `
+        <div class="mon-trace-row">
+          <div class="tr-head">
+            <span class="tr-tool">${t.step_index}. ${escapeHtml(t.tool_name)}</span>
+            <span class="tr-dur">${t.duration_ms ?? '?'} ms · items=${t.tool_output_items_count ?? '?'}</span>
+          </div>
+          <div class="tr-body"><strong>input:</strong> ${escapeHtml(JSON.stringify(t.tool_input))}</div>
+          ${t.tool_output_summary ? `<div class="tr-body" style="margin-top:4px"><strong>summary:</strong> ${escapeHtml(t.tool_output_summary)}</div>` : ''}
+          ${t.error_message ? `<div class="tr-error">error: ${escapeHtml(t.error_message)}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+  } else if (run.run_type === 'v2_podcast') {
+    html += `<div class="mon-detail-section">
+      <h4>Stage 2 Tool Trace</h4>
+      <div class="empty">No traces — Stage 2 may not have run or this run pre-dates the trace logging.</div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function loadMonPrompts() {
+  const status = document.getElementById('monPromptsStatus');
+  status.textContent = 'Loading...';
+  try {
+    const data = await adminV2('GET', '/prompts');
+    const container = document.getElementById('monPromptsList');
+    const cards = Object.entries(data).map(([key, p]) => `
+      <div class="mon-prompt-card">
+        <div class="mon-prompt-head" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="mon-prompt-name">${escapeHtml(p.name)}</span>
+          <span class="mon-prompt-meta">${(p.content || '').length} chars · click to expand</span>
+        </div>
+        <div class="mon-prompt-body">${escapeHtml(p.content || '')}</div>
+      </div>`);
+    container.innerHTML = cards.join('');
+    status.textContent = `${Object.keys(data).length} prompt(s)`;
+  } catch (err) {
+    status.textContent = `ERROR: ${err.message}`;
+  }
+}
+
+async function harnessRunIngestion() {
+  if (!currentUserId) { alert('Select a user first (top of page)'); return; }
+  const btn = document.getElementById('harnessIngestionBtn');
+  const out = document.getElementById('harnessIngestionResult');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  out.textContent = '';
+  try {
+    const sweepHours = parseInt(document.getElementById('harnessIngestionHours').value, 10);
+    const maxRawContent = parseInt(document.getElementById('harnessIngestionMax').value, 10);
+    const data = await adminV2('POST', '/test/ingestion', { userId: currentUserId, sweepHours, maxRawContent });
+    out.textContent = JSON.stringify(data, null, 2);
+    log('success', `[MON] ingestion done — ${data.observationsCreated} obs / ${data.insightsCreated} insights`);
+    loadMonRuns();
+  } catch (err) {
+    out.textContent = `ERROR: ${err.message}`;
+    log('error', `[MON] ingestion failed: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Ingestion';
+  }
+}
+
+async function harnessRunPodcast() {
+  if (!currentUserId) { alert('Select a user first (top of page)'); return; }
+  const btn = document.getElementById('harnessPodcastBtn');
+  const out = document.getElementById('harnessPodcastResult');
+  btn.disabled = true;
+  btn.textContent = 'Running... (may take 30-90s)';
+  out.textContent = '';
+  try {
+    const daysWindow = parseInt(document.getElementById('harnessPodcastDays').value, 10);
+    const maxSteps = parseInt(document.getElementById('harnessPodcastMaxSteps').value, 10);
+    const skipTTS = document.getElementById('harnessPodcastSkipTTS').checked;
+    const data = await adminV2('POST', '/test/podcast', { userId: currentUserId, daysWindow, maxSteps, skipTTS });
+    out.textContent = JSON.stringify(data, null, 2);
+    log('success', `[MON] podcast done — "${data.title}" (${data.toolCallsStage2} stage-2 tools)`);
+    loadMonRuns();
+  } catch (err) {
+    out.textContent = `ERROR: ${err.message}`;
+    log('error', `[MON] podcast failed: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Podcast';
+  }
 }
 
 function refreshAll() {

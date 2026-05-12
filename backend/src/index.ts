@@ -21,6 +21,13 @@ import { runObservationInsightsPipeline } from './jobs/observation-insights-pipe
 import { runWeeklyPodcastGeneration } from './jobs/weekly-podcast-generation.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
+import { v2ContentRouter } from './v2/routes/v2-content.js';
+import { v2PodcastsRouter } from './v2/routes/v2-podcasts.js';
+import { v2SuggestedGoalsRouter } from './v2/routes/v2-suggested-goals.js';
+import { v2UserPreferencesRouter } from './v2/routes/v2-user-preferences.js';
+import { v2EntriesRouter } from './v2/routes/v2-entries.js';
+import { v2OnboardingRouter } from './v2/routes/v2-onboarding.js';
+import { v2AdminRouter } from './routes/v2-admin.js';
 
 
 const app = express();
@@ -82,6 +89,19 @@ app.use('/pipeline', authMiddleware, pipelineRouter);
 app.use('/podcasts', authMiddleware, podcastsRouter);
 app.use('/profile', authMiddleware, profileRouter);
 
+// v2 routes — new agentic pipeline. Mounts under /v2/* and runs in parallel
+// with the legacy routes above until we validate and retire them.
+app.use('/v2/content', authMiddleware, v2ContentRouter);
+app.use('/v2/podcasts', authMiddleware, v2PodcastsRouter);
+app.use('/v2/suggested-goals', authMiddleware, v2SuggestedGoalsRouter);
+app.use('/v2/user-preferences', authMiddleware, v2UserPreferencesRouter);
+app.use('/v2/entries', authMiddleware, v2EntriesRouter);
+app.use('/v2/onboarding', authMiddleware, v2OnboardingRouter);
+
+// v2 admin / monitoring (admin-secret protected, no JWT). Feeds the
+// MONITORING tab in the dashboard.
+app.use('/admin/v2', v2AdminRouter);
+
 // Error handling middleware
 app.use(
   (
@@ -142,16 +162,31 @@ cron.schedule('0 5 * * *', async () => {
   }
 });
 
-// Weekly podcast generation at 6 AM UTC on Sundays
-cron.schedule('0 6 * * 0', async () => {
-  console.log('Running weekly podcast generation...');
-  try {
-    await runWeeklyPodcastGeneration();
-    console.log('Weekly podcast generation completed');
-  } catch (error) {
-    console.error('Weekly podcast generation failed:', error);
-  }
-});
+// Legacy weekly podcast generation at 6 AM UTC on Sundays.
+//
+// The v2 agentic pipeline runs in the same Sunday 06:00 UTC slot via the
+// `v2-weekly-podcast` Render Cron service (see backend/render.yaml). To avoid
+// duplicate episodes we leave the legacy job *registered* but gated behind a
+// feature flag. Flip ENABLE_LEGACY_PODCAST_CRON=false once v2 is validated in
+// production; the import stays in place so we can roll back instantly.
+const ENABLE_LEGACY_PODCAST_CRON =
+  (process.env.ENABLE_LEGACY_PODCAST_CRON ?? 'true') !== 'false';
+
+if (ENABLE_LEGACY_PODCAST_CRON) {
+  cron.schedule('0 6 * * 0', async () => {
+    console.log('Running weekly podcast generation (legacy)...');
+    try {
+      await runWeeklyPodcastGeneration();
+      console.log('Weekly podcast generation (legacy) completed');
+    } catch (error) {
+      console.error('Weekly podcast generation (legacy) failed:', error);
+    }
+  });
+} else {
+  console.log(
+    '[cron] Legacy weekly podcast cron disabled — v2 Render Cron service handles Sunday 06:00 UTC.'
+  );
+}
 
 // Start server
 const server = app.listen(config.server.port, () => {
