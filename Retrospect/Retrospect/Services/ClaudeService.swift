@@ -9,9 +9,17 @@ enum ClaudeError: Error {
 }
 
 class ClaudeService {
+    /// Legacy direct-to-Anthropic service.
+    /// As of the v2 migration the iOS app does NOT ship an Anthropic key. All
+    /// intelligence flows route through the Retrospect backend (see
+    /// `RetrospectAPIClient` and `AIServiceManager`). This file is kept only so
+    /// the legacy code paths still compile; any call site that has not been
+    /// migrated will fail at runtime with `.invalidKey` instead of crashing the
+    /// app at startup.
     static let shared: ClaudeService = {
-        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "ANTHROPIC_API_KEY") as? String else {
-            fatalError("Anthropic API key not found in Info.plist")
+        let apiKey = (Bundle.main.object(forInfoDictionaryKey: "ANTHROPIC_API_KEY") as? String) ?? ""
+        if apiKey.isEmpty || apiKey.hasPrefix("YOUR_") {
+            print("⚠️ ClaudeService: no Anthropic key in Info.plist — direct Claude calls are disabled. Use RetrospectAPIClient instead.")
         }
         return ClaudeService(apiKey: apiKey)
     }()
@@ -22,6 +30,12 @@ class ClaudeService {
 
     init(apiKey: String) {
         self.apiKey = apiKey
+    }
+
+    /// Returns true if the service has a real key available. Legacy methods can
+    /// short-circuit with `.invalidKey` when this is false.
+    private var hasKey: Bool {
+        return !apiKey.isEmpty && !apiKey.hasPrefix("YOUR_")
     }
 
     func validateAPIKey(completion: @escaping (Result<Bool, ClaudeError>) -> Void) {

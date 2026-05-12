@@ -260,7 +260,7 @@ struct iMessageOnboardingView: View {
                 scrollToBottom()
             }) {
                 Image(systemName: "chevron.down.circle.fill")
-                    .font(.system(size: 28))
+                    .font(.generalSans(size: 28, weight: .regular))
                     .foregroundStyle(LinearColors.Minimal.textPrimary.opacity(0.9))
                     .shadow(color: LinearColors.Minimal.shadowLight, radius: 2, x: 0, y: 1)
             }
@@ -276,7 +276,7 @@ struct iMessageOnboardingView: View {
             if state.phase.rawValue > OnboardingPhase.integrations.rawValue && !state.isBusyWithAction {
                 Button(action: { goBackPhase() }) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.generalSans(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -305,7 +305,7 @@ struct iMessageOnboardingView: View {
                         appendSkipIntegrationsAcknowledgment()
                         advancePhase()
                     }
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.generalSans(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                     .padding(.top, 6)
                     .padding(.bottom, 8)
@@ -324,7 +324,7 @@ struct iMessageOnboardingView: View {
                             startOrResumeConversation()
                         }
                     }
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.generalSans(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                     .padding(.top, 6)
                     .padding(.bottom, 8)
@@ -334,7 +334,7 @@ struct iMessageOnboardingView: View {
                         scrollToBottomAfterSend()
                         advancePhase()
                     }
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.generalSans(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                     .padding(.top, 6)
                     .padding(.bottom, 8)
@@ -363,19 +363,19 @@ struct iMessageOnboardingView: View {
             Button(action: actionForCurrentPhase) {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.generalSans(size: 20, weight: .medium))
                     Text("Continue")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                        .font(.generalSans(size: 17, weight: .medium))
                 }
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(
-                    RoundedRectangle(cornerRadius: 28)
+                    RoundedRectangle(cornerRadius: BorderRadius.button)
                         .fill(LinearColors.Minimal.inputBackground)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 28)
+                    RoundedRectangle(cornerRadius: BorderRadius.button)
                         .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
                 )
             }
@@ -398,7 +398,7 @@ struct iMessageOnboardingView: View {
 
         return HStack(alignment: .center, spacing: 12) {
             TextField("Share with Retrospect...", text: $inputBarText)
-                .font(.system(size: 17, weight: .regular))
+                .font(.generalSans(size: 17, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .focused($isInputFocused)
                 .submitLabel(.send)
@@ -406,11 +406,11 @@ struct iMessageOnboardingView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 24)
+                    RoundedRectangle(cornerRadius: BorderRadius.button)
                         .fill(LinearColors.Minimal.inputBackground)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 24)
+                    RoundedRectangle(cornerRadius: BorderRadius.button)
                         .strokeBorder(
                             isAutoFillActive ? LinearColors.Minimal.accent.opacity(0.4) : Color.clear,
                             lineWidth: isAutoFillActive ? 1.5 : 0
@@ -421,13 +421,13 @@ struct iMessageOnboardingView: View {
                 VStack(spacing: 2) {
                     Button(action: { toggleVoiceRecording() }) {
                         Image(systemName: onboardingAudioManager.isRecording ? "mic.fill" : "mic")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(.generalSans(size: 20, weight: .medium))
                             .foregroundColor(onboardingAudioManager.isRecording ? Color.red : LinearColors.Minimal.textTertiary)
                     }
                     .buttonStyle(PlainButtonStyle())
 
                     Text("Tap to speak")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.generalSans(size: 10, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             } else {
@@ -436,10 +436,10 @@ struct iMessageOnboardingView: View {
                         switch state.sendButtonOverride {
                         case .default:
                             Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 24, weight: .medium))
+                                .font(.generalSans(size: 24, weight: .medium))
                         case .sparkle:
                             Image(systemName: "sparkles")
-                                .font(.system(size: 18, weight: .medium))
+                                .font(.generalSans(size: 18, weight: .medium))
                         }
                     }
                     .foregroundStyle(
@@ -468,30 +468,30 @@ struct iMessageOnboardingView: View {
                 completeOnboarding()
             }) {
                 Text("Start Journaling")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.generalSans(size: 17, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .background(
-                        RoundedRectangle(cornerRadius: 28)
+                        RoundedRectangle(cornerRadius: BorderRadius.button)
                             .fill(LinearColors.Minimal.accent)
                     )
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.horizontal, 20)
 
-            RoundedRectangle(cornerRadius: 2)
+            RoundedRectangle(cornerRadius: BorderRadius.button)
                 .fill(LinearColors.Minimal.textTertiary.opacity(atOrOverThreshold ? 0.7 : 0.3))
                 .frame(width: 36, height: 4)
                 .padding(.bottom, 4)
                 .scaleEffect(atOrOverThreshold ? 1.08 : 1.0)
 
             Text(atOrOverThreshold ? "Release to start" : "Pull up to start")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .font(.generalSans(size: 15, weight: .medium))
                 .foregroundColor(atOrOverThreshold ? LinearColors.Minimal.textPrimary : LinearColors.Minimal.textSecondary)
 
             Image(systemName: atOrOverThreshold ? "checkmark.circle.fill" : "chevron.up")
-                .font(.system(size: atOrOverThreshold ? 18 : 14, weight: .semibold))
+                .font(.generalSans(size: atOrOverThreshold ? 18 : 14, weight: .semibold))
                 .foregroundColor(atOrOverThreshold ? LinearColors.Minimal.accent : LinearColors.Minimal.textTertiary)
                 .scaleEffect(1.0 + progress * 0.15)
         }
@@ -864,19 +864,23 @@ struct iMessageOnboardingView: View {
         state.isLoadingGoalsReply = true
         scrollToBottom()
 
-        ClaudeService.shared.generateOnboardingGoalsReply(conversationMessages: apiMessages) { result in
-            DispatchQueue.main.async {
+        let conversation: [OnboardingChatMessage] = apiMessages.compactMap { dict in
+            guard let role = dict["role"] as? String,
+                  let content = dict["content"] as? String else { return nil }
+            return OnboardingChatMessage(role: role, content: content)
+        }
+
+        Task {
+            let replyText: String
+            do {
+                replyText = try await apiClient.onboardingGoalsReply(conversation: conversation)
+            } catch {
+                replyText = fallback
+            }
+            await MainActor.run {
                 state.showTypingIndicator = false
                 state.isLoadingGoalsReply = false
-                let replyText: String
-                switch result {
-                case .success(let text):
-                    replyText = text
-                    storeIn(text)
-                case .failure:
-                    replyText = fallback
-                    storeIn(fallback)
-                }
+                storeIn(replyText)
                 let msg = ChatMessage(sender: .retrospect, text: replyText)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     state.messages.append(msg)
@@ -895,43 +899,38 @@ struct iMessageOnboardingView: View {
         state.isLoadingGoalsReply = true
         scrollToBottom()
 
-        let conversationHistory: [[String: Any]] = [
-            ["role": "assistant", "content": OnboardingState.goalsFirstQuestion],
-            ["role": "user", "content": state.goalTurn1Text],
-            ["role": "assistant", "content": state.goalTurn2BotMessage.isEmpty ? state.fallbackGoalsReplyForTurn(2) : state.goalTurn2BotMessage],
-            ["role": "user", "content": state.goalTurn2Text]
+        let conversation: [OnboardingChatMessage] = [
+            OnboardingChatMessage(role: "assistant", content: OnboardingState.goalsFirstQuestion),
+            OnboardingChatMessage(role: "user", content: state.goalTurn1Text),
+            OnboardingChatMessage(role: "assistant", content: state.goalTurn2BotMessage.isEmpty ? state.fallbackGoalsReplyForTurn(2) : state.goalTurn2BotMessage),
+            OnboardingChatMessage(role: "user", content: state.goalTurn2Text)
         ]
 
-        ClaudeService.shared.extractGoalsFromConversation(conversationHistory: conversationHistory) { result in
-            DispatchQueue.main.async {
+        // Don't persist yet — onboarding completion does the final write.
+        // Here we just want the titles so the user can confirm them.
+        Task {
+            let goalTitles: [String]
+            do {
+                let extracted = try await apiClient.onboardingGoalsExtract(conversation: conversation, persist: false)
+                goalTitles = extracted.map { $0.title }
+            } catch {
+                goalTitles = state.extractGoalsFromTurnsFallback()
+            }
+            await MainActor.run {
                 state.showTypingIndicator = false
                 state.isLoadingGoalsReply = false
-
-                switch result {
-                case .success(let goals):
-                    state.extractedGoalsFromConversation = goals
-                    let list = goals.prefix(3).joined(separator: ", ")
-                    let summaryMessage = goals.isEmpty
-                        ? "Got it. Let's get started."
-                        : "From what you've told me, it sounds like your focus areas are: \(list). Sound right?"
-                    let msg = ChatMessage(sender: .retrospect, text: summaryMessage)
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        state.messages.append(msg)
-                    }
-                    HapticManager.shared.playSoftImpact()
-                    scrollToBottomAfterSend()
-                    autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
-                case .failure:
-                    state.extractedGoalsFromConversation = state.extractGoalsFromTurnsFallback()
-                    let list = state.extractedGoalsFromConversation.prefix(3).joined(separator: ", ")
-                    let msg = ChatMessage(sender: .retrospect, text: "From what you've told me, it sounds like your focus areas are: \(list). Sound right?")
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        state.messages.append(msg)
-                    }
-                    HapticManager.shared.playSoftImpact()
-                    scrollToBottomAfterSend()
-                    autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
+                state.extractedGoalsFromConversation = goalTitles
+                let list = goalTitles.prefix(3).joined(separator: ", ")
+                let summaryMessage = goalTitles.isEmpty
+                    ? "Got it. Let's get started."
+                    : "From what you've told me, it sounds like your focus areas are: \(list). Sound right?"
+                let msg = ChatMessage(sender: .retrospect, text: summaryMessage)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    state.messages.append(msg)
                 }
+                HapticManager.shared.playSoftImpact()
+                scrollToBottomAfterSend()
+                autoFillInputBar(text: "That's perfect", style: .default, showSkip: false)
             }
         }
     }
@@ -992,7 +991,7 @@ private struct TypingRevealText: View {
 
     var body: some View {
         Text(fullText)
-            .font(.system(size: 17, weight: .regular, design: .serif))
+            .font(.sentient(size: 17, weight: .regular))
             .foregroundColor(textColor)
             .fixedSize(horizontal: false, vertical: true)
             .lineSpacing(6)
@@ -1028,14 +1027,14 @@ private struct ChatBubbleView: View {
                     if message.isSpecial {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 14))
+                                .font(.generalSans(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.success)
                         }
                         .padding(.bottom, 2)
                     }
                     if animationCompleted {
                         Text(message.text)
-                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .font(.sentient(size: 17, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                             .lineSpacing(6)
@@ -1060,7 +1059,7 @@ private struct ChatBubbleView: View {
                 Spacer(minLength: 60)
                 HStack(alignment: .center, spacing: 0) {
                     Text(message.text)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.generalSans(size: 16, weight: .regular))
                         .foregroundColor(iMessageBubble.outgoingText)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineSpacing(2)
@@ -1068,7 +1067,7 @@ private struct ChatBubbleView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
+                    RoundedRectangle(cornerRadius: BorderRadius.button)
                         .fill(iMessageBubble.outgoing)
                 )
             }
@@ -1097,18 +1096,18 @@ private struct PersonaCardStack: View {
                 Button(action: { onSelect(p.id) }) {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: p.icon)
-                            .font(.system(size: 18, weight: .medium))
+                            .font(.generalSans(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.accent)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(p.name)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .font(.generalSans(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             Text(p.description)
-                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .font(.generalSans(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                             Text(p.detail)
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.generalSans(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                         Spacer(minLength: 0)
@@ -1116,10 +1115,10 @@ private struct PersonaCardStack: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: BorderRadius.button)
                             .fill(LinearColors.Minimal.backgroundCard)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: BorderRadius.button)
                                     .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
                             )
                     )
@@ -1158,15 +1157,15 @@ private struct IntegrationCardStack: View {
                 Button(action: { actionFor(row.id)() }) {
                     HStack(spacing: 12) {
                         Image(systemName: row.icon)
-                            .font(.system(size: 18, weight: .medium))
+                            .font(.generalSans(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.accent)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .font(.generalSans(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             Text(row.subtitle)
-                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .font(.generalSans(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         Spacer()
@@ -1176,17 +1175,17 @@ private struct IntegrationCardStack: View {
                                 .scaleEffect(0.8)
                         } else if connected {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(.generalSans(size: 20, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.success)
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: BorderRadius.button)
                             .fill(LinearColors.Minimal.backgroundCard)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: BorderRadius.button)
                                     .strokeBorder(LinearColors.Minimal.border.opacity(0.3), lineWidth: 1)
                             )
                     )
