@@ -70,30 +70,3 @@ services:
           type: web
           name: retrospect-api
           envVarKey: OPENAI_API_KEY
-
-# v2 weekly podcast — agentic pipeline (Stage 1 → Stage 2 agent → Stage 3 → TTS).
-# Sunday 06:00 UTC, same slot the legacy in-process podcast cron has used.
-# Secrets are `sync: false` so we set them once on this service in the Render
-# dashboard, matching the dashboard-managed workflow already in use for
-# ANTHROPIC / ELEVENLABS / PERPLEXITY on the web service.
-  - type: cron
-    name: v2-weekly-podcast
-    env: node
-    schedule: "0 6 * * 0"
-    buildCommand: npm install && npm run build
-    startCommand: npm run cron:v2-weekly-podcast
-    envVars:
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: ELEVENLABS_API_KEY
-        sync: false
-      - key: ELEVENLABS_VOICE_ID
-        sync: false
-      - key: PERPLEXITY_API_KEY
-        sync: false

@@ -13,8 +13,7 @@
     "cron:daily": "tsx src/jobs/daily-patterns.ts",
     "cron:weekly": "tsx src/jobs/weekly-patterns.ts",
     "cron:pipeline": "tsx src/jobs/observation-insights-pipeline.ts",
-    "cron:podcasts": "tsx src/jobs/weekly-podcast-generation.ts",
-    "cron:v2-weekly-podcast": "tsx src/v2/jobs/v2-weekly-podcast.ts"
+    "cron:podcasts": "tsx src/jobs/weekly-podcast-generation.ts"
   },
   "keywords": [
     "knowledge-graph",
