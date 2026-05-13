@@ -1728,44 +1728,17 @@ let goalCache = {};
 // ============================================
 // API helper
 // ============================================
-function fmtError(err) {
-  if (err == null) return 'Unknown error';
-  if (typeof err === 'string') return err;
-  if (err instanceof Error) return err.message || String(err);
-  if (typeof err === 'object') {
-    const parts = [err.message, err.details, err.hint, err.code]
-      .filter(v => typeof v === 'string' && v.length > 0);
-    if (parts.length > 0) return parts.join(' | ');
-    try { return JSON.stringify(err); } catch { return Object.prototype.toString.call(err); }
-  }
-  return String(err);
-}
-
 async function api(method, path, body) {
   const sep = path.includes('?') ? '&' : '?';
   const url = `${BASE}/admin${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
   log('info', `${method} /admin${path}`);
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  let res, json;
-  try {
-    res = await fetch(url, opts);
-  } catch (netErr) {
-    const msg = `Network error: ${fmtError(netErr)}`;
-    log('error', msg);
-    throw new Error(msg);
-  }
-  try {
-    json = await res.json();
-  } catch (parseErr) {
-    const msg = `HTTP ${res.status} ${res.statusText} — non-JSON response`;
-    log('error', msg);
-    throw new Error(msg);
-  }
+  const res = await fetch(url, opts);
+  const json = await res.json();
   if (!json.success) {
-    const msg = fmtError(json.error);
-    log('error', `Error (HTTP ${res.status}): ${msg}`);
-    throw new Error(msg);
+    log('error', `Error: ${json.error}`);
+    throw new Error(json.error);
   }
   return json;
 }
@@ -2380,8 +2353,7 @@ function log(level, msg) {
   const el = document.getElementById('logContainer');
   const time = new Date().toLocaleTimeString();
   const cls = level === 'error' ? 'log-error' : level === 'success' ? 'log-success' : level === 'warn' ? 'log-warn' : 'log-info';
-  const text = typeof msg === 'string' ? msg : (typeof fmtError === 'function' ? fmtError(msg) : String(msg));
-  el.innerHTML += `<div class="log-entry"><span class="log-time">[${time}]</span> <span class="${cls}">${esc(text)}</span></div>`;
+  el.innerHTML += `<div class="log-entry"><span class="log-time">[${time}]</span> <span class="${cls}">${esc(msg)}</span></div>`;
   el.scrollTop = el.scrollHeight;
 }
 

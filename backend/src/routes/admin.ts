@@ -9,30 +9,6 @@ import { generatePodcastEpisode, listPodcastEpisodes, getLatestEpisode } from '.
 export const adminRouter = Router();
 
 // ============================================
-// Error formatting
-// ============================================
-// Supabase PostgrestError and many thrown values are plain objects; `String(obj)`
-// returns `"[object Object]"`, which is what was leaking to the dashboard. Pull
-// the most useful field out instead, and fall back to a JSON dump.
-function errorMessage(err: unknown): string {
-  if (err == null) return 'Unknown error';
-  if (typeof err === 'string') return err;
-  if (err instanceof Error) return err.message || err.name || 'Error';
-  if (typeof err === 'object') {
-    const e = err as Record<string, unknown>;
-    const parts = [e.message, e.details, e.hint, e.code]
-      .filter((v): v is string => typeof v === 'string' && v.length > 0);
-    if (parts.length > 0) return parts.join(' | ');
-    try {
-      return JSON.stringify(err);
-    } catch {
-      return Object.prototype.toString.call(err);
-    }
-  }
-  return String(err);
-}
-
-// ============================================
 // Admin secret middleware
 // ============================================
 function adminAuth(req: Request, res: Response, next: NextFunction): void {
@@ -51,7 +27,7 @@ adminRouter.use(adminAuth);
 // ============================================
 
 // GET /admin/users — list all users
-adminRouter.get('/users', async (req: Request, res: Response) => {
+adminRouter.get('/users', async (_req: Request, res: Response) => {
   try {
     const { data, error } = await supabaseAdmin
       .from(Tables.USERS)
@@ -61,8 +37,7 @@ adminRouter.get('/users', async (req: Request, res: Response) => {
     if (error) throw error;
     res.json({ success: true, data: data || [] });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -82,8 +57,7 @@ adminRouter.post('/users', async (req: Request, res: Response) => {
     if (error) throw error;
     res.status(201).json({ success: true, data });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -102,8 +76,7 @@ adminRouter.get('/goals', async (req: Request, res: Response) => {
     const goals = await listGoals(userId);
     res.json({ success: true, data: goals });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -118,8 +91,7 @@ adminRouter.post('/goals', async (req: Request, res: Response) => {
     const goal = await createGoal(userId, title, description);
     res.status(201).json({ success: true, data: goal });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -134,8 +106,7 @@ adminRouter.post('/goals/extract', async (req: Request, res: Response) => {
     const result = await extractGoalsFromText(text);
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -156,8 +127,7 @@ adminRouter.post('/goals/extract-and-save', async (req: Request, res: Response) 
       },
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -186,8 +156,7 @@ adminRouter.get('/content', async (req: Request, res: Response) => {
     if (error) throw error;
     res.json({ success: true, data: data || [], total: count || 0 });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -216,8 +185,7 @@ adminRouter.post('/content', async (req: Request, res: Response) => {
     if (error) throw error;
     res.status(201).json({ success: true, data });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -242,8 +210,7 @@ adminRouter.get('/observations', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: result.observations, total: result.total });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -268,8 +235,7 @@ adminRouter.get('/insights', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: result.insights, total: result.total });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -290,8 +256,7 @@ adminRouter.get('/insights/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -315,8 +280,7 @@ adminRouter.post('/pipeline/observations', async (req: Request, res: Response) =
       message: `Processed ${result.contentProcessed} content items, created ${result.totalObservations} observations.`,
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -336,8 +300,7 @@ adminRouter.post('/pipeline/observations/:contentId', async (req: Request, res: 
       message: `Created ${result.observationIds.length} observations.`,
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -357,8 +320,7 @@ adminRouter.post('/pipeline/insights', async (req: Request, res: Response) => {
       message: `Created ${result.totalCreated} new insights, updated ${result.totalUpdated} existing.`,
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -386,8 +348,7 @@ adminRouter.post('/pipeline/run', async (req: Request, res: Response) => {
       message: `Pipeline complete. ${obsResult.totalObservations} observations, ${insightResult.totalCreated} new insights, ${insightResult.totalUpdated} updated.`,
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -411,8 +372,7 @@ adminRouter.get('/pipeline/runs', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: data || [] });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -540,7 +500,7 @@ adminRouter.post('/diagnose', async (req: Request, res: Response) => {
         detail: `listGoals returned ${pipelineGoals.length}, active with embedding: ${activeWithEmbed.length}`,
       });
     } catch (e) {
-      steps.push({ step: 'getActiveGoalsWithEmbeddings simulation', status: 'FAIL', detail: errorMessage(e) });
+      steps.push({ step: 'getActiveGoalsWithEmbeddings simulation', status: 'FAIL', detail: String(e) });
     }
 
     // Step 8: Test a mini observation extraction if we have content + goals
@@ -563,7 +523,7 @@ adminRouter.post('/diagnose', async (req: Request, res: Response) => {
           });
         }
       } catch (e) {
-        steps.push({ step: 'Content preview', status: 'FAIL', detail: errorMessage(e) });
+        steps.push({ step: 'Content preview', status: 'FAIL', detail: String(e) });
       }
     }
 
@@ -576,8 +536,7 @@ adminRouter.post('/diagnose', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: { steps } });
   } catch (error) {
-    console.error('[admin] /diagnose', error);
-    steps.push({ step: 'Unexpected error', status: 'FAIL', detail: errorMessage(error) });
+    steps.push({ step: 'Unexpected error', status: 'FAIL', detail: String(error) });
     res.json({ success: true, data: { steps } });
   }
 });
@@ -597,8 +556,7 @@ adminRouter.get('/podcasts', async (req: Request, res: Response) => {
     const { episodes, total } = await listPodcastEpisodes(userId);
     res.json({ success: true, data: episodes, total });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -624,8 +582,7 @@ adminRouter.post('/podcasts/generate', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: episode });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
 
@@ -634,7 +591,7 @@ adminRouter.post('/podcasts/generate', async (req: Request, res: Response) => {
 // ============================================
 
 // GET /admin/stats — overall system stats
-adminRouter.get('/stats', async (req: Request, res: Response) => {
+adminRouter.get('/stats', async (_req: Request, res: Response) => {
   try {
     const [users, content, goals, observations, insights, runs, podcasts] = await Promise.all([
       supabaseAdmin.from(Tables.USERS).select('id', { count: 'exact', head: true }),
@@ -659,7 +616,6 @@ adminRouter.get('/stats', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('[admin]', req.method, req.path, error);
-    res.status(500).json({ success: false, error: errorMessage(error) });
+    res.status(500).json({ success: false, error: String(error) });
   }
 });
