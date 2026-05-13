@@ -2,11 +2,6 @@ import Foundation
 import Combine
 
 class ElevenLabsService {
-    /// Legacy on-device TTS. As of the v2 migration the iOS app does NOT ship
-    /// an ElevenLabs key. The weekly podcast renders TTS server-side, and the
-    /// "play my reflection out loud" feature should be migrated to a backend
-    /// endpoint in a follow-up. For now, on-device TTS is disabled unless the
-    /// caller explicitly configures a key via `configure(apiKey:voiceID:)`.
     static let shared = ElevenLabsService()
     
     private var apiKey: String
@@ -15,9 +10,7 @@ class ElevenLabsService {
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
-        // No hardcoded key. Callers must use `configure(apiKey:voiceID:)` or
-        // route TTS through the backend.
-        self.apiKey = ""
+        self.apiKey = "sk_eda3b7a4ce22b483c115da0551a09f4a3978da568cf094f4"
         self.voiceID = "21m00Tcm4TlvDq8ikWAM" // Default voice (Rachel)
     }
     

@@ -67,30 +67,6 @@ class RetrospectAPIClient: ObservableObject {
         return (userId: data.user.id, email: data.user.email)
     }
 
-    #if DEBUG
-    /// DEBUG-only: bypass Apple Sign-In entirely. Fakes a signed-in session so
-    /// you can navigate the app on the simulator (where Sign in with Apple
-    /// cannot succeed). Writes synthetic credentials to the Keychain and flips
-    /// `isAuthenticated` so the root gate in `RetrospectApp` lets you through.
-    ///
-    /// Backend calls made with this token will fail server-side (the JWT is
-    /// not valid), but local navigation and UI exploration work.
-    @MainActor
-    func signInDebugMock() {
-        let mockUserId = "debug-user-\(UUID().uuidString.prefix(8))"
-        let mockAppleId = "debug.apple.\(mockUserId)"
-        let mockToken = "debug-jwt-\(UUID().uuidString)"
-
-        saveKeychain(key: tokenKey, value: mockToken)
-        saveKeychain(key: userIdKey, value: mockUserId)
-        saveKeychain(key: appleUserIdKey, value: mockAppleId)
-
-        self.isAuthenticated = true
-        self.currentUserId = mockUserId
-        self.currentEmail = "debug@retrospect.local"
-    }
-    #endif
-
     /// Sign out by clearing Keychain and local state.
     func signOut() {
         deleteKeychain(key: tokenKey)
@@ -252,82 +228,6 @@ class RetrospectAPIClient: ObservableObject {
         if let goalId = goalId { path += "&goalId=\(goalId)" }
         let response: InsightsListResponse = try await get(path: path)
         return response.data ?? []
-    }
-
-    // MARK: - v2 Intelligence (replaces direct provider calls in the iOS binary)
-
-    /// Generate a title + tags for a journal entry. Backend single Claude call.
-    func analyzeEntryMetadata(content: String) async throws -> EntryMetadataResponse {
-        let response: V2MetadataResponse = try await post(
-            path: "/v2/entries/analyze-metadata",
-            body: ["content": content]
-        )
-        guard response.success, let data = response.data else {
-            throw APIError.serverError(response.error ?? "metadata analysis failed")
-        }
-        return data
-    }
-
-    /// Analyze attached images with Claude vision. Images are base64 JPEGs.
-    /// `journalContext` is the surrounding entry text, used only for grounding —
-    /// it is not echoed back in the response.
-    func analyzeImages(
-        imagesBase64Jpeg: [String],
-        journalContext: String? = nil
-    ) async throws -> ImageAnalysisResponse {
-        let images: [[String: String]] = imagesBase64Jpeg.map { data in
-            ["mediaType": "image/jpeg", "data": data]
-        }
-        var body: [String: Any] = ["images": images]
-        if let ctx = journalContext, !ctx.isEmpty {
-            body["context"] = ctx
-        }
-        let response: V2ImageAnalysisResponse = try await post(
-            path: "/v2/entries/analyze-images",
-            body: body
-        )
-        guard response.success, let data = response.data else {
-            throw APIError.serverError(response.error ?? "image analysis failed")
-        }
-        return data
-    }
-
-    /// Generate the next assistant reply during the iMessage-style onboarding chat.
-    /// `conversation` is the full history as alternating user/assistant messages.
-    func onboardingGoalsReply(conversation: [OnboardingChatMessage]) async throws -> String {
-        let body: [String: Any] = [
-            "conversation": conversation.map { ["role": $0.role, "content": $0.content] }
-        ]
-        let response: V2ReplyResponse = try await post(
-            path: "/v2/onboarding/goals-reply",
-            body: body
-        )
-        guard response.success, let data = response.data else {
-            throw APIError.serverError(response.error ?? "reply generation failed")
-        }
-        return data.reply
-    }
-
-    /// Extract 2-4 goals from a finished onboarding conversation. When `persist`
-    /// is true (default), the backend writes them to the goals table with
-    /// embeddings and returns the persisted rows. When false, returns the
-    /// extracted titles + descriptions only.
-    func onboardingGoalsExtract(
-        conversation: [OnboardingChatMessage],
-        persist: Bool = true
-    ) async throws -> [ExtractedOnboardingGoal] {
-        let body: [String: Any] = [
-            "conversation": conversation.map { ["role": $0.role, "content": $0.content] },
-            "persist": persist
-        ]
-        let response: V2GoalsExtractResponse = try await post(
-            path: "/v2/onboarding/goals-extract",
-            body: body
-        )
-        guard response.success, let data = response.data else {
-            throw APIError.serverError(response.error ?? "goal extraction failed")
-        }
-        return data.goals
     }
 
     // MARK: - HTTP Helpers
@@ -560,64 +460,6 @@ struct VoicePersonaOption: Codable, Identifiable {
     let id: String
     let displayName: String
     let description: String
-}
-
-// MARK: - v2 Intelligence Response Models
-
-struct OnboardingChatMessage {
-    let role: String   // "user" or "assistant"
-    let content: String
-}
-
-struct EntryMetadataResponse: Codable {
-    let title: String
-    let tags: [String]
-}
-
-struct ImageAnalysisItem: Codable {
-    let description: String
-    let mood: String?
-    let significance: String?
-}
-
-struct ImageAnalysisResponse: Codable {
-    let images: [ImageAnalysisItem]
-    let combinedContext: String
-}
-
-struct ExtractedOnboardingGoal: Codable {
-    let id: String?
-    let title: String
-    let description: String
-    let isActive: Bool?
-    let createdAt: Date?
-    let persisted: Bool?
-}
-
-private struct V2MetadataResponse: Codable {
-    let success: Bool
-    let data: EntryMetadataResponse?
-    let error: String?
-}
-
-private struct V2ImageAnalysisResponse: Codable {
-    let success: Bool
-    let data: ImageAnalysisResponse?
-    let error: String?
-}
-
-private struct V2ReplyResponse: Codable {
-    let success: Bool
-    let data: ReplyData?
-    let error: String?
-    struct ReplyData: Codable { let reply: String }
-}
-
-private struct V2GoalsExtractResponse: Codable {
-    let success: Bool
-    let data: GoalsData?
-    let error: String?
-    struct GoalsData: Codable { let goals: [ExtractedOnboardingGoal] }
 }
 
 // MARK: - JSON Decoder with snake_case support

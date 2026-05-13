@@ -151,9 +151,9 @@ struct HomeScreen: View {
                                 }) {
                                     HStack(spacing: 8) {
                                         Image(systemName: "waveform")
-                                            .font(.generalSans(size: 18, weight: .semibold))
+                                            .font(.system(size: 18, weight: .semibold))
                                         Text("Voice Note")
-                                            .font(.generalSans(size: 16, weight: .semibold))
+                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     }
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .padding(.horizontal, 24)
@@ -940,8 +940,8 @@ struct HomeScreen: View {
         let reflectionText = inputText
         let entryDate = Date()
         
-        // Generate metadata via the backend (Retrospect API → v2/entries/analyze-metadata)
-        AIServiceManager.shared.analyzeEntryForMetadata(content: reflectionText) { result in
+        // Generate metadata for the text entry
+        OpenAIService.shared.analyzeEntryForMetadata(content: reflectionText) { result in
             Task { @MainActor in
                 switch result {
                 case .success(let metadata):
@@ -955,7 +955,7 @@ struct HomeScreen: View {
                         isIncludedInInsights: true
                     )
                     EntryManager.shared.addEntry(textEntry)
-                    print("✅ Saved reflection as entry: \(metadata.title)")
+                    print("✅ Saved reflection as entry: \(metadata.title ?? "Untitled")")
                     
                 case .failure(let error):
                     print("⚠️ Failed to generate metadata: \(error), using fallback")
@@ -1003,8 +1003,8 @@ struct HomeScreen: View {
         let reflectionText = inputText
         let entryDate = Date()
         
-        // Generate metadata via the backend (Retrospect API → v2/entries/analyze-metadata)
-        AIServiceManager.shared.analyzeEntryForMetadata(content: reflectionText) { result in
+        // Generate metadata for the text entry
+        OpenAIService.shared.analyzeEntryForMetadata(content: reflectionText) { result in
             Task { @MainActor in
                 switch result {
                 case .success(let metadata):
@@ -1072,7 +1072,7 @@ struct HomeScreen: View {
                 .multilineTextAlignment(.center)
             
             Text("Reflect on your journey")
-                .font(.generalSans(size: 18, weight: .medium))
+                .font(.system(size: 18, weight: .medium, design: .rounded))
                 .foregroundColor(LinearColors.secondaryText)
                 .multilineTextAlignment(.center)
         }
@@ -1093,7 +1093,7 @@ struct HomeScreen: View {
                             .foregroundColor(LinearColors.primaryText)
                         
                         Text("What should we call you?")
-                            .font(.generalSans(size: 16, weight: .medium))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                             .foregroundColor(LinearColors.secondaryText)
                     }
                     
@@ -1142,7 +1142,7 @@ struct HomeScreen: View {
                                     .foregroundColor(LinearColors.textPrimary)
                                 
                                 Text("Enter your full name")
-                                    .font(.generalSans(size: 16, weight: .medium))
+                                    .font(.system(size: 16, weight: .medium, design: .rounded))
                                     .foregroundColor(LinearColors.secondaryText)
                             }
                             
@@ -1262,7 +1262,7 @@ struct HomeScreen: View {
                                     showShareSheet = true
                                 }) {
                                     Image(systemName: "square.and.arrow.up")
-                                        .font(.generalSans(size: 20, weight: .regular))
+                                        .font(.system(size: 20))
                                         .foregroundColor(LinearColors.accent)
                                         .frame(width: 32, height: 32)
                                         .background(
@@ -1281,7 +1281,7 @@ struct HomeScreen: View {
                                 
                                 TextField("Search insights...", text: $searchText)
                                     .textFieldStyle(PlainTextFieldStyle())
-                                    .font(.generalSans(size: 16, weight: .regular))
+                                    .font(.system(size: 16, design: .rounded))
                                 
                                 if !searchText.isEmpty {
                                     Button(action: {
@@ -1313,7 +1313,7 @@ struct HomeScreen: View {
                                 .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                                 .foregroundColor(LinearColors.textSecondary)
                                         Text("No matching insights found")
-                                            .font(.generalSans(size: 16, weight: .medium))
+                                            .font(.system(size: 16, weight: .medium, design: .rounded))
                                             .foregroundColor(LinearColors.secondaryText)
                                     }
                                     .frame(maxWidth: .infinity)
@@ -1323,13 +1323,13 @@ struct HomeScreen: View {
                                         VStack(alignment: .leading, spacing: 12) {
                                             // Section Header
                                             Text(section.title)
-                                                .font(.generalSans(size: 20, weight: .bold))
+                                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                                 .foregroundColor(LinearColors.primaryText)
                                                 .padding(.bottom, 4)
                                             
                                             // Section Content
                                             Text(section.content)
-                                                .font(.generalSans(size: 16, weight: .regular))
+                                                .font(.system(size: 16, weight: .regular))
                                                 .foregroundColor(LinearColors.secondaryText)
                                                 .lineSpacing(4)
                                                 .fixedSize(horizontal: false, vertical: true)
@@ -1602,7 +1602,7 @@ struct ExperimentalView: View {
                     
                     // Play Icon
                     Image(systemName: isAudioPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.generalSans(size: 60, weight: .regular))
+                        .font(.system(size: 60))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                 }

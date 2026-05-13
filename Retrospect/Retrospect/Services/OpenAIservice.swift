@@ -35,15 +35,9 @@ struct DeepResearchResponse {
 }
 
 class OpenAIService {
-    /// Legacy direct-to-OpenAI service. As of the v2 migration the iOS app does
-    /// NOT ship an OpenAI key — all intelligence is proxied through the
-    /// Retrospect backend (see `RetrospectAPIClient` and `AIServiceManager`).
-    /// This file remains only so any legacy call sites still compile; without a
-    /// key, methods fail with `.invalidKey` instead of crashing on startup.
     static let shared: OpenAIService = {
-        let apiKey = (Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String) ?? ""
-        if apiKey.isEmpty || apiKey.hasPrefix("YOUR_") {
-            print("⚠️ OpenAIService: no OpenAI key in Info.plist — direct OpenAI calls are disabled. Use RetrospectAPIClient instead.")
+        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String else {
+            fatalError("OpenAI API key not found in Info.plist")
         }
         return OpenAIService(apiKey: apiKey)
     }()
@@ -54,11 +48,6 @@ class OpenAIService {
     
     init(apiKey: String) {
         self.apiKey = apiKey
-    }
-
-    /// True iff the binary has a real OpenAI key available.
-    private var hasKey: Bool {
-        return !apiKey.isEmpty && !apiKey.hasPrefix("YOUR_")
     }
     
     func validateAPIKey(completion: @escaping (Result<Bool, OpenAIError>) -> Void) {

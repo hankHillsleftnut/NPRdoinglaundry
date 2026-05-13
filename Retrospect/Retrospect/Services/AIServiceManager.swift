@@ -111,66 +111,58 @@ class AIServiceManager {
     }
 
     // MARK: - Metadata Generation
-    // Routes to the Retrospect backend (v2 endpoint) so the iOS binary never has
-    // to ship Anthropic/OpenAI keys. The `activeProvider` choice no longer
-    // matters here — the backend picks the model.
 
     func analyzeEntryForMetadata(
         content: String,
         completion: @escaping (Result<(title: String, tags: [String]), AIServiceError>) -> Void
     ) {
-        Task {
-            do {
-                let meta = try await RetrospectAPIClient.shared.analyzeEntryMetadata(content: content)
-                await MainActor.run {
-                    completion(.success((title: meta.title, tags: meta.tags)))
+        switch Self.activeProvider {
+        case .claude:
+            ClaudeService.shared.analyzeEntryForMetadata(content: content) { result in
+                switch result {
+                case .success(let metadata):
+                    completion(.success((title: metadata.title, tags: metadata.tags)))
+                case .failure(let error):
+                    completion(.failure(self.convertClaudeError(error)))
                 }
-            } catch {
-                await MainActor.run {
-                    completion(.failure(.apiError(error.localizedDescription)))
+            }
+
+        case .openAI:
+            OpenAIService.shared.analyzeEntryForMetadata(content: content) { result in
+                switch result {
+                case .success(let metadata):
+                    completion(.success((title: metadata.title, tags: metadata.tags)))
+                case .failure(let error):
+                    completion(.failure(self.convertOpenAIError(error)))
                 }
             }
         }
     }
 
     // MARK: - Image Analysis
-    // Also routed through the backend so Claude vision keys stay server-side.
 
     func analyzeImages(
         _ images: [UIImage],
         completion: @escaping (Result<(descriptions: [String], combinedContext: String), AIServiceError>) -> Void
     ) {
-        // Cap to 5 images, encode each as base64 JPEG (matches backend route schema).
-        let imagesToSend = Array(images.prefix(5))
-        let base64Images = imagesToSend.compactMap { image in
-            image.jpegData(compressionQuality: 0.7)?.base64EncodedString()
-        }
-
-        guard !base64Images.isEmpty else {
-            completion(.success((descriptions: [], combinedContext: "")))
-            return
-        }
-
-        Task {
-            do {
-                let analysis = try await RetrospectAPIClient.shared.analyzeImages(
-                    imagesBase64Jpeg: base64Images
-                )
-                let descriptions = analysis.images.map { item -> String in
-                    var parts = [item.description]
-                    if let mood = item.mood, !mood.isEmpty { parts.append("Mood: \(mood)") }
-                    if let sig = item.significance, !sig.isEmpty { parts.append("Significance: \(sig)") }
-                    return parts.joined(separator: " — ")
+        switch Self.activeProvider {
+        case .claude:
+            ClaudeService.shared.analyzeImages(images) { result in
+                switch result {
+                case .success(let analysis):
+                    completion(.success((descriptions: analysis.descriptions, combinedContext: analysis.combinedContext)))
+                case .failure(let error):
+                    completion(.failure(self.convertClaudeError(error)))
                 }
-                await MainActor.run {
-                    completion(.success((
-                        descriptions: descriptions,
-                        combinedContext: analysis.combinedContext
-                    )))
-                }
-            } catch {
-                await MainActor.run {
-                    completion(.failure(.apiError(error.localizedDescription)))
+            }
+
+        case .openAI:
+            OpenAIService.shared.analyzeImages(images) { result in
+                switch result {
+                case .success(let analysis):
+                    completion(.success((descriptions: analysis.descriptions, combinedContext: analysis.combinedContext)))
+                case .failure(let error):
+                    completion(.failure(self.convertOpenAIError(error)))
                 }
             }
         }
