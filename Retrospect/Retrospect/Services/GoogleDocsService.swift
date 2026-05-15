@@ -47,6 +47,7 @@ class GoogleDocsService: ObservableObject {
         "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/documents.readonly"
     ]
+    private let drivePageSize = 100
     
     // MARK: - Shared Instance
     static let shared = GoogleDocsService()
@@ -284,15 +285,19 @@ class GoogleDocsService: ObservableObject {
     }
     
     // MARK: - Direct REST API Implementation
-    private func fetchDocumentsViaRESTAPI(accessToken: String) async throws -> [GoogleDocsModel] {
+    private func fetchDocumentsViaRESTAPI(accessToken: String, modifiedSince: Date? = nil) async throws -> [GoogleDocsModel] {
         print(" Building REST API request...")
         
         // Create URL for Google Drive API
         var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+        var query = "mimeType='application/vnd.google-apps.document'"
+        if let modifiedSince = modifiedSince {
+            query += " and modifiedTime > '\(ISO8601DateFormatter().string(from: modifiedSince))'"
+        }
         components.queryItems = [
-            URLQueryItem(name: "q", value: "mimeType='application/vnd.google-apps.document'"),
+            URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fields", value: "files(id,name,mimeType,createdTime,modifiedTime)"),
-            URLQueryItem(name: "pageSize", value: "5"),
+            URLQueryItem(name: "pageSize", value: "\(drivePageSize)"),
             URLQueryItem(name: "orderBy", value: "modifiedTime desc")
         ]
         
@@ -330,6 +335,23 @@ class GoogleDocsService: ObservableObject {
         
         // Parse JSON response manually to avoid casting issues
         return try parseJSONResponse(data)
+    }
+
+    func fetchDocumentsModifiedWithin(days: Int) async throws -> [GoogleDocsModel] {
+        guard isConnected else {
+            throw GoogleDocsError.notConnected
+        }
+
+        let startDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let accessToken = try await ensureValidToken()
+        let documents = try await fetchDocumentsViaRESTAPI(accessToken: accessToken, modifiedSince: startDate)
+
+        await MainActor.run {
+            self.documents = documents
+            self.lastFetchTime = Date()
+        }
+
+        return documents
     }
     
     private func parseJSONResponse(_ data: Data) throws -> [GoogleDocsModel] {

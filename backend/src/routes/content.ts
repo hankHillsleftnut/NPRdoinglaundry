@@ -59,17 +59,8 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       return;
     }
 
-    // Process content immediately (could be moved to background job)
+    // Process content immediately, but do not make ingestion fail once raw_content is stored.
     const result = await processRawContent(rawContent.id, user.id);
-
-    if (result.error) {
-      res.status(500).json({
-        success: false,
-        error: result.error,
-        data: { rawContentId: rawContent.id },
-      });
-      return;
-    }
 
     // Generate embeddings and find connections for new insights
     if (result.insightIds.length > 0) {
@@ -87,8 +78,11 @@ contentRouter.post('/', async (req: Request, res: Response) => {
         rawContentId: rawContent.id,
         insightIds: result.insightIds,
         insightCount: result.insightIds.length,
+        processingError: result.error ?? null,
       },
-      message: `Extracted ${result.insightIds.length} insights from content`,
+      message: result.error
+        ? 'Content stored; legacy extraction failed and can be retried later'
+        : `Extracted ${result.insightIds.length} insights from content`,
     });
   } catch (error) {
     console.error('Content upload error:', error);

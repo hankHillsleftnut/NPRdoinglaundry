@@ -4,6 +4,12 @@ import HealthKit
 class HealthKitManager {
     static let shared = HealthKitManager()
     private let healthStore = HKHealthStore()
+    private let displayDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
     
     private init() {}
     
@@ -116,7 +122,53 @@ class HealthKitManager {
             completion(healthSummary)
         }
     }
+
+    func fetchDailyHealthSummary(for day: Date) async -> String {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            return ""
+        }
+
+        let calendar = Calendar.current
+        let startDate = calendar.startOfDay(for: day)
+        guard let endDate = calendar.date(byAdding: .day, value: 1, to: startDate) else {
+            return ""
+        }
+
+        async let steps = fetchSteps(startDate: startDate, endDate: endDate)
+        async let activeEnergy = fetchActiveEnergy(startDate: startDate, endDate: endDate)
+        async let averageHeartRate = fetchAverageHeartRate(startDate: startDate, endDate: endDate)
+        async let sleepHours = fetchSleepAnalysis(startDate: startDate, endDate: endDate, averagingDays: 1)
+        async let mindfulnessMinutes = fetchMindfulnessMinutes(startDate: startDate, endDate: endDate)
+
+        let values = await (
+            steps: steps,
+            activeEnergy: activeEnergy,
+            averageHeartRate: averageHeartRate,
+            sleepHours: sleepHours,
+            mindfulnessMinutes: mindfulnessMinutes
+        )
+
+        let roundedEnergy = Int(values.activeEnergy.rounded())
+        let roundedHeartRate = Int(values.averageHeartRate.rounded())
+        let sleep = String(format: "%.1f", values.sleepHours)
+
+        return """
+        Apple Health summary for \(displayDateFormatter.string(from: startDate)):
+
+        Steps: \(values.steps)
+        Active Energy: \(roundedEnergy) kcal
+        Average Heart Rate: \(roundedHeartRate) BPM
+        Sleep: \(sleep) hours
+        Mindfulness: \(values.mindfulnessMinutes) minutes
+        """
+    }
     
+    private func fetchSteps(startDate: Date, endDate: Date) async -> Int {
+        await withCheckedContinuation { continuation in
+            fetchSteps(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
+        }
+    }
+
     private func fetchSteps(startDate: Date, endDate: Date, completion: @escaping (Int) -> Void) {
         guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
             completion(0)
@@ -142,6 +194,12 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
+    private func fetchActiveEnergy(startDate: Date, endDate: Date) async -> Double {
+        await withCheckedContinuation { continuation in
+            fetchActiveEnergy(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
+        }
+    }
+
     private func fetchActiveEnergy(startDate: Date, endDate: Date, completion: @escaping (Double) -> Void) {
         guard let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
             completion(0)
@@ -167,6 +225,12 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
+    private func fetchAverageHeartRate(startDate: Date, endDate: Date) async -> Double {
+        await withCheckedContinuation { continuation in
+            fetchAverageHeartRate(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
+        }
+    }
+
     private func fetchAverageHeartRate(startDate: Date, endDate: Date, completion: @escaping (Double) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             completion(0)
@@ -192,7 +256,24 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
+    private func fetchSleepAnalysis(startDate: Date, endDate: Date, averagingDays: Int) async -> Double {
+        await withCheckedContinuation { continuation in
+            fetchSleepAnalysis(startDate: startDate, endDate: endDate, averagingDays: averagingDays) {
+                continuation.resume(returning: $0)
+            }
+        }
+    }
+
     private func fetchSleepAnalysis(startDate: Date, endDate: Date, completion: @escaping (Double) -> Void) {
+        fetchSleepAnalysis(startDate: startDate, endDate: endDate, averagingDays: 7, completion: completion)
+    }
+
+    private func fetchSleepAnalysis(
+        startDate: Date,
+        endDate: Date,
+        averagingDays: Int,
+        completion: @escaping (Double) -> Void
+    ) {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion(0)
             return
@@ -218,13 +299,19 @@ class HealthKitManager {
                 return total
             }
             
-            let averageSleepHours = totalSleepTime / (7 * 3600) // Convert to hours and average over 7 days
+            let averageSleepHours = totalSleepTime / (Double(max(averagingDays, 1)) * 3600)
             completion(averageSleepHours)
         }
         
         healthStore.execute(query)
     }
     
+    private func fetchMindfulnessMinutes(startDate: Date, endDate: Date) async -> Int {
+        await withCheckedContinuation { continuation in
+            fetchMindfulnessMinutes(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
+        }
+    }
+
     private func fetchMindfulnessMinutes(startDate: Date, endDate: Date, completion: @escaping (Int) -> Void) {
         guard let mindfulnessType = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
             completion(0)

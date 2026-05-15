@@ -245,8 +245,10 @@ struct RetrospectApp: App {
                 if newPhase == .active {
                     ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
+                    IntegrationsSyncService.shared.syncIfNeeded()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                         ScreenTimeService.shared.refreshData()
+                        IntegrationsSyncService.shared.syncIfNeeded()
                     }
                 }
             }

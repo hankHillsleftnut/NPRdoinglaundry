@@ -102,14 +102,22 @@ class RetrospectAPIClient: ObservableObject {
 
     // MARK: - Content Sync
 
-    /// Upload a journal entry to the backend as raw content.
-    func uploadContent(contentType: String, content: String, contentDate: Date? = nil) async throws {
+    /// Upload content to the backend as raw content for the analysis pipeline.
+    func uploadContent(
+        contentType: String,
+        content: String,
+        contentDate: Date? = nil,
+        metadata: [String: Any]? = nil
+    ) async throws {
         var body: [String: Any] = [
             "contentType": contentType,
             "content": content,
         ]
         if let date = contentDate {
             body["contentDate"] = ISO8601DateFormatter().string(from: date)
+        }
+        if let metadata = metadata {
+            body["metadata"] = metadata
         }
 
         let _: GenericResponse = try await post(path: "/content", body: body)
