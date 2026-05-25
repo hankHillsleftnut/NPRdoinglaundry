@@ -57,7 +57,7 @@ struct GoalsView: View {
                                     
                                     TextField("", text: $newGoalText)
                                         .focused($isInputFocused)
-                                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                                        .font(.system(size: 16, weight: .regular))
                                         .foregroundColor(LinearColors.primaryText)
                                         .onSubmit {
                                             addGoal()
@@ -84,7 +84,7 @@ struct GoalsView: View {
                         if !newGoalText.isEmpty {
                             HStack {
                                 Text("Press Enter to add goal")
-                                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                                    .font(.system(size: 14, weight: .regular))
                                     .foregroundColor(LinearColors.secondaryText)
                                 Spacer()
                             }
@@ -110,7 +110,7 @@ struct GoalsView: View {
                                         .foregroundColor(LinearColors.primaryText)
                                     
                                     Text("Add your first goal to get started with personalized insights")
-                                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                                        .font(.system(size: 16, weight: .regular))
                                         .foregroundColor(LinearColors.secondaryText)
                                         .multilineTextAlignment(.center)
                                 }
@@ -179,7 +179,7 @@ struct GoalPill: View {
         HStack(spacing: 16) {
             // Goal Text
             Text(goal)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(LinearColors.textPrimary)
                 .lineLimit(2)
             

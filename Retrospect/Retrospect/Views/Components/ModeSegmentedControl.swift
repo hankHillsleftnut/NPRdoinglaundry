@@ -17,13 +17,6 @@ struct ModeSegmentedControl: View {
                 mode: .reflections
             )
             
-            // Video Recording Option
-            segmentButton(
-                title: "Talk",
-                icon: "video.fill",
-                mode: .videoJournal
-            )
-            
             // Entries Option
             segmentButton(
                 title: "Entries",
@@ -55,7 +48,7 @@ struct ModeSegmentedControl: View {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .medium)) // Smaller icon
                 Text(title)
-                    .font(.system(size: 14, weight: .medium, design: .rounded)) // Smaller text
+                    .font(.system(size: 14, weight: .medium)) // Smaller text
             }
             .foregroundColor(selectedMode == mode ? LinearColors.textDisplay : LinearColors.textTertiary) // Adaptive colors
             .padding(.horizontal, 12) // More compact horizontal padding
@@ -83,7 +76,7 @@ struct ModeSegmentedControl: View {
 #Preview {
     VStack(spacing: 20) {
         ModeSegmentedControl(selectedMode: .constant(.reflections))
-        ModeSegmentedControl(selectedMode: .constant(.videoJournal))
+        ModeSegmentedControl(selectedMode: .constant(.entries))
     }
     .padding()
     .background(LinearColors.background)

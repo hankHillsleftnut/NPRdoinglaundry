@@ -574,7 +574,7 @@ struct AudioPlayerView: View {
                             .foregroundColor(LinearColors.primaryText)
                         
                         Text("AI-Generated Summary")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundColor(LinearColors.secondaryText)
                     }
                     

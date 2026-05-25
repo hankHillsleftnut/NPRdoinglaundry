@@ -176,7 +176,7 @@ struct PrivacyScreen: View {
             
             // Privacy subtitle
             Text("Privacy")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(subtitleColor)
         }
         .frame(maxWidth: .infinity, alignment: .leading) // Left align
@@ -184,7 +184,7 @@ struct PrivacyScreen: View {
     
     private var mainTitle: some View {
         Text("Nothing leaves your device.")
-            .font(.custom("EBGaramond12-Regular", size: 32))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
             .foregroundColor(textColor)
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
@@ -194,7 +194,7 @@ struct PrivacyScreen: View {
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("This app uses the content that you allow access to and process it **on your device**. none of it is sent to us or stored.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(bodyTextColor)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
@@ -205,13 +205,13 @@ struct PrivacyScreen: View {
             
             HStack {
                 Text("Read our")
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(bodyTextColor)
                 
                 Button("privacy policy") {
                     // Handle privacy policy tap
                 }
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(bodyTextColor)
                 .underline()
                 
@@ -229,12 +229,12 @@ struct PrivacyScreen: View {
         VStack(spacing: 16) {
             // Signature (using a handwritten-style text for now)
             Text("– Shaurya")
-                .font(.custom("LibreBaskerville-Italic", size: 18))
+                .font(.custom("HedvigLettersSerif-24ptRegular", size: 18))
                 .foregroundColor(textColor)
             
             // Founder name
             Text("Shaurya Narang, Founder")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(textColor)
         }
         .frame(maxWidth: .infinity, alignment: .trailing) // Right-aligned
@@ -256,7 +256,7 @@ struct PrivacyScreen: View {
             onNext()
         }) {
             Text("Next")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)

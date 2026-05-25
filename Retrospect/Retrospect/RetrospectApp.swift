@@ -56,9 +56,14 @@ struct RetrospectApp: App {
     @State private var showPodcastFromNotification = false
     @State private var notificationPodcastId: String?
     @State private var needsBackendAuth = false // true when onboarding done but no backend JWT
+    @State private var isCreatingFirstPodcast = false
+    @State private var firstPodcastTranscript: TranscriptModel?
+    @State private var showFirstPodcastArrival = false
+    @State private var firstPodcastError: String?
     @StateObject private var googleDocsService = GoogleDocsService.shared
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var notificationService = PodcastNotificationService.shared
+    @StateObject private var firstPodcastOrchestrator = FirstPodcastOrchestrator.shared
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -95,14 +100,15 @@ struct RetrospectApp: App {
                     LinearColors.Minimal.pureBlack
                         .ignoresSafeArea()
                         .transition(.opacity)
+                } else if isCreatingFirstPodcast {
+                    FirstPodcastCreationView(
+                        status: firstPodcastOrchestrator.status,
+                        errorMessage: firstPodcastError
+                    )
+                    .transition(.opacity)
                 } else if !hasCompletedOnboarding {
-                    DarkOnboardingFlow(onComplete: {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            hasCompletedOnboarding = true
-                            // Auto-authenticate after onboarding (don't require Face ID immediately)
-                            isAuthenticated = true
-                            needsBackendAuth = false
-                        }
+                    DarkOnboardingFlow(onComplete: { goals in
+                        startFirstPodcastHandoff(extractedGoals: goals)
                     })
                     .transition(.opacity)
                 } else if !apiClient.isAuthenticated {
@@ -136,7 +142,6 @@ struct RetrospectApp: App {
             .animation(.easeInOut(duration: 0.4), value: apiClient.isAuthenticated)
             .animation(.easeOut(duration: 0.2), value: isProcessingStopFromWidget)
             .environmentObject(themeManager)
-            .preferredColorScheme(.dark)
             .animatedThemeTransition()
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
@@ -219,6 +224,20 @@ struct RetrospectApp: App {
                     )
                 }
             }
+            .fullScreenCover(isPresented: $showFirstPodcastArrival) {
+                if let transcript = firstPodcastTranscript {
+                    NewPodcastArrivalView(
+                        transcript: transcript,
+                        onPlay: {
+                            showFirstPodcastArrival = false
+                            DarkAudioManager.shared.showTranscript(transcript: transcript)
+                        },
+                        onDismiss: {
+                            showFirstPodcastArrival = false
+                        }
+                    )
+                }
+            }
             .onChange(of: googleDocsService.isConnected) { _, isConnected in
                 // Hide Google auth when connected
                 if isConnected && showGoogleAuth {
@@ -278,6 +297,36 @@ struct RetrospectApp: App {
     }
     
     // MARK: - Helper Methods
+
+    private func startFirstPodcastHandoff(extractedGoals: [RichGoal]) {
+        firstPodcastError = nil
+        isCreatingFirstPodcast = true
+
+        Task {
+            do {
+                let transcript = try await firstPodcastOrchestrator.runAfterOnboarding(extractedGoals: extractedGoals)
+                await MainActor.run {
+                    firstPodcastTranscript = transcript
+                    completeOnboardingShell()
+                    showFirstPodcastArrival = true
+                }
+            } catch {
+                await MainActor.run {
+                    firstPodcastError = error.localizedDescription
+                    completeOnboardingShell()
+                }
+            }
+        }
+    }
+
+    private func completeOnboardingShell() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            hasCompletedOnboarding = true
+            isAuthenticated = true
+            needsBackendAuth = false
+            isCreatingFirstPodcast = false
+        }
+    }
     
     /// Find existing transcript or create placeholder for notification
     private func findOrCreateTranscript(for podcastId: String) -> TranscriptModel {
@@ -353,5 +402,14 @@ struct RetrospectApp: App {
         
         EntryManager.shared.addEntry(entry)
         print("✅ Voice entry saved successfully!")
+    }
+}
+
+private struct FirstPodcastCreationView: View {
+    let status: String
+    let errorMessage: String?
+
+    var body: some View {
+        RetrospectLoadingScreen(status: status, errorMessage: errorMessage)
     }
 }

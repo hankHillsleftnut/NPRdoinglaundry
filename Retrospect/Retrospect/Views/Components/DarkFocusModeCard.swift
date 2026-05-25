@@ -124,7 +124,7 @@ struct DarkFocusModeCard: View {
                         // Placeholder
                         if text.isEmpty {
                             Text("Capture your thoughts, challenges, and experiences...")
-                                .font(.system(size: 17, weight: .regular, design: .rounded))
+                                .font(.system(size: 17, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.placeholderText)
                                 .padding(.horizontal, 20)
                                 .padding(.top, 20)
@@ -134,7 +134,7 @@ struct DarkFocusModeCard: View {
                         // Text editor
                         TextEditor(text: $text)
                             .scrollContentBackground(.hidden)
-                            .font(.system(size: 17, weight: .regular, design: .rounded))
+                            .font(.system(size: 17, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .lineSpacing(6)
                             .padding(.horizontal, 16)
@@ -171,7 +171,7 @@ struct DarkFocusModeCard: View {
                         // Character count
                         if !text.isEmpty {
                             Text("\(text.count)")
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                         

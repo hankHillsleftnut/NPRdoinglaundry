@@ -59,7 +59,7 @@ struct SplashScreenView: View {
                             Image(systemName: "arrow.clockwise")
                             Text("Try Again")
                         }
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.textDisplay)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -95,15 +95,14 @@ struct SplashScreenView: View {
                 
                 VStack(spacing: 8) {
                     Text("Retrospect")
-                        .font(.system(size: 42, weight: .regular, design: .serif))
-                        .kerning(-0.5)
+                        .font(.custom("HedvigLettersSerif-24ptRegular", size: 42))
+                        .kerning(-0.2)
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleOffset)
                         .opacity(titleOpacity)
                     
                     Text("Your Journey of Self-Reflection")
-                        .font(.system(size: 16, weight: .regular, design: .serif))
-                        .kerning(-0.2)
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.textSecondary)
                         .offset(y: subtitleOffset)
                         .opacity(subtitleOpacity)

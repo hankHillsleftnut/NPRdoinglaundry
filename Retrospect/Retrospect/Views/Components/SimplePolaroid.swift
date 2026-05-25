@@ -68,7 +68,7 @@ struct SimplePolaroid: View {
                     .font(.system(size: 16, weight: .medium))
                 
                 Text("Generate Polaroid")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .font(.system(size: 16, weight: .medium))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 20)
@@ -118,7 +118,7 @@ struct SimplePolaroid: View {
             VStack {
                 Spacer()
                 Text("Retrospect")
-                    .font(.system(size: 18, weight: .medium, design: .serif))
+                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 18))
                     .foregroundColor(LinearColors.textSecondary)
                 Spacer()
             }

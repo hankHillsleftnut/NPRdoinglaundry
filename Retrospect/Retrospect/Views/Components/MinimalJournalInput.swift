@@ -23,7 +23,7 @@ struct MinimalJournalInput: View {
                 // Placeholder
                 if text.isEmpty {
                     Text("Start Journaling...")
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.placeholderText)
                         .padding(.top, 20)
                         .padding(.leading, 24)
@@ -75,7 +75,7 @@ struct MinimalJournalInput: View {
                             .font(.system(size: 12, weight: .medium))
                         
                         Text("\(attachedImages.count)")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 13, weight: .semibold))
                         
                         Button(action: {
                             HapticManager.shared.playLightImpact()

@@ -23,7 +23,7 @@ struct VoiceRecordingLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(formatTime(context.state.recordingDuration))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .monospacedDigit()
                 }
@@ -50,7 +50,7 @@ struct VoiceRecordingLiveActivityWidget: Widget {
                     .foregroundColor(LinearColors.Minimal.accent)
             } compactTrailing: {
                 Text(formatTime(context.state.recordingDuration))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .monospacedDigit()
             } minimal: {
@@ -75,7 +75,7 @@ struct VoiceRecordingLockScreenView: View {
                 .foregroundColor(LinearColors.Minimal.accent)
             
             Text("Recording · \(formatTime(context.state.recordingDuration))")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .monospacedDigit()
             

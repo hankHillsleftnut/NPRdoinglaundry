@@ -24,7 +24,7 @@ struct ClickyButton: View {
             }
         }) {
             Text(text)
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(LinearColors.textDisplay)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)

@@ -35,7 +35,7 @@ struct MinimalPillButton: View {
                 }
                 
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 28)
@@ -116,7 +116,7 @@ struct MinimalPillButtonLarge: View {
                 }
                 
                 Text(title)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 20, weight: .bold))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 40)

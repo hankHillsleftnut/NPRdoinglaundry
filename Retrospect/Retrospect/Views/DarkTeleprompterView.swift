@@ -112,7 +112,7 @@ struct DarkTeleprompterView: View {
                             
                             ForEach(Array(sentences.enumerated()), id: \.offset) { index, sentence in
                                 Text(sentence + " ")
-                                    .font(.custom("EBGaramond12-Regular", size: 34))
+                                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 34))
                                     .lineSpacing(10)
                                     .foregroundColor(colorForSentence(at: index))
                                     .multilineTextAlignment(.leading)
@@ -276,13 +276,13 @@ struct DarkTeleprompterView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(episodeLabel)
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundColor(.white.opacity(0.5))
                 
                 Text(transcript.processedTranscript != nil
                      ? extractTitle(from: transcript.processedTranscript!)
                      : "This week's episode")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .lineLimit(2)
             }

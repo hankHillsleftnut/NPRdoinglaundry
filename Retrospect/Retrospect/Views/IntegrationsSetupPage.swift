@@ -24,95 +24,58 @@ struct IntegrationsSetupPage: View {
     @State private var contentOpacity: Double = 0
 
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 80)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Connect your sources")
-                        .font(.custom("EBGaramond12-Italic", size: 36))
-                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
-
-                    Text("Pick what matters to you.\nYou can add more anytime in Settings.")
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
-                        .lineSpacing(4)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 28)
-
-                Spacer()
-                    .frame(height: 40)
-
-                VStack(spacing: 12) {
-                    integrationCard(
-                        icon: "doc.text.fill",
-                        title: "Google Docs",
-                        subtitle: "Your notes and docs",
-                        connected: googleDocsService.isConnected,
-                        loading: isConnectingGoogle,
-                        action: connectGoogle
-                    )
-                    integrationCard(
-                        icon: "heart.fill",
-                        title: "Apple Health",
-                        subtitle: "Sleep, activity, mindfulness",
-                        connected: healthKitEnabled,
-                        loading: isRequestingHealth,
-                        action: connectHealth
-                    )
-                    integrationCard(
-                        icon: "chart.bar.fill",
-                        title: "Screen Time",
-                        subtitle: "App usage patterns",
-                        connected: screenTimeService.isAuthorized,
-                        loading: isConnectingScreenTime,
-                        action: connectScreenTime
-                    )
-                }
-                .padding(.horizontal, 28)
+        OnboardingScaffold(
+            iconName: "link",
+            title: "Connect your sources",
+            subtitle: "Pick what matters to you. You can skip anything now and add more later in Settings."
+        ) {
+            VStack(spacing: 12) {
+                integrationCard(
+                    icon: "doc.text.fill",
+                    title: "Google Docs",
+                    subtitle: "Notes and documents you want Retrospect to understand.",
+                    connected: googleDocsService.isConnected,
+                    loading: isConnectingGoogle,
+                    action: connectGoogle
+                )
+                integrationCard(
+                    icon: "heart.fill",
+                    title: "Apple Health",
+                    subtitle: "Sleep, activity, and mindfulness patterns.",
+                    connected: healthKitEnabled,
+                    loading: isRequestingHealth,
+                    action: connectHealth
+                )
+                integrationCard(
+                    icon: "chart.bar.fill",
+                    title: "Screen Time",
+                    subtitle: "App usage patterns that can add context.",
+                    connected: screenTimeService.isAuthorized,
+                    loading: isConnectingScreenTime,
+                    action: connectScreenTime
+                )
 
                 if let error = connectionError {
                     Text(error)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(.red.opacity(0.9))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 28)
-                        .padding(.top, 12)
+                        .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+                        .foregroundColor(OnboardingStyle.danger)
+                        .multilineTextAlignment(.leading)
+                        .lineSpacing(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
                 }
-
-                Spacer()
-
-                VStack(spacing: 14) {
-                    Button(action: advance) {
-                        Text("Continue")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 28)
-                                    .fill(LinearColors.Minimal.accent)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button("Skip for now") {
-                        advance()
-                    }
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 50)
             }
             .opacity(contentOpacity)
+        } bottom: {
+            OnboardingPrimaryButton(title: "Continue", action: advance)
+
+            Button("Skip for now") {
+                advance()
+            }
+            .font(OnboardingStyle.bodyFont(size: 14))
+            .foregroundColor(OnboardingStyle.tertiaryText)
+            .buttonStyle(PlainButtonStyle())
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
                 contentOpacity = 1
@@ -138,54 +101,16 @@ struct IntegrationsSetupPage: View {
         loading: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(LinearColors.Minimal.accent)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                    Text(subtitle)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
-                }
-
-                Spacer()
-
-                if loading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.textTertiary))
-                        .scaleEffect(0.85)
-                } else if connected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.success)
-                } else {
-                    Image(systemName: "plus.circle")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(LinearColors.Minimal.backgroundCard)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                connected ? LinearColors.Minimal.success.opacity(0.3) : LinearColors.Minimal.border.opacity(0.3),
-                                lineWidth: 1
-                            )
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(loading || connected)
+        OnboardingOptionRow(
+            icon: icon,
+            title: title,
+            subtitle: subtitle,
+            status: connected ? "Connected" : nil,
+            isSelected: connected,
+            isLoading: loading,
+            isDisabled: connected,
+            action: action
+        )
     }
 
     // MARK: - Actions

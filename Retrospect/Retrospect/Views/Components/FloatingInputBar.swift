@@ -28,7 +28,7 @@ struct FloatingSearchBar: View {
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                 
                 Text(searchText.isEmpty ? placeholder : searchText)
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(searchText.isEmpty ? LinearColors.Minimal.placeholderText : LinearColors.Minimal.textPrimary)
                     .lineLimit(1)
                 
@@ -64,32 +64,32 @@ struct EntriesFloatingSearchBar: View {
             if !isSearching || searchText.isEmpty {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(LinearColors.Minimal.textTertiary)
+                .foregroundColor(FigmaLightTheme.mutedText)
             }
             
             if isSearching {
                 TextField("Search entries...", text: $searchText)
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                        .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                     .focused($isSearchFocused)
                 
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
                 
                 Button(action: { dismissSearch() }) {
                     Text("Done")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.accent)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
             } else {
                 Text("Search entries...")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.placeholderText)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(FigmaLightTheme.mutedText.opacity(0.72))
                     .lineLimit(1)
                 
                 Spacer()
@@ -99,11 +99,12 @@ struct EntriesFloatingSearchBar: View {
         .frame(height: barHeight)
         .background(
             Capsule()
-                .fill(LinearColors.Minimal.inputBackground)
+                .fill(FigmaLightTheme.controlSurface)
                 .overlay(
                     Capsule()
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                        .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
         )
         .onTapGesture {
             if !isSearching {
@@ -163,16 +164,17 @@ struct GoalsFloatingBar: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(LinearColors.Minimal.inputBackground)
+                            .fill(FigmaLightTheme.controlSurface)
                             .overlay(
                                 Circle()
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
+                            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
                             .frame(width: barHeight, height: barHeight)
                         
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -201,12 +203,14 @@ struct GoalsFloatingBar: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(LinearColors.Minimal.accent)
+                            .fill(FigmaLightTheme.controlSurface)
+                            .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
                             .frame(width: barHeight, height: barHeight)
                         
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -223,32 +227,32 @@ struct GoalsFloatingBar: View {
             if !isSearching || searchText.isEmpty {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .foregroundColor(FigmaLightTheme.mutedText)
             }
             
             if isSearching {
                 TextField("Search goals...", text: $searchText)
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                     .focused($isSearchFocused)
                 
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
                 }
                 
                 Button(action: { dismissSearch() }) {
                     Text("Done")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.accent)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
             } else {
                 Text("Search goals...")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.placeholderText)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(FigmaLightTheme.mutedText.opacity(0.72))
                     .lineLimit(1)
                 
                 Spacer()
@@ -258,11 +262,12 @@ struct GoalsFloatingBar: View {
         .frame(height: barHeight)
         .background(
             Capsule()
-                .fill(LinearColors.Minimal.inputBackground)
+                .fill(FigmaLightTheme.controlSurface)
                 .overlay(
                     Capsule()
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                        .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
         )
         .onTapGesture {
             if !isSearching {
@@ -281,8 +286,8 @@ struct GoalsFloatingBar: View {
     private var addInputBar: some View {
         HStack(spacing: 10) {
             TextField("Add a new goal...", text: $newGoalText)
-                .font(.system(size: 15, weight: .regular, design: .rounded))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                 .focused($isAddFocused)
                 .onSubmit {
                     submitGoal()
@@ -292,7 +297,7 @@ struct GoalsFloatingBar: View {
                 Button(action: { newGoalText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .foregroundColor(FigmaLightTheme.mutedText)
             }
         }
             
@@ -302,8 +307,8 @@ struct GoalsFloatingBar: View {
                     .font(.system(size: 26))
                     .foregroundColor(
                         newGoalText.trimmingCharacters(in: .whitespaces).isEmpty
-                        ? LinearColors.Minimal.textTertiary
-                        : LinearColors.Minimal.accent
+                        ? FigmaLightTheme.mutedText.opacity(0.6)
+                        : FigmaLightTheme.primaryText.opacity(0.72)
                     )
             }
             .disabled(newGoalText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -312,11 +317,12 @@ struct GoalsFloatingBar: View {
         .frame(height: barHeight)
         .background(
             Capsule()
-                .fill(LinearColors.Minimal.inputBackground)
+                .fill(FigmaLightTheme.controlSurface)
                 .overlay(
                     Capsule()
-                        .strokeBorder(LinearColors.Minimal.accent.opacity(0.5), lineWidth: 1)
+                        .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
         )
     }
     
@@ -393,7 +399,7 @@ struct FloatingSearchAddBar: View {
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                 
                     Text(searchText.isEmpty ? searchPlaceholder : searchText)
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
+                        .font(.system(size: 15, weight: .regular))
                         .foregroundColor(searchText.isEmpty ? LinearColors.Minimal.placeholderText : LinearColors.Minimal.textPrimary)
                         .lineLimit(1)
                     
@@ -471,7 +477,7 @@ struct ExpandedSearchOverlay<Content: View>: View {
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                     
                     TextField(placeholder, text: $searchText)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .focused($isFocused)
                     
@@ -489,7 +495,7 @@ struct ExpandedSearchOverlay<Content: View>: View {
                         dismissOverlay()
                     }) {
                         Text("Cancel")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.accent)
                     }
                 }
@@ -550,7 +556,7 @@ struct ExpandedAddGoalOverlay: View {
                                 .foregroundColor(LinearColors.Minimal.accent)
                             
                             TextField("Add a new goal...", text: $goalText)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .focused($isFocused)
                         .onSubmit {

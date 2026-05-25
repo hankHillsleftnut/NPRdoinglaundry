@@ -3,7 +3,7 @@
 //  Retrospect
 //
 //  Main app container for the dark minimal UI
-//  Hosts 5-tab navigation, global audio state, mini player, and voice recording
+//  Hosts side-panel navigation, global audio state, mini player, and voice recording
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ import DeviceActivity
 /// Global audio state manager for the dark UI
 class DarkAudioManager: ObservableObject {
     static let shared = DarkAudioManager()
-    
+
     @Published var currentTranscript: TranscriptModel?
     @Published var audioPlayer: AVAudioPlayer?
     @Published var isPlaying: Bool = false
@@ -22,11 +22,11 @@ class DarkAudioManager: ObservableObject {
     @Published var lastError: String?
     @Published var isGeneratingAudio: Bool = false
     @Published var audioGenerationStatus: String = ""
-    
+
     private init() {
         configureAudioSession()
     }
-    
+
     func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
@@ -38,18 +38,18 @@ class DarkAudioManager: ObservableObject {
             lastError = "Audio session error: \(error.localizedDescription)"
         }
     }
-    
+
     /// Opens transcript view (works even without audio)
     func showTranscript(transcript: TranscriptModel) {
         print("📖 Opening transcript view for: \(transcript.id)")
         print("   - Has audio URL: \(transcript.audioFileURL != nil)")
         print("   - Has processed transcript: \(transcript.processedTranscript != nil)")
         print("   - Mood: \(transcript.mood ?? "unknown")")
-        
+
         currentTranscript = transcript
         showFullPlayer = true
         lastError = nil
-        
+
         // Try to play audio if available
         if let audioURL = transcript.audioFileURL {
             playAudio(url: audioURL)
@@ -58,13 +58,13 @@ class DarkAudioManager: ObservableObject {
             lastError = "No audio generated yet. View transcript only."
         }
     }
-    
+
     func playPodcast(transcript: TranscriptModel) {
         print("🎙️ playPodcast called for transcript: \(transcript.id)")
-        
+
         // Always set the transcript so UI can display it
         currentTranscript = transcript
-        
+
         guard let audioURL = transcript.audioFileURL else {
             print("❌ No audio URL available for podcast")
             lastError = "No audio file available. The podcast transcript exists but audio hasn't been generated."
@@ -72,21 +72,21 @@ class DarkAudioManager: ObservableObject {
             showMiniPlayer = false
             return
         }
-        
+
         print("🔊 Audio URL found: \(audioURL.path)")
         playAudio(url: audioURL)
     }
-    
+
     private func playAudio(url: URL) {
         print("🔊 Attempting to play audio from: \(url.path)")
-        
+
         // Check if file exists
         if !FileManager.default.fileExists(atPath: url.path) {
             print("❌ Audio file does not exist at path: \(url.path)")
             lastError = "Audio file not found at: \(url.lastPathComponent)"
             return
         }
-        
+
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.prepareToPlay()
@@ -102,13 +102,13 @@ class DarkAudioManager: ObservableObject {
             isPlaying = false
         }
     }
-    
+
     func togglePlayback() {
         guard let player = audioPlayer else {
             print("⚠️ togglePlayback: No audio player available")
             return
         }
-        
+
         if isPlaying {
             player.pause()
             print("⏸️ Audio paused")
@@ -118,7 +118,7 @@ class DarkAudioManager: ObservableObject {
         }
         isPlaying.toggle()
     }
-    
+
     func stopPlayback() {
         print("⏹️ Stopping playback")
         audioPlayer?.stop()
@@ -128,7 +128,7 @@ class DarkAudioManager: ObservableObject {
         currentTranscript = nil
         lastError = nil
     }
-    
+
     func seekTo(progress: Double) {
         guard let player = audioPlayer else { return }
         let newTime = player.duration * progress
@@ -141,75 +141,178 @@ struct DarkAppContainer: View {
     @StateObject private var audioManager = DarkAudioManager.shared
     @StateObject private var viewModel = TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared)
     @StateObject private var goalsManager = GoalsManager.shared
-    
+
     @State private var selectedTab: MinimalTab = .journal
     @State private var showingVoiceRecording = false
     @State private var hasNewPodcast = false // Shows notification pill on Podcasts tab
+    @State private var isSidePanelOpen = false
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
+    @State private var lastSettleProgress: CGFloat = 0
+    @State private var activeEntry: Entry? = nil
     @Binding var shouldStartVoiceRecording: Bool
-    
-    var body: some View {
-        ZStack {
-            // Dark background
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-            
-            // Main content based on selected tab
-            VStack(spacing: 0) {
-                // Tab content
-                Group {
-                    switch selectedTab {
-                    case .journal:
-                        DarkJournalView(
-                            viewModel: viewModel,
-                            goalsManager: goalsManager,
-                            audioManager: audioManager,
-                            showingVoiceRecording: $showingVoiceRecording
-                        )
-                    case .podcasts:
-                        DarkPodcastsView(
-                            viewModel: viewModel,
-                            audioManager: audioManager
-                        )
-                    case .goals:
-                        DarkGoalsView()
-                    case .entries:
-                        DarkEntriesView()
-                    case .settings:
-                        DarkSettingsView()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                // Mini player (when audio is playing and not on full player)
-                if audioManager.showMiniPlayer && !audioManager.showFullPlayer {
-                    DarkMiniPlayer(audioManager: audioManager)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
-                }
-                
-                // Separator (only on Journal tab)
-                if selectedTab == .journal {
-                    VStack(spacing: 0) {
-                        Rectangle()
-                            .fill(LinearColors.Minimal.pureBlack)
-                            .frame(height: 1.5)
-                        Rectangle()
-                            .fill(LinearColors.Minimal.border)
-                            .frame(height: 1)
-                    }
-                    .padding(.horizontal, 0)
-                    .padding(.bottom, 8)
-                }
-                
-                // Tab bar - stays fixed
-                MinimalTabBar(selectedTab: $selectedTab, hasNewPodcast: hasNewPodcast)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, -6)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let sidePanelWidth: CGFloat = min(UIScreen.main.bounds.width * 0.69, 276)
+    private let edgeGrabWidth: CGFloat = 36
+    private let flickVelocity: CGFloat = 420
+    private let drawerBackgroundColor = Color(red: 228 / 255, green: 228 / 255, blue: 226 / 255)
+    private let cardSurfaceColor = Color(red: 244 / 255, green: 242 / 255, blue: 238 / 255)
+
+    private var drawerSettleAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.18)
+            : .interactiveSpring(response: 0.36, dampingFraction: 0.88, blendDuration: 0.08)
+    }
+
+    private var sidePanelTabBinding: Binding<MinimalTab> {
+        Binding(
+            get: { selectedTab },
+            set: { newTab in
+                activeEntry = nil
+                selectedTab = newTab
             }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+        )
+    }
+
+    /// The card's current x offset, including any in-flight drag (with rubber-banding).
+    private var currentOffset: CGFloat {
+        let base = isSidePanelOpen ? sidePanelWidth : 0
+        let raw = base + dragOffset
+        if raw < 0 {
+            return raw * 0.25
+        } else if raw > sidePanelWidth {
+            let extra = raw - sidePanelWidth
+            return sidePanelWidth + extra * 0.25
         }
-        .preferredColorScheme(.dark)
+        return raw
+    }
+
+    /// 0...1 — drives every continuous visual change.
+    private var progress: CGFloat {
+        min(max(currentOffset / sidePanelWidth, 0), 1)
+    }
+
+    private func resolvedSafeAreaInsets(from geometry: GeometryProxy) -> EdgeInsets {
+        let windowInsets = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets ?? .zero
+
+        return EdgeInsets(
+            top: max(geometry.safeAreaInsets.top, windowInsets.top),
+            leading: max(geometry.safeAreaInsets.leading, windowInsets.left),
+            bottom: max(geometry.safeAreaInsets.bottom, windowInsets.bottom),
+            trailing: max(geometry.safeAreaInsets.trailing, windowInsets.right)
+        )
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                drawerBackgroundColor
+                    .ignoresSafeArea()
+
+                SideOverPanel(
+                    isOpen: $isSidePanelOpen,
+                    selectedTab: sidePanelTabBinding,
+                    hasNewPodcast: hasNewPodcast,
+                    progress: progress,
+                    safeAreaTop: resolvedSafeAreaInsets(from: geometry).top,
+                    safeAreaBottom: resolvedSafeAreaInsets(from: geometry).bottom,
+                    onSelectEntry: { entry in
+                        selectedTab = .entries
+                        activeEntry = entry
+                    }
+                )
+                .frame(width: sidePanelWidth, height: geometry.size.height, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .allowsHitTesting(progress > 0.5)
+                .zIndex(0)
+
+                ZStack {
+                    cardSurfaceColor
+
+                    // Main content based on selected tab
+                    VStack(spacing: 0) {
+                        // Tab content
+                        Group {
+                            switch selectedTab {
+                            case .journal:
+                                DarkJournalView(
+                                    viewModel: viewModel,
+                                    goalsManager: goalsManager,
+                                    audioManager: audioManager,
+                                    showingVoiceRecording: $showingVoiceRecording
+                                )
+                            case .podcasts:
+                                DarkPodcastsView(
+                                    viewModel: viewModel,
+                                    audioManager: audioManager
+                                )
+                            case .goals:
+                                DarkGoalsView()
+                            case .entries:
+                                DarkEntriesView(activeEntry: $activeEntry)
+                            case .settings:
+                                DarkSettingsView()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        // Mini player (when audio is playing and not on full player)
+                        if audioManager.showMiniPlayer && !audioManager.showFullPlayer {
+                            DarkMiniPlayer(audioManager: audioManager)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 10)
+                        }
+                    }
+                    .padding(.bottom, selectedTab == .journal ? 0 : resolvedSafeAreaInsets(from: geometry).bottom)
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
+                    .environment(\.dynamicSafeAreaTop, resolvedSafeAreaInsets(from: geometry).top)
+                    .environment(\.dynamicSafeAreaBottom, resolvedSafeAreaInsets(from: geometry).bottom)
+                    .environment(\.sidePanelProgress, progress)
+                    .environment(\.openSidePanel, { openSidePanel() })
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipShape(RoundedRectangle(cornerRadius: 60 * progress, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 60 * progress, style: .continuous)
+                        .strokeBorder(
+                            Color.white.opacity(0.92 * progress),
+                            lineWidth: progress > 0 ? 1 : 0
+                        )
+                        .allowsHitTesting(false)
+                }
+                .offset(x: currentOffset)
+                .shadow(
+                    color: Color.black.opacity(0.25 * progress),
+                    radius: 4,
+                    x: 0,
+                    y: 2
+                )
+                .shadow(
+                    color: Color.black.opacity(0.10 * progress),
+                    radius: 15.4,
+                    x: 0,
+                    y: 4
+                )
+                .gesture(panelDragGesture(geometry: geometry))
+                .allowsHitTesting(progress < 0.5 || isDragging)
+                .zIndex(1)
+
+                if progress > 0.5 {
+                    cardInteractionLayer(width: geometry.size.width, height: geometry.size.height)
+                        .zIndex(2)
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .ignoresSafeArea(.container, edges: .all)
+        .preferredColorScheme(.light)
         .fullScreenCover(isPresented: $showingVoiceRecording) {
             DarkVoiceRecordingView()
         }
@@ -224,29 +327,29 @@ struct DarkAppContainer: View {
                 ZStack {
                     LinearColors.Minimal.background
                         .ignoresSafeArea()
-                    
+
                     VStack(spacing: 20) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 48, weight: .light))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
+
                         Text("No Podcast Available")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-                        
+
                         if let error = audioManager.lastError {
                             Text(error)
-                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .font(.system(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 40)
                         }
-                        
+
                         Button(action: {
                             audioManager.showFullPlayer = false
                         }) {
                             Text("Dismiss")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
@@ -267,14 +370,102 @@ struct DarkAppContainer: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: audioManager.showMiniPlayer)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedTab)
     }
-}
 
-// MARK: - Hold Recording State
-enum HoldRecordingState {
-    case idle
-    case recording
-    case saved
-    case tooShort
+    // MARK: - Side panel control
+
+    private func cardInteractionLayer(width: CGFloat, height: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            Color.clear
+                .frame(width: max(currentOffset, 0))
+                .allowsHitTesting(false)
+
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onTapGesture {
+                    closeSidePanel()
+                }
+                .gesture(panelDragGesture(width: width))
+        }
+        .frame(width: width, height: height, alignment: .leading)
+    }
+
+    private func openSidePanel() {
+        withAnimation(drawerSettleAnimation) {
+            isSidePanelOpen = true
+            dragOffset = 0
+        }
+        playSettleHapticIfNeeded(target: 1)
+    }
+
+    private func closeSidePanel() {
+        withAnimation(drawerSettleAnimation) {
+            isSidePanelOpen = false
+            dragOffset = 0
+        }
+        playSettleHapticIfNeeded(target: 0)
+    }
+
+    private func playSettleHapticIfNeeded(target: CGFloat) {
+        // Soft impact when the spring settles past 95% in either direction
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+            HapticManager.shared.playSoftImpact()
+            lastSettleProgress = target
+        }
+    }
+
+    // MARK: - Live drag gesture
+
+    private func panelDragGesture(geometry: GeometryProxy) -> some Gesture {
+        panelDragGesture(width: geometry.size.width)
+    }
+
+    private func panelDragGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                let h = value.translation.width
+                let v = value.translation.height
+
+                // Only honor horizontal-leaning drags
+                guard abs(h) > abs(v) * 1.45 else {
+                    return
+                }
+
+                if !isSidePanelOpen {
+                    guard h > 0 else { return }
+                } else {
+                    // When open, allow both directions but treat right-drag as overshoot
+                }
+
+                if !isDragging {
+                    isDragging = true
+                }
+                dragOffset = h
+            }
+            .onEnded { value in
+                let h = value.translation.width
+                let predicted = value.predictedEndTranslation.width
+                let velocity = predicted - h // rough velocity proxy in pt
+
+                // Decide target state from position + velocity
+                let base = isSidePanelOpen ? sidePanelWidth : 0
+                let endPosition = base + predicted
+                var shouldOpen: Bool
+
+                if abs(velocity) > flickVelocity {
+                    shouldOpen = velocity > 0
+                } else {
+                    shouldOpen = endPosition > sidePanelWidth * 0.38
+                }
+
+                isDragging = false
+                withAnimation(drawerSettleAnimation) {
+                    isSidePanelOpen = shouldOpen
+                    dragOffset = 0
+                }
+                playSettleHapticIfNeeded(target: shouldOpen ? 1 : 0)
+            }
+    }
 }
 
 // MARK: - Session Tracker for Headline Animation
@@ -282,9 +473,9 @@ enum HoldRecordingState {
 class HeadlineAnimationTracker: ObservableObject {
     static let shared = HeadlineAnimationTracker()
     @Published var hasPlayedThisSession: Bool = false
-    
+
     private init() {}
-    
+
     func reset() {
         hasPlayedThisSession = false
     }
@@ -296,43 +487,64 @@ struct DarkJournalView: View {
     @ObservedObject var goalsManager: GoalsManager
     @ObservedObject var audioManager: DarkAudioManager
     @Binding var showingVoiceRecording: Bool
-    
+
     @StateObject private var screenTimeService = ScreenTimeService.shared
-    
+    @StateObject private var inlineVoiceRecorder = AudioRecordingManager()
+
     @State private var journalText = ""
     @State private var attachedImages: [UIImage] = []
     @State private var isInFocusMode = false
     @State private var showImagePicker = false
     @State private var keyboardHeight: CGFloat = 0
-    
+    @State private var isTestingAgentPodcast = false
+    @State private var agentPodcastTestStatus: String?
+    @State private var agentPodcastTestError: String?
+    @State private var inlineVoiceBaseText = ""
+    @State private var inlineVoiceError: String?
+    @AppStorage("devMode") private var devMode: Bool = false
+    @FocusState private var isJournalFocused: Bool
+    @Environment(\.dynamicSafeAreaTop) private var dynamicSafeAreaTop
+    @Environment(\.dynamicSafeAreaBottom) private var dynamicSafeAreaBottom
+    @Environment(\.openSidePanel) private var openSidePanel
+
     // Session-based animation flag (plays once per app session, resets on app launch)
     @ObservedObject private var animationTracker = HeadlineAnimationTracker.shared
-    
+
     // Typewriter animation states
     @State private var displayedText: String = ""
     @State private var headlineOpacity: Double = 0
     private let fullHeadlineText = "How do you\nwant to rewire\nthe mind\ntoday?"
-    
+
     // Animation states for other elements
     @State private var inputOpacity: Double = 0
     @State private var inputOffset: CGFloat = 20
-    
-    // Hold-to-record states
-    @StateObject private var holdRecordingManager = AudioRecordingManager()
-    @State private var isHoldRecording = false
-    @State private var holdRecordingStarted = false
-    @State private var recordingState: HoldRecordingState = .idle
-    @State private var ellipsisCount = 0
-    @State private var ellipsisTimer: Timer?
-    @State private var recordingDuration: TimeInterval = 0
-    @State private var recordingTimer: Timer?
-    
+
+    private let homeBackdropColor = Color(red: 0.894, green: 0.894, blue: 0.886) // #E4E4E2
+    private let homeSurfaceColor = Color(red: 0.957, green: 0.949, blue: 0.933) // #F4F2EE
+    private let homeControlColor = Color(red: 0.969, green: 0.953, blue: 0.933) // #F7F3EE
+    private let homeMutedText = Color(red: 0.620, green: 0.620, blue: 0.620) // #9E9E9E
+    private let homePromptText = Color(red: 0.765, green: 0.761, blue: 0.745) // #C3C2BE
+
     var body: some View {
+        journalContent
+    }
+
+    private var journalContent: some View {
         GeometryReader { geometry in
             ZStack {
-                // Hidden DeviceActivityReport — triggers the extension silently
-                // so screen time data is written to App Group every time the app opens.
-                // The extension takes 1-3s to process; delayed refreshes below pick up the result.
+                homeBackdropColor
+                    .ignoresSafeArea()
+
+                RoundedRectangle(cornerRadius: 60, style: .continuous)
+                    .fill(homeSurfaceColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 60, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.9), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.10), radius: 15, x: 0, y: 4)
+                    .ignoresSafeArea()
+
                 if screenTimeService.isAuthorized {
                     DeviceActivityReport(
                         DeviceActivityReport.Context("Total Activity"),
@@ -352,285 +564,59 @@ struct DarkJournalView: View {
                         scheduleScreenTimeRefreshes()
                     }
                 }
-                
-                // Main content
+
                 VStack(spacing: 0) {
-                    // Hold-to-record zone (headline + scroll area only)
-                    VStack(spacing: 0) {
-                        // Fixed headline area (not scrollable)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Spacer()
-                                .frame(height: 40)
-                            
-                            // Screen time: show nugget when data exists, or short "connected" line when authorized
-                            if !isHoldRecording, screenTimeService.isAuthorized {
-                                if let nugget = screenTimeNugget {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "hourglass")
-                                            .font(.system(size: 10, weight: .medium))
-                                        Text(nugget)
-                                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    }
-                                    .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
-                                    .padding(.horizontal, 28)
-                                    .padding(.bottom, 8)
-                                    .transition(.opacity)
-                                } else {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "hourglass")
-                                            .font(.system(size: 10, weight: .medium))
-                                        Text("Screen Time connected · data will appear after you use your device")
-                                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    }
-                                    .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.6))
-                                    .padding(.horizontal, 28)
-                                    .padding(.bottom, 8)
-                                    .transition(.opacity)
-                                }
-                            }
-                            
-                            // Headline - changes to Recording indicator during hold recording
-                            if isHoldRecording {
-                                if recordingState == .saved {
-                                    // Saved state - clean checkmark pill
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 18, weight: .medium))
-                                            .foregroundColor(.green)
-                                        Text("Saved")
-                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                            .foregroundColor(LinearColors.Minimal.textPrimary)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        Capsule()
-                                            .fill(LinearColors.Minimal.backgroundCard)
-                                            .overlay(
-                                                Capsule()
-                                                    .strokeBorder(LinearColors.Minimal.success.opacity(0.3), lineWidth: 1)
-                                            )
-                                    )
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 28)
-                                } else if recordingState == .tooShort {
-                                    // Too short feedback pill
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "hand.raised")
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                                        Text("Hold longer to record")
-                                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                                            .foregroundColor(LinearColors.Minimal.textSecondary)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        Capsule()
-                                            .fill(LinearColors.Minimal.backgroundCard)
-                                            .overlay(
-                                                Capsule()
-                                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                                            )
-                                    )
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 28)
-                                } else {
-                                    // Recording state - refined pill with duration and waveform
-                                    RecordingIndicatorPill(duration: recordingDuration)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 28)
-                                }
-                                Spacer().frame(height: 0)
-                            } else {
-                                // Normal headline - typewriter effect on first launch
-                                Text(displayedText)
-                                    .font(.minimalHeadline)
-                                    .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.7))
-                                    .lineSpacing(10)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 28)
-                                    .opacity(headlineOpacity)
-                            }
-                            
-                            Spacer()
-                                .frame(height: 40)
-                        }
-                        
-                        // Scrollable content area
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 0) {
-                                // Featured podcast card (if transcript exists)
-                                if let transcript = viewModel.transcript, transcript.audioFileURL != nil {
-                                    DarkFeaturedPodcastCard(
-                                        transcript: transcript,
-                                        audioManager: audioManager
-                                    )
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 24)
-                                }
-                                
-                                // Processing indicator
-                                if viewModel.isProcessing {
-                                    DarkLoadingPill(viewModel: viewModel)
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 24)
-                                }
-                                
-                                Spacer(minLength: 100)
-                            }
-                        }
-                        .opacity(isHoldRecording ? 0.3 : 1.0)
-                    }
-                    
-                    // Input area at bottom with dedicated hold-to-record control
-                    if !isHoldRecording {
-                        VStack(spacing: 16) {
-                            // Generate button (when ready)
-                            if !journalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && goalsManager.goalsCount > 0 && !viewModel.isProcessing {
-                                Button(action: {
-                                    HapticManager.shared.playMediumImpact()
-                                    viewModel.generateTranscript(text: journalText, goals: goalsManager.goalContextForGeneration)
-                                }) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 16, weight: .semibold))
-                                        Text("Generate Podcast")
-                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                    }
-                                    .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        Capsule()
-                                            .fill(LinearColors.Minimal.accent)
-                                    )
-                                }
-                                .transition(.scale.combined(with: .opacity))
-                            }
-                            
-                            // Dedicated hold-to-record pill (1.0s hold to avoid accidental triggers)
-                            HStack(spacing: 8) {
-                                Image(systemName: "mic.fill")
-                                    .font(.system(size: 12, weight: .medium))
-                                Text("Hold to record")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                            }
-                            .foregroundColor(LinearColors.Minimal.textSecondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                Capsule()
-                                    .fill(LinearColors.Minimal.backgroundCard)
-                                    .overlay(
-                                        Capsule()
-                                            .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                                    )
-                            )
-                            .contentShape(Capsule())
-                            .gesture(
-                                LongPressGesture(minimumDuration: 1.0)
-                                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-                                    .onChanged { value in
-                                        switch value {
-                                        case .first(true):
-                                            if !isHoldRecording && !isInFocusMode {
-                                                startHoldRecording()
-                                            }
-                                        case .second(true, _):
-                                            break
-                                        default:
-                                            break
-                                        }
-                                    }
-                                    .onEnded { _ in
-                                        if isHoldRecording {
-                                            let tooShort = recordingDuration < 2.0
-                                            endHoldRecording(cancelled: tooShort)
-                                        }
-                                    }
-                            )
-                            
-                            // Journal input - tappable to enter focus mode
-                            MinimalJournalInput(
-                                text: $journalText,
-                                attachedImages: $attachedImages,
-                                onMicTap: {
-                                    showingVoiceRecording = true
-                                },
-                                onPlusTap: {
-                                    showImagePicker = true
-                                },
-                                onTap: {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                        isInFocusMode = true
-                                    }
-                                }
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                        .padding(.bottom, 24)
-                        .opacity(inputOpacity)
-                        .offset(y: inputOffset)
-                    }
+                    homeTopBar
+                        .padding(.top, dynamicSafeAreaTop + 8)
+                        .padding(.horizontal, 34)
+
+                    Spacer()
                 }
-                
-                // "Too short" feedback when released before 2 seconds
-                // (cancel zone and waveform pill removed — release to stop)
-            
-            // Focus Mode Overlay
-            if isInFocusMode {
-                ZStack {
-                    // Darkened background
-                    Color.black
-                        .opacity(0.7)
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            HapticManager.shared.playLightImpact()
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                isInFocusMode = false
-                            }
+
+                journalEditor
+                    .frame(width: min(geometry.size.width - 48, 340), height: isJournalFocused ? 220 : 170)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height * (isJournalFocused ? 0.34 : 0.50))
+                    .opacity(inputOpacity)
+                    .offset(y: inputOffset)
+
+                VStack(spacing: 12) {
+                    if let transcript = viewModel.transcript, transcript.audioFileURL != nil, !isJournalFocused {
+                        latestPodcastButton(transcript: transcript)
+                    }
+
+                    if viewModel.isProcessing {
+                        processingPill
+                    } else if !isJournalFocused {
+                        if devMode {
+                            devGenerateButton
+                                .offset(y: 18)
+                        } else {
+                            nextEpisodePill
+                                .offset(y: 18)
                         }
-                    
-                    // Focus Mode Card
-                    DarkFocusModeCard(
-                        text: $journalText,
-                        isPresented: $isInFocusMode,
-                        keyboardHeight: keyboardHeight,
-                        isSendEnabled: !journalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                        onSend: {
-                            saveReflectionAsEntry()
-                        },
-                        onMicTap: {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                isInFocusMode = false
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showingVoiceRecording = true
-                            }
-                        }
-                    )
-                    .scaleEffect(isInFocusMode ? 1.0 : 0.95, anchor: .center)
-                    .opacity(isInFocusMode ? 1 : 0)
+                    }
+
+                    typingAccessoryBar
                 }
-                .transition(.opacity)
-                .zIndex(999)
+                .padding(.horizontal, 34)
+                .padding(.bottom, bottomAccessoryPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .opacity(inputOpacity)
+                .offset(y: inputOffset)
             }
-        }
         }
         .onAppear {
             animateIn()
             setupKeyboardObservers()
         }
         .onDisappear {
-            removeKeyboardObservers()
-            ellipsisTimer?.invalidate()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("StopVoiceRecordingFromLiveActivity"))) { _ in
-            if isHoldRecording {
-                endHoldRecording(cancelled: false)
+            if inlineVoiceRecorder.isRecording {
+                inlineVoiceRecorder.cancelRecording()
             }
+            removeKeyboardObservers()
+        }
+        .onChange(of: inlineVoiceRecorder.currentTranscription) { _, transcription in
+            applyInlineTranscription(transcription)
         }
         .overlay {
             if showImagePicker {
@@ -644,7 +630,7 @@ struct DarkJournalView: View {
                                 showImagePicker = false
                             }
                         }
-                    
+
                     // Attachment picker positioned at bottom
                     VStack {
                         Spacer()
@@ -662,43 +648,377 @@ struct DarkJournalView: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showImagePicker)
+        .alert("Agent Podcast Test Failed", isPresented: Binding(
+            get: { agentPodcastTestError != nil },
+            set: { if !$0 { agentPodcastTestError = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                agentPodcastTestError = nil
+            }
+        } message: {
+            Text(agentPodcastTestError ?? "Something went wrong.")
+        }
+        .alert("Voice Recording Failed", isPresented: Binding(
+            get: { inlineVoiceError != nil },
+            set: { if !$0 { inlineVoiceError = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                inlineVoiceError = nil
+            }
+        } message: {
+            Text(inlineVoiceError ?? "Something went wrong.")
+        }
     }
-    
-    // MARK: - Animation Functions
-    
-    private func animateIn() {
-        if animationTracker.hasPlayedThisSession {
-            // Instant show if animation already played this session
-            displayedText = fullHeadlineText
-            headlineOpacity = 1
-            
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.7).delay(0.1)) {
-                inputOpacity = 1
-                inputOffset = 0
+
+    private var homeTopBar: some View {
+        ZStack {
+            HStack {
+                homeIconButton(systemName: "line.3.horizontal") {
+                    isJournalFocused = false
+                    openSidePanel()
+                }
+
+                Spacer()
+
+                inlineMicButton
             }
+
+            Text("Journal")
+                .font(.system(size: 18, weight: .regular, design: .monospaced))
+                .foregroundColor(homeMutedText)
+        }
+    }
+
+    private var journalEditor: some View {
+        ZStack(alignment: .center) {
+            if journalText.isEmpty {
+                Text("tell me something.....")
+                    .font(.minimalHeadline)
+                    .foregroundColor(homePromptText)
+                    .multilineTextAlignment(.center)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+
+            TextEditor(text: $journalText)
+                .scrollContentBackground(.hidden)
+                .font(.minimalHeadline)
+                .foregroundColor(journalText.isEmpty ? homePromptText : FigmaLightTheme.primaryText)
+                .multilineTextAlignment(.center)
+                .tint(FigmaLightTheme.primaryText)
+                .focused($isJournalFocused)
+                .padding(.horizontal, 8)
+                .opacity(journalText.isEmpty ? 0.02 : 1)
+                .background(Color.clear)
+                .onTapGesture {
+                    isJournalFocused = true
+                }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isJournalFocused = true
+        }
+    }
+
+    private var typingAccessoryBar: some View {
+        HStack(spacing: 10) {
+            Button(action: {
+                HapticManager.shared.playLightImpact()
+                showImagePicker = true
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundColor(homeMutedText)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(homeControlColor))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.16), radius: 4, x: 0, y: 2)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if !attachedImages.isEmpty {
+                attachedImagesChip
+            }
+
+            Spacer(minLength: 12)
+
+            if !journalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Button(action: sendJournalEntry) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(homeMutedText)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(homeControlColor))
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.18), radius: 5, x: 0, y: 2)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .opacity(isJournalFocused || !attachedImages.isEmpty || !journalText.isEmpty ? 1 : 0)
+        .allowsHitTesting(isJournalFocused || !attachedImages.isEmpty || !journalText.isEmpty)
+        .animation(.spring(response: 0.26, dampingFraction: 0.82), value: journalText.isEmpty)
+        .animation(.spring(response: 0.26, dampingFraction: 0.82), value: attachedImages.count)
+    }
+
+    private var inlineMicButton: some View {
+        Button(action: toggleInlineVoiceRecording) {
+            ZStack {
+                if inlineVoiceRecorder.isRecording {
+                    Circle()
+                        .fill(Color.red.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(1.15)
+                }
+
+                Image(systemName: inlineVoiceRecorder.isRecording ? "stop.fill" : "mic.fill")
+                    .font(.system(size: inlineVoiceRecorder.isRecording ? 18 : 25, weight: .semibold))
+                    .foregroundColor(inlineVoiceRecorder.isRecording ? Color.red.opacity(0.65) : homePromptText)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(inlineVoiceRecorder.isRecording ? "Stop voice typing" : "Start voice typing")
+    }
+
+    private var attachedImagesChip: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "photo.fill")
+                .font(.system(size: 12, weight: .medium))
+
+            Text("\(attachedImages.count)")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+
+            Button(action: {
+                HapticManager.shared.playLightImpact()
+                attachedImages.removeAll()
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .foregroundColor(homeMutedText)
+        .padding(.horizontal, 10)
+        .frame(height: 32)
+        .background(Capsule(style: .continuous).fill(homeControlColor))
+        .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+    }
+
+    private var nextEpisodePill: some View {
+        Text(statusPillText)
+            .font(.system(size: 14, weight: .regular, design: .monospaced))
+            .foregroundColor(homeMutedText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 15)
+            .background(Capsule(style: .continuous).fill(Color(red: 0.918, green: 0.906, blue: 0.890)))
+    }
+
+    private var devGenerateButton: some View {
+        Button(action: {
+            HapticManager.shared.playMediumImpact()
+            let text = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let goals = goalsManager.goalContextForGeneration
+            viewModel.generateTranscript(
+                text: text.isEmpty ? "Generate a podcast from my recent entries and goals." : text,
+                goals: goals
+            )
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Generate Podcast")
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .lineLimit(1)
+            }
+            .foregroundColor(homeMutedText)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Capsule(style: .continuous).fill(homeControlColor))
+            .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.85), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var processingPill: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+                .controlSize(.small)
+                .tint(homeMutedText)
+
+            Text("Creating your episode")
+                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .foregroundColor(homeMutedText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+        .background(Capsule(style: .continuous).fill(Color(red: 0.918, green: 0.906, blue: 0.890)))
+    }
+
+    private func latestPodcastButton(transcript: TranscriptModel) -> some View {
+        Button(action: {
+            HapticManager.shared.playLightImpact()
+            audioManager.showTranscript(transcript: transcript)
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text(transcript.mood.map { "\($0) episode" } ?? "Latest episode")
+                    .font(.system(size: 13, weight: .medium, design: .default))
+                    .lineLimit(1)
+
+                Image(systemName: "play.fill")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundColor(homeMutedText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Capsule(style: .continuous).fill(homeControlColor))
+            .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.85), lineWidth: 1))
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func homeIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: systemName == "mic.fill" ? 24 : 15, weight: .semibold))
+                .foregroundColor(homePromptText)
+                .frame(width: 38, height: 38)
+                .background(
+                    Circle()
+                        .fill(homeControlColor)
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.16), radius: 4, x: 0, y: 2)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var statusPillText: String {
+        if inlineVoiceRecorder.isRecording {
+            return inlineVoiceRecorder.currentTranscription.isEmpty
+                ? "Listening..."
+                : "Voice typing..."
+        }
+        if let status = agentPodcastTestStatus, !status.isEmpty {
+            return status
+        }
+        if let nugget = screenTimeNugget {
+            return nugget
+        }
+        return "Your next episode is in 3 days"
+    }
+
+    private var bottomAccessoryPadding: CGFloat {
+        if keyboardHeight > 0 {
+            return keyboardHeight + 14
+        }
+        return dynamicSafeAreaBottom + 52
+    }
+
+    private var agentPodcastTestButton: some View {
+        Button(action: testAgentPodcastFlow) {
+            HStack(spacing: 7) {
+                if isTestingAgentPodcast {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(LinearColors.Minimal.buttonPrimaryText)
+                } else {
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+
+                Text(isTestingAgentPodcast ? "Testing" : "Test Agent")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(LinearColors.Minimal.accent)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isTestingAgentPodcast)
+        .opacity(isTestingAgentPodcast ? 0.72 : 1)
+    }
+
+    private func toggleInlineVoiceRecording() {
+        if inlineVoiceRecorder.isRecording {
+            stopInlineVoiceRecording()
         } else {
-            // First-time typewriter animation for headline (once per session)
-            headlineOpacity = 1
-            typeOutHeadline()
-            
-            // Input appears immediately with bounce (doesn't wait for typewriter)
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.65).delay(0.3)) {
-                inputOpacity = 1
-                inputOffset = 0
+            startInlineVoiceRecording()
+        }
+    }
+
+    private func startInlineVoiceRecording() {
+        HapticManager.shared.playMediumImpact()
+        inlineVoiceBaseText = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        isJournalFocused = true
+
+        inlineVoiceRecorder.requestPermissions { granted in
+            guard granted else {
+                inlineVoiceError = inlineVoiceRecorder.errorMessage ?? "Microphone and speech recognition access are required."
+                HapticManager.shared.playErrorNotification()
+                return
             }
-            
-            // Mark animation as played after typewriter completes
-            let typewriterDuration = Double(fullHeadlineText.count) * 0.025 + 0.2
-            DispatchQueue.main.asyncAfter(deadline: .now() + typewriterDuration + 0.3) {
-                animationTracker.hasPlayedThisSession = true
+            inlineVoiceRecorder.startRecording()
+        }
+    }
+
+    private func stopInlineVoiceRecording() {
+        HapticManager.shared.playLightImpact()
+        inlineVoiceRecorder.stopRecording { result in
+            switch result {
+            case .success:
+                HapticManager.shared.playSuccessNotification()
+            case .failure(let error):
+                inlineVoiceError = error.localizedDescription
+                HapticManager.shared.playErrorNotification()
             }
         }
     }
-    
+
+    private func applyInlineTranscription(_ transcription: String) {
+        let cleanedTranscription = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard inlineVoiceRecorder.isRecording else { return }
+
+        if inlineVoiceBaseText.isEmpty {
+            journalText = cleanedTranscription
+        } else if cleanedTranscription.isEmpty {
+            journalText = inlineVoiceBaseText
+        } else {
+            journalText = "\(inlineVoiceBaseText)\n\(cleanedTranscription)"
+        }
+    }
+
+    // MARK: - Animation Functions
+
+    private func animateIn() {
+        displayedText = fullHeadlineText
+        headlineOpacity = 1
+
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.74).delay(0.08)) {
+            inputOpacity = 1
+            inputOffset = 0
+        }
+
+        animationTracker.hasPlayedThisSession = true
+    }
+
     private func typeOutHeadline() {
         displayedText = ""
         let characters = Array(fullHeadlineText)
-        
+
         for (index, character) in characters.enumerated() {
             // Fast typing: 25ms per character
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 + Double(index) * 0.025) {
@@ -708,151 +1028,15 @@ struct DarkJournalView: View {
             }
         }
     }
-    
-    // MARK: - Hold-to-Record Functions
-    
-    private func startHoldRecording() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            isHoldRecording = true
-            recordingState = .recording
-        }
-        
-        // Haptic feedback
-        HapticManager.shared.playMediumImpact()
-        
-        // Start recording duration timer
-        recordingDuration = 0
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            recordingDuration += 0.1
-        }
-        
-        // Start ellipsis animation
-        ellipsisCount = 0
-        ellipsisTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
-            ellipsisCount = (ellipsisCount + 1) % 4
-        }
-        
-        // Start actual recording
-        holdRecordingManager.requestPermissions { granted in
-            if granted {
-                self.holdRecordingManager.startRecording()
-            }
-        }
-    }
-    
-    private func endHoldRecording(cancelled: Bool) {
-        ellipsisTimer?.invalidate()
-        ellipsisTimer = nil
-        recordingTimer?.invalidate()
-        recordingTimer = nil
-        
-        if cancelled {
-            // Cancel recording (too short or explicit cancel)
-            holdRecordingManager.cancelRecording()
-            HapticManager.shared.playLightImpact()
-            
-            // Show "too short" feedback briefly
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                recordingState = .tooShort
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isHoldRecording = false
-                    recordingState = .idle
-                }
-            }
-        } else {
-            // Save recording
-            holdRecordingManager.stopRecording { result in
-                switch result {
-                case .success(let (audioURL, transcription)):
-                    let trimmedTranscription = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
-                    
-                    // Reject if transcription is empty and audio file doesn't exist or is tiny
-                    let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
-                    let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
-                    
-                    guard !trimmedTranscription.isEmpty || hasUsableAudio else {
-                        print("⚠️ Discarding empty voice recording — no transcription and no usable audio")
-                        HapticManager.shared.playErrorNotification()
-                        
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            recordingState = .tooShort
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isHoldRecording = false
-                                recordingState = .idle
-                            }
-                        }
-                        return
-                    }
-                    
-                    // Create and save entry
-                    let entryId = UUID()
-                    do {
-                        try FileStorageManager.shared.moveAudio(from: audioURL, to: entryId)
-                        
-                        var title = "Voice Note"
-                        if !trimmedTranscription.isEmpty {
-                            let words = trimmedTranscription.split(separator: " ").prefix(8)
-                            title = words.joined(separator: " ")
-                            if trimmedTranscription.split(separator: " ").count > 8 {
-                                title += "..."
-                            }
-                        }
-                        
-                        let entry = Entry(
-                            id: entryId,
-                            type: .voice,
-                            content: trimmedTranscription,
-                            audioURL: FileStorageManager.shared.getAudioURL(for: entryId),
-                            aiGeneratedTitle: title,
-                            tags: []
-                        )
-                        
-                        EntryManager.shared.addEntry(entry)
-                    } catch {
-                        print("Failed to save audio: \(error)")
-                    }
-                    
-                    // Show saved state
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        recordingState = .saved
-                    }
-                    
-                    HapticManager.shared.playSuccessNotification()
-                    
-                    // Dismiss after showing saved state
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isHoldRecording = false
-                            recordingState = .idle
-                        }
-                    }
-                    
-                case .failure(let error):
-                    print("Recording failed: \(error)")
-                    HapticManager.shared.playErrorNotification()
-                    
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        isHoldRecording = false
-                        recordingState = .idle
-                    }
-                }
-            }
-        }
-    }
-    
+
     // MARK: - Screen Time Ambient Insight
-    
+
     private var screenTimeNugget: String? {
         guard let summary = screenTimeService.latestSummary else { return nil }
-        
+
         let history = screenTimeService.weeklyHistory
         let todayMinutes = summary.totalScreenTimeMinutes
-        
+
         // If we have history, compute trend
         if history.count >= 2 {
             let previousDays = history.filter { $0.date != summary.date }
@@ -860,10 +1044,10 @@ struct DarkJournalView: View {
                 return formatSimpleNugget(summary)
             }
             let avgMinutes = previousDays.reduce(0) { $0 + $1.totalScreenTimeMinutes } / previousDays.count
-            
+
             if avgMinutes > 0 {
                 let changePercent = Int(round(Double(todayMinutes - avgMinutes) / Double(avgMinutes) * 100))
-                
+
                 if changePercent > 15 {
                     return "Screen time is up \(changePercent)% today"
                 } else if changePercent < -15 {
@@ -873,25 +1057,25 @@ struct DarkJournalView: View {
                 }
             }
         }
-        
+
         return formatSimpleNugget(summary)
     }
-    
+
     private func formatSimpleNugget(_ summary: ScreenTimeSummary) -> String? {
         let minutes = summary.totalScreenTimeMinutes
         if minutes < 5 { return nil }
-        
+
         if summary.totalPickups > 60 {
             return "\(summary.totalPickups) pickups today · \(formatTime(minutes)) on screen"
         }
-        
+
         if let topApp = summary.appUsage.first, topApp.minutes > 30 {
             return "\(formatTime(minutes)) on screen · \(topApp.appName) \(formatTime(topApp.minutes))"
         }
-        
+
         return "\(formatTime(minutes)) on screen today"
     }
-    
+
     private func formatTime(_ minutes: Int) -> String {
         if minutes >= 60 {
             let h = minutes / 60
@@ -911,28 +1095,73 @@ struct DarkJournalView: View {
             }
         }
     }
-    
+
     private func saveReflectionAsEntry() {
+        sendJournalEntry()
+    }
+
+    private func sendJournalEntry() {
         let trimmedText = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
-        
-        // Create and save entry
+
+        let entryId = UUID()
+        let imageURLs = attachedImages.isEmpty
+            ? nil
+            : FileStorageManager.shared.saveImages(for: entryId, images: attachedImages)
+
         let entry = Entry(
+            id: entryId,
             type: .text,
             content: trimmedText,
+            imageURLs: imageURLs,
             tags: []
         )
-        
+
         EntryManager.shared.addEntry(entry)
         HapticManager.shared.playSuccessNotification()
-        
-        // Clear text and close focus mode
+
         journalText = ""
+        attachedImages.removeAll()
+        isJournalFocused = false
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             isInFocusMode = false
         }
     }
-    
+
+    private func testAgentPodcastFlow() {
+        guard RetrospectAPIClient.shared.isAuthenticated else {
+            agentPodcastTestError = "Sign in first so the backend knows which user's data the agent should use."
+            return
+        }
+
+        HapticManager.shared.playMediumImpact()
+        isTestingAgentPodcast = true
+        agentPodcastTestStatus = "Asking the backend to create a podcast with the agent..."
+
+        Task {
+            do {
+                let episode = try await RetrospectAPIClient.shared.generatePodcast(daysSince: 14)
+                let transcript = episode.toTranscriptModel()
+
+                await MainActor.run {
+                    viewModel.savePodcast(transcript)
+                    viewModel.transcript = transcript
+                    audioManager.showTranscript(transcript: transcript)
+                    agentPodcastTestStatus = "Created \"\(episode.title)\" through the agent."
+                    isTestingAgentPodcast = false
+                    HapticManager.shared.playSuccessNotification()
+                }
+            } catch {
+                await MainActor.run {
+                    agentPodcastTestError = error.localizedDescription
+                    agentPodcastTestStatus = "Agent podcast test failed."
+                    isTestingAgentPodcast = false
+                    HapticManager.shared.playErrorNotification()
+                }
+            }
+        }
+    }
+
     private func setupKeyboardObservers() {
         NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification,
@@ -945,7 +1174,7 @@ struct DarkJournalView: View {
                 }
             }
         }
-        
+
         NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillHideNotification,
             object: nil,
@@ -956,125 +1185,13 @@ struct DarkJournalView: View {
             }
         }
     }
-    
+
     private func removeKeyboardObservers() {
         NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
     }
 }
 
-// MARK: - Recording Indicator Pill (replaces headline during recording)
-struct RecordingIndicatorPill: View {
-    let duration: TimeInterval
-    @State private var waveformPhase: CGFloat = 0
-    @State private var dotOpacity: Double = 1.0
-    
-    var body: some View {
-        HStack(spacing: 14) {
-            // Red recording dot (pulsing)
-            Circle()
-                .fill(LinearColors.Minimal.recordingActive)
-                .frame(width: 10, height: 10)
-                .opacity(dotOpacity)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                        dotOpacity = 0.3
-                    }
-                }
-            
-            // Duration counter
-            Text(formatDuration(duration))
-                .font(.system(size: 16, weight: .semibold, design: .monospaced))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
-            
-            Spacer()
-            
-            // Pulsing waveform on right
-            HStack(spacing: 3) {
-                ForEach(0..<5, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(LinearColors.Minimal.accent)
-                        .frame(width: 3, height: waveformHeight(for: index))
-                        .animation(
-                            .easeInOut(duration: 0.35)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.08),
-                            value: waveformPhase
-                        )
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            Capsule()
-                .fill(LinearColors.Minimal.backgroundCard)
-                .overlay(
-                    Capsule()
-                        .strokeBorder(LinearColors.Minimal.recordingPulse, lineWidth: 1)
-                )
-        )
-        .onAppear {
-            waveformPhase = 1
-        }
-    }
-    
-    private func waveformHeight(for index: Int) -> CGFloat {
-        let heights: [CGFloat] = [8, 14, 20, 14, 8]
-        let animatedHeights: [CGFloat] = [14, 20, 10, 20, 14]
-        return waveformPhase == 0 ? heights[index] : animatedHeights[index]
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        let tenths = Int((duration.truncatingRemainder(dividingBy: 1)) * 10)
-        return String(format: "%d:%02d.%d", minutes, seconds, tenths)
-    }
-}
-
-// MARK: - Hold Recording Waveform Pill (follows finger)
-struct HoldRecordingWaveformPill: View {
-    @State private var waveformPhase: CGFloat = 0
-    
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<5, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(LinearColors.Minimal.accent)
-                    .frame(width: 3, height: waveformHeight(for: index))
-                    .animation(
-                        .easeInOut(duration: 0.35)
-                        .repeatForever(autoreverses: true)
-                        .delay(Double(index) * 0.08),
-                        value: waveformPhase
-                    )
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
-            Capsule()
-                .fill(LinearColors.Minimal.backgroundCard)
-                .overlay(
-                    Capsule()
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 4)
-        )
-        .onAppear {
-            waveformPhase = 1
-        }
-    }
-    
-    private func waveformHeight(for index: Int) -> CGFloat {
-        let heights: [CGFloat] = [10, 16, 22, 16, 10]
-        let animatedHeights: [CGFloat] = [16, 22, 12, 22, 16]
-        return waveformPhase == 0 ? heights[index] : animatedHeights[index]
-    }
-}
-
 #Preview {
     DarkAppContainer(shouldStartVoiceRecording: .constant(false))
 }
-

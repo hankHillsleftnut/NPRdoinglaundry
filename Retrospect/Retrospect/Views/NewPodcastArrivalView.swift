@@ -72,7 +72,7 @@ struct NewPodcastArrivalView: View {
                     // Episode title
                     VStack(spacing: 8) {
                         Text(episodeTitle)
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
@@ -178,7 +178,7 @@ struct NewPodcastArrivalView: View {
                     .font(.system(size: 20, weight: .semibold))
                 
                 Text("Play")
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .font(.system(size: 19, weight: .bold))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .padding(.horizontal, 48)

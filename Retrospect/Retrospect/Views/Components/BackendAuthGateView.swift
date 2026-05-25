@@ -27,13 +27,13 @@ struct BackendAuthGateView: View {
                 
                 // Title
                 Text("Sign In Required")
-                    .font(.custom("EBGaramond12-Regular", size: 30))
+                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 30))
                     .foregroundColor(LinearColors.textDisplay)
                     .multilineTextAlignment(.center)
                 
                 // Subtitle
                 Text("Please sign in with Apple to access your data and podcasts.")
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(LinearColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
@@ -56,14 +56,14 @@ struct BackendAuthGateView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.accent))
                                 .scaleEffect(0.8)
                             Text("Connecting...")
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.textSecondary)
                         }
                     }
                     
                     if let error = signInError {
                         Text(error)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.red.opacity(0.9))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
@@ -74,7 +74,7 @@ struct BackendAuthGateView: View {
                 
                 // Privacy footnote
                 Text("Your data stays private. We only use your Apple ID to verify your account.")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .font(.system(size: 12, weight: .regular))
                     .foregroundColor(LinearColors.textTertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)

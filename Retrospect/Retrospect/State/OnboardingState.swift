@@ -47,6 +47,7 @@ final class OnboardingState: ObservableObject {
     // MARK: Sign-in gate
 
     @Published var hasSignedIn: Bool = false
+    @Published var privacyAcknowledged: Bool = false
     @Published var integrationsCompleted: Bool = false
     @Published var personaCompleted: Bool = false
 
@@ -122,6 +123,7 @@ final class OnboardingState: ObservableObject {
 
     private static let persistedStepKey = "onboardingCurrentStep"
     private static let signedInKey = "onboardingSignedIn"
+    private static let privacyAcknowledgedKey = "onboardingPrivacyAcknowledged"
     private static let integrationsCompletedKey = "onboardingIntegrationsCompleted"
     private static let personaCompletedKey = "onboardingPersonaCompleted"
 
@@ -130,6 +132,11 @@ final class OnboardingState: ObservableObject {
         UserDefaults.standard.set(true, forKey: Self.signedInKey)
         phase = .integrations
         persistPhase()
+    }
+
+    func markPrivacyAcknowledged() {
+        privacyAcknowledged = true
+        UserDefaults.standard.set(true, forKey: Self.privacyAcknowledgedKey)
     }
 
     func markIntegrationsCompleted() {
@@ -148,6 +155,7 @@ final class OnboardingState: ObservableObject {
 
     func restoreFromDisk() {
         hasSignedIn = UserDefaults.standard.bool(forKey: Self.signedInKey)
+        privacyAcknowledged = UserDefaults.standard.bool(forKey: Self.privacyAcknowledgedKey)
         integrationsCompleted = UserDefaults.standard.bool(forKey: Self.integrationsCompletedKey)
         personaCompleted = UserDefaults.standard.bool(forKey: Self.personaCompletedKey)
         let stored = UserDefaults.standard.integer(forKey: Self.persistedStepKey)
@@ -177,6 +185,7 @@ final class OnboardingState: ObservableObject {
     func clearPersistedStep() {
         UserDefaults.standard.removeObject(forKey: Self.persistedStepKey)
         UserDefaults.standard.removeObject(forKey: Self.signedInKey)
+        UserDefaults.standard.removeObject(forKey: Self.privacyAcknowledgedKey)
         UserDefaults.standard.removeObject(forKey: Self.integrationsCompletedKey)
         UserDefaults.standard.removeObject(forKey: Self.personaCompletedKey)
     }

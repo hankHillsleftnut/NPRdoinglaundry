@@ -1,7 +1,7 @@
 import SwiftUI
 
 // === FONT PREVIEW TILE ===
-// Demonstrates EB Garamond title with SF Pro Rounded subtitle
+// Demonstrates Hedvig title with SF Pro Display subtitle
 
 struct FontPreviewTile: View {
     var body: some View {
@@ -15,12 +15,12 @@ struct FontPreviewTile: View {
             // Font Content
             VStack(alignment: .leading, spacing: 4) {
                 Text("Font Preview")
-                    .font(.custom("EBGaramond12-Regular", size: 18))
+                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 18))
                     .foregroundColor(LinearColors.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                Text("EB Garamond title with SF Pro Rounded subtitle")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                Text("Hedvig title with SF Pro Display subtitle")
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LinearColors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

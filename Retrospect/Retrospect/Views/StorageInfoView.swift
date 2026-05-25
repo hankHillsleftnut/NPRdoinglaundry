@@ -179,7 +179,7 @@ struct StorageStatCard: View {
                     .foregroundColor(LinearColors.textSecondary)
                 
                 Text(value)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundColor(LinearColors.textPrimary)
                 
                 Text(subtitle)

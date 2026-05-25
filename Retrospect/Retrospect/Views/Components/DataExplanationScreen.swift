@@ -145,7 +145,7 @@ struct DataExplanationScreen: View {
             
             // Data Usage label
             Text("Data Usage")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(LinearColors.textTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -153,7 +153,7 @@ struct DataExplanationScreen: View {
     
     private var mainTitle: some View {
         Text("Personalized Insights")
-            .font(.custom("EBGaramond12-Regular", size: 32))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
             .foregroundColor(LinearColors.textDisplay)
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
@@ -163,7 +163,7 @@ struct DataExplanationScreen: View {
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("We analyze the data you interact with—your notes, documents, and health metrics—to create personalized podcast insights about your life. Everything is processed securely on your device.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
@@ -191,7 +191,7 @@ struct DataExplanationScreen: View {
             onNext()
         }) {
             Text("Next")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(Color.white)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)

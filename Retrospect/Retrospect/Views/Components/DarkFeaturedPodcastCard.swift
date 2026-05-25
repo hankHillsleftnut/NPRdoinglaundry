@@ -57,15 +57,15 @@ struct DarkFeaturedPodcastCard: View {
                 // Info
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Weekly Insights")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Text(podcastMood.displayName)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     
                     Text(formatDate(transcript.createdAt))
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
                 

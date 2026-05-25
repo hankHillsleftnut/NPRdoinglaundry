@@ -258,7 +258,7 @@ struct DataStatCard: View {
                 .foregroundColor(LinearColors.primaryText)
             
             Text(title)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(LinearColors.secondaryText)
         }
         .padding()
@@ -571,7 +571,7 @@ struct GoogleDocsDataSection: View {
                             .foregroundColor(LinearColors.warningYellow)
                         
                         Text("Setup Required")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(LinearColors.warningYellow)
                     }
                     
@@ -810,7 +810,7 @@ struct GoogleDocsDetailView: View {
                         Image(systemName: sortBy.systemImage)
                             .font(.system(size: 16, weight: .medium))
                         Text("Sort: \(sortBy.rawValue)")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .font(.system(size: 15, weight: .medium))
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12, weight: .medium))
                     }
@@ -934,7 +934,7 @@ struct GoogleDocsDetailView: View {
                 .font(.system(size: 60))
                 .foregroundColor(LinearColors.secondaryText.opacity(0.7))
             Text("No Results Found")
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(LinearColors.primaryText)
             Text("Try adjusting your search terms or refresh to find relevant documents.")
                 .font(.serifBody)
@@ -984,7 +984,7 @@ struct DocumentCard: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     Text(formatDate(document.modifiedTime))
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(LinearColors.secondaryText)
                 }
                 
@@ -1012,7 +1012,7 @@ struct DocumentCard: View {
                         .font(.serifCaption)
                         .foregroundColor(LinearColors.accent)
                     Text("Modified \(relativeDateString(document.modifiedTime))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LinearColors.secondaryText)
                 }
                 
@@ -1022,7 +1022,7 @@ struct DocumentCard: View {
                             .font(.serifCaption)
                             .foregroundColor(LinearColors.successGreen)
                         Text("Content Available")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.successGreen)
                     }
                 }
@@ -1200,7 +1200,7 @@ struct DocumentContentSheet: View {
                                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                                             .foregroundColor(LinearColors.secondaryText.opacity(0.7))
                                         Text("No content available")
-                                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                                            .font(.system(size: 18, weight: .medium))
                                             .foregroundColor(LinearColors.secondaryText)
                                     }
                                     .frame(maxWidth: .infinity)
@@ -1441,7 +1441,7 @@ struct FeatureCard: View {
                     .foregroundColor(LinearColors.primaryText)
                 
                 Text(description)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.secondaryText)
                     .multilineTextAlignment(.leading)
             }

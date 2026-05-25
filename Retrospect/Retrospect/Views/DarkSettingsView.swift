@@ -10,232 +10,312 @@ import LocalAuthentication
 
 struct DarkSettingsView: View {
     @State private var showProfilePersonalization = false
-    @State private var showAppearance = false
-    @State private var showAudioPlayback = false
-    @State private var showPrivacySecurity = false
-    @State private var showIntegrationsData = false
     @State private var showAdvanced = false
     @State private var showLogoutConfirmation = false
-    
+    @State private var showBiometricUnavailableAlert = false
+    @State private var showGoogleError = false
+    @State private var showHealthError = false
+    @State private var healthErrorMessage = ""
+    @State private var isConnectingGoogle = false
+    @State private var isConnectingHealth = false
+    @State private var isConnectingScreenTime = false
+
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
-    @State private var headerOpacity: Double = 0
-    
-    // Header styling
-    private let headerHeight: CGFloat = 50
-    
+    @StateObject private var googleDocsService = GoogleDocsService.shared
+    @StateObject private var screenTimeService = ScreenTimeService.shared
+    @AppStorage("healthKitEnabled") private var healthKitEnabled: Bool = false
+    @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Settings")
-                    .font(.custom("EBGaramond12-Italic", size: 46))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
-                
-                Spacer()
-            }
-            .frame(height: headerHeight)
-            .padding(.horizontal, 24)
-            .padding(.top, 8)
-            .opacity(headerOpacity)
-            
+        FigmaLightPageScaffold(title: "Settings") {
             ScrollView {
                 VStack(spacing: 20) {
-                    // MARK: - Account Section
-                    HStack {
-                        Text("Account")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 4)
-                    
-                    GroupedSettingsContainer {
-                        GroupedSettingsRow(
-                            title: "Profile & Personalization",
-                            subtitle: "AI style and preferences",
-                            icon: "person.crop.circle.fill",
-                            iconColor: LinearColors.Minimal.accent
+                    // MARK: Account
+                    FigmaLightSectionLabel(text: "Account")
+                        .padding(.horizontal, 4)
+                        .padding(.top, 4)
+
+                    FigmaLightRowCard {
+                        lightSettingsRow(
+                            title: "Profile",
+                            subtitle: "Name, AI style, podcast cadence",
+                            icon: "person.crop.circle.fill"
                         ) {
                             showProfilePersonalization = true
                         }
                     }
-                    
-                    // MARK: - App Experience Section
-                    HStack {
-                        Text("App Experience")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 4)
-                    
-                    GroupedSettingsContainer {
-                        GroupedSettingsRow(
-                            title: "Appearance",
-                            subtitle: "Theme and display",
-                            icon: "paintbrush.fill",
-                            iconColor: LinearColors.Minimal.iconPurple
-                        ) {
-                            showAppearance = true
-                        }
-                        
-                        SettingsDivider()
-                        
-                        GroupedSettingsRow(
-                            title: "Audio & Playback",
-                            subtitle: "Sound and voice settings",
-                            icon: "speaker.wave.3.fill",
-                            iconColor: LinearColors.Minimal.iconBlue
-                        ) {
-                            showAudioPlayback = true
-                        }
-                    }
-                    
-                    // MARK: - Privacy Section
-                    HStack {
-                        Text("Privacy & Data")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 4)
-                    
-                    GroupedSettingsContainer {
-                        GroupedSettingsRow(
-                            title: "Privacy & Security",
-                            subtitle: "Face ID and permissions",
-                            icon: "lock.shield.fill",
-                            iconColor: LinearColors.Minimal.iconGreen
-                        ) {
-                            showPrivacySecurity = true
-                        }
-                        
-                        SettingsDivider()
-                        
-                        GroupedSettingsRow(
-                            title: "Integrations & Data",
-                            subtitle: "Connected services",
-                            icon: "link.circle.fill",
-                            iconColor: LinearColors.Minimal.iconOrange
-                        ) {
-                            showIntegrationsData = true
+
+                    // MARK: Integrations
+                    FigmaLightSectionLabel(text: "Integrations")
+                        .padding(.horizontal, 4)
+
+                    FigmaLightRowCard {
+                        VStack(spacing: 0) {
+                            lightToggleRow(
+                                title: "Google Docs",
+                                subtitle: googleDocsService.isConnected ? "Connected" : "Sync documents as context",
+                                icon: "doc.text.fill",
+                                isOn: Binding(
+                                    get: { googleDocsService.isConnected },
+                                    set: { on in on ? connectGoogle() : disconnectGoogle() }
+                                ),
+                                isLoading: isConnectingGoogle
+                            )
+
+                            lightDivider()
+
+                            lightToggleRow(
+                                title: "Apple Health",
+                                subtitle: healthKitEnabled ? "Sleep, activity & mindfulness" : "Add health data as context",
+                                icon: "heart.fill",
+                                isOn: Binding(
+                                    get: { healthKitEnabled },
+                                    set: { on in on ? connectHealth() : (healthKitEnabled = false) }
+                                ),
+                                isLoading: isConnectingHealth
+                            )
+
+                            lightDivider()
+
+                            lightToggleRow(
+                                title: "Screen Time",
+                                subtitle: screenTimeService.isAuthorized ? "App usage tracking active" : "Track digital habits",
+                                icon: "hourglass",
+                                isOn: Binding(
+                                    get: { screenTimeService.isAuthorized },
+                                    set: { on in
+                                        if on { connectScreenTime() } else { screenTimeService.revokeAuthorization() }
+                                    }
+                                ),
+                                isLoading: isConnectingScreenTime
+                            )
                         }
                     }
-                    
-                    // MARK: - Developer Section
-                    HStack {
-                        Text("Developer")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        Spacer()
+
+                    // MARK: Security
+                    FigmaLightSectionLabel(text: "Security")
+                        .padding(.horizontal, 4)
+
+                    FigmaLightRowCard {
+                        lightToggleRow(
+                            title: "Face ID",
+                            subtitle: "Require biometrics to open app",
+                            icon: "faceid",
+                            isOn: Binding(
+                                get: { faceIDEnabled },
+                                set: { on in
+                                    faceIDEnabled = on
+                                    if on { checkBiometricAvailability() }
+                                }
+                            ),
+                            isLoading: false
+                        )
                     }
-                    .padding(.horizontal, 4)
-                    
-                    GroupedSettingsContainer {
-                        GroupedSettingsRow(
+
+                    // MARK: Advanced
+                    FigmaLightRowCard {
+                        lightSettingsRow(
                             title: "Advanced",
                             subtitle: "Dev tools and experiments",
-                            icon: "wrench.and.screwdriver.fill",
-                            iconColor: LinearColors.Minimal.textSecondary
+                            icon: "wrench.and.screwdriver.fill"
                         ) {
                             showAdvanced = true
                         }
                     }
-                    
-                    // Logo
-                    VStack(spacing: 8) {
-                        Image(systemName: "waveform.circle.fill")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
-                        Text("Retrospect")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
-                        Text("Version 1.0")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.placeholderText)
-                    }
-                    .padding(.top, 32)
-                    
-                    // Log Out Button (at the very bottom)
+
+                    // MARK: Log Out
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         showLogoutConfirmation = true
                     }) {
-                        HStack {
-                            Spacer()
-                            Text("Log Out")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(LinearColors.Minimal.deleteRed)
-                            Spacer()
-                        }
-                        .frame(height: 50)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearColors.Minimal.deleteRedSubtle)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .strokeBorder(LinearColors.Minimal.deleteRed.opacity(0.2), lineWidth: 1)
-                                )
-                        )
+                        Text("Log Out")
+                            .font(FigmaLightTheme.body(16, weight: .medium))
+                            .foregroundColor(Color(red: 0.85, green: 0.25, blue: 0.25))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color(red: 0.85, green: 0.25, blue: 0.25).opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .strokeBorder(Color(red: 0.85, green: 0.25, blue: 0.25).opacity(0.2), lineWidth: 1)
+                                    )
+                            )
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .padding(.top, 16)
-                    .padding(.bottom, 100)
+                    .padding(.top, 4)
+                    .padding(.bottom, 120)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
-            }
-            .mask(
-                VStack(spacing: 0) {
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .black.opacity(0.3), location: 0.3),
-                            .init(color: .black.opacity(0.7), location: 0.6),
-                            .init(color: .black, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 16)
-                    LinearColors.Minimal.pureBlack
-                    LinearGradient(colors: [LinearColors.Minimal.pureBlack, .clear], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 50)
-                }
-            )
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) {
-                headerOpacity = 1
+                .padding(.top, 8)
             }
         }
         .sheet(isPresented: $showProfilePersonalization) {
             DarkProfilePersonalizationView()
         }
-        .sheet(isPresented: $showAppearance) {
-            DarkAppearanceSettingsView()
-        }
-        .sheet(isPresented: $showAudioPlayback) {
-            DarkAudioSettingsView()
-        }
-        .sheet(isPresented: $showPrivacySecurity) {
-            DarkPrivacyAndSecurityView()
-        }
-        .sheet(isPresented: $showIntegrationsData) {
-            DarkIntegrationsDataView()
-        }
         .sheet(isPresented: $showAdvanced) {
             DarkAdvancedSettingsView()
         }
         .alert("Log Out", isPresented: $showLogoutConfirmation) {
-            Button("Log Out", role: .destructive) {
-                apiClient.signOut()
-            }
+            Button("Log Out", role: .destructive) { apiClient.signOut() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Are you sure you want to log out? You'll need to sign in again to access your data and podcasts.")
+            Text("You'll need to sign in again to access your data.")
+        }
+        .alert("Face ID Unavailable", isPresented: $showBiometricUnavailableAlert) {
+            Button("OK", role: .cancel) { faceIDEnabled = false }
+        } message: {
+            Text("Face ID is not configured on this device. Please set it up in Settings.")
+        }
+        .alert("Connection Error", isPresented: $showGoogleError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Failed to connect to Google. Please try again.")
+        }
+        .alert("Apple Health", isPresented: $showHealthError) {
+            Button("Open Health App") {
+                if let url = URL(string: "x-apple-health://") { UIApplication.shared.open(url) }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(healthErrorMessage)
+        }
+    }
+
+    // MARK: - Light-themed row helpers
+
+    @ViewBuilder
+    private func lightSettingsRow(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: { HapticManager.shared.playLightImpact(); action() }) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(FigmaLightTheme.mutedText)
+                    .frame(width: 30)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(FigmaLightTheme.body(15, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.primaryText)
+                    Text(subtitle)
+                        .font(FigmaLightTheme.mono(12))
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(FigmaLightTheme.faintText)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 15)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    @ViewBuilder
+    private func lightToggleRow(title: String, subtitle: String, icon: String, isOn: Binding<Bool>, isLoading: Bool) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(FigmaLightTheme.mutedText)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(FigmaLightTheme.body(15, weight: .medium))
+                    .foregroundColor(FigmaLightTheme.primaryText)
+                Text(subtitle)
+                    .font(FigmaLightTheme.mono(12))
+                    .foregroundColor(FigmaLightTheme.mutedText)
+            }
+
+            Spacer()
+
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            } else {
+                Toggle("", isOn: isOn)
+                    .labelsHidden()
+                    .tint(FigmaLightTheme.mutedText)
+                    .scaleEffect(0.85)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+    }
+
+    private func lightDivider() -> some View {
+        Rectangle()
+            .fill(FigmaLightTheme.border.opacity(0.65))
+            .frame(height: 0.5)
+            .padding(.leading, 62)
+    }
+
+    // MARK: - Integration actions
+
+    private func connectGoogle() {
+        isConnectingGoogle = true
+        Task {
+            do {
+                try await googleDocsService.authenticate()
+                await MainActor.run { isConnectingGoogle = false }
+            } catch {
+                await MainActor.run { isConnectingGoogle = false; showGoogleError = true }
+            }
+        }
+    }
+
+    private func disconnectGoogle() { googleDocsService.signOut() }
+
+    private func connectHealth() {
+        guard HealthKitManager.shared.isHealthDataAvailable() else {
+            healthErrorMessage = "Health data is not available on this device. HealthKit requires a physical iPhone."
+            showHealthError = true
+            return
+        }
+        isConnectingHealth = true
+        HealthKitManager.shared.requestAuthorization { success in
+            DispatchQueue.main.async {
+                isConnectingHealth = false
+                if success {
+                    healthKitEnabled = true
+                    HapticManager.shared.playSuccessNotification()
+                    healthErrorMessage = "Health access granted. If you don't see Retrospect in Health, open Health → Sharing → Apps and enable it."
+                    showHealthError = true
+                } else {
+                    healthErrorMessage = "Unable to request Health access. Check Settings › Privacy & Security › Health."
+                    showHealthError = true
+                }
+            }
+        }
+    }
+
+    private func connectScreenTime() {
+        isConnectingScreenTime = true
+        Task {
+            await screenTimeService.requestAuthorization()
+            await MainActor.run {
+                isConnectingScreenTime = false
+                if screenTimeService.isAuthorized {
+                    screenTimeService.startRetroactiveBackfill()
+                }
+            }
+        }
+    }
+
+    private func checkBiometricAvailability() {
+        let context = LAContext()
+        var error: NSError?
+        if !context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            showBiometricUnavailableAlert = true
+            faceIDEnabled = false
+        } else if context.biometryType != .faceID {
+            showBiometricUnavailableAlert = true
+            faceIDEnabled = false
         }
     }
 }
@@ -300,11 +380,11 @@ struct GroupedSettingsRow: View {
                 // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
                 
@@ -351,11 +431,11 @@ struct DarkSettingsCard: View {
                 // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
                 
@@ -420,11 +500,11 @@ struct DarkProfilePersonalizationView: View {
                 // Podcast Cadence
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Podcast Cadence")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     
                     Text("How often do you want to receive podcasts?")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                     
                     VStack(spacing: 8) {
@@ -482,11 +562,11 @@ struct DarkCadenceOption: View {
                 // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(cadence.rawValue)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Text(cadence.description)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
                 
@@ -578,7 +658,7 @@ struct DarkPrivacyAndSecurityView: View {
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                             
                             Text("Face ID will be required when opening the app")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                             
                             Spacer()
@@ -604,12 +684,12 @@ struct DarkPrivacyAndSecurityView: View {
                             .foregroundColor(LinearColors.Minimal.success)
                         
                         Text("Your Data is Protected")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                     }
                     
                     Text("All your journal entries and reflections are stored locally on your device. Nothing is sent to external servers without your explicit action.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                         .lineSpacing(4)
                 }
@@ -678,7 +758,7 @@ struct DarkIntegrationsDataView: View {
                             .foregroundColor(LinearColors.Minimal.iconBlue)
                         
                         Text("Google Docs")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Spacer()
@@ -689,20 +769,20 @@ struct DarkIntegrationsDataView: View {
                                     .font(.system(size: 14))
                                     .foregroundColor(LinearColors.Minimal.success)
                                 Text("Connected")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.success)
                             }
                         }
                     }
                     
                     Text("Include your Google Docs in reflections for richer insights.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     
                     if googleDocsService.isConnected {
                         Button(action: disconnectGoogle) {
                             Text("Disconnect")
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.error)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
@@ -724,7 +804,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 14, weight: .medium))
                                 }
                                 Text(isConnectingGoogle ? "Connecting..." : "Connect Account")
-                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .font(.system(size: 15, weight: .medium))
                             }
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
@@ -756,7 +836,7 @@ struct DarkIntegrationsDataView: View {
                             .foregroundColor(LinearColors.Minimal.iconPink)
                         
                         Text("Apple Health")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Spacer()
@@ -767,20 +847,20 @@ struct DarkIntegrationsDataView: View {
                                     .font(.system(size: 14))
                                     .foregroundColor(LinearColors.Minimal.success)
                                 Text("Enabled")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.success)
                             }
                         }
                     }
                     
                     Text("Include sleep, activity, and mindfulness data in your reflections.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     
                     if healthKitEnabled {
                         Button(action: { healthKitEnabled = false }) {
                             Text("Disable")
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.error)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
@@ -802,7 +882,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 14, weight: .medium))
                                 }
                                 Text(isConnectingHealth ? "Requesting..." : "Enable Access")
-                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .font(.system(size: 15, weight: .medium))
                             }
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
@@ -834,7 +914,7 @@ struct DarkIntegrationsDataView: View {
                             .foregroundColor(LinearColors.Minimal.iconPurple)
                         
                         Text("Screen Time")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Spacer()
@@ -845,14 +925,14 @@ struct DarkIntegrationsDataView: View {
                                     .font(.system(size: 14))
                                     .foregroundColor(LinearColors.Minimal.success)
                                 Text("Enabled")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.success)
                             }
                         }
                     }
                     
                     Text("Track app usage, pickups, and digital habits to surface patterns in how you spend your time on-screen.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     
                     if screenTimeService.isAuthorized {
@@ -861,28 +941,28 @@ struct DarkIntegrationsDataView: View {
                             HStack(spacing: 16) {
                                 VStack(spacing: 2) {
                                     Text("\(summary.totalScreenTimeMinutes / 60)h \(summary.totalScreenTimeMinutes % 60)m")
-                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(LinearColors.Minimal.textPrimary)
                                     Text("Screen Time")
-                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
                                 
                                 VStack(spacing: 2) {
                                     Text("\(summary.totalPickups)")
-                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(LinearColors.Minimal.textPrimary)
                                     Text("Pickups")
-                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
                                 
                                 VStack(spacing: 2) {
                                     Text("\(summary.appUsage.count)")
-                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(LinearColors.Minimal.textPrimary)
                                     Text("Apps")
-                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
                                 
@@ -910,7 +990,7 @@ struct DarkIntegrationsDataView: View {
                                             .font(.system(size: 13, weight: .medium))
                                     }
                                     Text(screenTimeService.isSyncing ? "Syncing..." : "Sync Now")
-                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        .font(.system(size: 14, weight: .medium))
                                 }
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(maxWidth: .infinity)
@@ -927,7 +1007,7 @@ struct DarkIntegrationsDataView: View {
                                 screenTimeService.revokeAuthorization()
                             }) {
                                 Text("Disable")
-                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.error)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 40)
@@ -961,7 +1041,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 14, weight: .medium))
                                 }
                                 Text(isConnectingScreenTime ? "Requesting..." : "Enable Screen Time")
-                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .font(.system(size: 15, weight: .medium))
                             }
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .frame(maxWidth: .infinity)
@@ -976,7 +1056,7 @@ struct DarkIntegrationsDataView: View {
                         
                         if let error = screenTimeService.authorizationError {
                             Text(error)
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .font(.system(size: 12, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.error)
                         }
                     }
@@ -999,12 +1079,12 @@ struct DarkIntegrationsDataView: View {
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                         
                         Text("Data Management")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                     }
                     
                     Text("Your data is stored locally on your device. Export or delete your data at any time.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
                 .padding(16)
@@ -1140,11 +1220,11 @@ struct DarkAdvancedSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Test Podcast Notification")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Send a test notification with your content")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         
@@ -1182,11 +1262,11 @@ struct DarkAdvancedSettingsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Resync Entries to Backend")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                 
                                 Text("\(entryManager.entries.count) entries will be pushed to Supabase")
-                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
                             
@@ -1215,16 +1295,16 @@ struct DarkAdvancedSettingsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                 
                                 if isGeneratingTestPodcast {
                                     Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
-                                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                                        .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.accent)
                                 } else {
                                     Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
-                                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                                        .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textSecondary)
                                 }
                             }
@@ -1266,11 +1346,11 @@ struct DarkAdvancedSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Replay Onboarding")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Go through the setup flow again")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         
@@ -1297,11 +1377,11 @@ struct DarkAdvancedSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Preview Podcast Flow")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Test the complete podcast UI flow")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         
@@ -1328,11 +1408,11 @@ struct DarkAdvancedSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Legacy UI (UI1)")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Original warm cream interface")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         
@@ -1359,11 +1439,11 @@ struct DarkAdvancedSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Preview Podcast Flow")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Text("Walk through the complete podcast UI")
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         
@@ -1391,16 +1471,16 @@ struct DarkAdvancedSettingsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                 
                                 if isGeneratingTestPodcast {
                                     Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
-                                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                                        .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.accent)
                                 } else {
                                     Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
-                                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                                        .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textSecondary)
                                 }
                             }
@@ -1436,7 +1516,7 @@ struct DarkAdvancedSettingsView: View {
             PodcastFlowPreview()
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            DarkOnboardingFlow(onComplete: {
+            DarkOnboardingFlow(onComplete: { _ in
                 showOnboarding = false
             })
             .id(onboardingReplayId)
@@ -1665,7 +1745,7 @@ func darkSettingsSheet(title: String, @ViewBuilder content: () -> some View) -> 
             
             // Header
             Text(title)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .padding(.top, 20)
                 .padding(.bottom, 24)
@@ -1693,11 +1773,11 @@ struct DarkSettingsToggleRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                 
                 Text(subtitle)
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
             }
             
@@ -1725,13 +1805,13 @@ struct DarkSettingsInfoRow: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .font(.system(size: 15, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
         }
         .padding(16)
@@ -1755,11 +1835,11 @@ struct DarkSettingsInputRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
             
             TextField(placeholder, text: $text)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .focused($isFocused)
                 .padding(14)
@@ -1786,5 +1866,3 @@ struct DarkSettingsInputRow: View {
         DarkSettingsView()
     }
 }
-
-

@@ -124,13 +124,11 @@ struct DarkGoalsView: View {
     }
 
     var body: some View {
-        ZStack {
+        FigmaLightPageScaffold(
+            title: "Goals",
+            hideHeader: isSearching || isAdding
+        ) {
             VStack(spacing: 0) {
-                if !isSearching && !isAdding {
-                    header
-                        .opacity(headerOpacity)
-                }
-
                 if goalsManager.richGoals.isEmpty {
                     emptyState
                 } else {
@@ -156,10 +154,28 @@ struct DarkGoalsView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 24)
                         .padding(.top, 12)
                         .padding(.bottom, 140)
                     }
+                    .mask(
+                        VStack(spacing: 0) {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .black.opacity(0.3), location: 0.3),
+                                    .init(color: .black.opacity(0.7), location: 0.6),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 16)
+                            Color.black
+                            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 80)
+                        }
+                    )
                 }
 
                 Spacer(minLength: 0)
@@ -173,10 +189,11 @@ struct DarkGoalsView: View {
                         goalsManager.addGoal(goal)
                     }
                 )
-                .padding(.horizontal, 20)
-                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight - 80 : 8)
+                .padding(.horizontal, 24)
+                .padding(.bottom, keyboardHeight > 0 ? keyboardHeight - 80 : 10)
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: keyboardHeight)
             }
+            .opacity(headerOpacity)
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isAdding)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isSearching)
@@ -209,57 +226,28 @@ struct DarkGoalsView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Text("Goals")
-                .font(.custom("EBGaramond12-Italic", size: 46))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
-
-            Text("\(goalsManager.goalsCount)")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(LinearColors.Minimal.textSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(LinearColors.Minimal.backgroundCard)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                        )
-                )
-
-            Spacer()
-        }
-        .frame(height: headerHeight)
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-    }
-
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
 
             ZStack {
                 Circle()
-                    .fill(LinearColors.Minimal.backgroundCard)
+                    .fill(FigmaLightTheme.rowSurface)
                     .frame(width: 100, height: 100)
 
                 Image(systemName: "scope")
                     .font(.system(size: 40, weight: .light))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .foregroundColor(FigmaLightTheme.mutedText)
             }
 
             VStack(spacing: 8) {
                 Text("No Goals Yet")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                    .font(FigmaLightTheme.title(30))
+                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
 
                 Text("Add goals to personalize your\npodcast insights")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                    .font(FigmaLightTheme.body(15))
+                    .foregroundColor(FigmaLightTheme.mutedText)
                     .multilineTextAlignment(.center)
             }
 
@@ -308,14 +296,15 @@ struct RichGoalCard: View {
         .padding(0)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(LinearColors.Minimal.backgroundCardLight)
+                .fill(FigmaLightTheme.rowSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .strokeBorder(
-                            isExpanded ? category.color.opacity(0.25) : LinearColors.Minimal.border,
+                            isExpanded ? category.color.opacity(0.24) : FigmaLightTheme.border.opacity(0.75),
                             lineWidth: 1
                         )
                 )
+                .shadow(color: Color.black.opacity(0.045), radius: 10, x: 0, y: 5)
         )
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
@@ -339,14 +328,14 @@ struct RichGoalCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(goal.title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                    .font(FigmaLightTheme.body(16, weight: .semibold))
+                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.84))
                     .lineLimit(isExpanded ? nil : 2)
 
                 if !isExpanded && !goal.goalDescription.isEmpty {
                     Text(goal.goalDescription)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                        .font(FigmaLightTheme.body(13))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                         .lineLimit(1)
                 }
             }
@@ -358,7 +347,7 @@ struct RichGoalCard: View {
             VStack(spacing: 8) {
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .foregroundColor(FigmaLightTheme.mutedText)
 
                 if !isExpanded {
                     Image(systemName: category.icon)
@@ -375,7 +364,7 @@ struct RichGoalCard: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             Rectangle()
-                .fill(LinearColors.Minimal.border.opacity(0.5))
+                .fill(FigmaLightTheme.border.opacity(0.7))
                 .frame(height: 0.5)
                 .padding(.horizontal, 14)
 
@@ -383,8 +372,8 @@ struct RichGoalCard: View {
             if !goal.goalDescription.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(goal.goalDescription)
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
+                        .font(FigmaLightTheme.body(15))
+                        .foregroundColor(FigmaLightTheme.primaryText.opacity(0.78))
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -395,12 +384,12 @@ struct RichGoalCard: View {
             if !goal.motivation.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Why this matters")
-                        .font(.custom("EBGaramond12-Italic", size: 18))
+                        .font(FigmaLightTheme.title(18))
                         .foregroundColor(category.color.opacity(0.9))
 
                     Text(goal.motivation)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                        .font(FigmaLightTheme.body(14))
+                        .foregroundColor(FigmaLightTheme.primaryText.opacity(0.66))
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -411,7 +400,7 @@ struct RichGoalCard: View {
             if !goal.actionItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Next steps")
-                        .font(.custom("EBGaramond12-Italic", size: 18))
+                        .font(FigmaLightTheme.title(18))
                         .foregroundColor(category.color.opacity(0.9))
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -423,8 +412,8 @@ struct RichGoalCard: View {
                                     .padding(.top, 2)
 
                                 Text(item)
-                                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                                    .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.8))
+                                    .font(FigmaLightTheme.body(14))
+                                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -439,7 +428,7 @@ struct RichGoalCard: View {
                     Image(systemName: category.icon)
                         .font(.system(size: 11, weight: .medium))
                     Text(category.rawValue)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(category.color.opacity(0.8))
                 .padding(.horizontal, 10)
@@ -456,7 +445,7 @@ struct RichGoalCard: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .foregroundColor(FigmaLightTheme.mutedText)
                         .padding(8)
                 }
             }

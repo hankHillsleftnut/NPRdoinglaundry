@@ -190,7 +190,11 @@ struct LinearColors {
     struct Minimal {
         // === BACKGROUNDS ===
         static let background = Color(red: 0.07, green: 0.07, blue: 0.08) // #121214 - Slightly lighter black
+        /// Same plane as ``background``: unified chrome behind the slide-over shell (sidebar + gaps outside rounded corners).
+        static let chromeBackdrop = background
         static let backgroundElevated = Color(red: 0.08, green: 0.08, blue: 0.09) // #141417 - Elevated surfaces
+        /// Fill for the main sliding card surface (reads slightly above chromeBackdrop).
+        static let slideCardSurface = backgroundElevated
         static let backgroundCard = Color(red: 0.08, green: 0.08, blue: 0.09) // #141417 - Even darker card backgrounds
         static let backgroundCardLight = Color(red: 0.12, green: 0.12, blue: 0.13) // #1F1F21 - Lighter card backgrounds for grouped containers
         static let backgroundCardHover = Color(red: 0.14, green: 0.14, blue: 0.15) // #242426 - Card hover

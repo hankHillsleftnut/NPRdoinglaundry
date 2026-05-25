@@ -29,7 +29,7 @@ struct EntryCard: View {
                         
                         // Date & Time
                         Text(formattedDate)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(LinearColors.textSecondary)
                     }
                     
@@ -79,7 +79,7 @@ struct EntryCard: View {
             Image(systemName: badgeIcon)
                 .font(.system(size: 10, weight: .medium))
             Text(badgeText)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(.system(size: 11, weight: .semibold))
         }
         .foregroundColor(badgeColor)
         .padding(.horizontal, 8)

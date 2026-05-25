@@ -31,56 +31,60 @@ struct DarkPodcastsView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            header
-                .opacity(headerOpacity)
-            
-            // Content
-            if podcasts.isEmpty {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(podcasts) { transcript in
-                            DarkPodcastCard(
-                                transcript: transcript,
-                                audioManager: audioManager,
-                                isCurrentlyPlaying: audioManager.currentTranscript?.id == transcript.id && audioManager.isPlaying
-                            )
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    viewModel.deletePodcast(transcript)
-                                    HapticManager.shared.playMediumImpact()
-                                } label: {
-                                    Label("Delete Podcast", systemImage: "trash")
+        FigmaLightPageScaffold(title: "Episodes") {
+            VStack(spacing: 8) {
+                if devMode {
+                    devRows
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                }
+
+                if podcasts.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(podcasts) { transcript in
+                                DarkPodcastCard(
+                                    transcript: transcript,
+                                    audioManager: audioManager,
+                                    isCurrentlyPlaying: audioManager.currentTranscript?.id == transcript.id && audioManager.isPlaying
+                                )
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        viewModel.deletePodcast(transcript)
+                                        HapticManager.shared.playMediumImpact()
+                                    } label: {
+                                        Label("Delete Podcast", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 100)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                    .padding(.bottom, 100)
+                    .mask(
+                        VStack(spacing: 0) {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .black.opacity(0.3), location: 0.3),
+                                    .init(color: .black.opacity(0.7), location: 0.6),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 16)
+                            Color.black
+                            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 50)
+                        }
+                    )
                 }
-                .mask(
-                    VStack(spacing: 0) {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .black.opacity(0.3), location: 0.3),
-                                .init(color: .black.opacity(0.7), location: 0.6),
-                                .init(color: .black, location: 1.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: 16)
-                        Color.black
-                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                            .frame(height: 50)
-                    }
-                )
             }
+            .opacity(headerOpacity)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) {
@@ -134,90 +138,60 @@ struct DarkPodcastsView: View {
         }
     }
     
-    // MARK: - Header
-    private var header: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
-                // Title
-                Text("Podcasts")
-                    .font(.custom("EBGaramond12-Italic", size: 46))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
-                
-                // Podcast count pill
-                Text("\(podcasts.count)")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(LinearColors.Minimal.backgroundCard)
-                            .overlay(
-                                Capsule()
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                            )
+    // MARK: - Dev rows (rendered below scaffold header in dev mode only)
+    @ViewBuilder private var devRows: some View {
+        if viewModel.isProcessing {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
+                    .scaleEffect(0.7)
+
+                Text(viewModel.processingStatus.isEmpty ? "Processing..." : viewModel.processingStatus)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(LinearColors.Minimal.accent)
+
+                Spacer()
+
+                Text("\(Int(viewModel.currentProgress * 100))%")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundColor(LinearColors.Minimal.textTertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(LinearColors.Minimal.backgroundCard)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(LinearColors.Minimal.accent.opacity(0.3), lineWidth: 1)
                     )
-                
+            )
+        }
+
+        if let error = viewModel.errorMessage {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.red)
+
+                Text(error)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.red)
+                    .lineLimit(2)
+
                 Spacer()
             }
-            
-            // Dev mode debug info
-            if devMode && viewModel.isProcessing {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
-                        .scaleEffect(0.7)
-                    
-                    Text(viewModel.processingStatus.isEmpty ? "Processing..." : viewModel.processingStatus)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.accent)
-                    
-                    Spacer()
-                    
-                    Text("\(Int(viewModel.currentProgress * 100))%")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(LinearColors.Minimal.backgroundCard)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(LinearColors.Minimal.accent.opacity(0.3), lineWidth: 1)
-                        )
-                )
-            }
-            
-            // Show error if any
-            if let error = viewModel.errorMessage, devMode {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.red)
-                    
-                    Text(error)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.red)
-                        .lineLimit(2)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(LinearColors.Minimal.errorSubtle)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(LinearColors.Minimal.error.opacity(0.3), lineWidth: 1)
-                        )
-                )
-            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(LinearColors.Minimal.errorSubtle)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(LinearColors.Minimal.error.opacity(0.3), lineWidth: 1)
+                    )
+            )
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
     }
     
     private var emptyState: some View {
@@ -250,12 +224,12 @@ struct DarkPodcastsView: View {
                     
                     VStack(spacing: 12) {
                         Text(mockAPICalls ? "Creating Mock Podcast" : "Generating Your Podcast")
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .font(FigmaLightTheme.title(30))
+                            .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
                         
                         Text(mockAPICalls ? "Using sample data..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textSecondary)
+                            .font(FigmaLightTheme.mono(15))
+                            .foregroundColor(FigmaLightTheme.mutedText)
                             .animation(.easeInOut, value: viewModel.processingStatus)
                         
                         // Progress bar (only show for real API calls)
@@ -276,7 +250,7 @@ struct DarkPodcastsView: View {
                             .padding(.horizontal, 40)
                             
                             Text("\(Int(viewModel.currentProgress * 100))%")
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                     }
@@ -285,22 +259,22 @@ struct DarkPodcastsView: View {
                 // Normal empty state
                 ZStack {
                     Circle()
-                        .fill(LinearColors.Minimal.backgroundCard)
+                        .fill(FigmaLightTheme.rowSurface)
                         .frame(width: 100, height: 100)
                     
                     Image(systemName: "waveform")
                         .font(.system(size: 40, weight: .light))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
                 
                 VStack(spacing: 8) {
                     Text("No Podcasts Yet")
-                        .font(.system(size: 22, weight: .semibold, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                        .font(FigmaLightTheme.title(30))
+                        .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
                     
                     Text("Write in your journal and generate\nyour first personalized podcast")
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                        .font(FigmaLightTheme.body(15))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                         .multilineTextAlignment(.center)
                 }
                 
@@ -311,7 +285,7 @@ struct DarkPodcastsView: View {
                             Image(systemName: mockAPICalls ? "play.circle.fill" : "sparkles")
                                 .font(.system(size: 16, weight: .semibold))
                             Text(mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .font(.system(size: 16, weight: .semibold))
                         }
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .padding(.horizontal, 24)
@@ -331,11 +305,11 @@ struct DarkPodcastsView: View {
                     // Info text
                     VStack(spacing: 4) {
                         Text("Dev Mode")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
                         
                         Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
-                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .font(.system(size: 11, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.7))
                     }
                     .padding(.top, 4)
@@ -422,7 +396,7 @@ struct DarkPodcastsView: View {
                 combinedText += "\(entryHeader)\n\(entry.content)\n\n"
             }
         }
-        
+
         // Use default goals if none exist
         let finalGoals = goals.isEmpty ? ["Personal growth", "Self-reflection", "Well-being"] : goals
         
@@ -430,7 +404,11 @@ struct DarkPodcastsView: View {
         print("📝 Combined text length: \(combinedText.count) characters")
         
         // Call the actual transcript generation
-        viewModel.generateTranscript(text: combinedText, goals: finalGoals)
+        viewModel.generateTranscript(
+            text: combinedText,
+            goals: finalGoals,
+            generationSource: .weeklyRecurring
+        )
     }
 }
 
@@ -473,88 +451,73 @@ struct DarkPodcastCard: View {
             // Use showTranscript which handles both audio and no-audio cases
             audioManager.showTranscript(transcript: transcript)
         }) {
-            HStack(spacing: 16) {
-                // Album art
+            HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: moodColors),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 64, height: 64)
+                    Circle()
+                        .fill(FigmaLightTheme.controlSurface)
+                        .frame(width: 42, height: 42)
+                        .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
                     
                     if isCurrentlyPlaying {
-                        // Animated bars for playing state
                         HStack(spacing: 3) {
                             ForEach(0..<3, id: \.self) { index in
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(LinearColors.Minimal.pureWhite)
-                                    .frame(width: 4, height: CGFloat.random(in: 12...24))
+                                    .fill(FigmaLightTheme.mutedText)
+                                    .frame(width: 3, height: CGFloat(12 + index * 4))
                             }
                         }
                     } else if !hasAudio {
-                        // No audio indicator
                         Image(systemName: "doc.text")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(FigmaLightTheme.mutedText)
                     } else {
-                        Image(systemName: "waveform")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
                 
-                // Info
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("Weekly Insights")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .font(FigmaLightTheme.body(18, weight: .semibold))
+                            .foregroundColor(FigmaLightTheme.primaryText)
                         
-                        // Show "Text Only" badge if no audio
                         if !hasAudio {
                             Text("Text")
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                .foregroundColor(LinearColors.Minimal.textTertiary)
+                                .font(FigmaLightTheme.mono(10, weight: .semibold))
+                                .foregroundColor(FigmaLightTheme.mutedText)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(LinearColors.Minimal.backgroundCardHover)
+                                        .fill(FigmaLightTheme.controlSurface)
                                 )
                         }
                     }
                     
-                    Text(podcastMood.displayName)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.accent)
-                    
-                    Text(formatDate(transcript.createdAt))
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                    Text("\(podcastMood.displayName.lowercased()) • \(formatDate(transcript.createdAt))")
+                        .font(FigmaLightTheme.mono(14))
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .lineLimit(1)
                 }
                 
                 Spacer()
                 
-                // Play indicator or chevron
-                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : (hasAudio ? "play.circle.fill" : "chevron.right"))
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(isCurrentlyPlaying ? LinearColors.Minimal.accent : (hasAudio ? LinearColors.Minimal.accent : LinearColors.Minimal.textTertiary))
+                Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : (hasAudio ? "play.fill" : "chevron.right"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(FigmaLightTheme.faintText)
             }
-            .padding(16)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 15)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(LinearColors.Minimal.backgroundCard)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(FigmaLightTheme.rowSurface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                isCurrentlyPlaying ? LinearColors.Minimal.accent.opacity(0.5) : LinearColors.Minimal.border,
-                                lineWidth: 1
-                            )
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(FigmaLightTheme.border.opacity(isCurrentlyPlaying ? 1 : 0.75), lineWidth: 1)
                     )
+                    .shadow(color: Color.black.opacity(isCurrentlyPlaying ? 0.09 : 0.045), radius: 12, x: 0, y: 6)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -579,5 +542,3 @@ struct DarkPodcastCard: View {
         )
     }
 }
-
-

@@ -65,7 +65,7 @@ struct ScreenTimeDetailView: View {
             Spacer()
             
             Text("Screen Time")
-                .font(.custom("EBGaramond12-Regular", size: 24))
+                .font(.custom("HedvigLettersSerif-24ptRegular", size: 24))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             Spacer()
@@ -84,7 +84,7 @@ struct ScreenTimeDetailView: View {
     private var deviceActivityReportSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Live Report")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .textCase(.uppercase)
                 .tracking(1)
@@ -114,11 +114,11 @@ struct ScreenTimeDetailView: View {
     private func todayCard(_ summary: ScreenTimeSummary) -> some View {
         VStack(spacing: 20) {
             Text(summary.formattedTotalTime)
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(.system(size: 48, weight: .bold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             Text("today")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .textCase(.uppercase)
                 .tracking(1.5)
@@ -152,10 +152,10 @@ struct ScreenTimeDetailView: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.accent)
             Text(value)
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             Text(label)
-                .font(.system(size: 11, weight: .regular, design: .rounded))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
         }
     }
@@ -165,12 +165,12 @@ struct ScreenTimeDetailView: View {
     private func categoryBreakdown(_ summary: ScreenTimeSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Categories")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             if summary.categoryBreakdown.isEmpty {
                 Text("No category data available yet.")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
             } else {
                 ForEach(summary.categoryBreakdown) { cat in
@@ -186,17 +186,17 @@ struct ScreenTimeDetailView: View {
                                 .frame(width: 20)
                             
                             Text(cat.categoryName)
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             Spacer()
                             
                             Text(cat.formattedTime)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                             
                             Text("\(Int(percentage * 100))%")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                                 .frame(width: 36, alignment: .trailing)
                         }
@@ -233,29 +233,29 @@ struct ScreenTimeDetailView: View {
     private func topAppsSection(_ summary: ScreenTimeSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Top Apps")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             if summary.appUsage.isEmpty {
                 Text("No app usage data available yet.")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
             } else {
                 ForEach(Array(summary.appUsage.prefix(10).enumerated()), id: \.element.id) { index, app in
                     HStack(spacing: 12) {
                         Text("\(index + 1)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
                             .frame(width: 22, alignment: .center)
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(app.appName)
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             if let category = app.categoryName {
                                 Text(category)
-                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .font(.system(size: 11, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
                             }
                         }
@@ -264,12 +264,12 @@ struct ScreenTimeDetailView: View {
                         
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(app.formattedTime)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             
                             if app.pickups > 0 {
                                 Text("\(app.pickups) opens")
-                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .font(.system(size: 11, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
                             }
                         }
@@ -300,17 +300,17 @@ struct ScreenTimeDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("This Week")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                 
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Avg \(service.weeklyAverageMinutes / 60)h \(service.weeklyAverageMinutes % 60)m")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                     Text("\(service.weeklyAveragePickups) avg pickups")
-                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             }
@@ -329,7 +329,7 @@ struct ScreenTimeDetailView: View {
                             .frame(height: max(fraction * 80, 4))
                         
                         Text(dayLabel(day.date))
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(isToday ? LinearColors.Minimal.textPrimary : LinearColors.Minimal.textTertiary)
                     }
                     .frame(maxWidth: .infinity)
@@ -353,7 +353,7 @@ struct ScreenTimeDetailView: View {
     private var syncSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Data Pipeline")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
             
             HStack(spacing: 8) {
@@ -363,17 +363,17 @@ struct ScreenTimeDetailView: View {
                 
                 if let lastSync = service.lastSyncDate {
                     Text("Last synced: \(lastSync, style: .relative) ago")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 } else {
                     Text("Not yet synced to backend")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             }
             
             Text("Screen time data is automatically synced daily to your analysis pipeline. It becomes part of your weekly podcast — patterns, habits, and behavioral insights included.")
-                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .lineSpacing(3)
             
@@ -392,7 +392,7 @@ struct ScreenTimeDetailView: View {
                                 .font(.system(size: 14, weight: .medium))
                         }
                         Text("Sync Today")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .font(.system(size: 14, weight: .medium))
                     }
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .frame(maxWidth: .infinity)
@@ -413,7 +413,7 @@ struct ScreenTimeDetailView: View {
                         Image(systemName: "calendar.badge.clock")
                             .font(.system(size: 14, weight: .medium))
                         Text("Sync Week")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .font(.system(size: 14, weight: .medium))
                     }
                     .foregroundColor(LinearColors.Minimal.textSecondary)
                     .frame(maxWidth: .infinity)
@@ -447,11 +447,11 @@ struct ScreenTimeDetailView: View {
                 .foregroundColor(LinearColors.Minimal.textTertiary)
             
             Text("No screen time data yet")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
             
             Text("Data will appear here after your device reports its first daily summary. This usually happens overnight.")
-                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .font(.system(size: 14, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)

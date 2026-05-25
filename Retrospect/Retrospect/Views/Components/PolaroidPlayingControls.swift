@@ -47,13 +47,13 @@ struct PolaroidPlayingControls: View {
                     // Time labels
                     HStack {
                         Text(formatTime(currentTime))
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.textSecondary)
                         
                         Spacer()
                         
                         Text(formatTime(duration))
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.textSecondary)
                     }
                 }
@@ -106,7 +106,7 @@ struct PolaroidPlayingControls: View {
                 onStop()
             }) {
                 Text("Stop")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(LinearColors.textSecondary)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 8)

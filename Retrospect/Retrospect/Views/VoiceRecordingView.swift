@@ -107,7 +107,7 @@ struct VoiceRecordingView: View {
                     .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: audioManager.isRecording)
                 
                 Text("Recording")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(LinearColors.textSecondary)
             }
             .padding(.horizontal, 16)
@@ -179,7 +179,7 @@ struct VoiceRecordingView: View {
     
     private var timerDisplay: some View {
         Text(formatDuration(audioManager.recordingDuration))
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(.system(size: 48, weight: .bold))
             .foregroundColor(LinearColors.textPrimary)
             .monospacedDigit()
     }
@@ -195,7 +195,7 @@ struct VoiceRecordingView: View {
                         .foregroundColor(LinearColors.accent)
                     
                     Text("Live Transcription")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(LinearColors.textSecondary)
                 }
                 
@@ -251,7 +251,7 @@ struct VoiceRecordingView: View {
                 }
                 
                 Text(isSaving ? "Saving..." : "Stop Recording")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .frame(maxWidth: .infinity)
@@ -350,9 +350,25 @@ struct VoiceRecordingView: View {
                         tags: metadata.tags,
                         isIncludedInInsights: true
                     )
-                    
+
                     EntryManager.shared.addEntry(voiceEntry)
                     print("✅ Saved voice entry: \(metadata.title ?? "Untitled")")
+
+                    // Upload to backend so the agent builds memory from voice sessions
+                    if !transcription.isEmpty {
+                        Task {
+                            do {
+                                try await RetrospectAPIClient.shared.uploadContent(
+                                    contentType: "voice_journal",
+                                    content: transcription,
+                                    contentDate: entryDate,
+                                    metadata: ["source": "ios_voice_recording"]
+                                )
+                            } catch {
+                                print("⚠️ Voice entry upload failed: \(error)")
+                            }
+                        }
+                    }
                     
                 case .failure(let error):
                     print("⚠️ Failed to generate metadata: \(error), using fallback")

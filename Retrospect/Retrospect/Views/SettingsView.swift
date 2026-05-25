@@ -35,8 +35,8 @@ struct SettingsView: View {
     
     // Sophisticated title size scaling
     private var headerTitleSize: CGFloat {
-        let minSize: CGFloat = 22
-        let maxSize: CGFloat = 32
+        let minSize: CGFloat = 20
+        let maxSize: CGFloat = 28
         return maxSize - (scrollProgress * (maxSize - minSize))
     }
     
@@ -95,7 +95,7 @@ struct SettingsView: View {
                 if scrollProgress < 0.5 {
                     // Left-aligned at top
                     Text("Settings")
-                        .font(.custom("EBGaramond12-Regular", size: headerTitleSize))
+                        .font(.custom("HedvigLettersSerif-24ptRegular", size: headerTitleSize))
                         .kerning(headerTitleKerning)
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleVerticalOffset)
@@ -106,7 +106,7 @@ struct SettingsView: View {
                     Spacer()
                     
                     Text("Settings")
-                        .font(.custom("EBGaramond12-Regular", size: headerTitleSize))
+                        .font(.custom("HedvigLettersSerif-24ptRegular", size: headerTitleSize))
                         .kerning(headerTitleKerning)
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleVerticalOffset)
@@ -396,7 +396,7 @@ struct GoogleDocsSettingsView: View {
                             Spacer()
                             
                             Text("Google Docs")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(LinearColors.textPrimary)
                             
                             Spacer()

@@ -714,7 +714,7 @@ struct TipCard: View {
                         .foregroundColor(LinearColors.accent)
                         .font(.system(size: 14))
                     Text(tip)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.primaryText)
                 }
             }

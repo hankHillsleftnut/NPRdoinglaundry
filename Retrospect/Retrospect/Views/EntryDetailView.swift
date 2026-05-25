@@ -101,7 +101,7 @@ struct EntryDetailView: View {
                 Spacer()
                 
                 Text(formattedDate)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LinearColors.textSecondary)
             }
             
@@ -205,7 +205,7 @@ struct EntryDetailView: View {
             Image(systemName: badgeIcon)
                 .font(.system(size: 13, weight: .medium))
             Text(badgeText)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold))
         }
         .foregroundColor(badgeForeground)
         .padding(.horizontal, 12)
@@ -253,7 +253,7 @@ struct EntryDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("TAGS")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(LinearColors.textSecondary)
                 
                 Spacer()
@@ -281,7 +281,7 @@ struct EntryDetailView: View {
                             let tag = entry.tags[index]
                             HStack(spacing: 6) {
                             Text(tag)
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.accent)
                             
                             if isEditingTags {
@@ -309,7 +309,7 @@ struct EntryDetailView: View {
             if isEditingTags {
                 HStack(spacing: 10) {
                     TextField("Add tag", text: $newTag)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(
@@ -358,7 +358,7 @@ struct EntryDetailView: View {
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("CONTENT")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundColor(LinearColors.textSecondary)
             
             if entry.type == .video, let videoURL = entry.videoURL {
@@ -376,7 +376,7 @@ struct EntryDetailView: View {
                     .padding(.vertical, 8)
                 
                     Text("TRANSCRIPTION")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(LinearColors.textSecondary)
                 }
             } else if entry.type == .voice, let audioURL = entry.audioURL {
@@ -388,7 +388,7 @@ struct EntryDetailView: View {
                         .padding(.vertical, 8)
                     
                     Text("TRANSCRIPTION")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .bold))
                     .foregroundColor(LinearColors.textSecondary)
                 }
             }
@@ -432,7 +432,7 @@ struct EntryDetailView: View {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16, weight: .medium))
                     Text("Share")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                 }
                 .foregroundColor(LinearColors.textPrimary)
                 .frame(maxWidth: .infinity)
@@ -463,7 +463,7 @@ struct EntryDetailView: View {
                     Image(systemName: "trash")
                         .font(.system(size: 16, weight: .medium))
                     Text("Delete")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                 }
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(maxWidth: .infinity)

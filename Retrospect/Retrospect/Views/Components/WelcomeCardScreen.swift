@@ -100,7 +100,7 @@ struct WelcomeFeaturePage: View {
             
             // Title
             Text(title)
-                .font(.custom("EBGaramond12-Regular", size: 32))
+                .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
                 .foregroundColor(LinearColors.textDisplay)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -114,7 +114,7 @@ struct WelcomeFeaturePage: View {
             
             // Description
             Text(description)
-                .font(.system(size: 18, weight: .regular, design: .rounded))
+                .font(.system(size: 18, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -128,7 +128,7 @@ struct WelcomeFeaturePage: View {
             
             // Subtitle
             Text(subtitle)
-                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .font(.system(size: 14, weight: .regular))
                 .foregroundColor(LinearColors.textTertiary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -162,7 +162,7 @@ struct WelcomeFeaturePage: View {
             onNext()
         }) {
             Text(currentPage == totalPages - 1 ? "Get Started" : "Next")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)

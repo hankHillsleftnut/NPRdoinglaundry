@@ -2,7 +2,7 @@ import SwiftUI
 import GoogleSignIn
 
 // === GOOGLE DOCS ONBOARDING SCREEN ===
-// Matches app's design aesthetic with EB Garamond titles and SF Pro Rounded body text
+// Matches app's design aesthetic with Hedvig titles and SF Pro Display body text
 
 struct GoogleDocsOnboardingScreen: View {
     let currentStep: Int
@@ -161,7 +161,7 @@ struct GoogleDocsOnboardingScreen: View {
             
             // Integration label
             Text("Integration")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(LinearColors.textTertiary) // Lighter for better contrast
         }
         .frame(maxWidth: .infinity, alignment: .leading) // Left align like privacy screen
@@ -169,7 +169,7 @@ struct GoogleDocsOnboardingScreen: View {
     
     private var mainTitle: some View {
         Text("Connect your Google Docs.")
-            .font(.custom("EBGaramond12-Regular", size: 32))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
             .foregroundColor(LinearColors.textDisplay)
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
@@ -179,7 +179,7 @@ struct GoogleDocsOnboardingScreen: View {
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Automatically include your recent Google Docs in your weekly reflections. All processing happens **on your device**.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary) // Lighter for better contrast
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
@@ -189,7 +189,7 @@ struct GoogleDocsOnboardingScreen: View {
                 .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
             
             Text("Your documents stay private and are never shared.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary) // Lighter for better contrast
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
@@ -211,7 +211,7 @@ struct GoogleDocsOnboardingScreen: View {
                         .foregroundColor(LinearColors.accent)
                     
                     Text("Connected Successfully")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.textDisplay)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,7 +238,7 @@ struct GoogleDocsOnboardingScreen: View {
                 }
                 
                 Text(isConnecting ? "Connecting..." : "Connect Google Account")
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .font(.system(size: 17, weight: .medium))
             }
             .foregroundColor(LinearColors.Minimal.textPrimary)
             .frame(maxWidth: .infinity)
@@ -273,7 +273,7 @@ struct GoogleDocsOnboardingScreen: View {
             onNext()
         }) {
             Text(googleDocsService.isConnected ? "Continue" : "Connect & Continue")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
@@ -336,7 +336,7 @@ struct GoogleDocsOnboardingScreen: View {
             onSkip()
         }) {
             Text("Skip for now")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary)
         }
         .buttonStyle(PlainButtonStyle())
@@ -390,4 +390,3 @@ struct GoogleDocsOnboardingScreen: View {
         }
     )
 }
-

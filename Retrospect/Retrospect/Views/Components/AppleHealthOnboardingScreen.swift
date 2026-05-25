@@ -2,7 +2,7 @@ import SwiftUI
 import HealthKit
 
 // === APPLE HEALTH ONBOARDING SCREEN ===
-// Matches app's design aesthetic with EB Garamond titles and SF Pro Rounded body text
+// Matches app's design aesthetic with Hedvig titles and SF Pro Display body text
 
 struct AppleHealthOnboardingScreen: View {
     let currentStep: Int
@@ -163,7 +163,7 @@ struct AppleHealthOnboardingScreen: View {
             
             // Integration label
             Text("Integration")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(LinearColors.textTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -171,7 +171,7 @@ struct AppleHealthOnboardingScreen: View {
     
     private var mainTitle: some View {
         Text("Connect Apple Health.")
-            .font(.custom("EBGaramond12-Regular", size: 32))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
             .foregroundColor(LinearColors.textDisplay)
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
@@ -180,7 +180,7 @@ struct AppleHealthOnboardingScreen: View {
     
     private var bodyText: some View {
         Text("Include steps, heart rate, sleep, and mindfulness data to enrich your weekly insights.")
-            .font(.system(size: 16, weight: .regular, design: .rounded))
+            .font(.system(size: 16, weight: .regular))
             .foregroundColor(LinearColors.textSecondary)
             .multilineTextAlignment(.leading)
             .lineLimit(nil)
@@ -201,7 +201,7 @@ struct AppleHealthOnboardingScreen: View {
                         .foregroundColor(LinearColors.accent)
                     
                     Text("Connected Successfully")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.textDisplay)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -228,7 +228,7 @@ struct AppleHealthOnboardingScreen: View {
                 }
                 
                 Text(isConnecting ? "Connecting..." : "Connect Apple Health")
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .font(.system(size: 17, weight: .medium))
             }
             .foregroundColor(Color.white)
             .frame(maxWidth: .infinity)
@@ -266,7 +266,7 @@ struct AppleHealthOnboardingScreen: View {
             onNext()
         }) {
             Text("Continue")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(Color.white)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
@@ -325,7 +325,7 @@ struct AppleHealthOnboardingScreen: View {
             }
         }) {
             Text("Connect")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(Color.white)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)
@@ -386,7 +386,7 @@ struct AppleHealthOnboardingScreen: View {
             onSkip()
         }) {
             Text("Skip for now")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary)
         }
         .buttonStyle(PlainButtonStyle())
@@ -451,5 +451,4 @@ struct AppleHealthOnboardingScreen: View {
         }
     )
 }
-
 

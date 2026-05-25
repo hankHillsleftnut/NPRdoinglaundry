@@ -18,20 +18,6 @@ struct OptimizedTabView: View {
                     .frame(width: cachedScreenWidth)
                     .tag(HomeTab.reflections)
                 
-                // Video Journal Tab - Lazy loaded only when selected
-                Group {
-                    if selectedTab == .videoJournal {
-                        VideoJournalView()
-                            .frame(width: cachedScreenWidth)
-                    } else {
-                        // Placeholder to maintain TabView structure
-                        Rectangle()
-                            .fill(Color.clear)
-                            .frame(width: cachedScreenWidth)
-                    }
-                }
-                .tag(HomeTab.videoJournal)
-                
                 // Entries Tab - Lazy loaded only when selected
                 Group {
                     if selectedTab == .entries {

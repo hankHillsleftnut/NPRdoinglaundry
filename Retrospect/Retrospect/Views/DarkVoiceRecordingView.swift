@@ -109,7 +109,7 @@ struct DarkVoiceRecordingView: View {
                     .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: audioManager.isRecording)
                 
                 Text("Recording")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
             }
             .padding(.horizontal, 16)
@@ -193,12 +193,12 @@ struct DarkVoiceRecordingView: View {
     private var transcriptionDisplay: some View {
         VStack(spacing: 12) {
             Text("Live Transcription")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
             
             ScrollView {
                 Text(audioManager.currentTranscription.isEmpty ? "Listening..." : audioManager.currentTranscription)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(audioManager.currentTranscription.isEmpty ? LinearColors.Minimal.placeholderText : LinearColors.Minimal.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(6)

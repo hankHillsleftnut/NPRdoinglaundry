@@ -82,88 +82,44 @@ struct WelcomeSignInPage: View {
     @State private var buttonOpacity: Double = 0
 
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
+        OnboardingScaffold(
+            title: "Retrospect",
+            subtitle: "Your life, turned into a weekly podcast. Journal entries, voice notes, health data, and the thoughts you almost forgot become something you can actually hear.",
+            topSpacing: 116
+        ) {
+            Image("retrospect-loading-mark")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 82, height: 62)
+                .opacity(0.26)
+                .padding(.top, 12)
+                .opacity(logoOpacity)
+                .scaleEffect(logoScale)
+        } bottom: {
+            OnboardingPrimaryButton(
+                title: state.signInInProgress || isAwaitingApple ? "Authenticating..." : "Sign in with Apple",
+                systemImage: "apple.logo",
+                isLoading: state.signInInProgress || isAwaitingApple,
+                isDisabled: state.signInInProgress || isAwaitingApple,
+                action: triggerSignIn
+            )
+            .opacity(buttonOpacity)
 
-            VStack(spacing: 0) {
-                Spacer()
-
-                VStack(spacing: 24) {
-                    SquircleLogo(size: 120, shadowEnabled: true)
-                        .opacity(logoOpacity)
-                        .scaleEffect(logoScale)
-
-                    Text("Retrospect")
-                        .font(.custom("EBGaramond12-Italic", size: 48))
-                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
-                        .opacity(titleOpacity)
-
-                    Text("Your life, turned into a weekly podcast.\nJournal entries, voice notes, health data —\nRetrospect weaves it all together\nso nothing gets lost.")
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(4)
-                        .padding(.horizontal, 32)
-                        .opacity(descriptionOpacity)
-                }
-
-                Spacer()
-                Spacer()
-
-                VStack(spacing: 16) {
-                    Button {
-                        triggerSignIn()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "apple.logo")
-                                .font(.system(size: 18, weight: .medium))
-                            Text("Sign in with Apple")
-                                .font(.system(size: 19, weight: .semibold))
-                        }
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(.white)
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 40)
-                    .opacity(buttonOpacity)
-                    .allowsHitTesting(!state.signInInProgress && !isAwaitingApple)
-
-                    if state.signInInProgress || isAwaitingApple {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
-                                .scaleEffect(0.8)
-                            Text(state.signInInProgress ? "Connecting..." : "Authenticating...")
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
-                        }
-                    }
-
-                    if let error = signInError {
-                        Text(error)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(.red.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-
-                    Text("Your data stays on your device. Private and encrypted.")
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                        .opacity(buttonOpacity)
-                }
-                .padding(.bottom, 50)
+            if let error = signInError {
+                Text(error)
+                    .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+                    .foregroundColor(OnboardingStyle.danger)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
             }
+
+            Text("Sign in creates your private Retrospect account. You choose what to connect next.")
+                .font(OnboardingStyle.bodyFont(size: 12))
+                .foregroundColor(OnboardingStyle.tertiaryText)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .opacity(buttonOpacity)
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             animateIn()
         }

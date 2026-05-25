@@ -21,6 +21,7 @@ struct ContentReference {
     enum ReferenceType {
         case userText
         case goals
+        case onboarding
         case healthData
         case document(String) // Document ID or name
         case journal(String) // Journal ID or date
@@ -29,6 +30,7 @@ struct ContentReference {
             switch self {
             case .userText: return "text.quote"
             case .goals: return "target"
+            case .onboarding: return "sparkles"
             case .healthData: return "heart.fill"
             case .document: return "doc.text"
             case .journal: return "book.closed"
@@ -39,6 +41,7 @@ struct ContentReference {
             switch self {
             case .userText: return "blue"
             case .goals: return "green"
+            case .onboarding: return "yellow"
             case .healthData: return "red"
             case .document: return "purple"
             case .journal: return "orange"
@@ -463,7 +466,11 @@ class TranscriptViewModel: ObservableObject {
         }
     }
     
-    func generateTranscript(text: String, goals: [String]) {
+    func generateTranscript(
+        text: String,
+        goals: [String],
+        generationSource: PodcastGenerationSource = .manualJournal
+    ) {
         print("📝 Starting transcript generation...")
         print("Input text: \(text)")
         print("Goals: \(goals)")
@@ -473,7 +480,7 @@ class TranscriptViewModel: ObservableObject {
         errorMessage = nil  // Reset error message
         
         // Initialize enhanced loading system
-        initializeContentReferences(text: text, goals: goals)
+        initializeContentReferences(text: text, goals: goals, generationSource: generationSource)
         startRealisticProgress()
         
         processingStatus = "Starting generation..."
@@ -495,51 +502,121 @@ class TranscriptViewModel: ObservableObject {
         }
         
         print("🚀 Making real API calls to generate podcast...")
-        
-        // Start by fetching Google Docs content if connected
-        fetchGoogleDocsContent { googleDocsContent in
-            // Then fetch health data if enabled
-            if self.healthKitEnabled {
-                print("🏥 Health data enabled, fetching health summary...")
-                DispatchQueue.main.async {
-                    self.processingStatus = "Fetching health data..."
-                }
-                HealthKitManager.shared.fetchWeeklyHealthData { healthSummary in
-                    // Update health data reference based on success
-                    self.updateHealthDataReference(isIncluded: !healthSummary.isEmpty)
-                    
-                    // Combine all data sources
+
+        // Agent path: upload reflection to Supabase, then trigger Cook A/B/C pipeline
+        if RetrospectAPIClient.shared.isAuthenticated {
+            DispatchQueue.main.async { self.processingStatus = "Uploading your reflection..." }
+            generateWithAgent(reflectionText: text, goals: goals)
+        } else {
+            // Unauthenticated fallback: local OpenAI generation
+            fetchGoogleDocsContent { googleDocsContent in
+                if self.healthKitEnabled {
+                    print("🏥 Health data enabled, fetching health summary...")
+                    DispatchQueue.main.async { self.processingStatus = "Fetching health data..." }
+                    HealthKitManager.shared.fetchWeeklyHealthData { healthSummary in
+                        self.updateHealthDataReference(isIncluded: !healthSummary.isEmpty)
+                        let combinedInput = self.buildCombinedInput(
+                            userText: text,
+                            goals: goals,
+                            googleDocsContent: googleDocsContent,
+                            healthSummary: healthSummary,
+                            generationSource: generationSource
+                        )
+                        DispatchQueue.main.async { self.processingStatus = "Generating AI insights..." }
+                        self.generateWithOpenAI(text: combinedInput)
+                    }
+                } else {
                     let combinedInput = self.buildCombinedInput(
                         userText: text,
                         goals: goals,
                         googleDocsContent: googleDocsContent,
-                        healthSummary: healthSummary
+                        healthSummary: nil,
+                        generationSource: generationSource
                     )
-                    
-                    print("🔄 Generating transcript with health data and Google Docs...")
-                    DispatchQueue.main.async {
-                        self.processingStatus = "Generating AI insights..."
-                    }
+                    DispatchQueue.main.async { self.processingStatus = "Generating AI insights..." }
                     self.generateWithOpenAI(text: combinedInput)
                 }
-            } else {
-                // Use original input without health data but with Google Docs
-                let combinedInput = self.buildCombinedInput(
-                    userText: text,
-                    goals: goals,
-                    googleDocsContent: googleDocsContent,
-                    healthSummary: nil
-                )
-                
-                print("🔄 Generating transcript with Google Docs...")
-                DispatchQueue.main.async {
-                    self.processingStatus = "Generating AI insights..."
-                }
-                self.generateWithOpenAI(text: combinedInput)
             }
         }
     }
     
+    // MARK: - Agent Generation
+
+    private func generateWithAgent(reflectionText: String, goals: [String]) {
+        Task {
+            // Fire-and-forget: raw content is inserted into Supabase before ingest runs,
+            // so Cook B can find it even if we don't wait for ingest to complete.
+            Task {
+                do {
+                    try await RetrospectAPIClient.shared.uploadContent(
+                        contentType: "journal_entry",
+                        content: reflectionText,
+                        contentDate: Date(),
+                        metadata: [
+                            "source": "ios_manual_reflection",
+                            "goals": goals.joined(separator: ", ")
+                        ]
+                    )
+                    print("✅ Reflection uploaded to Supabase")
+                } catch {
+                    print("⚠️ Reflection upload failed (agent continues): \(error)")
+                }
+            }
+
+            await MainActor.run {
+                self.processingStatus = "Agent is crafting your podcast..."
+            }
+
+            do {
+                let episode = try await RetrospectAPIClient.shared.generatePodcast(daysSince: 14)
+                var model = episode.toTranscriptModel()
+
+                // AVAudioPlayer requires a local file; download remote audio before playback
+                if let remoteURLString = episode.audioUrl,
+                   let remoteURL = URL(string: remoteURLString),
+                   remoteURL.scheme != "file" {
+                    await MainActor.run { self.processingStatus = "Downloading audio..." }
+                    if let localURL = await downloadAudioToLocal(from: remoteURL, id: episode.id) {
+                        model.audioFileURL = localURL
+                    }
+                }
+
+                await MainActor.run {
+                    self.transcript = model
+                    self.savePodcast(model)
+                    self.completeProgress()
+                    self.isProcessing = false
+                    self.processingStatus = ""
+                    HapticManager.shared.playGenerationComplete()
+                    print("✅ Agent podcast ready: \(episode.title)")
+                }
+            } catch {
+                await MainActor.run {
+                    print("❌ Agent generation failed: \(error)")
+                    HapticManager.shared.playErrorNotification()
+                    self.errorMessage = "Podcast generation failed: \(error.localizedDescription)"
+                    self.isProcessing = false
+                    self.processingStatus = ""
+                }
+            }
+        }
+    }
+
+    private func downloadAudioToLocal(from remoteURL: URL, id: String) async -> URL? {
+        do {
+            let (tempURL, _) = try await URLSession.shared.download(from: remoteURL)
+            let localURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("podcast_\(id).mp3")
+            try? FileManager.default.removeItem(at: localURL)
+            try FileManager.default.moveItem(at: tempURL, to: localURL)
+            print("✅ Audio downloaded to \(localURL.lastPathComponent)")
+            return localURL
+        } catch {
+            print("⚠️ Audio download failed: \(error)")
+            return nil
+        }
+    }
+
     private func processTranscriptWithSpeech(text: String, goals: [String], transcript: String) {
         print("📝 Transcript processed. Length: \(transcript.count) characters")
         
@@ -828,8 +905,25 @@ class TranscriptViewModel: ObservableObject {
         }
     }
     
-    private func buildCombinedInput(userText: String, goals: [String], googleDocsContent: GoogleDocsContent, healthSummary: String?) -> String {
+    private func buildCombinedInput(
+        userText: String,
+        goals: [String],
+        googleDocsContent: GoogleDocsContent,
+        healthSummary: String?,
+        generationSource: PodcastGenerationSource = .manualJournal
+    ) -> String {
+        let onboardingContext = OnboardingContextManager.persistedPromptContext(
+            fullAnswers: generationSource == .onboardingFirstEpisode
+        )
+
         var combinedInput = """
+        Generation Source:
+        \(generationSource.rawValue)
+
+        \(generationSource == .onboardingFirstEpisode ? "Episode Intent: Create the user's first Retrospect podcast from onboarding. Make it feel like Retrospect already understands the shape of who they are becoming. Reference specific onboarding answers, goals, and connected data sources. Do not pretend to know anything beyond the provided context." : "Episode Intent: Create a personalized Retrospect podcast using the user's current reflections plus stable context from onboarding.")
+
+        \(onboardingContext.map { "Onboarding Context:\n\($0)\n\n" } ?? "")
+
         User's Weekly Reflections:
         \(userText)
         
@@ -878,7 +972,7 @@ class TranscriptViewModel: ObservableObject {
         combinedInput += """
         
         
-        Please analyze this data and provide insights about the user's week, including their reflections, progress towards goals, and health patterns. Format the response in markdown with clear sections. At the end, add a single line starting with "MOOD:" followed by one of these exact values: "positive", "neutral", "reflective", "energetic", "calm", "mysterious", "happy", or "melancholic" based on the overall tone of the reflections. Choose the mood that best matches the emotional tone and energy level of the reflections.
+        Please analyze this data and provide insights about the user's week, including their reflections, onboarding context, progress towards goals, and health patterns. Format the response in markdown with clear sections. At the end, add a single line starting with "MOOD:" followed by one of these exact values: "positive", "neutral", "reflective", "energetic", "calm", "mysterious", "happy", or "melancholic" based on the overall tone of the reflections. Choose the mood that best matches the emotional tone and energy level of the reflections.
         """
         
         return combinedInput
@@ -1042,7 +1136,11 @@ class TranscriptViewModel: ObservableObject {
     
     // MARK: - Enhanced Loading System Methods
     
-    private func initializeContentReferences(text: String, goals: [String]) {
+    private func initializeContentReferences(
+        text: String,
+        goals: [String],
+        generationSource: PodcastGenerationSource = .manualJournal
+    ) {
         contentReferences = []
         currentProgress = 0.0
         loadingStartTime = Date()
@@ -1062,6 +1160,14 @@ class TranscriptViewModel: ObservableObject {
             contentReferences.append(ContentReference(
                 type: .goals,
                 name: goalText,
+                isIncluded: true
+            ))
+        }
+
+        if OnboardingContextManager.persistedPromptContext(fullAnswers: generationSource == .onboardingFirstEpisode) != nil {
+            contentReferences.append(ContentReference(
+                type: .onboarding,
+                name: generationSource == .onboardingFirstEpisode ? "Onboarding Profile" : "User Context",
                 isIncluded: true
             ))
         }

@@ -43,91 +43,96 @@ enum TimePeriod: String, CaseIterable {
 
 struct DarkEntriesView: View {
     @ObservedObject private var entryManager = EntryManager.shared
+    @Binding var activeEntry: Entry?
     @State private var selectedFilter: DarkEntryFilter = .all
     @State private var searchText = ""
-    @State private var selectedEntry: Entry?
     @State private var isSearching = false
     
     @State private var headerOpacity: Double = 0
     @State private var keyboardHeight: CGFloat = 0
     
+    init(activeEntry: Binding<Entry?> = .constant(nil)) {
+        _activeEntry = activeEntry
+    }
+
     // Header styling
-    private let headerHeight: CGFloat = 50
-    
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            if !isSearching {
-                header
-                    .opacity(headerOpacity)
-            }
-            
-            // Entries list
-            if filteredEntries.isEmpty {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 20) {
-                        // Group entries by time period
-                        ForEach(TimePeriod.allCases, id: \.self) { period in
-                            let periodEntries = entriesFor(period: period)
-                            if !periodEntries.isEmpty {
-                                // Section header
-                                HStack {
-                                    Text(period.rawValue)
-                                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 4)
-                                
-                                // Grouped container with entries
-                                GroupedEntriesContainer(
-                                    entries: periodEntries,
-                                    onTap: { entry in
-                                        selectedEntry = entry
-                                    },
-                                    onDelete: { entry in
-                                        deleteEntry(entry)
+        FigmaLightPageScaffold(
+            title: "Entries",
+            hideHeader: isSearching
+        ) {
+            VStack(spacing: 0) {
+                if let entry = activeEntry {
+                    FigmaLightInlineEntryReader(entry: entry, activeEntry: $activeEntry)
+                } else if filteredEntries.isEmpty {
+                    emptyState
+                } else {
+                    DarkFilterTabsCompact(selectedFilter: $selectedFilter)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+                        .padding(.bottom, 12)
+
+                    ScrollView {
+                        LazyVStack(spacing: 20) {
+                            ForEach(TimePeriod.allCases, id: \.self) { period in
+                                let periodEntries = entriesFor(period: period)
+                                if !periodEntries.isEmpty {
+                                    HStack {
+                                        Text(period.rawValue)
+                                            .font(FigmaLightTheme.mono(13, weight: .medium))
+                                            .foregroundColor(FigmaLightTheme.mutedText)
+                                        Spacer()
                                     }
-                                )
+                                    .padding(.horizontal, 4)
+
+                                    GroupedEntriesContainer(
+                                        entries: periodEntries,
+                                        onTap: { entry in
+                                            activeEntry = entry
+                                        },
+                                        onDelete: { entry in
+                                            deleteEntry(entry)
+                                        }
+                                    )
+                                }
                             }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 140)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                    .padding(.bottom, 140)
+                    .mask(
+                        VStack(spacing: 0) {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .black.opacity(0.3), location: 0.3),
+                                    .init(color: .black.opacity(0.7), location: 0.6),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 16)
+                            Color.black
+                            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 80)
+                        }
+                    )
                 }
-                .mask(
-                    VStack(spacing: 0) {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .black.opacity(0.3), location: 0.3),
-                                .init(color: .black.opacity(0.7), location: 0.6),
-                                .init(color: .black, location: 1.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: 16)
-                        Color.black
-                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                            .frame(height: 80)
-                    }
-                )
+
+                Spacer(minLength: 0)
+
+                if activeEntry == nil {
+                    EntriesFloatingSearchBar(
+                        searchText: $searchText,
+                        isSearching: $isSearching
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, keyboardHeight > 0 ? keyboardHeight - 80 : 10)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: keyboardHeight)
+                }
             }
-            
-            Spacer(minLength: 0)
-            
-            // Floating search bar at bottom (above keyboard when active)
-            EntriesFloatingSearchBar(
-                searchText: $searchText,
-                isSearching: $isSearching
-            )
-            .padding(.horizontal, 20)
-            .padding(.bottom, keyboardHeight > 0 ? keyboardHeight - 80 : 8)
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: keyboardHeight)
+            .opacity(headerOpacity)
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isSearching)
         .onAppear {
@@ -157,9 +162,6 @@ struct DarkEntriesView: View {
                     keyboardHeight = 0
                 }
             }
-        }
-        .sheet(item: $selectedEntry) { entry in
-            DarkEntryDetailView(entry: entry)
         }
     }
     
@@ -195,61 +197,28 @@ struct DarkEntriesView: View {
         filteredEntries.filter { TimePeriod.period(for: $0.date) == period }
     }
     
-    // MARK: - Header
-    private var header: some View {
-        HStack(alignment: .center, spacing: 8) {
-            // Title
-            Text("Entries")
-                .font(.custom("EBGaramond12-Italic", size: 46))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
-            
-            // Entry count pill
-            Text("\(filteredEntries.count)")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(LinearColors.Minimal.textSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(LinearColors.Minimal.backgroundCard)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                        )
-                )
-            
-            Spacer()
-            
-            // Filter tabs
-            DarkFilterTabsCompact(selectedFilter: $selectedFilter)
-        }
-        .frame(height: headerHeight)
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-    }
-    
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
             
             ZStack {
                 Circle()
-                    .fill(LinearColors.Minimal.backgroundCard)
+                    .fill(FigmaLightTheme.rowSurface)
                     .frame(width: 100, height: 100)
                 
                 Image(systemName: searchText.isEmpty ? "folder" : "magnifyingglass")
                     .font(.system(size: 40, weight: .light))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .foregroundColor(FigmaLightTheme.mutedText)
             }
             
             VStack(spacing: 8) {
                 Text(searchText.isEmpty ? "No Entries Yet" : "No Results")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                    .font(FigmaLightTheme.title(30))
+                    .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
                 
                 Text(searchText.isEmpty ? "Your journal entries and voice\nnotes will appear here" : "Try a different search term")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                    .font(FigmaLightTheme.body(15))
+                    .foregroundColor(FigmaLightTheme.mutedText)
                     .multilineTextAlignment(.center)
             }
             
@@ -288,7 +257,7 @@ struct GroupedEntriesContainer: View {
                         Spacer()
                             .frame(width: 58) // Offset from left (icon width + padding)
                         Rectangle()
-                            .fill(LinearColors.Minimal.border)
+                            .fill(FigmaLightTheme.border.opacity(0.65))
                             .frame(height: 0.5)
                     }
                     .padding(.vertical, 4) // Add space around divider
@@ -298,11 +267,12 @@ struct GroupedEntriesContainer: View {
         .padding(.vertical, 8) // Breathing room at top and bottom of container
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(LinearColors.Minimal.backgroundCardLight)
+                .fill(FigmaLightTheme.rowSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.045), radius: 10, x: 0, y: 5)
         )
     }
 }
@@ -352,24 +322,24 @@ struct GroupedEntryRow: View {
                 // Type icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(entry.type == .voice ? LinearColors.Minimal.accentSubtle : LinearColors.Minimal.backgroundCard)
+                        .fill(FigmaLightTheme.controlSurface)
                         .frame(width: 36, height: 36)
                     
                     Image(systemName: entry.type == .voice ? "waveform" : "doc.text")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(entry.type == .voice ? LinearColors.Minimal.accent : LinearColors.Minimal.textSecondary)
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
                 
                 // Content - just two lines: summary title and date/time
                 VStack(alignment: .leading, spacing: 4) {
                     Text(summaryTitle)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
+                        .font(FigmaLightTheme.body(15, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                         .lineLimit(1)
                     
                     Text(formattedDateTime)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .font(FigmaLightTheme.mono(13))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
                 
                 Spacer()
@@ -377,7 +347,7 @@ struct GroupedEntryRow: View {
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .foregroundColor(FigmaLightTheme.mutedText.opacity(0.8))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -417,12 +387,12 @@ struct DarkSearchBar: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text(placeholder)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.placeholderText)
                 }
                 
                 TextField("", text: $text)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .focused($isFocused)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -484,7 +454,7 @@ struct DarkFilterTab: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(isSelected ? LinearColors.Minimal.buttonPrimaryText : LinearColors.Minimal.textSecondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -519,12 +489,12 @@ struct DarkSearchBarCompact: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text(placeholder)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.placeholderText)
                 }
                 
                 TextField("", text: $text)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .focused($isFocused)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -570,8 +540,8 @@ struct DarkFilterTabsCompact: View {
                     }
                 }) {
                     Text(filter.rawValue)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(selectedFilter == filter ? LinearColors.Minimal.buttonPrimaryText : LinearColors.Minimal.textSecondary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(selectedFilter == filter ? FigmaLightTheme.primaryText.opacity(0.72) : FigmaLightTheme.mutedText)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 8)
@@ -579,7 +549,7 @@ struct DarkFilterTabsCompact: View {
                 }
                 .background(
                     selectedFilter == filter ?
-                    Capsule().fill(LinearColors.Minimal.accent) :
+                    Capsule().fill(FigmaLightTheme.controlSurface) :
                     Capsule().fill(Color.clear)
                 )
             }
@@ -587,10 +557,10 @@ struct DarkFilterTabsCompact: View {
         .padding(2)
         .background(
             Capsule()
-                .fill(LinearColors.Minimal.backgroundCard)
+                .fill(FigmaLightTheme.rowSurface.opacity(0.75))
                 .overlay(
                     Capsule()
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
                 )
         )
         .fixedSize(horizontal: true, vertical: false)
@@ -622,17 +592,17 @@ struct DarkEntryCard: View {
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.displayTitle)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .lineLimit(1)
                     
                     Text(entry.contentPreview)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                         .lineLimit(2)
                     
                     Text(formatDate(entry.date))
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
                 
@@ -687,5 +657,3 @@ struct DarkEntryCard: View {
         DarkEntriesView()
     }
 }
-
-

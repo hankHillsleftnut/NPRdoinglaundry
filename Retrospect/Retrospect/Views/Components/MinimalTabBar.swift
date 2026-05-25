@@ -86,7 +86,7 @@ struct MinimalTabButton: View {
                 }
                 
                 Text(tab.title)
-                    .font(.system(size: 11, weight: isSelected ? .bold : .regular, design: .rounded))
+                    .font(.system(size: 11, weight: isSelected ? .bold : .regular))
             }
             .foregroundColor(isSelected ? LinearColors.Minimal.tabTextSelected : LinearColors.Minimal.tabText)
             .frame(width: 60, height: 50)

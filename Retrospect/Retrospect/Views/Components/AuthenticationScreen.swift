@@ -117,13 +117,13 @@ struct AuthenticationScreen: View {
             
             // Title
             Text("Sign In to Continue")
-                .font(.custom("EBGaramond12-Regular", size: 32))
+                .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
                 .foregroundColor(LinearColors.textDisplay)
                 .multilineTextAlignment(.center)
             
             // Subtitle
             Text("Your account keeps your data synced and your podcasts personalized.")
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -149,7 +149,7 @@ struct AuthenticationScreen: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.accent))
                             .scaleEffect(0.8)
                         Text("Connecting...")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(LinearColors.textSecondary)
                     }
                     .padding(.top, 4)
@@ -157,7 +157,7 @@ struct AuthenticationScreen: View {
                 
                 if let error = signInError {
                     Text(error)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.red.opacity(0.9))
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
@@ -166,7 +166,7 @@ struct AuthenticationScreen: View {
             
             // Privacy note
             Text("We only use your Apple ID to create your account. Your data stays private.")
-                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundColor(LinearColors.textTertiary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)

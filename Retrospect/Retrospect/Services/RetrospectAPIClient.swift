@@ -26,8 +26,8 @@ class RetrospectAPIClient: ObservableObject {
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 120
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 420 // agent (Cook A/B/C) can take several minutes
         self.session = URLSession(configuration: config)
 
         // Restore auth state from Keychain
@@ -217,15 +217,40 @@ class RetrospectAPIClient: ObservableObject {
     }
 
     /// Request on-demand podcast generation.
-    func generatePodcast(daysSince: Int = 7) async throws -> PodcastEpisode {
+    func generatePodcast(daysSince: Int = 7, generationSource: PodcastGenerationSource? = nil) async throws -> PodcastEpisode {
+        var body: [String: Any] = ["daysSince": daysSince]
+        if let generationSource {
+            body["generationSource"] = generationSource.rawValue
+        }
+
         let response: PodcastSingleResponse = try await post(
             path: "/podcasts/generate",
-            body: ["daysSince": daysSince]
+            body: body
         )
         guard let episode = response.data else {
             throw APIError.serverError(response.error ?? "Generation failed")
         }
         return episode
+    }
+
+    // MARK: - Claude Proxy
+
+    /// Proxy a Claude text generation call through the backend so the API key never ships in the binary.
+    func claudeGenerate(
+        systemPrompt: String? = nil,
+        userMessage: String? = nil,
+        messages: [[String: Any]]? = nil,
+        maxTokens: Int = 2000
+    ) async throws -> String {
+        var body: [String: Any] = ["maxTokens": maxTokens]
+        if let systemPrompt { body["systemPrompt"] = systemPrompt }
+        if let userMessage { body["userMessage"] = userMessage }
+        if let messages { body["messages"] = messages }
+        let response: ClaudeProxyResponse = try await post(path: "/claude/generate", body: body)
+        guard response.success, let data = response.data else {
+            throw APIError.serverError(response.error ?? "Claude generation failed")
+        }
+        return data.text
     }
 
     // MARK: - Insights
@@ -415,6 +440,16 @@ private struct PodcastSingleResponse: Codable {
     let success: Bool
     let data: PodcastEpisode?
     let error: String?
+}
+
+private struct ClaudeProxyResponse: Codable {
+    let success: Bool
+    let data: ClaudeProxyData?
+    let error: String?
+
+    struct ClaudeProxyData: Codable {
+        let text: String
+    }
 }
 
 private struct InsightsListResponse: Codable {

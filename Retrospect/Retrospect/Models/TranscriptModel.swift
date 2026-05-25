@@ -32,6 +32,12 @@ enum GenerationType: String, CaseIterable, Codable {
     }
 }
 
+enum PodcastGenerationSource: String, Codable {
+    case onboardingFirstEpisode = "onboarding_first_episode"
+    case manualJournal = "manual_journal"
+    case weeklyRecurring = "weekly_recurring"
+}
+
 struct TranscriptModel: Identifiable, Equatable, Codable {
     let id: UUID
     let originalText: String

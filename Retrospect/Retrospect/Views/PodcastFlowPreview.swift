@@ -100,7 +100,7 @@ struct PodcastFlowPreview: View {
                     Spacer()
                     
                     Text("Podcast Flow Preview")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Spacer()
@@ -126,7 +126,7 @@ struct PodcastFlowPreview: View {
                 }
                 
                 Text(currentStage.title)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
         }
     }
@@ -159,7 +159,7 @@ struct PodcastFlowPreview: View {
                         .scaleEffect(0.8)
                     
                     Text("Generating your podcast...")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
                 .padding(.horizontal, 20)
@@ -175,11 +175,11 @@ struct PodcastFlowPreview: View {
                 
             VStack(spacing: 8) {
                 Text("Processing your journal entries")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
                 
                 Text("This usually takes 30-60 seconds")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
             }
             
@@ -229,11 +229,11 @@ struct PodcastFlowPreview: View {
                 // Title
                 VStack(spacing: 6) {
                     Text("Weekly Reflection")
-                        .font(.system(size: 22, weight: .semibold, design: .rounded))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                     
                     Text("Reflective • 5 min")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
                 
@@ -308,11 +308,11 @@ struct PodcastFlowPreview: View {
                     .foregroundColor(LinearColors.Minimal.textTertiary)
                 
                 Text("Mini Player Active")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                 
                 Text("The mini player appears at the bottom\nwhile you navigate the app")
-                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -345,12 +345,12 @@ struct PodcastFlowPreview: View {
             // Info
                 VStack(alignment: .leading, spacing: 2) {
                 Text("Weekly Reflection")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                         .lineLimit(1)
                     
                 Text("1:45 / 5:00")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .font(.system(size: 12, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
                 
@@ -400,7 +400,7 @@ struct PodcastFlowPreview: View {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .semibold))
                         Text("Previous")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                     }
                     .foregroundColor(LinearColors.Minimal.textSecondary)
                     .padding(.horizontal, 20)
@@ -430,7 +430,7 @@ struct PodcastFlowPreview: View {
             }) {
                 HStack(spacing: 8) {
                     Text(currentStage.rawValue < PodcastFlowStage.allCases.count - 1 ? "Next" : "Done")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                     if currentStage.rawValue < PodcastFlowStage.allCases.count - 1 {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .semibold))

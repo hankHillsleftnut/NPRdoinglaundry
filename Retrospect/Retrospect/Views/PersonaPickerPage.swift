@@ -50,56 +50,24 @@ struct PersonaPickerPage: View {
     ]
 
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 60)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Your podcast host")
-                        .font(.custom("EBGaramond12-Italic", size: 36))
-                        .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
-
-                    Text("Choose the voice that speaks to you each week.")
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
+        OnboardingScaffold(
+            iconName: "waveform",
+            title: "Your podcast host",
+            subtitle: "Choose the voice that should reflect your week back to you."
+        ) {
+            VStack(spacing: 12) {
+                ForEach(personas) { persona in
+                    personaCard(persona)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 28)
-
-                Spacer()
-                    .frame(height: 32)
-
-                VStack(spacing: 12) {
-                    ForEach(personas) { persona in
-                        personaCard(persona)
-                    }
-                }
-                .padding(.horizontal, 28)
-
-                Spacer()
-
-                Button(action: saveAndAdvance) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(LinearColors.Minimal.accent)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.horizontal, 28)
-                .padding(.bottom, 50)
             }
             .opacity(contentOpacity)
+        } bottom: {
+            OnboardingPrimaryButton(
+                title: state.isSavingPersona ? "Saving..." : "Continue",
+                isLoading: state.isSavingPersona,
+                action: saveAndAdvance
+            )
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             selectedPersona = voicePersona
             withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
@@ -111,61 +79,20 @@ struct PersonaPickerPage: View {
     private func personaCard(_ persona: PersonaOption) -> some View {
         let isSelected = selectedPersona == persona.id
 
-        return Button {
+        return OnboardingOptionRow(
+            icon: persona.icon,
+            title: persona.name,
+            subtitle: "\(persona.tagline). \(persona.description)",
+            status: nil,
+            isSelected: isSelected,
+            isLoading: false,
+            isDisabled: false
+        ) {
             HapticManager.shared.playLightImpact()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 selectedPersona = persona.id
             }
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? LinearColors.Minimal.accent.opacity(0.15) : LinearColors.Minimal.backgroundCard)
-                        .frame(width: 48, height: 48)
-
-                    Image(systemName: persona.icon)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(isSelected ? LinearColors.Minimal.accent : LinearColors.Minimal.textSecondary)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(persona.name)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-
-                    Text(persona.tagline)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(isSelected ? LinearColors.Minimal.accent.opacity(0.8) : LinearColors.Minimal.textTertiary)
-
-                    Text(persona.description)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textSecondary.opacity(0.7))
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.accent)
-                }
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(LinearColors.Minimal.backgroundCard)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                isSelected ? LinearColors.Minimal.accent.opacity(0.5) : LinearColors.Minimal.border.opacity(0.3),
-                                lineWidth: isSelected ? 1.5 : 1
-                            )
-                    )
-            )
         }
-        .buttonStyle(PlainButtonStyle())
     }
 
     private func saveAndAdvance() {
@@ -174,11 +101,14 @@ struct PersonaPickerPage: View {
         UserDefaults.standard.set(selectedPersona, forKey: "voice_persona")
 
         Task {
+            await MainActor.run { state.isSavingPersona = true }
             if RetrospectAPIClient.shared.isAuthenticated {
                 try? await RetrospectAPIClient.shared.setVoicePersona(selectedPersona)
             }
+            await MainActor.run {
+                state.isSavingPersona = false
+                onComplete()
+            }
         }
-
-        onComplete()
     }
 }

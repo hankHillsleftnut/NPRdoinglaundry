@@ -10,10 +10,44 @@
 import SwiftUI
 
 struct VoiceGoalsPage: View {
-    var onComplete: (() -> Void)?
+    var onComplete: (([RichGoal]) -> Void)?
 
     @StateObject private var audioManager = AudioRecordingManager()
     @StateObject private var goalsManager = GoalsManager.shared
+
+    private struct DepthQuestion {
+        let prompt: String
+        let placeholder: String
+    }
+
+    private struct SavedDepthAnswer: Codable {
+        let question: String
+        let answer: String
+    }
+
+    private static let onboardingDepthAnswersKey = "onboarding_depth_answers"
+    private static let depthQuestions: [DepthQuestion] = [
+        DepthQuestion(
+            prompt: "What's something you keep meaning to do, but somehow never get around to?",
+            placeholder: "A conversation, habit, project, decision, repair, routine..."
+        ),
+        DepthQuestion(
+            prompt: "If a friend who knows you really well had to describe you in one honest sentence, what would they say?",
+            placeholder: "The real sentence, not the polished one."
+        ),
+        DepthQuestion(
+            prompt: "What's something you've been thinking about a lot lately that you haven't really told anyone?",
+            placeholder: "Whatever keeps coming back when things get quiet."
+        ),
+        DepthQuestion(
+            prompt: "What's a recent moment, big or small, where you felt most like yourself?",
+            placeholder: "A scene, a place, a person, a tiny win. Specific is good."
+        ),
+        DepthQuestion(
+            prompt: "What would you want a version of you from a year from now to tell you?",
+            placeholder: "What would future-you know that you need to hear now?"
+        )
+    ]
 
     private enum PostRecordPhase: Equatable {
         case idle
@@ -33,7 +67,8 @@ struct VoiceGoalsPage: View {
     @State private var backendProcessingNotes: String?
     @State private var submittedTranscription: String = ""
 
-    @State private var typedText: String = ""
+    @State private var currentQuestionIndex: Int = 0
+    @State private var questionAnswers: [String] = Array(repeating: "", count: 5)
     @FocusState private var isTextFieldFocused: Bool
 
     @State private var contentOpacity: Double = 0
@@ -43,20 +78,18 @@ struct VoiceGoalsPage: View {
     @State private var cardRevealed = false
 
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 60)
-
-                headerSection
-
-                Spacer()
-                    .frame(height: 24)
-
+        OnboardingScaffold(
+            iconName: headerIcon,
+            title: headerTitle,
+            subtitle: headerSubtitle,
+            topSpacing: phase == .revealing || phase == .complete ? 58 : 74
+        ) {
+            VStack(alignment: .leading, spacing: 18) {
                 if phase == .idle || phase == .recording {
+                    OnboardingStatusPill(
+                        text: phase == .recording ? "Listening" : "Question \(currentQuestionIndex + 1) of \(Self.depthQuestions.count)",
+                        systemImage: phase == .recording ? "waveform" : nil
+                    )
                     preRecordingBody
                         .transition(.opacity)
                 } else {
@@ -66,16 +99,11 @@ struct VoiceGoalsPage: View {
                             removal: .opacity
                         ))
                 }
-
-                Spacer()
-
-                bottomSection
-                    .padding(.horizontal, 28)
-                    .padding(.bottom, 50)
             }
             .opacity(contentOpacity)
+        } bottom: {
+            bottomSection
         }
-        .preferredColorScheme(.dark)
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: phase)
         .onAppear {
             withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
@@ -94,21 +122,23 @@ struct VoiceGoalsPage: View {
             Group {
                 switch phase {
                 case .idle, .recording:
-                    Text("What are your goals?")
+                    Text(currentQuestion.prompt)
                 case .processing:
                     Text("Understanding you...")
                 case .revealing, .complete:
                     Text("Here's what we heard")
                 }
             }
-            .font(.custom("EBGaramond12-Italic", size: 36))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: phase == .idle || phase == .recording ? 30 : 36))
             .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
+            .lineSpacing(5)
+            .fixedSize(horizontal: false, vertical: true)
             .animation(.easeOut(duration: 0.3), value: phase)
 
             Group {
                 switch phase {
                 case .idle:
-                    Text("Talk or type — tell me everything on your mind.")
+                    Text("Question \(currentQuestionIndex + 1) of \(Self.depthQuestions.count)")
                 case .recording:
                     Text("Keep going, I'm listening...")
                 case .processing:
@@ -119,7 +149,7 @@ struct VoiceGoalsPage: View {
                     Text("We know what matters to you. Let's go.")
                 }
             }
-            .font(.system(size: 16, weight: .regular, design: .rounded))
+            .font(.system(size: 16, weight: .regular))
             .foregroundColor(LinearColors.Minimal.textSecondary)
             .animation(.easeOut(duration: 0.3), value: phase)
             .animation(.none, value: processingDotCount)
@@ -128,15 +158,62 @@ struct VoiceGoalsPage: View {
         .padding(.horizontal, 28)
     }
 
+    private var currentQuestion: DepthQuestion {
+        Self.depthQuestions[min(currentQuestionIndex, Self.depthQuestions.count - 1)]
+    }
+
+    private var headerIcon: String {
+        switch phase {
+        case .idle, .recording: return "text.bubble"
+        case .processing: return "sparkles"
+        case .revealing, .complete: return "checkmark.seal"
+        }
+    }
+
+    private var headerTitle: String {
+        switch phase {
+        case .idle, .recording:
+            return currentQuestion.prompt
+        case .processing:
+            return "Understanding you."
+        case .revealing, .complete:
+            return "Here's what we heard."
+        }
+    }
+
+    private var headerSubtitle: String {
+        switch phase {
+        case .idle:
+            return "Answer however you naturally would. Type it, or use your voice and let Retrospect turn it into text."
+        case .recording:
+            return "Keep going. Your voice is becoming the answer for this question."
+        case .processing:
+            return "Pulling out the signals that should shape your first podcast."
+        case .revealing:
+            return "Swipe through the goals Retrospect found before we create your first episode."
+        case .complete:
+            return "We know what matters to you. Let's make the first episode feel personal."
+        }
+    }
+
+    private var currentAnswerBinding: Binding<String> {
+        Binding(
+            get: {
+                guard questionAnswers.indices.contains(currentQuestionIndex) else { return "" }
+                return questionAnswers[currentQuestionIndex]
+            },
+            set: { newValue in
+                guard questionAnswers.indices.contains(currentQuestionIndex) else { return }
+                questionAnswers[currentQuestionIndex] = newValue
+            }
+        )
+    }
+
     // MARK: - Pre-recording body
 
     private var preRecordingBody: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 14) {
             transcriptionArea
-                .padding(.horizontal, 28)
-
-            Spacer()
-                .frame(height: 24)
 
             micButton
         }
@@ -145,16 +222,14 @@ struct VoiceGoalsPage: View {
     // MARK: - Post-recording body
 
     private var postRecordingBody: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 18) {
             if phase == .processing {
                 processingView
-                    .padding(.horizontal, 28)
                     .transition(.opacity)
             }
 
             if phase == .revealing || phase == .complete {
                 goalsCardStack
-                    .padding(.horizontal, 28)
                     .transition(.asymmetric(
                         insertion: .scale(scale: 0.9).combined(with: .opacity),
                         removal: .opacity
@@ -163,8 +238,6 @@ struct VoiceGoalsPage: View {
 
             if showAcknowledgment {
                 acknowledgmentView
-                    .padding(.horizontal, 28)
-                    .padding(.top, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -176,8 +249,8 @@ struct VoiceGoalsPage: View {
         VStack(spacing: 20) {
             ScrollView {
                 Text(submittedTranscription)
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary.opacity(0.5))
+                    .font(OnboardingStyle.bodyFont(size: 15))
+                    .foregroundColor(OnboardingStyle.secondaryText.opacity(0.65))
                     .lineSpacing(4)
                     .multilineTextAlignment(.leading)
             }
@@ -187,7 +260,7 @@ struct VoiceGoalsPage: View {
             HStack(spacing: 6) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(LinearColors.Minimal.accent)
+                        .fill(OnboardingStyle.secondaryText)
                         .frame(width: 8, height: 8)
                         .scaleEffect(processingDotCount % 3 == i ? 1.3 : 0.7)
                         .opacity(processingDotCount % 3 == i ? 1.0 : 0.4)
@@ -226,6 +299,7 @@ struct VoiceGoalsPage: View {
                 cardProgressIndicator
             }
         }
+        .frame(height: 370)
     }
 
     private func goalCard(goal: RichGoal, isTop: Bool) -> some View {
@@ -234,8 +308,8 @@ struct VoiceGoalsPage: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Text(goal.category.uppercased())
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(categoryColor.opacity(0.8))
+                    .font(OnboardingStyle.bodyFont(size: 11, weight: .semibold))
+                    .foregroundColor(OnboardingStyle.secondaryText)
                     .tracking(1.2)
 
                 Spacer()
@@ -247,32 +321,32 @@ struct VoiceGoalsPage: View {
             .padding(.bottom, 14)
 
             Text(goal.title)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
+                .font(OnboardingStyle.titleFont(size: 24))
+                .foregroundColor(OnboardingStyle.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, goal.goalDescription.isEmpty ? 0 : 10)
 
             if !goal.goalDescription.isEmpty {
                 Text(goal.goalDescription)
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                    .font(OnboardingStyle.bodyFont(size: 15))
+                    .foregroundColor(OnboardingStyle.secondaryText)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if !goal.motivation.isEmpty {
                 Divider()
-                    .background(LinearColors.Minimal.border.opacity(0.3))
+                    .background(OnboardingStyle.tertiaryText.opacity(0.18))
                     .padding(.vertical, 14)
 
                 Text("Why this matters")
-                    .font(.custom("EBGaramond12-Italic", size: 14))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+                    .foregroundColor(OnboardingStyle.tertiaryText)
                     .padding(.bottom, 6)
 
                 Text(goal.motivation)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textSecondary.opacity(0.8))
+                    .font(OnboardingStyle.bodyFont(size: 14))
+                    .foregroundColor(OnboardingStyle.secondaryText)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -284,11 +358,11 @@ struct VoiceGoalsPage: View {
                     Spacer()
                     HStack(spacing: 4) {
                         Image(systemName: "hand.draw")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(OnboardingStyle.bodyFont(size: 11, weight: .medium))
                         Text("Swipe to continue")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(OnboardingStyle.bodyFont(size: 12, weight: .medium))
                     }
-                    .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.4))
+                    .foregroundColor(OnboardingStyle.tertiaryText)
                     Spacer()
                 }
             }
@@ -297,12 +371,12 @@ struct VoiceGoalsPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(LinearColors.Minimal.backgroundCard)
+                .fill(OnboardingStyle.control.opacity(0.82))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
                         .strokeBorder(categoryColor.opacity(0.15), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+                .shadow(color: .black.opacity(0.10), radius: 12, y: 6)
         )
     }
 
@@ -348,7 +422,7 @@ struct VoiceGoalsPage: View {
         HStack(spacing: 6) {
             ForEach(0..<extractedGoals.count, id: \.self) { index in
                 Circle()
-                    .fill(index <= currentCardIndex ? LinearColors.Minimal.accent : LinearColors.Minimal.border.opacity(0.5))
+                    .fill(index <= currentCardIndex ? OnboardingStyle.primaryText.opacity(0.65) : OnboardingStyle.tertiaryText.opacity(0.35))
                     .frame(width: index == currentCardIndex ? 8 : 6, height: index == currentCardIndex ? 8 : 6)
                     .animation(.easeOut(duration: 0.2), value: currentCardIndex)
             }
@@ -360,12 +434,12 @@ struct VoiceGoalsPage: View {
     private var acknowledgmentView: some View {
         HStack(spacing: 10) {
             Image(systemName: "sparkles")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(LinearColors.Minimal.accent)
+                .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                .foregroundColor(OnboardingStyle.secondaryText)
 
             Text(acknowledgmentText)
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
+                .font(OnboardingStyle.bodyFont(size: 15, weight: .medium))
+                .foregroundColor(OnboardingStyle.primaryText)
                 .lineSpacing(3)
         }
         .padding(.horizontal, 16)
@@ -373,91 +447,75 @@ struct VoiceGoalsPage: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(LinearColors.Minimal.accent.opacity(0.08))
+                .fill(OnboardingStyle.control.opacity(0.68))
         )
     }
 
     // MARK: - Transcription area
 
     private var transcriptionArea: some View {
-        VStack(spacing: 0) {
+        Group {
             if audioManager.isRecording {
                 ScrollView {
-                    if audioManager.currentTranscription.isEmpty {
-                        Text("Listening...")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textSecondary)
-                    } else {
-                        Text(audioManager.currentTranscription)
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textPrimary)
-                            .lineSpacing(5)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                ZStack(alignment: .topLeading) {
-                    if typedText.isEmpty {
-                        Text("Tap the mic or type/paste what you want to focus on — fitness, relationships, career, sleep, anything.")
-                            .font(.system(size: 15, weight: .regular, design: .rounded))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
-                            .lineSpacing(4)
-                            .padding(.top, 0)
-                            .allowsHitTesting(false)
-                    }
-                    TextEditor(text: $typedText)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                        .scrollContentBackground(.hidden)
+                    Text(audioManager.currentTranscription.isEmpty ? "Listening..." : audioManager.currentTranscription)
+                        .font(OnboardingStyle.bodyFont(size: audioManager.currentTranscription.isEmpty ? 16 : 17, weight: audioManager.currentTranscription.isEmpty ? .medium : .regular))
+                        .foregroundColor(audioManager.currentTranscription.isEmpty ? OnboardingStyle.tertiaryText : OnboardingStyle.primaryText)
                         .lineSpacing(5)
-                        .focused($isTextFieldFocused)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-        
-        }
-        .frame(minHeight: 100, maxHeight: 180)
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(LinearColors.Minimal.backgroundCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(
-                            audioManager.isRecording ? LinearColors.Minimal.accent.opacity(0.4) :
-                            isTextFieldFocused ? LinearColors.Minimal.accent.opacity(0.3) :
-                            LinearColors.Minimal.border.opacity(0.3),
-                            lineWidth: (audioManager.isRecording || isTextFieldFocused) ? 1.5 : 1
+                .frame(minHeight: 148, maxHeight: 190)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(OnboardingStyle.control.opacity(0.72))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .strokeBorder(Color.red.opacity(0.18), lineWidth: 1)
                         )
+                        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
                 )
-        )
-        .animation(.easeOut(duration: 0.2), value: typedText.isEmpty)
+            } else {
+                OnboardingTextInput(
+                    text: currentAnswerBinding,
+                    placeholder: currentQuestion.placeholder,
+                    minHeight: 148
+                )
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: currentAnswerText.isEmpty)
     }
 
     // MARK: - Mic button
 
     private var micButton: some View {
         Button(action: toggleRecording) {
-            ZStack {
-                Circle()
-                    .fill(audioManager.isRecording ? Color.red.opacity(0.15) : LinearColors.Minimal.backgroundCard)
-                    .frame(width: 80, height: 80)
-                    .scaleEffect(audioManager.isRecording && micPulse ? 1.15 : 1.0)
-
-                Circle()
-                    .strokeBorder(
-                        audioManager.isRecording ? Color.red.opacity(0.6) : LinearColors.Minimal.border.opacity(0.4),
-                        lineWidth: 2
-                    )
-                    .frame(width: 80, height: 80)
-                    .scaleEffect(audioManager.isRecording && micPulse ? 1.15 : 1.0)
-
+            HStack(spacing: 9) {
                 Image(systemName: audioManager.isRecording ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundColor(audioManager.isRecording ? .red : LinearColors.Minimal.textPrimary)
+                    .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                    .foregroundColor(audioManager.isRecording ? Color.red.opacity(0.75) : OnboardingStyle.secondaryText)
+
+                Text(audioManager.isRecording ? "Stop recording" : "Speak answer")
+                    .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
+                    .foregroundColor(OnboardingStyle.secondaryText)
+
+                if audioManager.isRecording {
+                    Circle()
+                        .fill(Color.red.opacity(0.55))
+                        .frame(width: 7, height: 7)
+                        .scaleEffect(micPulse ? 1.25 : 0.75)
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(OnboardingStyle.control.opacity(0.62))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(OnboardingStyle.hairline, lineWidth: 1)
+                    )
+            )
         }
         .buttonStyle(PlainButtonStyle())
         .onChange(of: audioManager.isRecording) { _, recording in
@@ -476,92 +534,44 @@ struct VoiceGoalsPage: View {
     // MARK: - Bottom section
 
     private var hasInputText: Bool {
-        !typedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !currentAnswerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var currentAnswerText: String {
+        guard questionAnswers.indices.contains(currentQuestionIndex) else { return "" }
+        return questionAnswers[currentQuestionIndex]
     }
 
     private var bottomSection: some View {
         VStack(spacing: 14) {
             switch phase {
             case .idle:
-                Button(action: {
+                OnboardingPrimaryButton(
+                    title: currentQuestionIndex == Self.depthQuestions.count - 1 ? "Finish" : "Next",
+                    isDisabled: !hasInputText
+                ) {
                     if hasInputText {
                         isTextFieldFocused = false
-                        beginProcessing(with: typedText)
+                        submitCurrentAnswer()
                     }
-                }) {
-                    Text(hasInputText ? "Next" : "Next")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(LinearColors.Minimal.accent.opacity(hasInputText ? 1.0 : 0.3))
-                        )
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(!hasInputText)
 
                 Button("Skip for now") { finish() }
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
+                    .font(OnboardingStyle.bodyFont(size: 14))
+                    .foregroundColor(OnboardingStyle.tertiaryText)
+                    .buttonStyle(PlainButtonStyle())
 
             case .recording:
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.buttonPrimaryText))
-                            .scaleEffect(0.8)
-                        Text("Recording...")
-                    }
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(LinearColors.Minimal.accent.opacity(0.3))
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(true)
+                OnboardingPrimaryButton(title: "Recording...", isLoading: true, isDisabled: true) {}
 
             case .processing:
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.buttonPrimaryText))
-                            .scaleEffect(0.8)
-                        Text("Understanding...")
-                    }
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(LinearColors.Minimal.accent.opacity(0.3))
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(true)
+                OnboardingPrimaryButton(title: "Understanding...", isLoading: true, isDisabled: true) {}
 
             case .revealing:
                 EmptyView()
 
             case .complete:
-                Button(action: finish) {
-                    Text("Get Started")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28)
-                                .fill(LinearColors.Minimal.accent)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
+                OnboardingPrimaryButton(title: "Get Started", action: finish)
             }
         }
     }
@@ -573,8 +583,12 @@ struct VoiceGoalsPage: View {
             audioManager.stopRecording { result in
                 DispatchQueue.main.async {
                     switch result {
-                    case .success(_, let transcription):
-                        beginProcessing(with: transcription)
+                    case .success(let recording):
+                        let transcription = recording.1
+                        if questionAnswers.indices.contains(currentQuestionIndex) {
+                            questionAnswers[currentQuestionIndex] = transcription
+                        }
+                        submitCurrentAnswer()
                     case .failure:
                         break
                     }
@@ -588,6 +602,22 @@ struct VoiceGoalsPage: View {
                     audioManager.startRecording()
                 }
             }
+        }
+    }
+
+    private func submitCurrentAnswer() {
+        guard questionAnswers.indices.contains(currentQuestionIndex) else { return }
+        questionAnswers[currentQuestionIndex] = questionAnswers[currentQuestionIndex]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if currentQuestionIndex < Self.depthQuestions.count - 1 {
+            HapticManager.shared.playLightImpact()
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                currentQuestionIndex += 1
+            }
+        } else {
+            saveOnboardingDepthAnswers()
+            beginProcessing(with: combinedOnboardingAnswersText())
         }
     }
 
@@ -630,6 +660,40 @@ struct VoiceGoalsPage: View {
                 }
             }
         }
+    }
+
+    private func combinedOnboardingAnswersText() -> String {
+        zip(Self.depthQuestions, questionAnswers)
+            .map { question, answer in
+                """
+                Q: \(question.prompt)
+                A: \(answer.trimmingCharacters(in: .whitespacesAndNewlines))
+                """
+            }
+            .joined(separator: "\n\n")
+    }
+
+    private func saveOnboardingDepthAnswers() {
+        let savedAnswers = zip(Self.depthQuestions, questionAnswers).map { question, answer in
+            SavedDepthAnswer(
+                question: question.prompt,
+                answer: answer.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        }
+
+        if let data = try? JSONEncoder().encode(savedAnswers) {
+            UserDefaults.standard.set(data, forKey: Self.onboardingDepthAnswersKey)
+        }
+        UserDefaults.standard.set(combinedOnboardingAnswersText(), forKey: GoalsManager.onboardingProfileContextKey)
+
+        let answers = zip(Self.depthQuestions, questionAnswers).map { question, answer in
+            OnboardingAnswer(
+                question: question.prompt,
+                answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
+                answeredAt: Date()
+            )
+        }
+        OnboardingContextManager.shared.saveDepthAnswers(answers)
     }
 
     private static func inferCategory(from description: String) -> String {
@@ -752,6 +816,7 @@ struct VoiceGoalsPage: View {
         }
 
         goalsManager.addRichGoals(goalsToSave)
+        OnboardingContextManager.shared.saveExtractedGoals(goalsToSave)
 
         Task {
             let granted = await PodcastNotificationService.shared.requestAuthorization()
@@ -760,6 +825,6 @@ struct VoiceGoalsPage: View {
             }
         }
 
-        onComplete?()
+        onComplete?(goalsToSave)
     }
 }

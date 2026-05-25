@@ -52,7 +52,7 @@ struct DarkLoadingPill: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(statusText)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                 
                 // Animated dots

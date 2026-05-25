@@ -92,20 +92,7 @@ struct NavBarContainer: View {
                     selectedTab = .reflections
                 }
             }
-            
-            // Video Journal Tab  
-            CompactTabButton(
-                icon: "video.fill",
-                title: "Journal",
-                isSelected: selectedTab == .videoJournal,
-                animation: animation
-            ) {
-                HapticManager.shared.playLightImpact()
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedTab = .videoJournal
-                }
-            }
-            
+
             // Entries Tab
             CompactTabButton(
                 icon: "folder.fill",
@@ -159,7 +146,7 @@ struct CompactTabButton: View {
                 Image(systemName: icon)
                     .font(.system(size: 13, weight: .medium))
                 Text(title)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
             }
             .foregroundColor(isSelected ? LinearColors.textDisplay : LinearColors.textTertiary)
             .padding(.horizontal, 14)
@@ -204,7 +191,7 @@ struct FloatingTabButton: View {
                 
                 // Title label
                 Text(title)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(isSelected ? LinearColors.accent : LinearColors.textTertiary)
             }
             .frame(minWidth: 64)

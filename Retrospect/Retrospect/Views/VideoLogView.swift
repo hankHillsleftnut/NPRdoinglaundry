@@ -126,7 +126,7 @@ struct VideoLogEntryCard: View {
                         .font(.serifBody).fontWeight(.semibold)
                         .foregroundColor(LinearColors.primaryText)
                     Text(entry.date, style: .time)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(LinearColors.secondaryText)
                 }
                 
@@ -161,13 +161,13 @@ struct VideoLogEntryCard: View {
             // Transcription
             if !entry.transcription.isEmpty {
                 Text(entry.transcription)
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(LinearColors.primaryText)
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
             } else {
                 Text("No transcription available")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(LinearColors.secondaryText)
                     .italic()
             }
@@ -175,18 +175,18 @@ struct VideoLogEntryCard: View {
             // Video file info
             HStack {
                 Text("Video File: \(entry.videoURL.lastPathComponent)")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(LinearColors.secondaryText)
                 
                 Spacer()
                 
                 if FileManager.default.fileExists(atPath: entry.videoURL.path) {
                     Text("Available")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.green)
                 } else {
                     Text("Missing")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.red)
                 }
             }

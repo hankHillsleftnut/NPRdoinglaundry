@@ -29,12 +29,12 @@ struct ImageAttachmentPicker: View {
             VStack(spacing: 24) {
                 // Header
                 Text("Add Images")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .padding(.top, 24)
                 
                 Text("Attach up to \(maxImages) images to your entry")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
                 
                 // Source options
@@ -59,11 +59,11 @@ struct ImageAttachmentPicker: View {
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Photo Library")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                 
                                 Text("Choose from your photos")
-                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
                             
@@ -114,11 +114,11 @@ struct ImageAttachmentPicker: View {
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Take Photo")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                 
                                 Text("Capture with your camera")
-                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
                             
@@ -148,7 +148,7 @@ struct ImageAttachmentPicker: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("Selected (\(selectedImages.count)/\(maxImages))")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                             
                             Spacer()
@@ -157,7 +157,7 @@ struct ImageAttachmentPicker: View {
                                 selectedImages.removeAll()
                             }) {
                                 Text("Clear All")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.error)
                             }
                         }
@@ -202,7 +202,7 @@ struct ImageAttachmentPicker: View {
                     isPresented = false
                 }) {
                     Text("Done")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)

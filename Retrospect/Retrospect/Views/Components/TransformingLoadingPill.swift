@@ -188,6 +188,7 @@ struct ReferenceChip: View {
         switch type {
         case .userText: return LinearColors.accent
         case .goals: return LinearColors.successGreen
+        case .onboarding: return LinearColors.Minimal.accent
         case .healthData: return LinearColors.warningRed
         case .document: return LinearColors.Minimal.iconPurple
         case .journal: return LinearColors.Minimal.iconOrange

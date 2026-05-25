@@ -9,82 +9,13 @@ enum ClaudeError: Error {
 }
 
 class ClaudeService {
-    static let shared: ClaudeService = {
-        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "ANTHROPIC_API_KEY") as? String else {
-            fatalError("Anthropic API key not found in Info.plist")
-        }
-        return ClaudeService(apiKey: apiKey)
-    }()
+    static let shared = ClaudeService()
 
-    private let apiKey: String
-    private let baseURL = URL(string: "https://api.anthropic.com/v1/messages")!
-    private let apiVersion = "2023-06-01"
-
-    init(apiKey: String) {
-        self.apiKey = apiKey
-    }
+    private init() {}
 
     func validateAPIKey(completion: @escaping (Result<Bool, ClaudeError>) -> Void) {
-        print("🔑 Validating Claude API key...")
-
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 10,
-            "messages": [
-                ["role": "user", "content": "Hello"]
-            ]
-        ]
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            print("❌ Failed to serialize request body: \(error)")
-            completion(.failure(.invalidKey))
-            return
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("❌ Network error: \(error.localizedDescription)")
-                completion(.failure(.networkError))
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("❌ Invalid response type")
-                completion(.failure(.apiError("Invalid response")))
-                return
-            }
-
-            print("🌐 Claude API Response Status: \(httpResponse.statusCode)")
-
-            switch httpResponse.statusCode {
-            case 200:
-                print("✅ Claude API key validated successfully")
-                completion(.success(true))
-            case 401:
-                print("❌ Invalid API key")
-                completion(.failure(.invalidKey))
-            case 429:
-                print("❌ Rate limit exceeded")
-                completion(.failure(.apiError("Rate limit exceeded")))
-            case 500...599:
-                print("❌ Server error: \(httpResponse.statusCode)")
-                completion(.failure(.apiError("Server error: \(httpResponse.statusCode)")))
-            default:
-                print("❌ Unexpected status code: \(httpResponse.statusCode)")
-                if let data = data, let errorString = String(data: data, encoding: .utf8) {
-                    print("Error response: \(errorString)")
-                }
-                completion(.failure(.apiError("Unexpected status code: \(httpResponse.statusCode)")))
-            }
-        }.resume()
+        // Key is managed server-side; treat as always valid.
+        completion(.success(true))
     }
 
     func generateTranscript(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
@@ -92,17 +23,7 @@ class ClaudeService {
         print("📝 Text length: \(text.count)")
         print("🎯 Goals count: \(goals.count)")
         print("🎭 Generation type: \(generationType.displayName)")
-
-        validateAPIKey { [weak self] keyValidation in
-            switch keyValidation {
-            case .success:
-                print("✅ API key validated, proceeding with multi-pass transcript generation")
-                self?.performMultiPassGeneration(text: text, goals: goals, generationType: generationType, completion: completion)
-            case .failure(let error):
-                print("❌ API key validation failed: \(error)")
-                completion(.failure(error))
-            }
-        }
+        performMultiPassGeneration(text: text, goals: goals, generationType: generationType, completion: completion)
     }
 
     // MARK: - Multi-Pass Generation System
@@ -110,26 +31,21 @@ class ClaudeService {
     private func performMultiPassGeneration(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
         print("🎯 Starting 2-pass focused generation system (Claude)...")
 
-        // Pass 1: Extract key insights and patterns
         extractKeyInsights(text: text, goals: goals, generationType: generationType) { [weak self] insightsResult in
             switch insightsResult {
             case .success(let insights):
                 print("✅ Pass 1 complete - Key insights extracted (\(insights.count) chars)")
-
-                // Pass 2: Generate focused podcast using insights
                 self?.generateFocusedPodcast(text: text, goals: goals, insights: insights, generationType: generationType) { finalResult in
                     switch finalResult {
                     case .success(let finalPodcast):
                         print("✅ Pass 2 complete - Focused podcast generated (\(finalPodcast.count) chars)")
-
-                        // Check if audio test mode is enabled and truncate if needed
                         let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
                         if audioTestMode {
                             let elevenLabsCharLimit = 5000
                             if finalPodcast.count > elevenLabsCharLimit {
-                                let truncatedPodcast = String(finalPodcast.prefix(elevenLabsCharLimit))
-                                print("🎧 Audio Test Mode: Truncated podcast to \(truncatedPodcast.count) characters")
-                                completion(.success(truncatedPodcast))
+                                let truncated = String(finalPodcast.prefix(elevenLabsCharLimit))
+                                print("🎧 Audio Test Mode: Truncated podcast to \(truncated.count) characters")
+                                completion(.success(truncated))
                             } else {
                                 completion(.success(finalPodcast))
                             }
@@ -150,7 +66,6 @@ class ClaudeService {
 
     private func extractKeyInsights(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
         print("🔍 Pass 1: Extracting key insights (Claude)...")
-
         let systemPrompt = getInsightsPrompt(for: generationType)
         let userMessage = """
         Weekly Reflections:
@@ -159,13 +74,11 @@ class ClaudeService {
         Goals:
         \(goals.joined(separator: "\n- "))
         """
-
         makeAPICall(systemPrompt: systemPrompt, userMessage: userMessage, maxTokens: 1000, purpose: "key insights extraction", completion: completion)
     }
 
     private func generateFocusedPodcast(text: String, goals: [String], insights: String, generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
         print("🎙️ Pass 2: Generating focused podcast (Claude)...")
-
         let systemPrompt = getFocusedPodcastPrompt(for: generationType)
         let userMessage = """
         KEY INSIGHTS TO BUILD UPON:
@@ -175,118 +88,40 @@ class ClaudeService {
         Weekly Reflections: \(text)
         Goals: \(goals.joined(separator: ", "))
         """
-
         makeAPICall(systemPrompt: systemPrompt, userMessage: userMessage, maxTokens: 4000, purpose: "focused podcast generation", completion: completion)
     }
 
     internal func makeAPICall(systemPrompt: String, userMessage: String, maxTokens: Int, purpose: String, completion: @escaping (Result<String, ClaudeError>) -> Void) {
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 120 // 2 minutes timeout
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": maxTokens,
-            "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userMessage]
-            ]
-        ]
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            completion(.failure(.parseError))
-            return
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("❌ Claude network error: \(error)")
-                completion(.failure(.networkError))
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                if let data = data, let errorString = String(data: data, encoding: .utf8) {
-                    print("❌ Claude API Error: \(errorString)")
-                }
-                completion(.failure(.apiError("HTTP Error")))
-                return
-            }
-
-            guard let data = data else {
-                completion(.failure(.parseError))
-                return
-            }
-
+        Task {
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let content = json["content"] as? [[String: Any]],
-                   let firstContent = content.first,
-                   let text = firstContent["text"] as? String {
-                    print("✅ Claude \(purpose) successful (\(text.count) chars)")
-                    completion(.success(text))
-                } else {
-                    print("❌ Failed to parse Claude response")
-                    if let responseString = String(data: data, encoding: .utf8) {
-                        print("Raw response: \(responseString)")
-                    }
-                    completion(.failure(.parseError))
-                }
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: maxTokens
+                )
+                print("✅ Claude \(purpose) successful (\(text.count) chars)")
+                completion(.success(text))
             } catch {
-                print("❌ JSON parsing error: \(error)")
-                completion(.failure(.parseError))
+                print("❌ Claude \(purpose) failed: \(error)")
+                completion(.failure(.apiError(error.localizedDescription)))
             }
-        }.resume()
+        }
     }
 
     func analyzeText(_ prompt: String) async throws -> String {
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 8000,
-            "messages": [
-                ["role": "user", "content": prompt]
-            ]
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw ClaudeError.apiError("Invalid response")
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let content = json?["content"] as? [[String: Any]],
-              let firstContent = content.first,
-              let text = firstContent["text"] as? String else {
-            throw ClaudeError.parseError
-        }
-
-        // Check if audio test mode is enabled and truncate if needed
+        let text = try await RetrospectAPIClient.shared.claudeGenerate(
+            userMessage: prompt,
+            maxTokens: 8000
+        )
         let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
         if audioTestMode {
             let elevenLabsCharLimit = 5000
             if text.count > elevenLabsCharLimit {
-                let truncatedContent = String(text.prefix(elevenLabsCharLimit))
-                print("🎧 Audio Test Mode: Truncated analyzeText result to \(truncatedContent.count) characters")
-                return truncatedContent
+                let truncated = String(text.prefix(elevenLabsCharLimit))
+                print("🎧 Audio Test Mode: Truncated analyzeText result to \(truncated.count) characters")
+                return truncated
             }
         }
-
         return text
     }
 
@@ -297,146 +132,79 @@ class ClaudeService {
         let tags: [String]
     }
 
-    // MARK: - Onboarding Goals Conversation (contextual follow-ups)
-    
-    /// Sends the current goals conversation and returns one assistant reply. Used during onboarding so the bot feels in-context.
-    /// - Parameter conversationMessages: Array of [ "role": "user" | "assistant", "content": "..." ]
-    /// - Parameter completion: Result with the next assistant message text, or error.
+    // MARK: - Onboarding Goals Conversation
+
     func generateOnboardingGoalsReply(conversationMessages: [[String: Any]], completion: @escaping (Result<String, ClaudeError>) -> Void) {
         let systemPrompt = """
         You are Retrospect, a warm and thoughtful app that turns the user's life into a weekly podcast. Right now you're in a short onboarding conversation to learn about their goals. The user has just replied to your last message.
 
         Your job: reply with exactly one short message (1-3 sentences). Reference their exact words or a specific detail they shared; do not give a generic reply. Be genuinely curious. Ask one thoughtful follow-up that helps you understand what they want to change or focus on—day-to-day behavior, a recent moment, obstacles, or another area of life. Sound like a real person, not a form. No bullet points, no "Great!", no generic praise.
         """
-        
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 30
-        
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 256,
-            "system": systemPrompt,
-            "messages": conversationMessages
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            completion(.failure(.parseError))
-            return
+        Task {
+            do {
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    messages: conversationMessages,
+                    maxTokens: 256
+                )
+                completion(.success(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+            } catch {
+                completion(.failure(.apiError(error.localizedDescription)))
+            }
         }
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(.networkError))
-                return
-            }
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]],
-                  let first = content.first,
-                  let text = first["text"] as? String else {
-                completion(.failure(.apiError("Invalid response")))
-                return
-            }
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            completion(.success(trimmed))
-        }.resume()
     }
-    
-    /// Extracts goals intelligently from a goals conversation using Claude API
+
     func extractGoalsFromConversation(conversationHistory: [[String: Any]], completion: @escaping (Result<[String], ClaudeError>) -> Void) {
         let systemPrompt = """
         You are analyzing a conversation where Retrospect asked the user about their goals for the next couple of months. Extract 2-4 specific, actionable goals from what the user said.
-        
+
         CRITICAL REQUIREMENTS:
         - Be ACCURATE: Don't misclassify. If they say "I want to be better in the gym", extract "Exercise more" or "Fitness goals", NOT something unrelated.
         - Capture NUANCE: If they mention wanting to feel more confident at work, extract "Career growth" or "Professional confidence", not just "Work".
         - Be SPECIFIC: "Better sleep" not "Sleep", "Exercise more" not "Gym".
         - NO SHORTCUTS: Read the full conversation context. Don't miss important details.
         - Common goals: Exercise more, Better sleep, Read daily, Learn something new, Reduce stress, Eat healthier, Save money, Be more present, Improve focus, Build habits, Improve relationships, Career growth, Creativity
-        
+
         Return ONLY a JSON array of goal strings, like: ["Exercise more", "Better sleep", "Career growth"]
         Do not include any other text or explanation.
         """
-        
-        // Build user message from conversation
         let conversationText = conversationHistory.map { msg in
             let role = msg["role"] as? String ?? ""
             let content = msg["content"] as? String ?? ""
             return "\(role.capitalized): \(content)"
         }.joined(separator: "\n\n")
-        
         let userMessage = "Conversation:\n\(conversationText)\n\nExtract 2-4 specific goals from this conversation."
-        
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 30
-        
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 200,
-            "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userMessage]
-            ]
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            completion(.failure(.parseError))
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(.networkError))
-                return
-            }
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]],
-                  let first = content.first,
-                  let text = first["text"] as? String else {
-                completion(.failure(.apiError("Invalid response")))
-                return
-            }
-            
-            // Parse JSON array from response
-            if let jsonData = text.data(using: .utf8),
-               let goalsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
-                completion(.success(goalsArray))
-            } else {
-                // Fallback: try to extract from text
-                let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                if cleaned.hasPrefix("[") && cleaned.hasSuffix("]") {
-                    let inner = String(cleaned.dropFirst().dropLast())
-                    let goals = inner.components(separatedBy: ",")
-                        .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) }
-                        .filter { !$0.isEmpty }
-                    completion(.success(goals))
+
+        Task {
+            do {
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: 200
+                )
+                if let jsonData = text.data(using: .utf8),
+                   let goalsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
+                    completion(.success(goalsArray))
                 } else {
-                    completion(.failure(.parseError))
+                    let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if cleaned.hasPrefix("[") && cleaned.hasSuffix("]") {
+                        let inner = String(cleaned.dropFirst().dropLast())
+                        let goals = inner.components(separatedBy: ",")
+                            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) }
+                            .filter { !$0.isEmpty }
+                        completion(.success(goals))
+                    } else {
+                        completion(.failure(.parseError))
+                    }
                 }
+            } catch {
+                completion(.failure(.apiError(error.localizedDescription)))
             }
-        }.resume()
+        }
     }
-    
+
     func analyzeEntryForMetadata(content: String, completion: @escaping (Result<EntryMetadata, ClaudeError>) -> Void) {
         print("🏷️ Generating entry metadata (Claude)...")
-
         let systemPrompt = """
         You are a helpful assistant that generates concise titles and relevant topic tags for journal entries.
 
@@ -454,71 +222,28 @@ class ClaudeService {
 
         Do not include any other text or explanation.
         """
-
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 30
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 200,
-            "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": content]
-            ]
-        ]
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            completion(.failure(.parseError))
-            return
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("❌ Metadata generation network error: \(error)")
-                completion(.failure(.networkError))
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                print("❌ Metadata generation API error")
-                completion(.failure(.apiError("HTTP Error")))
-                return
-            }
-
-            guard let data = data else {
-                completion(.failure(.parseError))
-                return
-            }
-
+        Task {
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let content = json["content"] as? [[String: Any]],
-                   let firstContent = content.first,
-                   let text = firstContent["text"] as? String,
-                   let contentData = text.data(using: .utf8),
-                   let metadataJson = try JSONSerialization.jsonObject(with: contentData) as? [String: Any],
-                   let title = metadataJson["title"] as? String,
-                   let tags = metadataJson["tags"] as? [String] {
-
-                    let metadata = EntryMetadata(title: title, tags: tags)
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    userMessage: content,
+                    maxTokens: 200
+                )
+                if let data = text.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let title = json["title"] as? String,
+                   let tags = json["tags"] as? [String] {
                     print("✅ Generated metadata - Title: \(title), Tags: \(tags.joined(separator: ", "))")
-                    completion(.success(metadata))
+                    completion(.success(EntryMetadata(title: title, tags: tags)))
                 } else {
                     print("❌ Failed to parse metadata response")
                     completion(.failure(.parseError))
                 }
             } catch {
-                print("❌ JSON parsing error: \(error)")
-                completion(.failure(.parseError))
+                print("❌ Metadata generation error: \(error)")
+                completion(.failure(.apiError(error.localizedDescription)))
             }
-        }.resume()
+        }
     }
 
     // MARK: - Image Analysis (Claude Vision)
@@ -536,7 +261,6 @@ class ClaudeService {
             return
         }
 
-        // Limit to 5 images maximum
         let imagesToAnalyze = Array(images.prefix(5))
 
         let systemPrompt = """
@@ -568,9 +292,7 @@ class ClaudeService {
         }
         """
 
-        // Build content array with images for Claude
         var contentArray: [[String: Any]] = []
-
         for (index, image) in imagesToAnalyze.enumerated() {
             if let imageData = image.jpegData(compressionQuality: 0.7) {
                 let base64Image = imageData.base64EncodedString()
@@ -585,103 +307,47 @@ class ClaudeService {
                 print("📷 Added image \(index + 1) to request")
             }
         }
-
-        // Add the text prompt
         contentArray.append([
             "type": "text",
             "text": "Please analyze these journal entry images and provide descriptions that can be used as context for a personal reflection podcast."
         ])
 
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 60
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 1000,
-            "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": contentArray]
-            ]
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": contentArray]
         ]
 
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            print("❌ Failed to serialize image analysis request: \(error)")
-            completion(.failure(.parseError))
-            return
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("❌ Image analysis network error: \(error)")
-                completion(.failure(.networkError))
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("❌ Invalid response type")
-                completion(.failure(.apiError("Invalid response")))
-                return
-            }
-
-            print("🌐 Image analysis response status: \(httpResponse.statusCode)")
-
-            guard (200...299).contains(httpResponse.statusCode) else {
-                if let data = data, let errorString = String(data: data, encoding: .utf8) {
-                    print("❌ Image analysis error response: \(errorString)")
-                }
-                completion(.failure(.apiError("HTTP Error: \(httpResponse.statusCode)")))
-                return
-            }
-
-            guard let data = data else {
-                completion(.failure(.parseError))
-                return
-            }
-
+        Task {
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let content = json["content"] as? [[String: Any]],
-                   let firstContent = content.first,
-                   let text = firstContent["text"] as? String,
-                   let contentData = text.data(using: .utf8),
-                   let analysisJson = try JSONSerialization.jsonObject(with: contentData) as? [String: Any] {
-
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    messages: messages,
+                    maxTokens: 1000
+                )
+                if let data = text.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     var descriptions: [String] = []
-                    if let imagesArray = analysisJson["images"] as? [[String: Any]] {
+                    if let imagesArray = json["images"] as? [[String: Any]] {
                         for imageInfo in imagesArray {
                             if let desc = imageInfo["description"] as? String {
                                 descriptions.append(desc)
                             }
                         }
                     }
-
-                    let combinedContext = analysisJson["combined_context"] as? String ?? ""
-
-                    let result = ImageAnalysisResult(
-                        descriptions: descriptions,
-                        combinedContext: combinedContext
-                    )
-
+                    let combinedContext = json["combined_context"] as? String ?? ""
                     print("✅ Image analysis complete - \(descriptions.count) descriptions generated")
-                    completion(.success(result))
+                    completion(.success(ImageAnalysisResult(descriptions: descriptions, combinedContext: combinedContext)))
                 } else {
                     print("❌ Failed to parse image analysis response")
                     completion(.failure(.parseError))
                 }
             } catch {
-                print("❌ JSON parsing error in image analysis: \(error)")
-                completion(.failure(.parseError))
+                print("❌ Image analysis error: \(error)")
+                completion(.failure(.apiError(error.localizedDescription)))
             }
-        }.resume()
+        }
     }
 
-    // MARK: - System Prompts (Same as OpenAI)
+    // MARK: - System Prompts
 
     private func getInsightsPrompt(for generationType: GenerationType) -> String {
         let basePersonality = generationType == .goodListener ?

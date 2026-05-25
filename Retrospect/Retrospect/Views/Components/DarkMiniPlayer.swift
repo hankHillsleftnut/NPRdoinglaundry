@@ -65,12 +65,12 @@ struct DarkMiniPlayer: View {
                     // Info
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Weekly Insights")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .lineLimit(1)
                         
                         Text(podcastMood.displayName)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineLimit(1)
                     }

@@ -2,7 +2,7 @@
 //  DarkOnboardingFlow.swift
 //  Retrospect
 //
-//  Dark themed onboarding flow matching the minimal UI aesthetic
+//  Figma-led onboarding flow matching the light privacy-card aesthetic.
 //
 
 import SwiftUI
@@ -10,15 +10,16 @@ import GoogleSignIn
 
 // MARK: - Dark Onboarding Flow Container
 struct DarkOnboardingFlow: View {
-    var onComplete: (() -> Void)? = nil
+    var onComplete: (([RichGoal]) -> Void)? = nil
 
     @StateObject private var onboardingState = OnboardingState()
 
     private var screenIndex: Int {
         if !onboardingState.hasSignedIn { return 0 }
-        if !onboardingState.integrationsCompleted { return 1 }
-        if !onboardingState.personaCompleted { return 2 }
-        return 3
+        if !onboardingState.privacyAcknowledged { return 1 }
+        if !onboardingState.integrationsCompleted { return 2 }
+        if !onboardingState.personaCompleted { return 3 }
+        return 4
     }
 
     var body: some View {
@@ -27,6 +28,12 @@ struct DarkOnboardingFlow: View {
                 WelcomeSignInPage(state: onboardingState)
                     .transition(.asymmetric(
                         insertion: .opacity,
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+            } else if !onboardingState.privacyAcknowledged {
+                OnboardingPrivacyPage(state: onboardingState)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
             } else if !onboardingState.integrationsCompleted {
@@ -46,9 +53,9 @@ struct DarkOnboardingFlow: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
             } else {
-                VoiceGoalsPage(onComplete: {
+                VoiceGoalsPage(onComplete: { goals in
                     onboardingState.clearPersistedStep()
-                    onComplete?()
+                    onComplete?(goals)
                 })
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -57,7 +64,7 @@ struct DarkOnboardingFlow: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screenIndex)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .navigationBarHidden(true)
         .interactiveDismissDisabled(true)
     }
@@ -94,7 +101,7 @@ struct DarkOnboardingScreenTemplate: View {
                 
                 // Main text — tap to complete animation instantly
                 Text(displayedText)
-                    .font(.custom("EBGaramond12-Regular", size: 38))
+                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 38))
                     .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
                     .multilineTextAlignment(.leading)
                     .lineSpacing(8)
@@ -164,7 +171,7 @@ struct DarkOnboardingScreenTemplate: View {
                             skipAction()
                         }) {
                             Text("Skip")
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                     }
@@ -197,7 +204,7 @@ struct DarkOnboardingScreenTemplate: View {
     private var darkNextButton: some View {
         Button(action: onNext) {
             Text("Next")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
@@ -274,13 +281,13 @@ struct DarkPrivacyOnboardingScreen: View {
                             Image(systemName: "lock.shield.fill")
                                 .font(.system(size: 12, weight: .medium))
                             Text("Privacy")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                         
                         // Title
                         Text("Your data stays yours.")
-                            .font(.custom("EBGaramond12-Regular", size: 36))
+                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
                         
                         // Privacy points
@@ -302,7 +309,7 @@ struct DarkPrivacyOnboardingScreen: View {
                 // Next button
                 Button(action: onNext) {
                     Text("I Understand")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -346,7 +353,7 @@ struct DarkPrivacyOnboardingScreen: View {
                 .frame(width: 24)
             
             Text(text)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
         }
     }
@@ -384,23 +391,23 @@ struct DarkGoogleDocsOnboardingScreen: View {
                             Image(systemName: "doc.text.fill")
                                 .font(.system(size: 12, weight: .medium))
                             Text("Integration")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                         
                         // Title
                         Text("Connect your Google Docs.")
-                            .font(.custom("EBGaramond12-Regular", size: 36))
+                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
                         
                         // Description
                         Text("Automatically include your recent Google Docs in your weekly reflections. All processing happens on your device.")
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
                         
                         Text("Your documents stay private and are never shared.")
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                         
                         // Connection status
@@ -411,7 +418,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                                     .foregroundColor(LinearColors.Minimal.success)
                                 
                                 Text("Connected Successfully")
-                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                             }
                             .padding(.top, 16)
@@ -429,7 +436,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                                     }
                                     
                                     Text(isConnecting ? "Connecting..." : "Connect Google Account")
-                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 16, weight: .semibold))
                                 }
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(maxWidth: .infinity)
@@ -460,7 +467,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                     if !googleDocsService.isConnected {
                         Button(action: onSkip) {
                             Text("Skip for now")
-                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .font(.system(size: 15, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -468,7 +475,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                     
                     Button(action: onNext) {
                         Text(googleDocsService.isConnected ? "Continue" : "Continue")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
@@ -560,18 +567,18 @@ struct DarkAppleHealthOnboardingScreen: View {
                             Image(systemName: "heart.fill")
                                 .font(.system(size: 12, weight: .medium))
                             Text("Integration")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                         
                         // Title
                         Text("Connect Apple Health.")
-                            .font(.custom("EBGaramond12-Regular", size: 36))
+                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
                         
                         // Description
                         Text("Include your health data in reflections—sleep, activity, and mindfulness—for a complete picture of your wellbeing.")
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
                         
@@ -591,7 +598,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                                     .foregroundColor(LinearColors.Minimal.success)
                                 
                                 Text("Health Access Enabled")
-                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                             }
                             .padding(.top, 16)
@@ -609,7 +616,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                                     }
                                     
                                     Text(isConnecting ? "Requesting..." : "Enable Health Access")
-                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                        .font(.system(size: 16, weight: .semibold))
                                 }
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .frame(maxWidth: .infinity)
@@ -640,7 +647,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                     if !healthKitEnabled {
                         Button(action: onSkip) {
                             Text("Skip for now")
-                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .font(.system(size: 15, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -648,7 +655,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                     
                     Button(action: onNext) {
                         Text("Continue")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
@@ -693,7 +700,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                 .frame(width: 24)
             
             Text(text)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
         }
     }
@@ -733,26 +740,26 @@ struct DarkGoalsOnboardingScreen: View {
                             Image(systemName: "scope")
                                 .font(.system(size: 12, weight: .medium))
                             Text("Setup")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                         .padding(.top, 60)
                         
                         // Title
                         Text("What do you want to focus on?")
-                            .font(.custom("EBGaramond12-Regular", size: 36))
+                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
                         
                         // Description
                         Text("Add some goals to help personalize your reflections. You can always change these later.")
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
                         
                         // Goal input
                         HStack(spacing: 12) {
                             TextField("Add a goal...", text: $newGoalText)
-                                .font(.system(size: 16, weight: .regular, design: .rounded))
+                                .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                                 .focused($isInputFocused)
                                 .submitLabel(.done)
@@ -783,7 +790,7 @@ struct DarkGoalsOnboardingScreen: View {
                         if goalsManager.goalsCount > 0 {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Your Goals")
-                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
                                 
                                 ForEach(goalsManager.goals, id: \.self) { goal in
@@ -793,7 +800,7 @@ struct DarkGoalsOnboardingScreen: View {
                                             .foregroundColor(LinearColors.Minimal.accent)
                                         
                                         Text(goal)
-                                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                                            .font(.system(size: 16, weight: .regular))
                                             .foregroundColor(LinearColors.Minimal.textPrimary)
                                         
                                         Spacer()
@@ -824,7 +831,7 @@ struct DarkGoalsOnboardingScreen: View {
                         if goalsManager.goalsCount < 3 {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Suggestions")
-                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
                                 
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -834,7 +841,7 @@ struct DarkGoalsOnboardingScreen: View {
                                             HapticManager.shared.playLightImpact()
                                         }) {
                                             Text(suggestion)
-                                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                                .font(.system(size: 14, weight: .medium))
                                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                                                 .padding(.horizontal, 14)
                                                 .padding(.vertical, 10)
@@ -865,7 +872,7 @@ struct DarkGoalsOnboardingScreen: View {
                 VStack(spacing: 0) {
                     Button(action: onComplete) {
                         Text(goalsManager.goalsCount > 0 ? "Get Started" : "Skip for now")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
@@ -917,4 +924,3 @@ struct DarkGoalsOnboardingScreen: View {
 #Preview {
     DarkOnboardingFlow()
 }
-

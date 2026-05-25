@@ -6,7 +6,6 @@ import Combine
 // Enum for bottom navigation tabs
 enum HomeTab {
     case reflections
-    case videoJournal
     case entries
 }
 
@@ -118,10 +117,7 @@ struct HomeScreen: View {
                             TabView(selection: $selectedTab) {
                                 mainReflectionsView
                                     .tag(HomeTab.reflections)
-                                
-                                VideoJournalView()
-                                    .tag(HomeTab.videoJournal)
-                                
+
                                 EntriesView()
                                     .tag(HomeTab.entries)
                             }
@@ -153,7 +149,7 @@ struct HomeScreen: View {
                                         Image(systemName: "waveform")
                                             .font(.system(size: 18, weight: .semibold))
                                         Text("Voice Note")
-                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                            .font(.system(size: 16, weight: .semibold))
                                     }
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .padding(.horizontal, 24)
@@ -1037,19 +1033,18 @@ struct HomeScreen: View {
             }
         }
         
-        // Get video journal entries from the past week
-        let videoJournals = VideoJournalManager.shared.getEntriesForWeek()
         var combinedInput = inputText
-        
-        // Add video journal transcriptions if available and selected for inclusion
-        let includedJournals = videoJournals.filter { $0.isIncludedInInsights }
-        if !includedJournals.isEmpty {
-            combinedInput += "\n\nVideo Journal Entries from this week (included in insights):\n"
-            for entry in includedJournals {
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateStyle = .medium
-                dateFormatter.timeStyle = .short
-                combinedInput += "\n[\(dateFormatter.string(from: entry.date))]:\n\(entry.transcription)\n"
+
+        // Include recent voice session transcriptions
+        let recentVoiceEntries = EntryManager.shared.getAllEntries()
+            .filter { $0.type == .voice && $0.isIncludedInInsights }
+            .prefix(10)
+        if !recentVoiceEntries.isEmpty {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            combinedInput += "\n\nVoice Sessions:\n"
+            for entry in recentVoiceEntries {
+                combinedInput += "\n[\(dateFormatter.string(from: entry.date))]: \(entry.content)\n"
             }
         }
         
@@ -1072,7 +1067,7 @@ struct HomeScreen: View {
                 .multilineTextAlignment(.center)
             
             Text("Reflect on your journey")
-                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundColor(LinearColors.secondaryText)
                 .multilineTextAlignment(.center)
         }
@@ -1093,7 +1088,7 @@ struct HomeScreen: View {
                             .foregroundColor(LinearColors.primaryText)
                         
                         Text("What should we call you?")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundColor(LinearColors.secondaryText)
                     }
                     
@@ -1142,7 +1137,7 @@ struct HomeScreen: View {
                                     .foregroundColor(LinearColors.textPrimary)
                                 
                                 Text("Enter your full name")
-                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(LinearColors.secondaryText)
                             }
                             
@@ -1281,7 +1276,7 @@ struct HomeScreen: View {
                                 
                                 TextField("Search insights...", text: $searchText)
                                     .textFieldStyle(PlainTextFieldStyle())
-                                    .font(.system(size: 16, design: .rounded))
+                                    .font(.system(size: 16))
                                 
                                 if !searchText.isEmpty {
                                     Button(action: {
@@ -1313,7 +1308,7 @@ struct HomeScreen: View {
                                 .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                                 .foregroundColor(LinearColors.textSecondary)
                                         Text("No matching insights found")
-                                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                                            .font(.system(size: 16, weight: .medium))
                                             .foregroundColor(LinearColors.secondaryText)
                                     }
                                     .frame(maxWidth: .infinity)
@@ -1323,7 +1318,7 @@ struct HomeScreen: View {
                                         VStack(alignment: .leading, spacing: 12) {
                                             // Section Header
                                             Text(section.title)
-                                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                                .font(.system(size: 20, weight: .bold))
                                                 .foregroundColor(LinearColors.primaryText)
                                                 .padding(.bottom, 4)
                                             

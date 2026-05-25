@@ -43,7 +43,7 @@ struct DarkEntryDetailView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(entry.displayTitle)
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .lineLimit(2)
                         
@@ -53,7 +53,7 @@ struct DarkEntryDetailView: View {
                                 Image(systemName: entry.type == .voice ? "waveform" : "doc.text")
                                     .font(.system(size: 12, weight: .medium))
                                 Text(entry.type == .voice ? "Voice" : "Written")
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .font(.system(size: 12, weight: .medium))
                             }
                             .foregroundColor(entry.type == .voice ? LinearColors.Minimal.accent : LinearColors.Minimal.textSecondary)
                             .padding(.horizontal, 8)
@@ -64,7 +64,7 @@ struct DarkEntryDetailView: View {
                             )
                             
                             Text(formatDate(entry.date))
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                     }
@@ -91,7 +91,7 @@ struct DarkEntryDetailView: View {
                 // Content
                 ScrollView {
                     Text(entry.content)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                         .lineSpacing(8)
                         .textSelection(.enabled)

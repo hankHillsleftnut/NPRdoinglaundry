@@ -67,7 +67,7 @@ struct EntriesView: View {
                 .foregroundColor(LinearColors.textSecondary)
             
             TextField("Search entries...", text: $searchText)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textPrimary)
             
             if !searchText.isEmpty {
@@ -123,7 +123,7 @@ struct EntriesView: View {
                     .foregroundColor(LinearColors.textPrimary)
                 
                 Text(searchText.isEmpty ? "Your written reflections and video journals will appear here" : "Try adjusting your search or filters")
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(LinearColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
@@ -196,10 +196,10 @@ struct FilterTab: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold))
                 
                 Text("\(count)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
             }
             .foregroundColor(isSelected ? .white : LinearColors.textPrimary)
             .padding(.horizontal, 16)

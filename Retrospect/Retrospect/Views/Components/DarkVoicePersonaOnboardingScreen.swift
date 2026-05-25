@@ -96,17 +96,17 @@ struct DarkVoicePersonaOnboardingScreen: View {
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                             Text("Voice Persona")
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                         .padding(.top, 32)
                         
                         Text("Choose Your\nPodcast Voice")
-                            .font(.custom("EBGaramond12-Regular", size: 34))
+                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 34))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Text("This is who speaks to you each week. Pick the voice that feels right.")
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .opacity(bodyTextAnimating ? 1 : 0.3)
                             .offset(y: bodyTextAnimating ? 0 : 10)
@@ -159,7 +159,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                                     .scaleEffect(0.8)
                             }
                             Text(isSaving ? "Saving..." : "Continue")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                         }
                         .frame(maxWidth: .infinity)
@@ -237,11 +237,11 @@ private struct PersonaCard: View {
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                         
                         Text(description)
-                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .font(.system(size: 13, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineLimit(2)
                     }
@@ -269,7 +269,7 @@ private struct PersonaCard: View {
                 if isSelected {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Preview")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
                             .textCase(.uppercase)
                         

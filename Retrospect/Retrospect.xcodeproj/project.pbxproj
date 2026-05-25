@@ -654,6 +654,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Retrospect/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Retrospect-2026";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";
@@ -698,6 +699,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Retrospect/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Retrospect-2026";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";

@@ -131,7 +131,7 @@ struct OnboardingScreenTemplate: View {
     // MARK: - Main Text Content
     private var mainTextContent: some View {
         Text(displayedText)
-            .font(.custom("EBGaramond12-Regular", size: 35))
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 35))
             .kerning(-0.5)
             .foregroundColor(LinearColors.textDisplay)
             .multilineTextAlignment(.leading)
@@ -159,7 +159,7 @@ struct OnboardingScreenTemplate: View {
             onNext()
         }) {
             Text("Next")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(0)
                 .foregroundColor(Color.white)
                 .shadow(color: LinearColors.cardShadow, radius: 2, x: 0, y: 2)

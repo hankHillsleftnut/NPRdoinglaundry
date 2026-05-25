@@ -365,7 +365,7 @@ struct iMessageOnboardingView: View {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 20, weight: .medium))
                     Text("Continue")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                        .font(.system(size: 17, weight: .medium))
                 }
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .frame(maxWidth: .infinity)
@@ -427,7 +427,7 @@ struct iMessageOnboardingView: View {
                     .buttonStyle(PlainButtonStyle())
 
                     Text("Tap to speak")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             } else {
@@ -468,7 +468,7 @@ struct iMessageOnboardingView: View {
                 completeOnboarding()
             }) {
                 Text("Start Journaling")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.buttonPrimaryText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
@@ -487,7 +487,7 @@ struct iMessageOnboardingView: View {
                 .scaleEffect(atOrOverThreshold ? 1.08 : 1.0)
 
             Text(atOrOverThreshold ? "Release to start" : "Pull up to start")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(atOrOverThreshold ? LinearColors.Minimal.textPrimary : LinearColors.Minimal.textSecondary)
 
             Image(systemName: atOrOverThreshold ? "checkmark.circle.fill" : "chevron.up")
@@ -992,7 +992,7 @@ private struct TypingRevealText: View {
 
     var body: some View {
         Text(fullText)
-            .font(.system(size: 17, weight: .regular, design: .serif))
+            .font(.system(size: 17, weight: .regular))
             .foregroundColor(textColor)
             .fixedSize(horizontal: false, vertical: true)
             .lineSpacing(6)
@@ -1035,7 +1035,7 @@ private struct ChatBubbleView: View {
                     }
                     if animationCompleted {
                         Text(message.text)
-                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .font(.system(size: 17, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                             .lineSpacing(6)
@@ -1102,13 +1102,13 @@ private struct PersonaCardStack: View {
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(p.name)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             Text(p.description)
-                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .font(.system(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                             Text(p.detail)
-                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                         Spacer(minLength: 0)
@@ -1163,10 +1163,10 @@ private struct IntegrationCardStack: View {
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
                             Text(row.subtitle)
-                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .font(.system(size: 14, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
                         Spacer()
@@ -1269,5 +1269,5 @@ private struct TypingIndicatorView: View {
 // MARK: - Preview
 
 #Preview {
-    DarkOnboardingFlow(onComplete: {})
+    DarkOnboardingFlow(onComplete: { _ in })
 }
