@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
-import { processRawContent } from '../services/extraction.js';
-import { processConnectionsBatch } from '../services/connections.js';
+import { runAgentIngest } from '../services/agent-client.js';
 import { UploadContentSchema } from '../types/index.js';
 
 export const contentRouter = Router();
@@ -59,30 +58,55 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       return;
     }
 
-    // Process content immediately, but do not make ingestion fail once raw_content is stored.
-    const result = await processRawContent(rawContent.id, user.id);
+    // Agent-only path: the backend stores raw content, then asks retrospect-agent
+    // to turn that content into observations, insights, and goal candidates.
+    let agentResult:
+      | Awaited<ReturnType<typeof runAgentIngest>>
+      | null = null;
+    let agentError: string | null = null;
 
-    // Generate embeddings and find connections for new insights
-    if (result.insightIds.length > 0) {
-      try {
-        await processConnectionsBatch(result.insightIds, user.id);
-      } catch (connError) {
-        console.error('Connection processing error:', connError);
-        // Don't fail the request, connections can be processed later
-      }
+    try {
+      agentResult = await runAgentIngest({
+        userId: user.id,
+        rawContentIds: [rawContent.id],
+      });
+
+      await supabaseAdmin
+        .from(Tables.RAW_CONTENT)
+        .update({
+          processing_status: 'completed',
+          processing_error: null,
+          processed_at: new Date().toISOString(),
+        })
+        .eq('id', rawContent.id);
+    } catch (err) {
+      agentError = err instanceof Error ? err.message : String(err);
+      console.error('Agent ingestion error:', err);
+
+      await supabaseAdmin
+        .from(Tables.RAW_CONTENT)
+        .update({
+          processing_status: 'failed',
+          processing_error: agentError,
+        })
+        .eq('id', rawContent.id);
     }
 
     res.status(201).json({
       success: true,
       data: {
         rawContentId: rawContent.id,
-        insightIds: result.insightIds,
-        insightCount: result.insightIds.length,
-        processingError: result.error ?? null,
+        insightIds: [],
+        insightCount: agentResult?.insights_created ?? 0,
+        observationsCreated: agentResult?.observations_created ?? 0,
+        insightsCreated: agentResult?.insights_created ?? 0,
+        goalCandidatesCreated: agentResult?.goal_candidates_created ?? 0,
+        agentTraceId: agentResult?.traceId ?? null,
+        processingError: agentError,
       },
-      message: result.error
-        ? 'Content stored; legacy extraction failed and can be retried later'
-        : `Extracted ${result.insightIds.length} insights from content`,
+      message: agentError
+        ? 'Content stored; agent ingestion failed and can be retried later'
+        : `Agent processed content into ${agentResult?.observations_created ?? 0} observations and ${agentResult?.insights_created ?? 0} insights`,
     });
   } catch (error) {
     console.error('Content upload error:', error);
@@ -224,27 +248,30 @@ contentRouter.post('/:id/reprocess', async (req: Request, res: Response) => {
       })
       .eq('id', content.id);
 
-    // Reprocess
-    const result = await processRawContent(content.id, user.id);
+    const result = await runAgentIngest({
+      userId: user.id,
+      rawContentIds: [content.id],
+      notes: 'Triggered by retrospect-api /content/:id/reprocess',
+    });
 
-    if (result.error) {
-      res.status(500).json({
-        success: false,
-        error: result.error,
-      });
-      return;
-    }
-
-    // Process connections
-    if (result.insightIds.length > 0) {
-      await processConnectionsBatch(result.insightIds, user.id);
-    }
+    await supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .update({
+        processing_status: 'completed',
+        processing_error: null,
+        processed_at: new Date().toISOString(),
+      })
+      .eq('id', content.id);
 
     res.json({
       success: true,
       data: {
-        insightIds: result.insightIds,
-        insightCount: result.insightIds.length,
+        insightIds: [],
+        insightCount: result.insights_created,
+        observationsCreated: result.observations_created,
+        insightsCreated: result.insights_created,
+        goalCandidatesCreated: result.goal_candidates_created,
+        agentTraceId: result.traceId,
       },
     });
   } catch (error) {

@@ -8,9 +8,9 @@ import { Router, Request, Response } from 'express';
 import {
   listPodcastEpisodes,
   getPodcastEpisode,
-  generatePodcastEpisode,
   getLatestEpisode,
 } from '../services/podcast-generation.js';
+import { generateAgentPodcast } from '../services/agent-client.js';
 
 export const podcastsRouter = Router();
 
@@ -108,18 +108,23 @@ podcastsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =>
 podcastsRouter.post('/generate', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
-    const { daysSince, skipTTS } = req.body ?? {};
+    const { daysSince, daysBack, skipTTS, persona } = req.body ?? {};
 
-    // Get the latest episode for continuity
-    const latest = await getLatestEpisode(userId);
-
-    const episode = await generatePodcastEpisode({
+    const agentResult = await generateAgentPodcast({
       userId,
-      daysSince: daysSince ?? 7,
-      previousEpisodeId: latest?.id,
-      generationType: 'on_demand',
+      daysBack: daysBack ?? daysSince ?? 14,
       skipTTS: skipTTS ?? false,
+      persona,
     });
+
+    if (!agentResult.episodeId) {
+      throw new Error('Agent generated a podcast but did not return an episode id');
+    }
+
+    const episode = await getPodcastEpisode(agentResult.episodeId, userId);
+    if (!episode) {
+      throw new Error(`Agent episode ${agentResult.episodeId} was not found after generation`);
+    }
 
     res.json({ success: true, data: episode });
   } catch (err) {

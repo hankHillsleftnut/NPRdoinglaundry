@@ -66,6 +66,12 @@ export const config = {
     secret: optionalEnv('ADMIN_SECRET', 'retrospect-admin-local'),
   },
 
+  // Agent service — the only execution path for ingestion and podcast generation.
+  agent: {
+    serviceUrl: requireEnv('AGENT_SERVICE_URL'),
+    internalSecret: requireEnv('INTERNAL_API_SECRET'),
+  },
+
   // Server
   server: {
     port: parseInt(optionalEnv('PORT', '3000'), 10),

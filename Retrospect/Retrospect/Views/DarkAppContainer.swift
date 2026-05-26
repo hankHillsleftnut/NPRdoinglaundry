@@ -680,7 +680,13 @@ struct DarkJournalView: View {
 
                 Spacer()
 
-                inlineMicButton
+                HStack(spacing: 8) {
+                    if devMode {
+                        agentPodcastTestButton
+                    }
+
+                    inlineMicButton
+                }
             }
 
             Text("Journal")
@@ -818,19 +824,18 @@ struct DarkJournalView: View {
     }
 
     private var devGenerateButton: some View {
-        Button(action: {
-            HapticManager.shared.playMediumImpact()
-            let text = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
-            let goals = goalsManager.goalContextForGeneration
-            viewModel.generateTranscript(
-                text: text.isEmpty ? "Generate a podcast from my recent entries and goals." : text,
-                goals: goals
-            )
-        }) {
+        Button(action: testAgentPodcastFlow) {
             HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Generate Podcast")
+                if isTestingAgentPodcast {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(homeMutedText)
+                } else {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+
+                Text(isTestingAgentPodcast ? "Generating Podcast" : "Generate Podcast")
                     .font(.system(size: 14, weight: .medium, design: .monospaced))
                     .lineLimit(1)
             }
@@ -842,6 +847,8 @@ struct DarkJournalView: View {
             .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(PlainButtonStyle())
+        .disabled(isTestingAgentPodcast)
+        .opacity(isTestingAgentPodcast ? 0.72 : 1)
     }
 
     private var processingPill: some View {
@@ -936,7 +943,7 @@ struct DarkJournalView: View {
                         .font(.system(size: 13, weight: .semibold))
                 }
 
-                Text(isTestingAgentPodcast ? "Testing" : "Test Agent")
+                Text(isTestingAgentPodcast ? "Generating" : "Generate")
                     .font(.system(size: 12, weight: .semibold))
             }
             .foregroundColor(LinearColors.Minimal.buttonPrimaryText)

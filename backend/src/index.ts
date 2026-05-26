@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import cron from 'node-cron';
 import path from 'path';
 
 import { config } from './utils/config.js';
@@ -15,10 +14,6 @@ import { analyticsRouter } from './routes/analytics.js';
 import { goalsRouter } from './routes/goals.js';
 import { pipelineRouter } from './routes/pipeline.js';
 import { adminRouter } from './routes/admin.js';
-import { runDailyPatternDetection } from './jobs/daily-patterns.js';
-import { runWeeklyPatternDetection } from './jobs/weekly-patterns.js';
-import { runObservationInsightsPipeline } from './jobs/observation-insights-pipeline.js';
-import { runWeeklyPodcastGeneration } from './jobs/weekly-podcast-generation.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
 
@@ -108,50 +103,7 @@ app.use((_req, res) => {
   });
 });
 
-// Schedule cron jobs
-// Daily pattern detection at 3 AM UTC
-cron.schedule('0 3 * * *', async () => {
-  console.log('Running daily pattern detection...');
-  try {
-    await runDailyPatternDetection();
-    console.log('Daily pattern detection completed');
-  } catch (error) {
-    console.error('Daily pattern detection failed:', error);
-  }
-});
-
-// Weekly pattern detection at 4 AM UTC on Sundays
-cron.schedule('0 4 * * 0', async () => {
-  console.log('Running weekly pattern detection...');
-  try {
-    await runWeeklyPatternDetection();
-    console.log('Weekly pattern detection completed');
-  } catch (error) {
-    console.error('Weekly pattern detection failed:', error);
-  }
-});
-
-// Observations → Insights pipeline at 5 AM UTC daily
-cron.schedule('0 5 * * *', async () => {
-  console.log('Running observations → insights pipeline...');
-  try {
-    await runObservationInsightsPipeline();
-    console.log('Observations → insights pipeline completed');
-  } catch (error) {
-    console.error('Observations → insights pipeline failed:', error);
-  }
-});
-
-// Weekly podcast generation at 6 AM UTC on Sundays
-cron.schedule('0 6 * * 0', async () => {
-  console.log('Running weekly podcast generation...');
-  try {
-    await runWeeklyPodcastGeneration();
-    console.log('Weekly podcast generation completed');
-  } catch (error) {
-    console.error('Weekly podcast generation failed:', error);
-  }
-});
+console.log('Legacy backend crons are disabled. Agent crons own ingestion and podcasts.');
 
 // Start server
 const server = app.listen(config.server.port, () => {

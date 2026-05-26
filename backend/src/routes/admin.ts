@@ -2,9 +2,10 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { config } from '../utils/config.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
-import { processAllPendingContent, processContentForObservations, listObservations } from '../services/observations.js';
-import { generateInsightsForAllGoals, listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
-import { generatePodcastEpisode, listPodcastEpisodes, getLatestEpisode } from '../services/podcast-generation.js';
+import { listObservations } from '../services/observations.js';
+import { listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
+import { listPodcastEpisodes, getPodcastEpisode } from '../services/podcast-generation.js';
+import { generateAgentPodcast, runAgentIngest } from '../services/agent-client.js';
 
 export const adminRouter = Router();
 
@@ -267,17 +268,21 @@ adminRouter.get('/insights/:id', async (req: Request, res: Response) => {
 // POST /admin/pipeline/observations — extract observations only
 adminRouter.post('/pipeline/observations', async (req: Request, res: Response) => {
   try {
-    const { userId, forceReprocess } = req.body;
+    const { userId, daysBack } = req.body;
     if (!userId) {
       res.status(400).json({ success: false, error: 'userId is required' });
       return;
     }
 
-    const result = await processAllPendingContent(userId, forceReprocess === true);
+    const result = await runAgentIngest({
+      userId,
+      daysBack: daysBack ?? 30,
+      notes: 'Triggered by admin /pipeline/observations',
+    });
     res.json({
       success: true,
       data: result,
-      message: `Processed ${result.contentProcessed} content items, created ${result.totalObservations} observations.`,
+      message: `Agent processed ${result.raw_content_processed} content items, created ${result.observations_created} observations and ${result.insights_created} insights.`,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });
@@ -293,11 +298,15 @@ adminRouter.post('/pipeline/observations/:contentId', async (req: Request, res: 
       return;
     }
 
-    const result = await processContentForObservations(req.params.contentId!, userId);
+    const result = await runAgentIngest({
+      userId,
+      rawContentIds: [req.params.contentId!],
+      notes: 'Triggered by admin /pipeline/observations/:contentId',
+    });
     res.json({
       success: true,
       data: result,
-      message: `Created ${result.observationIds.length} observations.`,
+      message: `Agent created ${result.observations_created} observations and ${result.insights_created} insights.`,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });
@@ -313,11 +322,15 @@ adminRouter.post('/pipeline/insights', async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await generateInsightsForAllGoals(userId, daysBack || 30);
+    const result = await runAgentIngest({
+      userId,
+      daysBack: daysBack ?? 30,
+      notes: 'Triggered by admin /pipeline/insights',
+    });
     res.json({
       success: true,
       data: result,
-      message: `Created ${result.totalCreated} new insights, updated ${result.totalUpdated} existing.`,
+      message: `Agent created ${result.observations_created} observations and ${result.insights_created} insights.`,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });
@@ -327,25 +340,22 @@ adminRouter.post('/pipeline/insights', async (req: Request, res: Response) => {
 // POST /admin/pipeline/run — full pipeline (content → observations → insights)
 adminRouter.post('/pipeline/run', async (req: Request, res: Response) => {
   try {
-    const { userId, daysBack, forceReprocess } = req.body;
+    const { userId, daysBack } = req.body;
     if (!userId) {
       res.status(400).json({ success: false, error: 'userId is required' });
       return;
     }
 
-    // Step 1: Extract observations
-    const obsResult = await processAllPendingContent(userId, forceReprocess === true);
-
-    // Step 2: Generate insights
-    const insightResult = await generateInsightsForAllGoals(userId, daysBack || 30);
+    const result = await runAgentIngest({
+      userId,
+      daysBack: daysBack ?? 30,
+      notes: 'Triggered by admin /pipeline/run',
+    });
 
     res.json({
       success: true,
-      data: {
-        observations: obsResult,
-        insights: insightResult,
-      },
-      message: `Pipeline complete. ${obsResult.totalObservations} observations, ${insightResult.totalCreated} new insights, ${insightResult.totalUpdated} updated.`,
+      data: result,
+      message: `Agent pipeline complete. ${result.observations_created} observations, ${result.insights_created} insights, ${result.goal_candidates_created} goal candidates.`,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });
@@ -563,22 +573,28 @@ adminRouter.get('/podcasts', async (req: Request, res: Response) => {
 // POST /admin/podcasts/generate — trigger podcast generation for a user
 adminRouter.post('/podcasts/generate', async (req: Request, res: Response) => {
   try {
-    const { userId, daysSince, skipTTS, persona } = req.body;
+    const { userId, daysSince, daysBack, skipTTS, persona } = req.body;
     if (!userId) {
       res.status(400).json({ success: false, error: 'userId is required' });
       return;
     }
 
-    const latestEp = await getLatestEpisode(userId);
-
-    const episode = await generatePodcastEpisode({
+    const agentResult = await generateAgentPodcast({
       userId,
-      daysSince: daysSince ?? 7,
-      previousEpisodeId: latestEp?.id,
-      generationType: 'on_demand',
+      daysBack: daysBack ?? daysSince ?? 14,
       skipTTS: skipTTS ?? true, // Default to skip TTS in admin to save costs
       persona: persona ?? undefined,
+      notes: 'Triggered by admin /podcasts/generate',
     });
+
+    if (!agentResult.episodeId) {
+      throw new Error('Agent generated a podcast but did not return an episode id');
+    }
+
+    const episode = await getPodcastEpisode(agentResult.episodeId, userId);
+    if (!episode) {
+      throw new Error(`Agent episode ${agentResult.episodeId} was not found after generation`);
+    }
 
     res.json({ success: true, data: episode });
   } catch (error) {

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { processAllPendingContent, processContentForObservations, listObservations } from '../services/observations.js';
-import { generateInsightsForAllGoals, listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
+import { listObservations } from '../services/observations.js';
+import { listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { runAgentIngest } from '../services/agent-client.js';
 
 export const pipelineRouter = Router();
 
@@ -18,16 +19,22 @@ pipelineRouter.post('/observations/extract', async (req: Request, res: Response)
       return;
     }
 
-    const result = await processAllPendingContent(user.id);
+    const result = await runAgentIngest({
+      userId: user.id,
+      daysBack: req.body?.daysBack ? parseInt(req.body.daysBack) : 30,
+      notes: 'Triggered by retrospect-api /pipeline/observations/extract',
+    });
 
     res.json({
       success: true,
       data: {
-        contentProcessed: result.contentProcessed,
-        totalObservations: result.totalObservations,
-        byGoal: result.byGoal,
+        contentProcessed: result.raw_content_processed,
+        totalObservations: result.observations_created,
+        totalInsights: result.insights_created,
+        goalCandidatesCreated: result.goal_candidates_created,
+        agentTraceId: result.traceId,
       },
-      message: `Processed ${result.contentProcessed} content items, created ${result.totalObservations} observations.`,
+      message: `Agent processed ${result.raw_content_processed} content items, created ${result.observations_created} observations and ${result.insights_created} insights.`,
     });
   } catch (error) {
     console.error('Observation extraction error:', error);
@@ -47,14 +54,19 @@ pipelineRouter.post('/observations/extract/:contentId', async (req: Request, res
       return;
     }
 
-    const result = await processContentForObservations(req.params.contentId!, user.id);
+    const result = await runAgentIngest({
+      userId: user.id,
+      rawContentIds: [req.params.contentId!],
+      notes: 'Triggered by retrospect-api /pipeline/observations/extract/:contentId',
+    });
 
     res.json({
       success: true,
       data: {
-        observationIds: result.observationIds,
-        totalObservations: result.observationIds.length,
-        byGoal: result.byGoal,
+        totalObservations: result.observations_created,
+        totalInsights: result.insights_created,
+        goalCandidatesCreated: result.goal_candidates_created,
+        agentTraceId: result.traceId,
       },
     });
   } catch (error) {
@@ -118,16 +130,22 @@ pipelineRouter.post('/insights/generate', async (req: Request, res: Response) =>
     }
 
     const daysBack = req.body.daysBack ? parseInt(req.body.daysBack) : 30;
-    const result = await generateInsightsForAllGoals(user.id, daysBack);
+    const result = await runAgentIngest({
+      userId: user.id,
+      daysBack,
+      notes: 'Triggered by retrospect-api /pipeline/insights/generate',
+    });
 
     res.json({
       success: true,
       data: {
-        totalCreated: result.totalCreated,
-        totalUpdated: result.totalUpdated,
-        byGoal: result.byGoal,
+        totalCreated: result.insights_created,
+        totalUpdated: 0,
+        observationsCreated: result.observations_created,
+        goalCandidatesCreated: result.goal_candidates_created,
+        agentTraceId: result.traceId,
       },
-      message: `Created ${result.totalCreated} new insights, updated ${result.totalUpdated} existing insights.`,
+      message: `Agent created ${result.observations_created} observations and ${result.insights_created} insights.`,
     });
   } catch (error) {
     console.error('Insight generation error:', error);
@@ -230,11 +248,11 @@ pipelineRouter.post('/run', async (req: Request, res: Response) => {
       .single();
 
     try {
-      // Step 1: Extract observations from all pending content
-      const obsResult = await processAllPendingContent(user.id);
-
-      // Step 2: Generate insights from recent observations
-      const insightResult = await generateInsightsForAllGoals(user.id, daysBack);
+      const result = await runAgentIngest({
+        userId: user.id,
+        daysBack,
+        notes: 'Triggered by retrospect-api /pipeline/run',
+      });
 
       // Mark pipeline run as completed
       if (pipelineRun) {
@@ -242,8 +260,8 @@ pipelineRouter.post('/run', async (req: Request, res: Response) => {
           .from(Tables.PIPELINE_RUNS)
           .update({
             status: 'completed',
-            observations_created: obsResult.totalObservations,
-            insights_created: insightResult.totalCreated,
+            observations_created: result.observations_created,
+            insights_created: result.insights_created,
             completed_at: new Date().toISOString(),
           })
           .eq('id', pipelineRun.id);
@@ -254,17 +272,17 @@ pipelineRouter.post('/run', async (req: Request, res: Response) => {
         data: {
           pipelineRunId: pipelineRun?.id,
           observations: {
-            contentProcessed: obsResult.contentProcessed,
-            totalObservations: obsResult.totalObservations,
-            byGoal: obsResult.byGoal,
+            contentProcessed: result.raw_content_processed,
+            totalObservations: result.observations_created,
           },
           insights: {
-            totalCreated: insightResult.totalCreated,
-            totalUpdated: insightResult.totalUpdated,
-            byGoal: insightResult.byGoal,
+            totalCreated: result.insights_created,
+            totalUpdated: 0,
           },
+          goalCandidatesCreated: result.goal_candidates_created,
+          agentTraceId: result.traceId,
         },
-        message: `Pipeline complete. ${obsResult.totalObservations} observations, ${insightResult.totalCreated} new insights, ${insightResult.totalUpdated} updated insights.`,
+        message: `Agent pipeline complete. ${result.observations_created} observations, ${result.insights_created} insights, ${result.goal_candidates_created} goal candidates.`,
       });
     } catch (err) {
       if (pipelineRun) {

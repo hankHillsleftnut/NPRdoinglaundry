@@ -10,10 +10,10 @@
     "lint": "eslint src/**/*.ts",
     "test": "jest",
     "db:migrate": "supabase db push",
-    "cron:daily": "tsx src/jobs/daily-patterns.ts",
-    "cron:weekly": "tsx src/jobs/weekly-patterns.ts",
-    "cron:pipeline": "tsx src/jobs/observation-insights-pipeline.ts",
-    "cron:podcasts": "tsx src/jobs/weekly-podcast-generation.ts"
+    "cron:daily": "node -e \"console.log('legacy daily pattern cron disabled; retrospect-agent owns ingestion')\"",
+    "cron:weekly": "node -e \"console.log('legacy weekly pattern cron disabled; retrospect-agent owns weekly podcasts')\"",
+    "cron:pipeline": "node -e \"console.log('legacy observation/insight pipeline disabled; retrospect-agent owns ingestion')\"",
+    "cron:podcasts": "node -e \"console.log('legacy podcast cron disabled; retrospect-agent owns podcasts')\""
   },
   "keywords": [
     "knowledge-graph",

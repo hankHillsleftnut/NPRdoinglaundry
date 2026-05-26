@@ -23,6 +23,10 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: AGENT_SERVICE_URL
+        sync: false
+      - key: INTERNAL_API_SECRET
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: RATE_LIMIT_WINDOW_MS
@@ -36,7 +40,7 @@ services:
     env: node
     schedule: "0 3 * * *"
     buildCommand: npm install && npm run build
-    startCommand: npm run cron:daily
+    startCommand: node -e "console.log('legacy daily-pattern-detection disabled; retrospect-agent owns ingestion')"
     envVars:
       - fromService:
           type: web
@@ -56,7 +60,7 @@ services:
     env: node
     schedule: "0 4 * * 0"
     buildCommand: npm install && npm run build
-    startCommand: npm run cron:weekly
+    startCommand: node -e "console.log('legacy weekly-pattern-detection disabled; retrospect-agent owns weekly podcasts')"
     envVars:
       - fromService:
           type: web
