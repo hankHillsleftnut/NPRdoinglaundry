@@ -1143,11 +1143,31 @@ struct DarkJournalView: View {
 
         HapticManager.shared.playMediumImpact()
         isTestingAgentPodcast = true
-        agentPodcastTestStatus = "Asking the backend to create a podcast with the agent..."
+        agentPodcastTestStatus = "Sending onboarding context to the agent..."
 
         Task {
             do {
-                let episode = try await RetrospectAPIClient.shared.generatePodcast(daysSince: 14)
+                if let onboardingContext = OnboardingContextManager.persistedPromptContext(fullAnswers: true) {
+                    try await RetrospectAPIClient.shared.uploadContent(
+                        contentType: "onboarding_profile",
+                        content: onboardingContext,
+                        contentDate: Date(),
+                        metadata: [
+                            "source": "ios_dev_generate_button",
+                            "generationSource": PodcastGenerationSource.onboardingFirstEpisode.rawValue,
+                            "purpose": "first_podcast_foundation_test"
+                        ]
+                    )
+                }
+
+                await MainActor.run {
+                    agentPodcastTestStatus = "Creating onboarding-first podcast with the agent..."
+                }
+
+                let episode = try await RetrospectAPIClient.shared.generatePodcast(
+                    daysSince: 14,
+                    generationSource: .onboardingFirstEpisode
+                )
                 let transcript = episode.toTranscriptModel()
 
                 await MainActor.run {
