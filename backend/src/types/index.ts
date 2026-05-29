@@ -35,6 +35,7 @@ export const ContentTypeSchema = z.enum([
   'calendar',
   'screen_time',
   'twitter_bookmarks',
+  'onboarding_profile',
 ]);
 
 export type ContentType = z.infer<typeof ContentTypeSchema>;

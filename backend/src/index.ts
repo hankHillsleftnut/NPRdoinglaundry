@@ -8,14 +8,12 @@ import { config } from './utils/config.js';
 import { authMiddleware } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
 import { contentRouter } from './routes/content.js';
-import { insightsRouter } from './routes/insights.js';
-import { patternsRouter } from './routes/patterns.js';
-import { analyticsRouter } from './routes/analytics.js';
 import { goalsRouter } from './routes/goals.js';
 import { pipelineRouter } from './routes/pipeline.js';
 import { adminRouter } from './routes/admin.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
+import { claudeRouter } from './routes/claude.js';
 
 
 const app = express();
@@ -69,13 +67,11 @@ app.use('/auth', authRouter);
 
 // Protected routes
 app.use('/content', authMiddleware, contentRouter);
-app.use('/insights', authMiddleware, insightsRouter);
-app.use('/patterns', authMiddleware, patternsRouter);
-app.use('/analytics', authMiddleware, analyticsRouter);
 app.use('/goals', authMiddleware, goalsRouter);
 app.use('/pipeline', authMiddleware, pipelineRouter);
 app.use('/podcasts', authMiddleware, podcastsRouter);
 app.use('/profile', authMiddleware, profileRouter);
+app.use('/claude', authMiddleware, claudeRouter);
 
 // Error handling middleware
 app.use(

@@ -26,8 +26,8 @@ class RetrospectAPIClient: ObservableObject {
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60
-        config.timeoutIntervalForResource = 420 // agent (Cook A/B/C) can take several minutes
+        config.timeoutIntervalForRequest = 480 // agent pipeline (Cook A/B/C + TTS) takes 3-5 min
+        config.timeoutIntervalForResource = 600
         self.session = URLSession(configuration: config)
 
         // Restore auth state from Keychain

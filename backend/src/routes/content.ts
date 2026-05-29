@@ -58,55 +58,39 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       return;
     }
 
-    // Agent-only path: the backend stores raw content, then asks retrospect-agent
-    // to turn that content into observations, insights, and goal candidates.
-    let agentResult:
-      | Awaited<ReturnType<typeof runAgentIngest>>
-      | null = null;
-    let agentError: string | null = null;
-
-    try {
-      agentResult = await runAgentIngest({
-        userId: user.id,
-        rawContentIds: [rawContent.id],
-      });
-
-      await supabaseAdmin
-        .from(Tables.RAW_CONTENT)
-        .update({
-          processing_status: 'completed',
-          processing_error: null,
-          processed_at: new Date().toISOString(),
-        })
-        .eq('id', rawContent.id);
-    } catch (err) {
-      agentError = err instanceof Error ? err.message : String(err);
-      console.error('Agent ingestion error:', err);
-
-      await supabaseAdmin
-        .from(Tables.RAW_CONTENT)
-        .update({
-          processing_status: 'failed',
-          processing_error: agentError,
-        })
-        .eq('id', rawContent.id);
-    }
-
-    res.status(201).json({
+    // Return immediately — agent ingestion runs in the background.
+    // iOS does not need to wait for extraction to finish before proceeding.
+    res.status(202).json({
       success: true,
       data: {
         rawContentId: rawContent.id,
         insightIds: [],
-        insightCount: agentResult?.insights_created ?? 0,
-        observationsCreated: agentResult?.observations_created ?? 0,
-        insightsCreated: agentResult?.insights_created ?? 0,
-        goalCandidatesCreated: agentResult?.goal_candidates_created ?? 0,
-        agentTraceId: agentResult?.traceId ?? null,
-        processingError: agentError,
+        insightCount: 0,
+        observationsCreated: 0,
+        insightsCreated: 0,
+        goalCandidatesCreated: 0,
+        agentTraceId: null,
+        processingError: null,
       },
-      message: agentError
-        ? 'Content stored; agent ingestion failed and can be retried later'
-        : `Agent processed content into ${agentResult?.observations_created ?? 0} observations and ${agentResult?.insights_created ?? 0} insights`,
+      message: 'Content stored; agent ingestion running in background',
+    });
+
+    // Fire-and-forget: agent turns raw content into observations/insights
+    setImmediate(async () => {
+      try {
+        await runAgentIngest({ userId: user.id, rawContentIds: [rawContent.id] });
+        await supabaseAdmin
+          .from(Tables.RAW_CONTENT)
+          .update({ processing_status: 'completed', processing_error: null, processed_at: new Date().toISOString() })
+          .eq('id', rawContent.id);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('Background agent ingestion error:', err);
+        await supabaseAdmin
+          .from(Tables.RAW_CONTENT)
+          .update({ processing_status: 'failed', processing_error: msg })
+          .eq('id', rawContent.id);
+      }
     });
   } catch (error) {
     console.error('Content upload error:', error);
