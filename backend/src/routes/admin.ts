@@ -4,7 +4,7 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
 import { listObservations } from '../services/observations.js';
 import { listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
-import { listPodcastEpisodes, getPodcastEpisode } from '../services/podcast-generation.js';
+import { listPodcastEpisodes, getPodcastEpisode } from '../services/podcast-db.js';
 import { generateAgentPodcast, runAgentIngest } from '../services/agent-client.js';
 
 export const adminRouter = Router();

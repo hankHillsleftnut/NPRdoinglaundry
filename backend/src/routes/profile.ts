@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
-import { VOICE_PERSONAS } from '../services/elevenlabs.js';
+import { VOICE_PERSONAS } from '../services/voice-personas.js';
 
 export const profileRouter = Router();
 

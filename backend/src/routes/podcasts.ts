@@ -9,7 +9,7 @@ import {
   listPodcastEpisodes,
   getPodcastEpisode,
   getLatestEpisode,
-} from '../services/podcast-generation.js';
+} from '../services/podcast-db.js';
 import { generateAgentPodcast } from '../services/agent-client.js';
 
 export const podcastsRouter = Router();
