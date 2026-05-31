@@ -9,6 +9,7 @@
 
 import SwiftUI
 import AVFoundation
+import UIKit
 
 struct DarkAudioPlayerView: View {
     let transcript: TranscriptModel
@@ -298,62 +299,33 @@ struct DarkAudioPlayerView: View {
                     }
                 }
                 .padding(.horizontal, 38)
-                .padding(.top, 72)
+                .padding(.top, 160)
                 .padding(.bottom, 260)
             }
             .frame(maxWidth: .infinity)
+            // Fixed frosted-glass edges — stay on screen while text scrolls beneath
             .overlay(alignment: .top) {
-                edgeBlurOverlay(startOpaque: true)
-                    .frame(height: 138)
-                    .allowsHitTesting(false)
+                VStack(spacing: 0) {
+                    playbackSurface.frame(height: 56)
+                    GradientBlurView(fromTop: true).frame(height: 88)
+                }
+                .allowsHitTesting(false)
             }
             .overlay(alignment: .bottom) {
-                edgeBlurOverlay(startOpaque: false)
-                    .frame(height: 278)
-                    .allowsHitTesting(false)
-            }
-            .mask(
                 VStack(spacing: 0) {
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.8), .black],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 76)
-
-                    Color.black
-
-                    LinearGradient(
-                        colors: [.black, .black.opacity(0.6), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 180)
+                    GradientBlurView(fromTop: false).frame(height: 88)
+                    playbackSurface.frame(height: 56)
                 }
-            )
+                .allowsHitTesting(false)
+            }
             .onAppear { scrollProxy = proxy }
             .onChange(of: currentSegmentIndex) { _, newIndex in
                 withAnimation(.easeInOut(duration: 0.7)) {
-                    proxy.scrollTo("segment-\(newIndex)", anchor: .top)
+                    proxy.scrollTo("segment-\(newIndex)", anchor: .center)
                 }
             }
         }
         .textSelection(.enabled)
-    }
-
-    private func edgeBlurOverlay(startOpaque: Bool) -> some View {
-        let gradient = LinearGradient(
-            colors: startOpaque
-                ? [playbackSurface, playbackSurface.opacity(0.92), playbackSurface.opacity(0)]
-                : [playbackSurface.opacity(0), playbackSurface.opacity(0.86), playbackSurface],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-
-        return ZStack {
-            gradient
-            gradient.blur(radius: 18)
-        }
     }
 
     // MARK: - Bottom Controls
@@ -574,50 +546,73 @@ private struct PodcastTranscriptSegment: Identifiable {
     var id: String { "segment-\(index)" }
 }
 
+// MARK: - Gradient Blur View (fixed frosted-glass edge effect)
+
+private final class GradientBlurContainerView: UIView {
+    private let blurView: UIVisualEffectView
+    private let gradientLayer: CAGradientLayer
+
+    init(fromTop: Bool) {
+        blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))
+        gradientLayer = CAGradientLayer()
+        super.init(frame: .zero)
+
+        blurView.isUserInteractionEnabled = false
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(blurView)
+        NSLayoutConstraint.activate([
+            blurView.topAnchor.constraint(equalTo: topAnchor),
+            blurView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            blurView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+
+        gradientLayer.colors = fromTop
+            ? [UIColor.black.cgColor, UIColor.black.withAlphaComponent(0.55).cgColor, UIColor.clear.cgColor]
+            : [UIColor.clear.cgColor, UIColor.black.withAlphaComponent(0.55).cgColor, UIColor.black.cgColor]
+        gradientLayer.locations = [0.0, 0.5, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        blurView.layer.mask = gradientLayer
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradientLayer.frame = blurView.bounds
+    }
+}
+
+private struct GradientBlurView: UIViewRepresentable {
+    let fromTop: Bool
+
+    func makeUIView(context: Context) -> GradientBlurContainerView {
+        GradientBlurContainerView(fromTop: fromTop)
+    }
+
+    func updateUIView(_ uiView: GradientBlurContainerView, context: Context) {}
+}
+
+// MARK: - Transcript Line
+
 private struct PodcastTranscriptLine: View {
     let segment: PodcastTranscriptSegment
     let currentIndex: Int
     let ink: Color
     let muted: Color
 
-    private var distance: Int {
-        segment.index - currentIndex
-    }
-
-    private var absoluteDistance: Int {
-        abs(distance)
-    }
-
-    private var foreground: Color {
-        if distance == 0 { return ink }
-        if distance < 0 {
-            return ink.opacity(max(0.0, 0.42 - Double(min(absoluteDistance, 5)) * 0.08))
-        }
-        return muted.opacity(max(0.18, 0.62 - Double(min(absoluteDistance, 6)) * 0.08))
-    }
-
-    private var blurRadius: CGFloat {
-        if distance == 0 { return 0 }
-        if distance < 0 { return min(18, CGFloat(absoluteDistance) * 4.4) }
-        return min(10, CGFloat(absoluteDistance) * 2.1)
-    }
-
-    private var verticalOffset: CGFloat {
-        if distance == 0 { return 0 }
-        return distance < 0 ? -CGFloat(min(absoluteDistance, 3)) * 2 : CGFloat(min(absoluteDistance, 3)) * 1.2
-    }
+    private var distance: Int { segment.index - currentIndex }
 
     var body: some View {
         Text(segment.text)
-            .font(.custom("HedvigLettersSerif-24ptRegular", size: distance == 0 ? 31 : 30))
-            .foregroundColor(foreground)
+            .font(.custom("HedvigLettersSerif-24ptRegular", size: 30))
+            .foregroundColor(distance == 0 ? ink : muted.opacity(0.48))
             .lineSpacing(3)
             .tracking(-0.6)
             .multilineTextAlignment(.leading)
-            .blur(radius: blurRadius)
-            .opacity(absoluteDistance > 8 ? 0.06 : 1)
-            .offset(y: verticalOffset)
-            .padding(.bottom, distance == 0 ? 8 : 2)
+            .blur(radius: distance == 0 ? 0 : 1.8)
+            .padding(.bottom, 6)
             .animation(.easeInOut(duration: 0.45), value: currentIndex)
     }
 }
