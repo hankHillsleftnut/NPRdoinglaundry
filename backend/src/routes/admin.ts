@@ -63,6 +63,27 @@ adminRouter.post('/users', async (req: Request, res: Response) => {
 });
 
 // ============================================
+// Ingestion / Backfill
+// ============================================
+
+// POST /admin/users/:userId/backfill — reprocess all failed/pending content for a user
+adminRouter.post('/users/:userId/backfill', async (req: Request, res: Response) => {
+  try {
+    const userId = req.params['userId'];
+    if (!userId) { res.status(400).json({ success: false, error: 'userId required' }); return; }
+    const daysBack = parseInt(req.body.daysBack as string) || 30;
+    const result = await runAgentIngest({
+      userId,
+      daysBack,
+      notes: `Admin backfill — reprocessing failed/pending content from last ${daysBack} days`,
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// ============================================
 // Goals
 // ============================================
 
