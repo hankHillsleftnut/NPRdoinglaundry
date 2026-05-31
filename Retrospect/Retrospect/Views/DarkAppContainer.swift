@@ -449,13 +449,12 @@ struct DarkAppContainer: View {
 
                 // Decide target state from position + velocity
                 let base = isSidePanelOpen ? sidePanelWidth : 0
-                let endPosition = base + predicted
                 var shouldOpen: Bool
 
                 if abs(velocity) > flickVelocity {
                     shouldOpen = velocity > 0
                 } else {
-                    shouldOpen = endPosition > sidePanelWidth * 0.38
+                    shouldOpen = (base + h) > sidePanelWidth * 0.5
                 }
 
                 isDragging = false
@@ -574,7 +573,7 @@ struct DarkJournalView: View {
                 }
 
                 journalEditor
-                    .frame(width: min(geometry.size.width - 48, 340), height: isJournalFocused ? 220 : 170)
+                    .frame(width: min(geometry.size.width - 48, 340), height: isJournalFocused ? 320 : 170)
                     .position(x: geometry.size.width / 2, y: geometry.size.height * (isJournalFocused ? 0.34 : 0.50))
                     .opacity(inputOpacity)
                     .offset(y: inputOffset)
@@ -617,6 +616,14 @@ struct DarkJournalView: View {
         }
         .onChange(of: inlineVoiceRecorder.currentTranscription) { _, transcription in
             applyInlineTranscription(transcription)
+        }
+        .onChange(of: isJournalFocused) { _, focused in
+            if !focused {
+                let trimmed = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    sendJournalEntry()
+                }
+            }
         }
         .overlay {
             if showImagePicker {
@@ -681,10 +688,6 @@ struct DarkJournalView: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    if devMode {
-                        agentPodcastTestButton
-                    }
-
                     inlineMicButton
                 }
             }
@@ -699,7 +702,7 @@ struct DarkJournalView: View {
         ZStack(alignment: .center) {
             if journalText.isEmpty {
                 Text("tell me something.....")
-                    .font(.minimalHeadline)
+                    .font(.geistHeadline)
                     .foregroundColor(homePromptText)
                     .multilineTextAlignment(.center)
                     .allowsHitTesting(false)
@@ -708,9 +711,9 @@ struct DarkJournalView: View {
 
             TextEditor(text: $journalText)
                 .scrollContentBackground(.hidden)
-                .font(.minimalHeadline)
+                .font(.geistHeadline)
                 .foregroundColor(journalText.isEmpty ? homePromptText : FigmaLightTheme.primaryText)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .tint(FigmaLightTheme.primaryText)
                 .focused($isJournalFocused)
                 .padding(.horizontal, 8)

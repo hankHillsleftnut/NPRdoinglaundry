@@ -276,13 +276,6 @@ struct RichGoalCard: View {
 
     @State private var showDeleteConfirm = false
 
-    private var category: GoalCategory {
-        if goal.category.isEmpty || goal.category == "Other" {
-            return GoalCategory.categorize(goal.title)
-        }
-        return GoalCategory(from: goal.category)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Always visible: collapsed header
@@ -290,7 +283,8 @@ struct RichGoalCard: View {
 
             if isExpanded && goal.hasDepth {
                 expandedContent
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity)
+                    .clipped()
             }
         }
         .padding(0)
@@ -299,10 +293,7 @@ struct RichGoalCard: View {
                 .fill(FigmaLightTheme.rowSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(
-                            isExpanded ? category.color.opacity(0.24) : FigmaLightTheme.border.opacity(0.75),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.045), radius: 10, x: 0, y: 5)
         )
@@ -320,12 +311,6 @@ struct RichGoalCard: View {
 
     private var collapsedHeader: some View {
         HStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(category.color)
-                .frame(width: 4)
-                .padding(.vertical, 12)
-                .padding(.leading, 14)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(goal.title)
                     .font(FigmaLightTheme.body(16, weight: .semibold))
@@ -339,23 +324,15 @@ struct RichGoalCard: View {
                         .lineLimit(1)
                 }
             }
-            .padding(.leading, 12)
-            .padding(.vertical, 14)
+            .padding(.leading, 18)
+            .padding(.vertical, 16)
 
             Spacer(minLength: 8)
 
-            VStack(spacing: 8) {
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(FigmaLightTheme.mutedText)
-
-                if !isExpanded {
-                    Image(systemName: category.icon)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(category.color.opacity(0.7))
-                }
-            }
-            .padding(.trailing, 14)
+            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(FigmaLightTheme.faintText)
+                .padding(.trailing, 18)
         }
     }
 
@@ -384,8 +361,8 @@ struct RichGoalCard: View {
             if !goal.motivation.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Why this matters")
-                        .font(FigmaLightTheme.title(18))
-                        .foregroundColor(category.color.opacity(0.9))
+                        .font(FigmaLightTheme.mono(12))
+                        .foregroundColor(FigmaLightTheme.mutedText.opacity(0.7))
 
                     Text(goal.motivation)
                         .font(FigmaLightTheme.body(14))
@@ -393,21 +370,21 @@ struct RichGoalCard: View {
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 18)
             }
 
             // Action items
             if !goal.actionItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Next steps")
-                        .font(FigmaLightTheme.title(18))
-                        .foregroundColor(category.color.opacity(0.9))
+                        .font(FigmaLightTheme.mono(12))
+                        .foregroundColor(FigmaLightTheme.mutedText.opacity(0.7))
 
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(goal.actionItems, id: \.self) { item in
                             HStack(alignment: .top, spacing: 10) {
                                 Circle()
-                                    .strokeBorder(category.color.opacity(0.5), lineWidth: 1.5)
+                                    .strokeBorder(FigmaLightTheme.faintText, lineWidth: 1.5)
                                     .frame(width: 16, height: 16)
                                     .padding(.top, 2)
 
@@ -419,25 +396,11 @@ struct RichGoalCard: View {
                         }
                     }
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 18)
             }
 
-            // Category badge + delete
+            // Delete
             HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: category.icon)
-                        .font(.system(size: 11, weight: .medium))
-                    Text(category.rawValue)
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundColor(category.color.opacity(0.8))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(category.color.opacity(0.1))
-                )
-
                 Spacer()
 
                 Button {
@@ -445,12 +408,12 @@ struct RichGoalCard: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .foregroundColor(FigmaLightTheme.faintText)
                         .padding(8)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
         }
     }
 }

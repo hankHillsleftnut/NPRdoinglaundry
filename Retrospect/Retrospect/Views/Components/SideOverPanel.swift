@@ -95,6 +95,13 @@ struct SideOverPanel: View {
                 .padding(.trailing, 24)
                 .padding(.bottom, 20)
             }
+            .mask(
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 48)
+                }
+            )
 
             Spacer(minLength: 0)
 
