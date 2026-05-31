@@ -553,7 +553,11 @@ private final class GradientBlurContainerView: UIView {
     private let gradientLayer: CAGradientLayer
 
     init(fromTop: Bool) {
-        blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialLight))
+        // Dark variant — the Light variant picks up the dark background and
+        // produces a bluish wash that reads as a disconnected pane. Dark
+        // material matches the player's actual color, so the blur reads as a
+        // continuation of the surface rather than a separate layer.
+        blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
         gradientLayer = CAGradientLayer()
         super.init(frame: .zero)
 
