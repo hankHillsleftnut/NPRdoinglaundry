@@ -28,7 +28,9 @@ export type Category = z.infer<typeof CategorySchema>;
 // ============================================
 export const ContentTypeSchema = z.enum([
   'voice_recording',
+  'voice_journal',
   'text_entry',
+  'journal_entry',
   'video_entry',
   'google_docs',
   'healthkit',
