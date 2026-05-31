@@ -9,7 +9,6 @@
 
 import SwiftUI
 import AVFoundation
-import UIKit
 
 struct DarkAudioPlayerView: View {
     let transcript: TranscriptModel
@@ -299,23 +298,36 @@ struct DarkAudioPlayerView: View {
                     }
                 }
                 .padding(.horizontal, 38)
-                .padding(.top, 160)
-                .padding(.bottom, 260)
+                .padding(.top, 96)
+                .padding(.bottom, 220)
             }
             .frame(maxWidth: .infinity)
-            // Fixed frosted-glass edges — stay on screen while text scrolls beneath
+            // Fixed fade edges using the surface color itself — no UIKit blur,
+            // no material tint, no hard seam. Matches the bottom-controls gradient.
             .overlay(alignment: .top) {
-                VStack(spacing: 0) {
-                    playbackSurface.frame(height: 56)
-                    GradientBlurView(fromTop: true).frame(height: 88)
-                }
+                LinearGradient(
+                    colors: [
+                        playbackSurface,
+                        playbackSurface,
+                        playbackSurface.opacity(0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 130)
                 .allowsHitTesting(false)
             }
             .overlay(alignment: .bottom) {
-                VStack(spacing: 0) {
-                    GradientBlurView(fromTop: false).frame(height: 88)
-                    playbackSurface.frame(height: 56)
-                }
+                LinearGradient(
+                    colors: [
+                        playbackSurface.opacity(0),
+                        playbackSurface,
+                        playbackSurface,
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 130)
                 .allowsHitTesting(false)
             }
             .onAppear { scrollProxy = proxy }
@@ -544,58 +556,6 @@ private struct PodcastTranscriptSegment: Identifiable {
     let endTime: TimeInterval
 
     var id: String { "segment-\(index)" }
-}
-
-// MARK: - Gradient Blur View (fixed frosted-glass edge effect)
-
-private final class GradientBlurContainerView: UIView {
-    private let blurView: UIVisualEffectView
-    private let gradientLayer: CAGradientLayer
-
-    init(fromTop: Bool) {
-        // Dark variant — the Light variant picks up the dark background and
-        // produces a bluish wash that reads as a disconnected pane. Dark
-        // material matches the player's actual color, so the blur reads as a
-        // continuation of the surface rather than a separate layer.
-        blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
-        gradientLayer = CAGradientLayer()
-        super.init(frame: .zero)
-
-        blurView.isUserInteractionEnabled = false
-        blurView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(blurView)
-        NSLayoutConstraint.activate([
-            blurView.topAnchor.constraint(equalTo: topAnchor),
-            blurView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            blurView.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
-
-        gradientLayer.colors = fromTop
-            ? [UIColor.black.cgColor, UIColor.black.withAlphaComponent(0.55).cgColor, UIColor.clear.cgColor]
-            : [UIColor.clear.cgColor, UIColor.black.withAlphaComponent(0.55).cgColor, UIColor.black.cgColor]
-        gradientLayer.locations = [0.0, 0.5, 1.0]
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
-        blurView.layer.mask = gradientLayer
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        gradientLayer.frame = blurView.bounds
-    }
-}
-
-private struct GradientBlurView: UIViewRepresentable {
-    let fromTop: Bool
-
-    func makeUIView(context: Context) -> GradientBlurContainerView {
-        GradientBlurContainerView(fromTop: fromTop)
-    }
-
-    func updateUIView(_ uiView: GradientBlurContainerView, context: Context) {}
 }
 
 // MARK: - Transcript Line
