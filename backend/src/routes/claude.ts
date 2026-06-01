@@ -30,7 +30,7 @@ claudeRouter.post('/generate', async (req: Request, res: Response) => {
     }
 
     const params: Anthropic.MessageCreateParamsNonStreaming = {
-      model: 'claude-sonnet-4-20250514',
+      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
       max_tokens: Math.min(Number(maxTokens), 8192),
       messages: messageList,
     };
