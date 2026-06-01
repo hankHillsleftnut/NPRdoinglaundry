@@ -113,6 +113,18 @@ class HapticManager {
         // Very subtle feedback for input focus
         playSoftImpact()
     }
+
+    /// Extremely gentle tick for text streaming in character-by-character.
+    /// Uses a soft impact at low intensity so it feels like a whisper, not a tap.
+    func playTextStreamTick() {
+        if #available(iOS 13.0, *) {
+            let generator = UIImpactFeedbackGenerator(style: .soft)
+            generator.prepare()
+            generator.impactOccurred(intensity: 0.35)
+        } else {
+            playSoftImpact()
+        }
+    }
     
     func playProgressMilestone() {
         // Feedback for progress indicators

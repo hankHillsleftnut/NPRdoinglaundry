@@ -104,8 +104,8 @@ struct VoiceGoalsPage: View {
         Question("How do you feel about it?",
                  input: .pillsVertical(["Love it", "It's fine for now", "I'm ready for something new", "I'm building something on the side"]), progress: 0.22),
         // Part 3 — Depth (bridge 0 before Q9)
-        Question("What's something you keep meaning to do, but somehow never get around to?",
-                 placeholder: "A conversation, habit, project, decision...", ack: true, progress: 0.35),
+        Question("Has there ever been a goal that someone told you that you couldn't achieve?",
+                 placeholder: "What was it — and who said it?", ack: true, progress: 0.35),
         Question("If a close friend described you in one honest sentence, what would they say?",
                  placeholder: "The real one, not the polished one.", ack: true, progress: 0.46),
         Question("What's something you've been thinking about lately that you haven't really told anyone?",
@@ -135,11 +135,18 @@ struct VoiceGoalsPage: View {
     // Bridge texts [bridgeIdx][lineIdx]
     private func bridgeLines(for bridgeIdx: Int) -> [String] {
         switch bridgeIdx {
-        case 0: return ["Now let's get to know you better.", "Be as honest as you can."]
-        case 1: return ["Now let's talk about what you want.", "Don't filter it. Just say the true thing."]
-        case 2: return ["Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
-                        "Don't be realistic. Don't hold back.",
-                        "Pretend anything is possible."]
+        case 0:
+            return ["These next ones go a little deeper.",
+                    "There are no right answers — only honest ones."]
+        case 1:
+            return ["Now, the real reason you're here\(userName.isEmpty ? "." : ", \(userName).")",
+                    "What you want. Not what you're supposed to want.",
+                    "The thing you'd chase if no one was watching and nothing could go wrong.",
+                    "Tell me the truth. I'll hold it."]
+        case 2:
+            return ["Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
+                    "Don't be realistic. Don't hold back.",
+                    "Pretend anything is possible — because with me, it is."]
         default: return []
         }
     }
@@ -151,26 +158,29 @@ struct VoiceGoalsPage: View {
         "Everything you share is private."
     ]
 
+    // ── Layout constants (shared so text always starts in the same place) ──
+    private static let titleSize: CGFloat = 28
+    private static let textStartGap: CGFloat = 130   // fixed gap below top bar → uniform text start
+    private static let horizontalPad: CGFloat = 28
+
     // ── State ─────────────────────────────────────────────────────────────
     @State private var phase: FlowPhase = .welcome(0)
     @State private var answers: [String] = Array(repeating: "", count: 18)
     @State private var userName: String = ""
     @State private var inputText: String = ""
-    @State private var displayedText: String = ""
+    // Streaming reveal: full text is always laid out; only `streamCount` chars are visible.
+    // This keeps the layout fixed so words never jump to the next line mid-stream.
+    @State private var fullText: String = ""
+    @State private var streamCount: Int = 0
     @State private var isStreamingDone: Bool = false
-    @State private var progressValue: Double = 0
     @State private var streamTimer: Timer?
     @FocusState private var isInputFocused: Bool
 
     // Acknowledgment
     @State private var ackText: String = ""
-    @State private var ackDisplayed: String = ""
+    @State private var ackCount: Int = 0
     @State private var ackTimer: Timer?
     @State private var ackDone: Bool = false
-
-    // Bridge accumulation
-    @State private var bridgeAccumulated: [String] = []
-    @State private var bridgeStreamDone: Bool = false
 
     // Goal cards (existing system)
     @State private var extractedGoals: [RichGoal] = []
@@ -231,28 +241,12 @@ struct VoiceGoalsPage: View {
 
     private func welcomeScreen(upTo line: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 60)
+            topBar(progress: 0.02, showBack: false, backAction: {})
 
-            VStack(alignment: .leading, spacing: 20) {
-                ForEach(0...line, id: \.self) { i in
-                    if i < line {
-                        Text(Self.welcomeLines[i])
-                            .font(OnboardingStyle.titleFont(size: 28))
-                            .foregroundColor(OnboardingStyle.primaryText)
-                            .tracking(-0.5)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        Text(displayedText)
-                            .font(OnboardingStyle.titleFont(size: 28))
-                            .foregroundColor(OnboardingStyle.primaryText)
-                            .tracking(-0.5)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(.horizontal, 28)
+            Spacer().frame(height: Self.textStartGap)
+
+            multiLineStreamingText(priorLines: Array(Self.welcomeLines.prefix(line)))
+                .padding(.horizontal, Self.horizontalPad)
 
             Spacer()
 
@@ -261,7 +255,7 @@ struct VoiceGoalsPage: View {
                     HapticManager.shared.playMediumImpact()
                     startQuestion(0)
                 }
-                .padding(.horizontal, 28)
+                .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 34)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isStreamingDone)
@@ -274,8 +268,6 @@ struct VoiceGoalsPage: View {
                 if line < Self.welcomeLines.count - 1 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation { phase = .welcome(line + 1) }
-                        displayedText = ""
-                        isStreamingDone = false
                     }
                 }
             }
@@ -289,21 +281,12 @@ struct VoiceGoalsPage: View {
         let resolvedText = q.text.replacingOccurrences(of: "{name}", with: userName)
 
         return VStack(spacing: 0) {
-            // Progress + nav
             topBar(progress: q.progress, showBack: idx > 0, backAction: { goBack(from: idx) })
 
-            // Question text (upper area)
-            HStack(alignment: .top) {
-                Text(displayedText)
-                    .font(OnboardingStyle.titleFont(size: 28))
-                    .foregroundColor(OnboardingStyle.primaryText)
-                    .tracking(-0.5)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 28)
-            .padding(.top, 48)
+            Spacer().frame(height: Self.textStartGap)
+
+            streamingText()
+                .padding(.horizontal, Self.horizontalPad)
 
             Spacer(minLength: 16)
 
@@ -313,7 +296,7 @@ struct VoiceGoalsPage: View {
                 inputBar(placeholder: q.placeholder, keyboard: q.keyboardType) {
                     submitAnswer(idx: idx, answer: inputText)
                 }
-                .padding(.horizontal, 28)
+                .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 20)
 
             case .pillsVertical(let options):
@@ -322,7 +305,7 @@ struct VoiceGoalsPage: View {
                         pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
                     }
                 }
-                .padding(.horizontal, 28)
+                .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 32)
                 .opacity(isStreamingDone ? 1 : 0)
                 .animation(.easeIn(duration: 0.2), value: isStreamingDone)
@@ -333,7 +316,7 @@ struct VoiceGoalsPage: View {
                         pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
                     }
                 }
-                .padding(.horizontal, 28)
+                .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 32)
                 .opacity(isStreamingDone ? 1 : 0)
                 .animation(.easeIn(duration: 0.2), value: isStreamingDone)
@@ -341,11 +324,7 @@ struct VoiceGoalsPage: View {
         }
         .onAppear {
             inputText = ""
-            displayedText = ""
-            isStreamingDone = false
-            progressValue = q.progress
             stream(resolvedText, speed: 0.03) {
-                // Focus text field after streaming for text-type questions
                 if case .text = q.inputType {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         isInputFocused = true
@@ -363,33 +342,31 @@ struct VoiceGoalsPage: View {
         return VStack(spacing: 0) {
             topBar(progress: q.progress, showBack: true, backAction: { goBack(from: idx) })
 
+            Spacer().frame(height: Self.textStartGap)
+
             HStack(alignment: .top) {
-                Text(ackDisplayed)
-                    .font(OnboardingStyle.titleFont(size: 28))
-                    .foregroundColor(OnboardingStyle.primaryText)
-                    .tracking(-0.5)
-                    .lineSpacing(3)
+                Text(revealAttributed(ackText, count: ackCount))
+                    .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 48)
+            .padding(.horizontal, Self.horizontalPad)
 
             Spacer()
         }
         .contentShape(Rectangle())
         .onTapGesture {
             guard ackDone else {
-                // Skip to end of streaming on tap
                 ackTimer?.invalidate()
-                ackDisplayed = ackText
+                ackCount = ackText.count
                 ackDone = true
                 return
             }
             advanceAfterAck(idx: idx)
         }
         .onAppear {
-            ackDisplayed = ""
+            ackText = ""
+            ackCount = 0
             ackDone = false
             loadAndStreamAck(idx: idx)
         }
@@ -401,43 +378,22 @@ struct VoiceGoalsPage: View {
         let lines = bridgeLines(for: bIdx)
 
         return VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 60)
+            topBar(progress: questionProgressBeforeBridge(bIdx), showBack: false, backAction: {})
 
-            VStack(alignment: .leading, spacing: 20) {
-                ForEach(0...lineIdx, id: \.self) { i in
-                    if i < lineIdx {
-                        Text(lines[i])
-                            .font(OnboardingStyle.titleFont(size: 28))
-                            .foregroundColor(OnboardingStyle.primaryText)
-                            .tracking(-0.5)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        Text(displayedText)
-                            .font(OnboardingStyle.titleFont(size: 28))
-                            .foregroundColor(OnboardingStyle.primaryText)
-                            .tracking(-0.5)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(.horizontal, 28)
+            Spacer().frame(height: Self.textStartGap)
+
+            multiLineStreamingText(priorLines: Array(lines.prefix(lineIdx)))
+                .padding(.horizontal, Self.horizontalPad)
 
             Spacer()
         }
         .onAppear {
-            displayedText = ""
-            isStreamingDone = false
             let target = lines[lineIdx]
             stream(target, speed: 0.04) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     if lineIdx < lines.count - 1 {
                         withAnimation { phase = .bridge(bIdx, lineIdx + 1) }
-                        displayedText = ""
-                        isStreamingDone = false
                     } else {
-                        // Bridge done — go to first question after bridge
                         let nextQ = Self.bridgeBefore.first(where: { $0.value == bIdx })?.key ?? 0
                         startQuestion(nextQ)
                     }
@@ -446,22 +402,27 @@ struct VoiceGoalsPage: View {
         }
     }
 
+    private func questionProgressBeforeBridge(_ bIdx: Int) -> Double {
+        let nextQ = Self.bridgeBefore.first(where: { $0.value == bIdx })?.key ?? 0
+        return nextQ > 0 ? Self.questions[nextQ - 1].progress : 0.22
+    }
+
     // ── PROCESSING ────────────────────────────────────────────────────────
 
     private var processingScreen: some View {
         VStack(spacing: 0) {
             topBar(progress: 0.98, showBack: false, backAction: {})
 
-            Spacer(minLength: 60)
+            Spacer().frame(height: Self.textStartGap)
 
             HStack {
                 Text("Understanding you\(String(repeating: ".", count: processingDotCount))")
-                    .font(OnboardingStyle.titleFont(size: 28))
+                    .font(OnboardingStyle.titleFont(size: Self.titleSize))
                     .foregroundColor(OnboardingStyle.primaryText)
                     .tracking(-0.5)
                 Spacer()
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, Self.horizontalPad)
 
             Spacer()
         }
@@ -656,18 +617,10 @@ struct VoiceGoalsPage: View {
         VStack(spacing: 0) {
             topBar(progress: 1.0, showBack: false, backAction: {})
 
-            Spacer(minLength: 60)
+            Spacer().frame(height: Self.textStartGap)
 
-            HStack {
-                Text(displayedText)
-                    .font(OnboardingStyle.titleFont(size: 30))
-                    .foregroundColor(OnboardingStyle.primaryText)
-                    .tracking(-0.5)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer()
-            }
-            .padding(.horizontal, 28)
+            streamingText()
+                .padding(.horizontal, Self.horizontalPad)
 
             Spacer()
 
@@ -676,7 +629,7 @@ struct VoiceGoalsPage: View {
                     HapticManager.shared.playSuccessNotification()
                     finish()
                 }
-                .padding(.horizontal, 28)
+                .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 34)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: isStreamingDone)
@@ -685,8 +638,6 @@ struct VoiceGoalsPage: View {
             }
         }
         .onAppear {
-            displayedText = ""
-            isStreamingDone = false
             stream("Now let's help you get there.", speed: 0.035) {}
         }
     }
@@ -695,72 +646,73 @@ struct VoiceGoalsPage: View {
 
     private func topBar(progress: Double, showBack: Bool, backAction: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
-            // Progress bar
+            // Detached, centered, rounded progress bar — sits just below the dynamic island
             GeometryReader { geo in
+                let barWidth = geo.size.width * 0.5
                 ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(OnboardingStyle.secondaryText.opacity(0.15))
-                        .frame(height: 2)
-                    Rectangle()
-                        .fill(OnboardingStyle.primaryText.opacity(0.7))
-                        .frame(width: geo.size.width * CGFloat(progress), height: 2)
+                    Capsule()
+                        .fill(OnboardingStyle.secondaryText.opacity(0.18))
+                        .frame(width: barWidth, height: 6)
+                    Capsule()
+                        .fill(OnboardingStyle.primaryText.opacity(0.75))
+                        .frame(width: max(6, barWidth * CGFloat(progress)), height: 6)
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
                 }
+                .frame(width: geo.size.width, alignment: .center)
             }
-            .frame(height: 2)
+            .frame(height: 6)
+            .padding(.top, 8)
 
-            // Nav row
+            // Back button — pushed lower, away from the progress bar
             HStack {
                 if showBack {
                     Button(action: backAction) {
                         Image(systemName: "chevron.left")
-                            .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                            .font(OnboardingStyle.bodyFont(size: 17, weight: .medium))
                             .foregroundColor(OnboardingStyle.tertiaryText)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
                 Spacer()
             }
-            .frame(height: 44)
-            .padding(.horizontal, 28)
+            .frame(height: 32)
+            .padding(.top, 28)
+            .padding(.horizontal, 24)
         }
     }
 
     private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
-        HStack(spacing: 12) {
-            TextField(placeholder, text: $inputText)
+        let isEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return HStack(alignment: .bottom, spacing: 12) {
+            // Multi-line input: wraps and grows up to 5 lines, never scrolls horizontally
+            TextField(placeholder, text: $inputText, axis: .vertical)
                 .font(OnboardingStyle.bodyFont(size: 17))
                 .foregroundColor(OnboardingStyle.primaryText)
+                .lineLimit(1...5)
                 .keyboardType(keyboard)
-                .submitLabel(.done)
                 .focused($isInputFocused)
-                .onSubmit {
-                    let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    onSubmit()
-                }
 
             Button(action: {
-                let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { return }
+                guard !isEmpty else { return }
                 onSubmit()
             }) {
-                Image(systemName: "arrow.right")
+                Image(systemName: "arrow.up")
                     .font(OnboardingStyle.bodyFont(size: 15, weight: .semibold))
-                    .foregroundColor(
-                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? OnboardingStyle.tertiaryText
-                        : OnboardingStyle.secondaryText
+                    .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.5) : .white)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle().fill(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.2) : OnboardingStyle.accent)
                     )
             }
-            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(isEmpty)
+            .animation(.easeOut(duration: 0.15), value: isEmpty)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
         .background(
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(OnboardingStyle.control)
-                .overlay(Capsule(style: .continuous)
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
                 .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
         )
@@ -788,16 +740,72 @@ struct VoiceGoalsPage: View {
         .buttonStyle(PlainButtonStyle())
     }
 
+    // ── STREAMING REVEAL HELPERS ──────────────────────────────────────────
+
+    private static let fallbackAcks = [
+        "There's a lot underneath that.",
+        "I can tell that one matters to you.",
+        "That tells me something real about you.",
+        "Noted — that's the kind of thing I'll remember.",
+        "That's more honest than most people get."
+    ]
+
+    /// Builds an AttributedString where the full text is always laid out,
+    /// but only the first `count` characters are visible. The rest are clear.
+    /// This keeps the line layout fixed so words never reflow mid-stream.
+    private func revealAttributed(_ full: String, count: Int) -> AttributedString {
+        var attr = AttributedString(full)
+        attr.font = .custom("HedvigLettersSerif-24ptRegular", size: Self.titleSize)
+        attr.foregroundColor = OnboardingStyle.primaryText
+        attr.tracking = -0.5
+        if count < full.count {
+            let start = attr.index(attr.startIndex, offsetByCharacters: count)
+            attr[start..<attr.endIndex].foregroundColor = .clear
+        }
+        return attr
+    }
+
+    /// Single streaming line (questions, complete screen).
+    private func streamingText() -> some View {
+        HStack(alignment: .top) {
+            Text(revealAttributed(fullText, count: streamCount))
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Multi-line streaming (welcome + bridge): prior lines shown fully,
+    /// current line revealing.
+    private func multiLineStreamingText(priorLines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(Array(priorLines.enumerated()), id: \.offset) { _, line in
+                HStack(alignment: .top) {
+                    Text(revealAttributed(line, count: line.count))
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+            }
+            HStack(alignment: .top) {
+                Text(revealAttributed(fullText, count: streamCount))
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     // ── STREAMING ─────────────────────────────────────────────────────────
 
     private func stream(_ text: String, speed: Double, onDone: @escaping () -> Void) {
         streamTimer?.invalidate()
-        displayedText = ""
+        fullText = text
+        streamCount = 0
         isStreamingDone = false
-        let chars = Array(text)
-        var i = 0
+        let total = text.count
         streamTimer = Timer.scheduledTimer(withTimeInterval: speed, repeats: true) { t in
-            guard i < chars.count else {
+            guard streamCount < total else {
                 t.invalidate()
                 DispatchQueue.main.async {
                     isStreamingDone = true
@@ -805,36 +813,32 @@ struct VoiceGoalsPage: View {
                 }
                 return
             }
-            displayedText += String(chars[i])
-            i += 1
-            HapticManager.shared.playLightImpact()
+            streamCount += 1
+            HapticManager.shared.playTextStreamTick()
         }
     }
 
     private func streamAck(_ text: String) {
         ackTimer?.invalidate()
-        ackDisplayed = ""
-        ackDone = false
         ackText = text
-        let chars = Array(text)
-        var i = 0
+        ackCount = 0
+        ackDone = false
+        let total = text.count
         ackTimer = Timer.scheduledTimer(withTimeInterval: 0.025, repeats: true) { t in
-            guard i < chars.count else {
+            guard ackCount < total else {
                 t.invalidate()
                 DispatchQueue.main.async {
                     ackDone = true
-                    // Auto-advance after 2s
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        if case .acknowledgment(let idx) = self.phase {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                        if case .acknowledgment(let idx) = self.phase, self.ackDone {
                             self.advanceAfterAck(idx: idx)
                         }
                     }
                 }
                 return
             }
-            ackDisplayed += String(chars[i])
-            i += 1
-            HapticManager.shared.playLightImpact()
+            ackCount += 1
+            HapticManager.shared.playTextStreamTick()
         }
     }
 
@@ -842,7 +846,6 @@ struct VoiceGoalsPage: View {
 
     private func startQuestion(_ idx: Int) {
         streamTimer?.invalidate()
-        displayedText = ""
         isStreamingDone = false
         inputText = ""
         withAnimation { phase = .question(idx) }
@@ -859,16 +862,8 @@ struct VoiceGoalsPage: View {
         if idx == 0 { userName = trimmed }
 
         let q = Self.questions[idx]
-
         if q.hasAcknowledgment {
-            // Q1 gets a simple static ack, rest get Claude
-            if idx == 0 {
-                ackText = "Welcome, \(trimmed)."
-                withAnimation { phase = .acknowledgment(idx) }
-            } else {
-                ackText = ""
-                withAnimation { phase = .acknowledgment(idx) }
-            }
+            withAnimation { phase = .acknowledgment(idx) }
         } else {
             advanceFromQuestion(idx)
         }
@@ -897,7 +892,7 @@ struct VoiceGoalsPage: View {
                 case .success(let text):
                     self.streamAck(text)
                 case .failure:
-                    self.streamAck("That makes a lot of sense.")
+                    self.streamAck(Self.fallbackAcks.randomElement() ?? "I'm taking that in.")
                 }
             }
         }
@@ -912,9 +907,8 @@ struct VoiceGoalsPage: View {
         let nextIdx = idx + 1
         // Check if there's a bridge before the next question
         if let bridgeIdx = Self.bridgeBefore[nextIdx] {
-            withAnimation { phase = .bridge(bridgeIdx, 0) }
-            displayedText = ""
             isStreamingDone = false
+            withAnimation { phase = .bridge(bridgeIdx, 0) }
         } else if nextIdx < Self.questions.count {
             startQuestion(nextIdx)
         } else {
