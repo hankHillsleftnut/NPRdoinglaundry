@@ -125,8 +125,10 @@ struct VoiceGoalsPage: View {
                     Text(currentQuestion.prompt)
                 case .processing:
                     Text("Understanding you...")
-                case .revealing, .complete:
+                case .revealing:
                     Text("Here's what we heard")
+                case .complete:
+                    Text("Now let's help you get there.")
                 }
             }
             .font(.custom("HedvigLettersSerif-24ptRegular", size: phase == .idle || phase == .recording ? 30 : 36))
@@ -146,7 +148,7 @@ struct VoiceGoalsPage: View {
                 case .revealing:
                     Text("Swipe through your goals to continue.")
                 case .complete:
-                    Text("We know what matters to you. Let's go.")
+                    Text("")
                 }
             }
             .font(.system(size: 16, weight: .regular))
@@ -176,8 +178,10 @@ struct VoiceGoalsPage: View {
             return currentQuestion.prompt
         case .processing:
             return "Understanding you."
-        case .revealing, .complete:
+        case .revealing:
             return "Here's what we heard."
+        case .complete:
+            return "Now let's help you get there."
         }
     }
 
@@ -192,7 +196,7 @@ struct VoiceGoalsPage: View {
         case .revealing:
             return "Swipe through the goals Retrospect found before we create your first episode."
         case .complete:
-            return "We know what matters to you. Let's make the first episode feel personal."
+            return ""
         }
     }
 
@@ -571,7 +575,7 @@ struct VoiceGoalsPage: View {
                 EmptyView()
 
             case .complete:
-                OnboardingPrimaryButton(title: "Get Started", action: finish)
+                OnboardingPrimaryButton(title: "Play Podcast", action: finish)
             }
         }
     }
