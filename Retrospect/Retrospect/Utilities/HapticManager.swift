@@ -114,13 +114,13 @@ class HapticManager {
         playSoftImpact()
     }
 
-    /// Extremely gentle tick for text streaming in character-by-character.
-    /// Uses a soft impact at low intensity so it feels like a whisper, not a tap.
+    /// Gentle-but-present tick for text streaming in character-by-character.
+    /// Soft texture, but apparent enough to feel each character land.
     func playTextStreamTick() {
         if #available(iOS 13.0, *) {
             let generator = UIImpactFeedbackGenerator(style: .soft)
             generator.prepare()
-            generator.impactOccurred(intensity: 0.35)
+            generator.impactOccurred(intensity: 0.7)
         } else {
             playSoftImpact()
         }

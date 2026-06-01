@@ -174,6 +174,7 @@ struct VoiceGoalsPage: View {
     @State private var streamCount: Int = 0
     @State private var isStreamingDone: Bool = false
     @State private var streamTimer: Timer?
+    @State private var inputFieldHeight: CGFloat = 0
     @FocusState private var isInputFocused: Bool
 
     // Acknowledgment
@@ -497,7 +498,7 @@ struct VoiceGoalsPage: View {
             if currentCardIndex >= extractedGoals.count {
                 OnboardingPrimaryButton(title: "Continue") {
                     HapticManager.shared.playSuccessNotification()
-                    withAnimation { phase = .complete }
+                    finish()  // hand off to integrations; closing screen comes after
                 }
                 .padding(.horizontal, 28)
                 .padding(.bottom, 34)
@@ -683,7 +684,11 @@ struct VoiceGoalsPage: View {
 
     private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
         let isEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return HStack(alignment: .bottom, spacing: 12) {
+        // Single-line baseline ≈ font line height + vertical padding. Above that = expanded.
+        let isExpanded = inputFieldHeight > 60
+        let corner: CGFloat = isExpanded ? 24 : max(26, inputFieldHeight / 2)
+
+        return HStack(alignment: isExpanded ? .bottom : .center, spacing: 12) {
             // Multi-line input: wraps and grows up to 5 lines, never scrolls horizontally
             TextField(placeholder, text: $inputText, axis: .vertical)
                 .font(OnboardingStyle.bodyFont(size: 17))
@@ -708,13 +713,17 @@ struct VoiceGoalsPage: View {
             .animation(.easeOut(duration: 0.15), value: isEmpty)
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(OnboardingStyle.control)
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
-                .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
+            GeometryReader { geo in
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .fill(OnboardingStyle.control)
+                    .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
+                    .onChange(of: geo.size.height) { _, h in inputFieldHeight = h }
+                    .onAppear { inputFieldHeight = geo.size.height }
+            }
         )
     }
 

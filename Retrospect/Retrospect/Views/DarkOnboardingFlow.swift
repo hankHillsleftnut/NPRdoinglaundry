@@ -56,11 +56,15 @@ struct DarkOnboardingFlow: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
             } else {
-                // Onboarding complete — hand off to app
-                Color.clear.onAppear {
+                // Final closing — after integrations + persona
+                OnboardingClosingPage(userName: onboardingState.userName) {
                     onboardingState.clearPersistedStep()
                     onComplete?([])
                 }
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .opacity
+                ))
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screenIndex)
@@ -918,6 +922,107 @@ struct DarkGoalsOnboardingScreen: View {
         goalsManager.addGoal(trimmed)
         newGoalText = ""
         HapticManager.shared.playLightImpact()
+    }
+}
+
+// MARK: - Onboarding Closing Page (shown AFTER integrations + persona)
+
+struct OnboardingClosingPage: View {
+    let userName: String
+    let onPlay: () -> Void
+
+    private let lines: [String]
+    @State private var visibleLine: Int = 0
+    @State private var fullText: String = ""
+    @State private var revealCount: Int = 0
+    @State private var streamDone: Bool = false
+    @State private var showButton: Bool = false
+    @State private var timer: Timer?
+
+    init(userName: String, onPlay: @escaping () -> Void) {
+        self.userName = userName
+        self.onPlay = onPlay
+        self.lines = [
+            userName.isEmpty ? "Now I know what matters to you." : "Now I know what matters to you, \(userName).",
+            "Let's help you get there."
+        ]
+    }
+
+    var body: some View {
+        ZStack {
+            OnboardingStyle.background.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: 200)
+
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(0..<lines.count, id: \.self) { i in
+                        if i < visibleLine {
+                            Text(attributed(lines[i], count: lines[i].count))
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else if i == visibleLine {
+                            Text(attributed(fullText, count: revealCount))
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(.horizontal, 28)
+
+                Spacer()
+
+                if showButton {
+                    OnboardingPrimaryButton(title: "Play Podcast") {
+                        HapticManager.shared.playSuccessNotification()
+                        onPlay()
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 34)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                } else {
+                    Spacer(minLength: 100)
+                }
+            }
+        }
+        .preferredColorScheme(.light)
+        .onAppear { streamLine(0) }
+        .onDisappear { timer?.invalidate() }
+    }
+
+    private func attributed(_ full: String, count: Int) -> AttributedString {
+        var attr = AttributedString(full)
+        attr.font = .custom("HedvigLettersSerif-24ptRegular", size: 30)
+        attr.foregroundColor = OnboardingStyle.primaryText
+        attr.tracking = -0.5
+        if count < full.count {
+            let start = attr.index(attr.startIndex, offsetByCharacters: count)
+            attr[start..<attr.endIndex].foregroundColor = .clear
+        }
+        return attr
+    }
+
+    private func streamLine(_ idx: Int) {
+        timer?.invalidate()
+        visibleLine = idx
+        fullText = lines[idx]
+        revealCount = 0
+        let total = lines[idx].count
+        timer = Timer.scheduledTimer(withTimeInterval: 0.035, repeats: true) { t in
+            guard revealCount < total else {
+                t.invalidate()
+                if idx < lines.count - 1 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { streamLine(idx + 1) }
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showButton = true }
+                    }
+                }
+                return
+            }
+            revealCount += 1
+            HapticManager.shared.playTextStreamTick()
+        }
     }
 }
 
