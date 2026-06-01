@@ -154,6 +154,39 @@ class ClaudeService {
         }
     }
 
+    func generateOnboardingAcknowledgment(
+        question: String,
+        answer: String,
+        userName: String,
+        completion: @escaping (Result<String, ClaudeError>) -> Void
+    ) {
+        let systemPrompt = """
+        You are Retrospect, a personal growth app. A user just answered an onboarding question.
+        Write 1-2 sentences that show you truly heard what they said.
+        Rules:
+        - Reference their specific words — not a paraphrase, their actual words or phrasing
+        - Use their name naturally if it fits the sentence
+        - Be warm but never sycophantic — no "Great answer!" or "That's wonderful!"
+        - Do not ask a follow-up question
+        - Do not give advice
+        - Just reflect what you heard, with warmth
+        - Under 40 words total
+        """
+        let userMessage = "User's name: \(userName)\nQuestion asked: \(question)\nTheir answer: \(answer)"
+        Task {
+            do {
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: 120
+                )
+                completion(.success(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+            } catch {
+                completion(.failure(.apiError(error.localizedDescription)))
+            }
+        }
+    }
+
     func extractGoalsFromConversation(conversationHistory: [[String: Any]], completion: @escaping (Result<[String], ClaudeError>) -> Void) {
         let systemPrompt = """
         You are analyzing a conversation where Retrospect asked the user about their goals for the next couple of months. Extract 2-4 specific, actionable goals from what the user said.

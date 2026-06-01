@@ -16,7 +16,7 @@ struct DarkOnboardingFlow: View {
 
     private var screenIndex: Int {
         if !onboardingState.hasSignedIn { return 0 }
-        if !onboardingState.privacyAcknowledged { return 1 }
+        if !onboardingState.questionsCompleted { return 1 }
         if !onboardingState.integrationsCompleted { return 2 }
         if !onboardingState.personaCompleted { return 3 }
         return 4
@@ -30,12 +30,15 @@ struct DarkOnboardingFlow: View {
                         insertion: .opacity,
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
-            } else if !onboardingState.privacyAcknowledged {
-                OnboardingPrivacyPage(state: onboardingState)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                        removal: .move(edge: .leading).combined(with: .opacity)
-                    ))
+            } else if !onboardingState.questionsCompleted {
+                VoiceGoalsPage(onComplete: { goals, name in
+                    onboardingState.markQuestionsCompleted(name: name)
+                    GoalsManager.shared.addRichGoals(goals)
+                })
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
             } else if !onboardingState.integrationsCompleted {
                 IntegrationsSetupPage(state: onboardingState)
                     .transition(.asymmetric(
@@ -53,14 +56,11 @@ struct DarkOnboardingFlow: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
             } else {
-                VoiceGoalsPage(onComplete: { goals in
+                // Onboarding complete — hand off to app
+                Color.clear.onAppear {
                     onboardingState.clearPersistedStep()
-                    onComplete?(goals)
-                })
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .opacity
-                ))
+                    onComplete?([])
+                }
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screenIndex)

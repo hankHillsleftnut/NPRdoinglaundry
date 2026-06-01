@@ -2,283 +2,479 @@
 //  VoiceGoalsPage.swift
 //  Retrospect
 //
-//  Voice brain-dump page for goals.
-//  After the user stops recording, goals are deeply extracted via
-//  the backend and revealed as swipeable Tinder-style cards.
+//  18-question onboarding flow. Stella-style structure (question at top,
+//  input bar above keyboard, no subtitle, no counter) using Retrospect's
+//  design system (OnboardingStyle colors, HedvigLettersSerif, existing components).
 //
 
 import SwiftUI
+import UIKit
+
+// MARK: - Question model
+
+private struct Question {
+    let text: String        // may contain {name}
+    let placeholder: String
+    let keyboardType: UIKeyboardType
+    let inputType: InputType
+    let hasAcknowledgment: Bool
+    let progress: Double
+
+    enum InputType {
+        case text
+        case pillsVertical([String])
+        case pillsGrid([String])
+    }
+
+    init(
+        _ text: String,
+        placeholder: String = "",
+        keyboard: UIKeyboardType = .default,
+        input: InputType = .text,
+        ack: Bool = false,
+        progress: Double
+    ) {
+        self.text = text
+        self.placeholder = placeholder
+        self.keyboardType = keyboard
+        self.inputType = input
+        self.hasAcknowledgment = ack
+        self.progress = progress
+    }
+}
+
+// MARK: - Flow phase
+
+private enum FlowPhase: Equatable {
+    case welcome(Int)           // line index 0..2
+    case question(Int)          // question index 0..17
+    case acknowledgment(Int)    // after question index
+    case bridge(Int, Int)       // (bridgeIdx, lineIdx)
+    case processing
+    case revealing
+    case complete
+
+    static func == (lhs: FlowPhase, rhs: FlowPhase) -> Bool {
+        switch (lhs, rhs) {
+        case (.welcome(let a), .welcome(let b)): return a == b
+        case (.question(let a), .question(let b)): return a == b
+        case (.acknowledgment(let a), .acknowledgment(let b)): return a == b
+        case (.bridge(let a, let b), .bridge(let c, let d)): return a == c && b == d
+        case (.processing, .processing), (.revealing, .revealing), (.complete, .complete): return true
+        default: return false
+        }
+    }
+
+    var key: String {
+        switch self {
+        case .welcome(let l): return "w\(l)"
+        case .question(let i): return "q\(i)"
+        case .acknowledgment(let i): return "a\(i)"
+        case .bridge(let b, let l): return "br\(b)l\(l)"
+        case .processing: return "proc"
+        case .revealing: return "rev"
+        case .complete: return "done"
+        }
+    }
+}
+
+// MARK: - VoiceGoalsPage
 
 struct VoiceGoalsPage: View {
-    var onComplete: (([RichGoal]) -> Void)?
+    var onComplete: (([RichGoal], String) -> Void)?
 
-    @StateObject private var audioManager = AudioRecordingManager()
-    @StateObject private var goalsManager = GoalsManager.shared
-
-    private struct DepthQuestion {
-        let prompt: String
-        let placeholder: String
-    }
-
-    private struct SavedDepthAnswer: Codable {
-        let question: String
-        let answer: String
-    }
-
-    private static let onboardingDepthAnswersKey = "onboarding_depth_answers"
-    private static let depthQuestions: [DepthQuestion] = [
-        DepthQuestion(
-            prompt: "What's something you keep meaning to do, but somehow never get around to?",
-            placeholder: "A conversation, habit, project, decision, repair, routine..."
-        ),
-        DepthQuestion(
-            prompt: "If a friend who knows you really well had to describe you in one honest sentence, what would they say?",
-            placeholder: "The real sentence, not the polished one."
-        ),
-        DepthQuestion(
-            prompt: "What's something you've been thinking about a lot lately that you haven't really told anyone?",
-            placeholder: "Whatever keeps coming back when things get quiet."
-        ),
-        DepthQuestion(
-            prompt: "What's a recent moment, big or small, where you felt most like yourself?",
-            placeholder: "A scene, a place, a person, a tiny win. Specific is good."
-        ),
-        DepthQuestion(
-            prompt: "What would you want a version of you from a year from now to tell you?",
-            placeholder: "What would future-you know that you need to hear now?"
-        )
+    // ── Questions ─────────────────────────────────────────────────────────
+    private static let questions: [Question] = [
+        // Part 1 — Identity (Q1-Q6)
+        Question("First, what should I call you?",
+                 placeholder: "Your name", ack: true, progress: 0.08),
+        Question("Where do you live, {name}?",
+                 placeholder: "City, country...", progress: 0.10),
+        Question("How old are you?",
+                 placeholder: "Your age", keyboard: .numberPad, progress: 0.12),
+        Question("What's your gender?",
+                 input: .pillsVertical(["Female", "Male", "Non-binary", "Prefer not to say"]), progress: 0.14),
+        Question("What is your sexuality?",
+                 placeholder: "e.g. Straight, Gay, Bisexual...", progress: 0.16),
+        Question("What's your relationship status?",
+                 input: .pillsVertical(["Single", "In a relationship", "Married", "It's complicated"]), progress: 0.18),
+        // Part 2 — Work (Q7-Q8)
+        Question("What do you do for work?",
+                 placeholder: "Designer, student, founder...", progress: 0.20),
+        Question("How do you feel about it?",
+                 input: .pillsVertical(["Love it", "It's fine for now", "I'm ready for something new", "I'm building something on the side"]), progress: 0.22),
+        // Part 3 — Depth (bridge 0 before Q9)
+        Question("What's something you keep meaning to do, but somehow never get around to?",
+                 placeholder: "A conversation, habit, project, decision...", ack: true, progress: 0.35),
+        Question("If a close friend described you in one honest sentence, what would they say?",
+                 placeholder: "The real one, not the polished one.", ack: true, progress: 0.46),
+        Question("What's something you've been thinking about lately that you haven't really told anyone?",
+                 placeholder: "Whatever keeps coming back when things get quiet.", ack: true, progress: 0.55),
+        Question("What's a recent moment, big or small, where you felt most like yourself?",
+                 placeholder: "A place, a person, a tiny win.", ack: true, progress: 0.63),
+        Question("What would a version of you from a year from now tell you?",
+                 placeholder: "What would future-you need you to hear right now?", ack: true, progress: 0.70),
+        // Part 4 — Goals (bridge 1 before Q14)
+        Question("{name}, what are you hoping changes in your life right now?",
+                 placeholder: "Love, confidence, peace, momentum...", ack: true, progress: 0.78),
+        Question("Why does this matter so much to you right now?",
+                 placeholder: "What happens if nothing changes?", ack: true, progress: 0.84),
+        Question("What feels like the biggest thing standing in your way right now?",
+                 placeholder: "Doubt, timing, money, fear...", ack: true, progress: 0.89),
+        // Part 5 — Dream life (bridge 2 before Q17)
+        Question("When you imagine your dream life, where are you living?",
+                 placeholder: "New York, London, by the beach, near family...", progress: 0.93),
+        Question("What kind of home would you want to live in?",
+                 input: .pillsGrid(["Luxury Penthouse", "Beachfront Villa", "Modern Loft", "Cozy Cottage",
+                                    "Suburban Mansion", "Farmhouse", "Cabin", "Tiny Home"]), progress: 0.97),
     ]
 
-    private enum PostRecordPhase: Equatable {
-        case idle
-        case recording
-        case processing
-        case revealing
-        case complete
-    }
-    @State private var phase: PostRecordPhase = .idle
+    // Bridge appears before these question indices
+    private static let bridgeBefore: [Int: Int] = [8: 0, 13: 1, 16: 2]
 
+    // Bridge texts [bridgeIdx][lineIdx]
+    private func bridgeLines(for bridgeIdx: Int) -> [String] {
+        switch bridgeIdx {
+        case 0: return ["Now let's get to know you better.", "Be as honest as you can."]
+        case 1: return ["Now let's talk about what you want.", "Don't filter it. Just say the true thing."]
+        case 2: return ["Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
+                        "Don't be realistic. Don't hold back.",
+                        "Pretend anything is possible."]
+        default: return []
+        }
+    }
+
+    // Welcome lines
+    private static let welcomeLines = [
+        "Before we begin, I have a few questions for you.",
+        "The more honest you are, the more personal Retrospect will feel.",
+        "Everything you share is private."
+    ]
+
+    // ── State ─────────────────────────────────────────────────────────────
+    @State private var phase: FlowPhase = .welcome(0)
+    @State private var answers: [String] = Array(repeating: "", count: 18)
+    @State private var userName: String = ""
+    @State private var inputText: String = ""
+    @State private var displayedText: String = ""
+    @State private var isStreamingDone: Bool = false
+    @State private var progressValue: Double = 0
+    @State private var streamTimer: Timer?
+    @FocusState private var isInputFocused: Bool
+
+    // Acknowledgment
+    @State private var ackText: String = ""
+    @State private var ackDisplayed: String = ""
+    @State private var ackTimer: Timer?
+    @State private var ackDone: Bool = false
+
+    // Bridge accumulation
+    @State private var bridgeAccumulated: [String] = []
+    @State private var bridgeStreamDone: Bool = false
+
+    // Goal cards (existing system)
     @State private var extractedGoals: [RichGoal] = []
     @State private var currentCardIndex: Int = 0
     @State private var cardOffset: CGSize = .zero
     @State private var cardRotation: Double = 0
-    @State private var showAcknowledgment = false
-    @State private var acknowledgmentText: String = ""
-    @State private var backendProcessingNotes: String?
-    @State private var submittedTranscription: String = ""
-
-    @State private var currentQuestionIndex: Int = 0
-    @State private var questionAnswers: [String] = Array(repeating: "", count: 5)
-    @FocusState private var isTextFieldFocused: Bool
-
-    @State private var contentOpacity: Double = 0
-    @State private var micPulse = false
-    @State private var processingDotCount = 0
+    @State private var cardRevealed: Bool = false
+    @State private var closingAckText: String = ""
+    @State private var showClosingAck: Bool = false
+    @State private var processingDotCount: Int = 0
     @State private var processingTimer: Timer?
-    @State private var cardRevealed = false
+    @State private var backendNotes: String?
 
+    @StateObject private var goalsManager = GoalsManager.shared
+
+    // ── Body ──────────────────────────────────────────────────────────────
     var body: some View {
-        OnboardingScaffold(
-            iconName: headerIcon,
-            title: headerTitle,
-            subtitle: headerSubtitle,
-            topSpacing: phase == .revealing || phase == .complete ? 58 : 74
-        ) {
-            VStack(alignment: .leading, spacing: 18) {
-                if phase == .idle || phase == .recording {
-                    OnboardingStatusPill(
-                        text: phase == .recording ? "Listening" : "Question \(currentQuestionIndex + 1) of \(Self.depthQuestions.count)",
-                        systemImage: phase == .recording ? "waveform" : nil
-                    )
-                    preRecordingBody
-                        .transition(.opacity)
-                } else {
-                    postRecordingBody
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                            removal: .opacity
-                        ))
+        ZStack {
+            OnboardingStyle.background.ignoresSafeArea()
+
+            Group {
+                switch phase {
+                case .welcome(let line):
+                    welcomeScreen(upTo: line)
+                        .id("w\(line)")
+                case .question(let idx):
+                    questionScreen(idx: idx)
+                        .id("q\(idx)")
+                case .acknowledgment(let idx):
+                    ackScreen(idx: idx)
+                        .id("ack\(idx)")
+                case .bridge(let bIdx, let lIdx):
+                    bridgeScreen(bIdx: bIdx, upTo: lIdx)
+                        .id("br\(bIdx)l\(lIdx)")
+                case .processing:
+                    processingScreen
+                        .id("proc")
+                case .revealing:
+                    revealingScreen
+                        .id("rev")
+                case .complete:
+                    completeScreen
+                        .id("done")
                 }
             }
-            .opacity(contentOpacity)
-        } bottom: {
-            bottomSection
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.25), value: phase.key)
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: phase)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
-                contentOpacity = 1
-            }
-        }
+        .preferredColorScheme(.light)
         .onDisappear {
+            streamTimer?.invalidate()
+            ackTimer?.invalidate()
             processingTimer?.invalidate()
         }
     }
 
-    // MARK: - Header
+    // ── WELCOME ───────────────────────────────────────────────────────────
 
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Group {
-                switch phase {
-                case .idle, .recording:
-                    Text(currentQuestion.prompt)
-                case .processing:
-                    Text("Understanding you...")
-                case .revealing:
-                    Text("Here's what we heard")
-                case .complete:
-                    Text("Now let's help you get there.")
+    private func welcomeScreen(upTo line: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 60)
+
+            VStack(alignment: .leading, spacing: 20) {
+                ForEach(0...line, id: \.self) { i in
+                    if i < line {
+                        Text(Self.welcomeLines[i])
+                            .font(OnboardingStyle.titleFont(size: 28))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(displayedText)
+                            .font(OnboardingStyle.titleFont(size: 28))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
-            .font(.custom("HedvigLettersSerif-24ptRegular", size: phase == .idle || phase == .recording ? 30 : 36))
-            .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.85))
-            .lineSpacing(5)
-            .fixedSize(horizontal: false, vertical: true)
-            .animation(.easeOut(duration: 0.3), value: phase)
+            .padding(.horizontal, 28)
 
-            Group {
-                switch phase {
-                case .idle:
-                    Text("Question \(currentQuestionIndex + 1) of \(Self.depthQuestions.count)")
-                case .recording:
-                    Text("Keep going, I'm listening...")
-                case .processing:
-                    Text("Pulling out what matters most" + String(repeating: ".", count: processingDotCount))
-                case .revealing:
-                    Text("Swipe through your goals to continue.")
-                case .complete:
-                    Text("")
+            Spacer()
+
+            if isStreamingDone && line == Self.welcomeLines.count - 1 {
+                OnboardingPrimaryButton(title: "Continue") {
+                    HapticManager.shared.playMediumImpact()
+                    startQuestion(0)
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 34)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isStreamingDone)
+            } else {
+                Spacer(minLength: 100)
+            }
+        }
+        .onAppear {
+            stream(Self.welcomeLines[line], speed: 0.035) {
+                if line < Self.welcomeLines.count - 1 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation { phase = .welcome(line + 1) }
+                        displayedText = ""
+                        isStreamingDone = false
+                    }
                 }
             }
-            .font(.system(size: 16, weight: .regular))
-            .foregroundColor(LinearColors.Minimal.textSecondary)
-            .animation(.easeOut(duration: 0.3), value: phase)
-            .animation(.none, value: processingDotCount)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 28)
-    }
-
-    private var currentQuestion: DepthQuestion {
-        Self.depthQuestions[min(currentQuestionIndex, Self.depthQuestions.count - 1)]
-    }
-
-    private var headerIcon: String {
-        switch phase {
-        case .idle, .recording: return "text.bubble"
-        case .processing: return "sparkles"
-        case .revealing, .complete: return "checkmark.seal"
         }
     }
 
-    private var headerTitle: String {
-        switch phase {
-        case .idle, .recording:
-            return currentQuestion.prompt
-        case .processing:
-            return "Understanding you."
-        case .revealing:
-            return "Here's what we heard."
-        case .complete:
-            return "Now let's help you get there."
-        }
-    }
+    // ── QUESTION ──────────────────────────────────────────────────────────
 
-    private var headerSubtitle: String {
-        switch phase {
-        case .idle:
-            return "Answer however you naturally would. Type it, or use your voice and let Retrospect turn it into text."
-        case .recording:
-            return "Keep going. Your voice is becoming the answer for this question."
-        case .processing:
-            return "Pulling out the signals that should shape your first podcast."
-        case .revealing:
-            return "Swipe through the goals Retrospect found before we create your first episode."
-        case .complete:
-            return ""
-        }
-    }
+    private func questionScreen(idx: Int) -> some View {
+        let q = Self.questions[idx]
+        let resolvedText = q.text.replacingOccurrences(of: "{name}", with: userName)
 
-    private var currentAnswerBinding: Binding<String> {
-        Binding(
-            get: {
-                guard questionAnswers.indices.contains(currentQuestionIndex) else { return "" }
-                return questionAnswers[currentQuestionIndex]
-            },
-            set: { newValue in
-                guard questionAnswers.indices.contains(currentQuestionIndex) else { return }
-                questionAnswers[currentQuestionIndex] = newValue
+        return VStack(spacing: 0) {
+            // Progress + nav
+            topBar(progress: q.progress, showBack: idx > 0, backAction: { goBack(from: idx) })
+
+            // Question text (upper area)
+            HStack(alignment: .top) {
+                Text(displayedText)
+                    .font(OnboardingStyle.titleFont(size: 28))
+                    .foregroundColor(OnboardingStyle.primaryText)
+                    .tracking(-0.5)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
             }
-        )
-    }
+            .padding(.horizontal, 28)
+            .padding(.top, 48)
 
-    // MARK: - Pre-recording body
+            Spacer(minLength: 16)
 
-    private var preRecordingBody: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            transcriptionArea
+            // Input area
+            switch q.inputType {
+            case .text:
+                inputBar(placeholder: q.placeholder, keyboard: q.keyboardType) {
+                    submitAnswer(idx: idx, answer: inputText)
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 20)
 
-            micButton
-        }
-    }
+            case .pillsVertical(let options):
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(options, id: \.self) { opt in
+                        pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 32)
+                .opacity(isStreamingDone ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: isStreamingDone)
 
-    // MARK: - Post-recording body
-
-    private var postRecordingBody: some View {
-        VStack(spacing: 18) {
-            if phase == .processing {
-                processingView
-                    .transition(.opacity)
-            }
-
-            if phase == .revealing || phase == .complete {
-                goalsCardStack
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.9).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            }
-
-            if showAcknowledgment {
-                acknowledgmentView
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            case .pillsGrid(let options):
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    ForEach(options, id: \.self) { opt in
+                        pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 32)
+                .opacity(isStreamingDone ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: isStreamingDone)
             }
         }
-    }
-
-    // MARK: - Processing animation
-
-    private var processingView: some View {
-        VStack(spacing: 20) {
-            ScrollView {
-                Text(submittedTranscription)
-                    .font(OnboardingStyle.bodyFont(size: 15))
-                    .foregroundColor(OnboardingStyle.secondaryText.opacity(0.65))
-                    .lineSpacing(4)
-                    .multilineTextAlignment(.leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 60, maxHeight: 100)
-
-            HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .fill(OnboardingStyle.secondaryText)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(processingDotCount % 3 == i ? 1.3 : 0.7)
-                        .opacity(processingDotCount % 3 == i ? 1.0 : 0.4)
-                        .animation(.easeInOut(duration: 0.4), value: processingDotCount)
+        .onAppear {
+            inputText = ""
+            displayedText = ""
+            isStreamingDone = false
+            progressValue = q.progress
+            stream(resolvedText, speed: 0.03) {
+                // Focus text field after streaming for text-type questions
+                if case .text = q.inputType {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isInputFocused = true
+                    }
                 }
             }
-            .padding(.top, 8)
         }
     }
 
-    // MARK: - Tinder-style goal card stack
+    // ── ACKNOWLEDGMENT ────────────────────────────────────────────────────
 
-    private var goalsCardStack: some View {
-        VStack(spacing: 14) {
+    private func ackScreen(idx: Int) -> some View {
+        let q = Self.questions[idx]
+
+        return VStack(spacing: 0) {
+            topBar(progress: q.progress, showBack: true, backAction: { goBack(from: idx) })
+
+            HStack(alignment: .top) {
+                Text(ackDisplayed)
+                    .font(OnboardingStyle.titleFont(size: 28))
+                    .foregroundColor(OnboardingStyle.primaryText)
+                    .tracking(-0.5)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 48)
+
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard ackDone else {
+                // Skip to end of streaming on tap
+                ackTimer?.invalidate()
+                ackDisplayed = ackText
+                ackDone = true
+                return
+            }
+            advanceAfterAck(idx: idx)
+        }
+        .onAppear {
+            ackDisplayed = ""
+            ackDone = false
+            loadAndStreamAck(idx: idx)
+        }
+    }
+
+    // ── BRIDGE ────────────────────────────────────────────────────────────
+
+    private func bridgeScreen(bIdx: Int, upTo lineIdx: Int) -> some View {
+        let lines = bridgeLines(for: bIdx)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 60)
+
+            VStack(alignment: .leading, spacing: 20) {
+                ForEach(0...lineIdx, id: \.self) { i in
+                    if i < lineIdx {
+                        Text(lines[i])
+                            .font(OnboardingStyle.titleFont(size: 28))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(displayedText)
+                            .font(OnboardingStyle.titleFont(size: 28))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.horizontal, 28)
+
+            Spacer()
+        }
+        .onAppear {
+            displayedText = ""
+            isStreamingDone = false
+            let target = lines[lineIdx]
+            stream(target, speed: 0.04) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    if lineIdx < lines.count - 1 {
+                        withAnimation { phase = .bridge(bIdx, lineIdx + 1) }
+                        displayedText = ""
+                        isStreamingDone = false
+                    } else {
+                        // Bridge done — go to first question after bridge
+                        let nextQ = Self.bridgeBefore.first(where: { $0.value == bIdx })?.key ?? 0
+                        startQuestion(nextQ)
+                    }
+                }
+            }
+        }
+    }
+
+    // ── PROCESSING ────────────────────────────────────────────────────────
+
+    private var processingScreen: some View {
+        VStack(spacing: 0) {
+            topBar(progress: 0.98, showBack: false, backAction: {})
+
+            Spacer(minLength: 60)
+
+            HStack {
+                Text("Understanding you\(String(repeating: ".", count: processingDotCount))")
+                    .font(OnboardingStyle.titleFont(size: 28))
+                    .foregroundColor(OnboardingStyle.primaryText)
+                    .tracking(-0.5)
+                Spacer()
+            }
+            .padding(.horizontal, 28)
+
+            Spacer()
+        }
+        .onAppear { startProcessingDots(); extractGoals() }
+        .onDisappear { processingTimer?.invalidate() }
+    }
+
+    // ── REVEALING (goal cards) ────────────────────────────────────────────
+
+    private var revealingScreen: some View {
+        VStack(spacing: 0) {
+            topBar(progress: 0.99, showBack: false, backAction: {})
+
             if currentCardIndex < extractedGoals.count {
                 ZStack {
                     ForEach(Array(extractedGoals.enumerated().reversed()), id: \.element.id) { index, goal in
@@ -292,40 +488,116 @@ struct VoiceGoalsPage: View {
                                 .offset(x: depth == 0 ? cardOffset.width : 0)
                                 .rotationEffect(.degrees(depth == 0 ? cardRotation : 0))
                                 .gesture(depth == 0 ? cardDragGesture : nil)
-                                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: currentCardIndex)
                         }
                     }
                 }
-                .frame(maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 28)
+                .padding(.top, 24)
                 .opacity(cardRevealed ? 1 : 0)
                 .scaleEffect(cardRevealed ? 1 : 0.92)
 
-                cardProgressIndicator
+                // Dot indicator
+                HStack(spacing: 6) {
+                    ForEach(0..<extractedGoals.count, id: \.self) { i in
+                        Circle()
+                            .fill(i <= currentCardIndex
+                                  ? OnboardingStyle.primaryText.opacity(0.65)
+                                  : OnboardingStyle.tertiaryText.opacity(0.35))
+                            .frame(width: i == currentCardIndex ? 8 : 6,
+                                   height: i == currentCardIndex ? 8 : 6)
+                            .animation(.easeOut(duration: 0.2), value: currentCardIndex)
+                    }
+                }
+                .padding(.top, 16)
+
+            } else {
+                // All cards swiped
+                VStack(spacing: 20) {
+                    if showClosingAck {
+                        HStack {
+                            Text(closingAckText)
+                                .font(OnboardingStyle.titleFont(size: 26))
+                                .foregroundColor(OnboardingStyle.primaryText)
+                                .tracking(-0.5)
+                                .lineSpacing(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.top, 48)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            Spacer()
+
+            if currentCardIndex >= extractedGoals.count {
+                OnboardingPrimaryButton(title: "Continue") {
+                    HapticManager.shared.playSuccessNotification()
+                    withAnimation { phase = .complete }
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 34)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
-        .frame(height: 370)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { cardRevealed = true }
+                HapticManager.shared.playSoftImpact()
+            }
+        }
+    }
+
+    private var cardDragGesture: some Gesture {
+        DragGesture()
+            .onChanged { v in
+                cardOffset = v.translation
+                cardRotation = Double(v.translation.width / 20)
+            }
+            .onEnded { v in
+                if abs(v.translation.width) > 110 {
+                    let dir: CGFloat = v.translation.width > 0 ? 1 : -1
+                    withAnimation(.easeOut(duration: 0.28)) {
+                        cardOffset = CGSize(width: dir * 500, height: 0)
+                        cardRotation = Double(dir * 25)
+                    }
+                    HapticManager.shared.playSoftImpact()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        currentCardIndex += 1
+                        cardOffset = .zero
+                        cardRotation = 0
+                        if currentCardIndex >= extractedGoals.count {
+                            HapticManager.shared.playSuccessNotification()
+                            buildClosingAck()
+                            withAnimation(.easeIn(duration: 0.3).delay(0.1)) { showClosingAck = true }
+                        }
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        cardOffset = .zero; cardRotation = 0
+                    }
+                }
+            }
     }
 
     private func goalCard(goal: RichGoal, isTop: Bool) -> some View {
-        let categoryColor = GoalCategory(from: goal.category).color
-
+        let color = GoalCategory(from: goal.category).color
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
+            HStack {
                 Text(goal.category.uppercased())
                     .font(OnboardingStyle.bodyFont(size: 11, weight: .semibold))
                     .foregroundColor(OnboardingStyle.secondaryText)
                     .tracking(1.2)
-
                 Spacer()
-
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(categoryColor)
-                    .frame(width: 24, height: 4)
+                RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 24, height: 4)
             }
             .padding(.bottom, 14)
 
             Text(goal.title)
-                .font(OnboardingStyle.titleFont(size: 24))
+                .font(OnboardingStyle.titleFont(size: 22))
                 .foregroundColor(OnboardingStyle.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, goal.goalDescription.isEmpty ? 0 : 10)
@@ -339,15 +611,11 @@ struct VoiceGoalsPage: View {
             }
 
             if !goal.motivation.isEmpty {
-                Divider()
-                    .background(OnboardingStyle.tertiaryText.opacity(0.18))
-                    .padding(.vertical, 14)
-
+                Divider().background(OnboardingStyle.tertiaryText.opacity(0.18)).padding(.vertical, 14)
                 Text("Why this matters")
                     .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
                     .foregroundColor(OnboardingStyle.tertiaryText)
                     .padding(.bottom, 6)
-
                 Text(goal.motivation)
                     .font(OnboardingStyle.bodyFont(size: 14))
                     .foregroundColor(OnboardingStyle.secondaryText)
@@ -372,267 +640,310 @@ struct VoiceGoalsPage: View {
             }
         }
         .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(OnboardingStyle.control.opacity(0.82))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .strokeBorder(categoryColor.opacity(0.15), lineWidth: 1)
-                )
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(color.opacity(0.15), lineWidth: 1))
                 .shadow(color: .black.opacity(0.10), radius: 12, y: 6)
         )
     }
 
-    private var cardDragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                cardOffset = value.translation
-                cardRotation = Double(value.translation.width / 20)
+    // ── COMPLETE ──────────────────────────────────────────────────────────
+
+    private var completeScreen: some View {
+        VStack(spacing: 0) {
+            topBar(progress: 1.0, showBack: false, backAction: {})
+
+            Spacer(minLength: 60)
+
+            HStack {
+                Text(displayedText)
+                    .font(OnboardingStyle.titleFont(size: 30))
+                    .foregroundColor(OnboardingStyle.primaryText)
+                    .tracking(-0.5)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
             }
-            .onEnded { value in
-                let threshold: CGFloat = 120
-                if abs(value.translation.width) > threshold {
-                    let flyDirection: CGFloat = value.translation.width > 0 ? 1 : -1
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        cardOffset = CGSize(width: flyDirection * 500, height: 0)
-                        cardRotation = Double(flyDirection * 25)
-                    }
-                    HapticManager.shared.playSoftImpact()
+            .padding(.horizontal, 28)
 
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        currentCardIndex += 1
-                        cardOffset = .zero
-                        cardRotation = 0
+            Spacer()
 
-                        if currentCardIndex >= extractedGoals.count {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                showAcknowledgment = true
-                                phase = .complete
-                            }
-                            HapticManager.shared.playSuccessNotification()
-                        }
-                    }
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        cardOffset = .zero
-                        cardRotation = 0
-                    }
+            if isStreamingDone {
+                OnboardingPrimaryButton(title: "Play Podcast") {
+                    HapticManager.shared.playSuccessNotification()
+                    finish()
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 34)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: isStreamingDone)
+            } else {
+                Spacer(minLength: 100)
+            }
+        }
+        .onAppear {
+            displayedText = ""
+            isStreamingDone = false
+            stream("Now let's help you get there.", speed: 0.035) {}
+        }
+    }
+
+    // ── SHARED SUBVIEWS ───────────────────────────────────────────────────
+
+    private func topBar(progress: Double, showBack: Bool, backAction: @escaping () -> Void) -> some View {
+        VStack(spacing: 0) {
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(OnboardingStyle.secondaryText.opacity(0.15))
+                        .frame(height: 2)
+                    Rectangle()
+                        .fill(OnboardingStyle.primaryText.opacity(0.7))
+                        .frame(width: geo.size.width * CGFloat(progress), height: 2)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
                 }
             }
-    }
+            .frame(height: 2)
 
-    private var cardProgressIndicator: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<extractedGoals.count, id: \.self) { index in
-                Circle()
-                    .fill(index <= currentCardIndex ? OnboardingStyle.primaryText.opacity(0.65) : OnboardingStyle.tertiaryText.opacity(0.35))
-                    .frame(width: index == currentCardIndex ? 8 : 6, height: index == currentCardIndex ? 8 : 6)
-                    .animation(.easeOut(duration: 0.2), value: currentCardIndex)
+            // Nav row
+            HStack {
+                if showBack {
+                    Button(action: backAction) {
+                        Image(systemName: "chevron.left")
+                            .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                            .foregroundColor(OnboardingStyle.tertiaryText)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                Spacer()
             }
+            .frame(height: 44)
+            .padding(.horizontal, 28)
         }
     }
 
-    // MARK: - Acknowledgment
-
-    private var acknowledgmentView: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "sparkles")
-                .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
-                .foregroundColor(OnboardingStyle.secondaryText)
-
-            Text(acknowledgmentText)
-                .font(OnboardingStyle.bodyFont(size: 15, weight: .medium))
+    private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
+        HStack(spacing: 12) {
+            TextField(placeholder, text: $inputText)
+                .font(OnboardingStyle.bodyFont(size: 17))
                 .foregroundColor(OnboardingStyle.primaryText)
-                .lineSpacing(3)
+                .keyboardType(keyboard)
+                .submitLabel(.done)
+                .focused($isInputFocused)
+                .onSubmit {
+                    let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    onSubmit()
+                }
+
+            Button(action: {
+                let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                onSubmit()
+            }) {
+                Image(systemName: "arrow.right")
+                    .font(OnboardingStyle.bodyFont(size: 15, weight: .semibold))
+                    .foregroundColor(
+                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? OnboardingStyle.tertiaryText
+                        : OnboardingStyle.secondaryText
+                    )
+            }
+            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(OnboardingStyle.control.opacity(0.68))
+            Capsule(style: .continuous)
+                .fill(OnboardingStyle.control)
+                .overlay(Capsule(style: .continuous)
+                    .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
+                .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
         )
     }
 
-    // MARK: - Transcription area
-
-    private var transcriptionArea: some View {
-        Group {
-            if audioManager.isRecording {
-                ScrollView {
-                    Text(audioManager.currentTranscription.isEmpty ? "Listening..." : audioManager.currentTranscription)
-                        .font(OnboardingStyle.bodyFont(size: audioManager.currentTranscription.isEmpty ? 16 : 17, weight: audioManager.currentTranscription.isEmpty ? .medium : .regular))
-                        .foregroundColor(audioManager.currentTranscription.isEmpty ? OnboardingStyle.tertiaryText : OnboardingStyle.primaryText)
-                        .lineSpacing(5)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(18)
-                }
-                .frame(minHeight: 148, maxHeight: 190)
+    private func pillButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            HapticManager.shared.playMediumImpact()
+            action()
+        }) {
+            Text(title)
+                .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                .foregroundColor(OnboardingStyle.primaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(OnboardingStyle.control.opacity(0.72))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .strokeBorder(Color.red.opacity(0.18), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(OnboardingStyle.control)
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
                 )
-            } else {
-                OnboardingTextInput(
-                    text: currentAnswerBinding,
-                    placeholder: currentQuestion.placeholder,
-                    minHeight: 148
-                )
-            }
-        }
-        .animation(.easeOut(duration: 0.2), value: currentAnswerText.isEmpty)
-    }
-
-    // MARK: - Mic button
-
-    private var micButton: some View {
-        Button(action: toggleRecording) {
-            HStack(spacing: 9) {
-                Image(systemName: audioManager.isRecording ? "stop.fill" : "mic.fill")
-                    .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
-                    .foregroundColor(audioManager.isRecording ? Color.red.opacity(0.75) : OnboardingStyle.secondaryText)
-
-                Text(audioManager.isRecording ? "Stop recording" : "Speak answer")
-                    .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
-                    .foregroundColor(OnboardingStyle.secondaryText)
-
-                if audioManager.isRecording {
-                    Circle()
-                        .fill(Color.red.opacity(0.55))
-                        .frame(width: 7, height: 7)
-                        .scaleEffect(micPulse ? 1.25 : 0.75)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(OnboardingStyle.control.opacity(0.62))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(OnboardingStyle.hairline, lineWidth: 1)
-                    )
-            )
         }
         .buttonStyle(PlainButtonStyle())
-        .onChange(of: audioManager.isRecording) { _, recording in
-            if recording {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                    micPulse = true
-                }
-            } else {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    micPulse = false
-                }
-            }
-        }
     }
 
-    // MARK: - Bottom section
+    // ── STREAMING ─────────────────────────────────────────────────────────
 
-    private var hasInputText: Bool {
-        !currentAnswerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var currentAnswerText: String {
-        guard questionAnswers.indices.contains(currentQuestionIndex) else { return "" }
-        return questionAnswers[currentQuestionIndex]
-    }
-
-    private var bottomSection: some View {
-        VStack(spacing: 14) {
-            switch phase {
-            case .idle:
-                OnboardingPrimaryButton(
-                    title: currentQuestionIndex == Self.depthQuestions.count - 1 ? "Finish" : "Next",
-                    isDisabled: !hasInputText
-                ) {
-                    if hasInputText {
-                        isTextFieldFocused = false
-                        submitCurrentAnswer()
-                    }
-                }
-
-                Button("Skip for now") { finish() }
-                    .font(OnboardingStyle.bodyFont(size: 14))
-                    .foregroundColor(OnboardingStyle.tertiaryText)
-                    .buttonStyle(PlainButtonStyle())
-
-            case .recording:
-                OnboardingPrimaryButton(title: "Recording...", isLoading: true, isDisabled: true) {}
-
-            case .processing:
-                OnboardingPrimaryButton(title: "Understanding...", isLoading: true, isDisabled: true) {}
-
-            case .revealing:
-                EmptyView()
-
-            case .complete:
-                OnboardingPrimaryButton(title: "Play Podcast", action: finish)
-            }
-        }
-    }
-
-    // MARK: - Actions
-
-    private func toggleRecording() {
-        if audioManager.isRecording {
-            audioManager.stopRecording { result in
+    private func stream(_ text: String, speed: Double, onDone: @escaping () -> Void) {
+        streamTimer?.invalidate()
+        displayedText = ""
+        isStreamingDone = false
+        let chars = Array(text)
+        var i = 0
+        streamTimer = Timer.scheduledTimer(withTimeInterval: speed, repeats: true) { t in
+            guard i < chars.count else {
+                t.invalidate()
                 DispatchQueue.main.async {
-                    switch result {
-                    case .success(let recording):
-                        let transcription = recording.1
-                        if questionAnswers.indices.contains(currentQuestionIndex) {
-                            questionAnswers[currentQuestionIndex] = transcription
-                        }
-                        submitCurrentAnswer()
-                    case .failure:
-                        break
-                    }
+                    isStreamingDone = true
+                    onDone()
                 }
+                return
             }
-        } else {
-            audioManager.requestPermissions { granted in
-                guard granted else { return }
-                DispatchQueue.main.async {
-                    phase = .recording
-                    audioManager.startRecording()
-                }
-            }
-        }
-    }
-
-    private func submitCurrentAnswer() {
-        guard questionAnswers.indices.contains(currentQuestionIndex) else { return }
-        questionAnswers[currentQuestionIndex] = questionAnswers[currentQuestionIndex]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if currentQuestionIndex < Self.depthQuestions.count - 1 {
+            displayedText += String(chars[i])
+            i += 1
             HapticManager.shared.playLightImpact()
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                currentQuestionIndex += 1
-            }
-        } else {
-            saveOnboardingDepthAnswers()
-            beginProcessing(with: combinedOnboardingAnswersText())
         }
     }
 
-    private func beginProcessing(with rawTranscription: String) {
-        phase = .processing
-        startProcessingDots()
-        HapticManager.shared.playSoftImpact()
+    private func streamAck(_ text: String) {
+        ackTimer?.invalidate()
+        ackDisplayed = ""
+        ackDone = false
+        ackText = text
+        let chars = Array(text)
+        var i = 0
+        ackTimer = Timer.scheduledTimer(withTimeInterval: 0.025, repeats: true) { t in
+            guard i < chars.count else {
+                t.invalidate()
+                DispatchQueue.main.async {
+                    ackDone = true
+                    // Auto-advance after 2s
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if case .acknowledgment(let idx) = self.phase {
+                            self.advanceAfterAck(idx: idx)
+                        }
+                    }
+                }
+                return
+            }
+            ackDisplayed += String(chars[i])
+            i += 1
+            HapticManager.shared.playLightImpact()
+        }
+    }
 
-        let transcription = rawTranscription.trimmingCharacters(in: .whitespacesAndNewlines)
-        submittedTranscription = transcription
-        guard !transcription.isEmpty else {
+    // ── NAVIGATION ────────────────────────────────────────────────────────
+
+    private func startQuestion(_ idx: Int) {
+        streamTimer?.invalidate()
+        displayedText = ""
+        isStreamingDone = false
+        inputText = ""
+        withAnimation { phase = .question(idx) }
+    }
+
+    private func submitAnswer(idx: Int, answer: String) {
+        let trimmed = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        HapticManager.shared.playMediumImpact()
+        isInputFocused = false
+        answers[idx] = trimmed
+
+        // Store name from Q1
+        if idx == 0 { userName = trimmed }
+
+        let q = Self.questions[idx]
+
+        if q.hasAcknowledgment {
+            // Q1 gets a simple static ack, rest get Claude
+            if idx == 0 {
+                ackText = "Welcome, \(trimmed)."
+                withAnimation { phase = .acknowledgment(idx) }
+            } else {
+                ackText = ""
+                withAnimation { phase = .acknowledgment(idx) }
+            }
+        } else {
+            advanceFromQuestion(idx)
+        }
+    }
+
+    private func loadAndStreamAck(idx: Int) {
+        if idx == 0 {
+            // Static ack for name question
+            streamAck("Welcome, \(userName).")
+            return
+        }
+        if !ackText.isEmpty {
+            streamAck(ackText)
+            return
+        }
+        // Generate via Claude
+        let q = Self.questions[idx]
+        let resolved = q.text.replacingOccurrences(of: "{name}", with: userName)
+        ClaudeService.shared.generateOnboardingAcknowledgment(
+            question: resolved,
+            answer: answers[idx],
+            userName: userName
+        ) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let text):
+                    self.streamAck(text)
+                case .failure:
+                    self.streamAck("That makes a lot of sense.")
+                }
+            }
+        }
+    }
+
+    private func advanceAfterAck(idx: Int) {
+        ackTimer?.invalidate()
+        advanceFromQuestion(idx)
+    }
+
+    private func advanceFromQuestion(_ idx: Int) {
+        let nextIdx = idx + 1
+        // Check if there's a bridge before the next question
+        if let bridgeIdx = Self.bridgeBefore[nextIdx] {
+            withAnimation { phase = .bridge(bridgeIdx, 0) }
+            displayedText = ""
+            isStreamingDone = false
+        } else if nextIdx < Self.questions.count {
+            startQuestion(nextIdx)
+        } else {
+            // All questions done → process goals
+            withAnimation { phase = .processing }
+        }
+    }
+
+    private func goBack(from idx: Int) {
+        HapticManager.shared.playLightImpact()
+        streamTimer?.invalidate()
+        ackTimer?.invalidate()
+        if idx == 0 {
+            // Back to welcome
+            withAnimation { phase = .welcome(Self.welcomeLines.count - 1) }
+        } else {
+            startQuestion(idx - 1)
+        }
+    }
+
+    // ── GOAL EXTRACTION ───────────────────────────────────────────────────
+
+    private func extractGoals() {
+        let combined = zip(Self.questions, answers)
+            .map { q, a in "Q: \(q.text)\nA: \(a)" }
+            .filter { !$0.hasSuffix("A: ") }
+            .joined(separator: "\n\n")
+
+        guard !combined.isEmpty else {
             extractedGoals = [RichGoal(title: "Personal growth")]
             finishProcessing()
             return
@@ -640,136 +951,49 @@ struct VoiceGoalsPage: View {
 
         Task {
             do {
-                let response = try await RetrospectAPIClient.shared.extractAndSaveGoals(text: transcription)
-
-                let goals = response.extracted.map { extracted in
+                let response = try await RetrospectAPIClient.shared.extractAndSaveGoals(text: combined)
+                let goals = response.extracted.map { e in
                     RichGoal(
-                        title: extracted.title,
-                        goalDescription: extracted.description,
-                        motivation: extracted.reasoning,
-                        category: Self.inferCategory(from: extracted.description)
+                        title: e.title,
+                        goalDescription: e.description,
+                        motivation: e.reasoning,
+                        category: VoiceGoalsPage.inferCategory(from: e.description)
                     )
                 }
-
                 await MainActor.run {
-                    extractedGoals = goals.isEmpty ? extractGoalsFallback(from: transcription) : goals
-                    backendProcessingNotes = response.processingNotes
+                    extractedGoals = goals.isEmpty ? [RichGoal(title: "Personal growth")] : goals
+                    backendNotes = response.processingNotes
                     finishProcessing()
                 }
             } catch {
-                print("Backend goal extraction failed, using fallback: \(error.localizedDescription)")
                 await MainActor.run {
-                    extractedGoals = extractGoalsFallback(from: transcription)
+                    extractedGoals = [RichGoal(title: "Personal growth")]
                     finishProcessing()
                 }
             }
         }
-    }
-
-    private func combinedOnboardingAnswersText() -> String {
-        zip(Self.depthQuestions, questionAnswers)
-            .map { question, answer in
-                """
-                Q: \(question.prompt)
-                A: \(answer.trimmingCharacters(in: .whitespacesAndNewlines))
-                """
-            }
-            .joined(separator: "\n\n")
-    }
-
-    private func saveOnboardingDepthAnswers() {
-        let savedAnswers = zip(Self.depthQuestions, questionAnswers).map { question, answer in
-            SavedDepthAnswer(
-                question: question.prompt,
-                answer: answer.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-        }
-
-        if let data = try? JSONEncoder().encode(savedAnswers) {
-            UserDefaults.standard.set(data, forKey: Self.onboardingDepthAnswersKey)
-        }
-        UserDefaults.standard.set(combinedOnboardingAnswersText(), forKey: GoalsManager.onboardingProfileContextKey)
-
-        let answers = zip(Self.depthQuestions, questionAnswers).map { question, answer in
-            OnboardingAnswer(
-                question: question.prompt,
-                answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
-                answeredAt: Date()
-            )
-        }
-        OnboardingContextManager.shared.saveDepthAnswers(answers)
-    }
-
-    private static func inferCategory(from description: String) -> String {
-        let lower = description.lowercased()
-        if lower.contains("fitness") || lower.contains("exercise") || lower.contains("health") || lower.contains("gym") || lower.contains("sleep") || lower.contains("body") {
-            return "Health & Fitness"
-        } else if lower.contains("career") || lower.contains("work") || lower.contains("job") || lower.contains("professional") || lower.contains("business") {
-            return "Career & Work"
-        } else if lower.contains("relationship") || lower.contains("dating") || lower.contains("friend") || lower.contains("family") || lower.contains("partner") {
-            return "Relationships"
-        } else if lower.contains("money") || lower.contains("financial") || lower.contains("income") || lower.contains("saving") || lower.contains("debt") {
-            return "Finance"
-        } else if lower.contains("learn") || lower.contains("skill") || lower.contains("study") || lower.contains("read") || lower.contains("course") {
-            return "Skills & Learning"
-        }
-        return "Personal Growth"
     }
 
     private func finishProcessing() {
         processingTimer?.invalidate()
-        processingTimer = nil
-
-        buildAcknowledgment()
-
-        withAnimation {
-            phase = .revealing
-        }
-        revealCardStack()
-    }
-
-    private func revealCardStack() {
         currentCardIndex = 0
         cardOffset = .zero
         cardRotation = 0
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
-                cardRevealed = true
-            }
-            HapticManager.shared.playSoftImpact()
-        }
+        cardRevealed = false
+        showClosingAck = false
+        withAnimation { phase = .revealing }
     }
 
-    private func buildAcknowledgment() {
-        if let notes = backendProcessingNotes, !notes.isEmpty {
-            // Truncate long processing notes to a single line for the UI
-            let firstSentence = notes.components(separatedBy: ". ").first ?? notes
-            acknowledgmentText = firstSentence.hasSuffix(".") ? firstSentence : firstSentence + "."
-            return
-        }
-
+    private func buildClosingAck() {
         let categories = Set(extractedGoals.map { $0.category.lowercased() })
-        let hasHealth = categories.contains(where: { $0.contains("health") || $0.contains("fitness") })
-        let hasCareer = categories.contains(where: { $0.contains("career") || $0.contains("work") })
-        let hasRelationships = categories.contains(where: { $0.contains("relationship") })
-
-        if hasHealth && hasCareer {
-            acknowledgmentText = "Body and ambition — we'll keep you honest on both."
-        } else if hasHealth {
-            acknowledgmentText = "Taking care of yourself first. We'll help you stay on track."
-        } else if hasCareer {
-            acknowledgmentText = "Big ambitions. We'll make sure you don't lose sight of them."
-        } else if hasRelationships {
-            acknowledgmentText = "The people around you matter. We'll help you show up for them."
+        if categories.contains(where: { $0.contains("health") || $0.contains("fitness") }) && categories.contains(where: { $0.contains("career") || $0.contains("work") }) {
+            closingAckText = "Body and ambition. We'll keep you honest on both."
         } else if extractedGoals.count >= 3 {
-            acknowledgmentText = "You've got a clear picture of where you're headed. Let's go."
+            closingAckText = "You've got a clear picture of where you're headed."
         } else {
-            acknowledgmentText = "Got it — we know what matters to you. Let's make it happen."
+            closingAckText = "Got it — we know what matters to you."
         }
     }
-
-    // MARK: - Processing dots animation
 
     private func startProcessingDots() {
         processingDotCount = 0
@@ -778,57 +1002,31 @@ struct VoiceGoalsPage: View {
         }
     }
 
-    // MARK: - Fallback extraction (produces RichGoals from keywords)
-
-    private func extractGoalsFallback(from text: String) -> [RichGoal] {
-        let lower = text.lowercased()
-        var goals: [RichGoal] = []
-        let themes: [(keywords: [String], title: String, category: String)] = [
-            (["exercise", "workout", "gym", "fitness", "run", "move", "stronger"], "Exercise more", "Health & Fitness"),
-            (["sleep", "rest", "tired", "energy"], "Better sleep", "Health & Fitness"),
-            (["read", "book", "reading"], "Read daily", "Skills & Learning"),
-            (["learn", "skill", "study", "course"], "Learn something new", "Skills & Learning"),
-            (["stress", "calm", "anxiety", "peaceful"], "Reduce stress", "Personal Growth"),
-            (["eat", "food", "diet", "healthier"], "Eat healthier", "Health & Fitness"),
-            (["money", "save", "spend", "budget"], "Save money", "Finance"),
-            (["present", "mindful"], "Be more present", "Personal Growth"),
-            (["focus", "concentrate", "distract"], "Improve focus", "Personal Growth"),
-            (["habit", "routine", "discipline"], "Build habits", "Personal Growth"),
-        ]
-        for (keywords, title, category) in themes {
-            if keywords.contains(where: { lower.contains($0) }) {
-                goals.append(RichGoal(title: title, category: category))
-            }
-        }
-        if goals.isEmpty {
-            goals = [RichGoal(title: "Personal growth", category: "Personal Growth")]
-        }
-        return Array(goals.prefix(4))
+    private static func inferCategory(from description: String) -> String {
+        let lower = description.lowercased()
+        if lower.contains("fitness") || lower.contains("exercise") || lower.contains("health") || lower.contains("sleep") { return "Health & Fitness" }
+        if lower.contains("career") || lower.contains("work") || lower.contains("job") || lower.contains("business") { return "Career & Work" }
+        if lower.contains("relationship") || lower.contains("dating") || lower.contains("friend") || lower.contains("family") { return "Relationships" }
+        if lower.contains("money") || lower.contains("financial") || lower.contains("saving") { return "Finance" }
+        if lower.contains("learn") || lower.contains("skill") || lower.contains("study") { return "Skills & Learning" }
+        return "Personal Growth"
     }
 
-    // MARK: - Finish
-
     private func finish() {
-        HapticManager.shared.playSuccessNotification()
+        goalsManager.addRichGoals(extractedGoals)
+        OnboardingContextManager.shared.saveExtractedGoals(extractedGoals)
 
-        var goalsToSave = extractedGoals
-        if goalsToSave.isEmpty {
-            let transcription = audioManager.currentTranscription.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcription.isEmpty {
-                goalsToSave = extractGoalsFallback(from: transcription)
-            }
-        }
-
-        goalsManager.addRichGoals(goalsToSave)
-        OnboardingContextManager.shared.saveExtractedGoals(goalsToSave)
+        let combined = zip(Self.questions, answers)
+            .map { q, a in "Q: \(q.text.replacingOccurrences(of: "{name}", with: userName))\nA: \(a)" }
+            .filter { !$0.hasSuffix("A: ") }
+            .joined(separator: "\n\n")
+        UserDefaults.standard.set(combined, forKey: GoalsManager.onboardingProfileContextKey)
 
         Task {
             let granted = await PodcastNotificationService.shared.requestAuthorization()
-            if granted {
-                PodcastNotificationService.shared.scheduleAllRecurringNotifications()
-            }
+            if granted { PodcastNotificationService.shared.scheduleAllRecurringNotifications() }
         }
 
-        onComplete?(goalsToSave)
+        onComplete?(extractedGoals, userName)
     }
 }
