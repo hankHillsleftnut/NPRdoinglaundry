@@ -182,6 +182,7 @@ struct VoiceGoalsPage: View {
     @State private var ackCount: Int = 0
     @State private var ackTimer: Timer?
     @State private var ackDone: Bool = false
+    @State private var ackLoading: Bool = false
 
     // Goal cards (existing system)
     @State private var extractedGoals: [RichGoal] = []
@@ -346,9 +347,13 @@ struct VoiceGoalsPage: View {
             Spacer().frame(height: Self.textStartGap)
 
             HStack(alignment: .top) {
-                Text(revealAttributed(ackText, count: ackCount))
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
+                if ackLoading && ackCount == 0 {
+                    ThinkingDots()
+                } else {
+                    Text(revealAttributed(ackText, count: ackCount))
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Self.horizontalPad)
@@ -357,6 +362,8 @@ struct VoiceGoalsPage: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            // Ignore taps while waiting for Claude.
+            if ackLoading && ackCount == 0 { return }
             guard ackDone else {
                 ackTimer?.invalidate()
                 ackCount = ackText.count
@@ -369,6 +376,7 @@ struct VoiceGoalsPage: View {
             ackText = ""
             ackCount = 0
             ackDone = false
+            ackLoading = false
             loadAndStreamAck(idx: idx)
         }
     }
@@ -646,40 +654,42 @@ struct VoiceGoalsPage: View {
     // ── SHARED SUBVIEWS ───────────────────────────────────────────────────
 
     private func topBar(progress: Double, showBack: Bool, backAction: @escaping () -> Void) -> some View {
-        VStack(spacing: 0) {
-            // Detached, centered, rounded progress bar — sits just below the dynamic island
-            GeometryReader { geo in
-                let barWidth = geo.size.width * 0.5
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(OnboardingStyle.secondaryText.opacity(0.18))
-                        .frame(width: barWidth, height: 6)
-                    Capsule()
-                        .fill(OnboardingStyle.primaryText.opacity(0.75))
-                        .frame(width: max(6, barWidth * CGFloat(progress)), height: 6)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
-                }
-                .frame(width: geo.size.width, alignment: .center)
-            }
-            .frame(height: 6)
-            .padding(.top, 8)
-
-            // Back button — pushed lower, away from the progress bar
-            HStack {
+        // Back button (left) on the SAME line as the centered, rounded progress bar.
+        HStack(spacing: 14) {
+            // Left slot — back button or an invisible placeholder to keep the bar centered
+            Group {
                 if showBack {
                     Button(action: backAction) {
                         Image(systemName: "chevron.left")
-                            .font(OnboardingStyle.bodyFont(size: 17, weight: .medium))
+                            .font(OnboardingStyle.bodyFont(size: 18, weight: .medium))
                             .foregroundColor(OnboardingStyle.tertiaryText)
                     }
                     .buttonStyle(PlainButtonStyle())
+                } else {
+                    Color.clear
                 }
-                Spacer()
             }
-            .frame(height: 32)
-            .padding(.top, 28)
-            .padding(.horizontal, 24)
+            .frame(width: 22, height: 22)
+
+            // Centered progress capsule
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(OnboardingStyle.secondaryText.opacity(0.18))
+                    .frame(height: 6)
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(OnboardingStyle.primaryText.opacity(0.75))
+                        .frame(width: max(6, geo.size.width * CGFloat(progress)), height: 6)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
+                }
+                .frame(height: 6)
+            }
+
+            // Right slot — invisible, mirrors the left so the bar stays centered
+            Color.clear.frame(width: 22, height: 22)
         }
+        .padding(.top, 10)
+        .padding(.horizontal, 24)
     }
 
     private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
@@ -882,11 +892,8 @@ struct VoiceGoalsPage: View {
             streamAck("Welcome, \(userName).")
             return
         }
-        if !ackText.isEmpty {
-            streamAck(ackText)
-            return
-        }
-        // Generate via Claude
+        // Generate via Claude — show thinking dots until it returns
+        ackLoading = true
         let q = Self.questions[idx]
         let resolved = q.text.replacingOccurrences(of: "{name}", with: userName)
         ClaudeService.shared.generateOnboardingAcknowledgment(
@@ -895,14 +902,27 @@ struct VoiceGoalsPage: View {
             userName: userName
         ) { result in
             DispatchQueue.main.async {
+                self.ackLoading = false
                 switch result {
                 case .success(let text):
-                    self.streamAck(text)
+                    self.streamAck(Self.stripMarkdown(text))
                 case .failure:
                     self.streamAck(Self.fallbackAcks.randomElement() ?? "I'm taking that in.")
                 }
             }
         }
+    }
+
+    /// Strip markdown so streamed text reads as clean prose (no *, _, #, `, etc.).
+    private static func stripMarkdown(_ s: String) -> String {
+        var out = s
+        // Bold/italic/emphasis markers and headings/code ticks
+        for token in ["**", "__", "*", "_", "`", "#", ">"] {
+            out = out.replacingOccurrences(of: token, with: "")
+        }
+        // Collapse any double spaces left behind, trim.
+        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func advanceAfterAck(idx: Int) {
@@ -1029,5 +1049,25 @@ struct VoiceGoalsPage: View {
         }
 
         onComplete?(extractedGoals, userName)
+    }
+}
+
+// MARK: - Thinking dots (shown while an LLM acknowledgment is loading)
+
+private struct ThinkingDots: View {
+    @State private var phase = 0
+    private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(OnboardingStyle.primaryText.opacity(phase == i ? 0.75 : 0.25))
+                    .frame(width: 9, height: 9)
+                    .scaleEffect(phase == i ? 1.0 : 0.7)
+                    .animation(.easeInOut(duration: 0.35), value: phase)
+            }
+        }
+        .onReceive(timer) { _ in phase = (phase + 1) % 3 }
     }
 }
