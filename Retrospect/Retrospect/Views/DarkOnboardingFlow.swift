@@ -1012,9 +1012,9 @@ struct OnboardingClosingPage: View {
             guard revealCount < total else {
                 t.invalidate()
                 if idx < lines.count - 1 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { streamLine(idx + 1) }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) { streamLine(idx + 1) }
                 } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showButton = true }
                     }
                 }

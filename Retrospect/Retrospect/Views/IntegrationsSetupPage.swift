@@ -25,23 +25,17 @@ struct IntegrationsSetupPage: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconName: "link",
-            title: "Connect your sources",
-            subtitle: "Pick what matters to you. You can skip anything now and add more later in Settings."
+            iconName: "sparkles",
+            title: state.userName.isEmpty
+                ? "Here's what would help me know you best."
+                : "\(state.userName), here's what would help me know you best.",
+            subtitle: "These tell me what words can't. Connect what feels right — each one makes your first podcast sharper."
         ) {
             VStack(spacing: 12) {
                 integrationCard(
-                    icon: "doc.text.fill",
-                    title: "Google Docs",
-                    subtitle: "Notes and documents you want Retrospect to understand.",
-                    connected: googleDocsService.isConnected,
-                    loading: isConnectingGoogle,
-                    action: connectGoogle
-                )
-                integrationCard(
                     icon: "heart.fill",
                     title: "Apple Health",
-                    subtitle: "Sleep, activity, and mindfulness patterns.",
+                    subtitle: "Your sleep, energy, and rhythms — how you're really doing underneath it all.",
                     connected: healthKitEnabled,
                     loading: isRequestingHealth,
                     action: connectHealth
@@ -49,10 +43,18 @@ struct IntegrationsSetupPage: View {
                 integrationCard(
                     icon: "chart.bar.fill",
                     title: "Screen Time",
-                    subtitle: "App usage patterns that can add context.",
+                    subtitle: "Where your attention actually goes — not where you think it does.",
                     connected: screenTimeService.isAuthorized,
                     loading: isConnectingScreenTime,
                     action: connectScreenTime
+                )
+                integrationCard(
+                    icon: "doc.text.fill",
+                    title: "Google Docs",
+                    subtitle: "The thoughts you've already written down somewhere.",
+                    connected: googleDocsService.isConnected,
+                    loading: isConnectingGoogle,
+                    action: connectGoogle
                 )
 
                 if let error = connectionError {
@@ -67,7 +69,7 @@ struct IntegrationsSetupPage: View {
             }
             .opacity(contentOpacity)
         } bottom: {
-            OnboardingPrimaryButton(title: "Continue", action: advance)
+            OnboardingPrimaryButton(title: "Make my podcast", action: advance)
 
             Button("Skip for now") {
                 advance()

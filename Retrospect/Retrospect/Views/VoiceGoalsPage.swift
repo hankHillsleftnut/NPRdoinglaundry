@@ -160,7 +160,7 @@ struct VoiceGoalsPage: View {
 
     // ── Layout constants (shared so text always starts in the same place) ──
     private static let titleSize: CGFloat = 28
-    private static let textStartGap: CGFloat = 130   // fixed gap below top bar → uniform text start
+    private static let textStartGap: CGFloat = 96    // fixed gap below top bar → uniform text start (higher on page)
     private static let horizontalPad: CGFloat = 28
 
     // ── State ─────────────────────────────────────────────────────────────
@@ -265,9 +265,9 @@ struct VoiceGoalsPage: View {
             }
         }
         .onAppear {
-            stream(Self.welcomeLines[line], speed: 0.035) {
+            stream(Self.welcomeLines[line], speed: 0.03) {
                 if line < Self.welcomeLines.count - 1 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
                         withAnimation { phase = .welcome(line + 1) }
                     }
                 }
@@ -390,8 +390,8 @@ struct VoiceGoalsPage: View {
         }
         .onAppear {
             let target = lines[lineIdx]
-            stream(target, speed: 0.04) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            stream(target, speed: 0.032) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
                     if lineIdx < lines.count - 1 {
                         withAnimation { phase = .bridge(bIdx, lineIdx + 1) }
                     } else {
@@ -685,35 +685,33 @@ struct VoiceGoalsPage: View {
     private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
         let isEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         // Single-line baseline ≈ font line height + vertical padding. Above that = expanded.
-        let isExpanded = inputFieldHeight > 60
-        let corner: CGFloat = isExpanded ? 24 : max(26, inputFieldHeight / 2)
+        let isExpanded = inputFieldHeight > 64
+        let corner: CGFloat = isExpanded ? 22 : max(26, inputFieldHeight / 2)
 
-        return HStack(alignment: isExpanded ? .bottom : .center, spacing: 12) {
+        return HStack(alignment: isExpanded ? .bottom : .center, spacing: 10) {
             // Multi-line input: wraps and grows up to 5 lines, never scrolls horizontally
             TextField(placeholder, text: $inputText, axis: .vertical)
                 .font(OnboardingStyle.bodyFont(size: 17))
                 .foregroundColor(OnboardingStyle.primaryText)
-                .lineLimit(1...5)
+                .lineLimit(1...6)
                 .keyboardType(keyboard)
                 .focused($isInputFocused)
 
+            // Bare arrow — no bubble. Tucks to the trailing edge with equal inset.
             Button(action: {
                 guard !isEmpty else { return }
                 onSubmit()
             }) {
                 Image(systemName: "arrow.up")
-                    .font(OnboardingStyle.bodyFont(size: 15, weight: .semibold))
-                    .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.5) : .white)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle().fill(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.2) : OnboardingStyle.accent)
-                    )
+                    .font(OnboardingStyle.bodyFont(size: 20, weight: .semibold))
+                    .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.45) : OnboardingStyle.accent)
             }
             .disabled(isEmpty)
+            .padding(.bottom, isExpanded ? 2 : 0)
             .animation(.easeOut(duration: 0.15), value: isEmpty)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
+        .padding(.vertical, isExpanded ? 14 : 12)
         .background(
             GeometryReader { geo in
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -838,7 +836,7 @@ struct VoiceGoalsPage: View {
                 t.invalidate()
                 DispatchQueue.main.async {
                     ackDone = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
                         if case .acknowledgment(let idx) = self.phase, self.ackDone {
                             self.advanceAfterAck(idx: idx)
                         }
