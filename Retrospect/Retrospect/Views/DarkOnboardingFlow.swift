@@ -992,7 +992,7 @@ struct OnboardingClosingPage: View {
 
     private func attributed(_ full: String, count: Int) -> AttributedString {
         var attr = AttributedString(full)
-        attr.font = .custom("HedvigLettersSerif-24ptRegular", size: 30)
+        attr.font = .exposure(0, size: 30)
         attr.foregroundColor = OnboardingStyle.primaryText
         attr.tracking = -0.5
         if count < full.count {

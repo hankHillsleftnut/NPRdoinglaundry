@@ -2,7 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-
 	<key>BUNDLE_ID</key>
 	<string>com.shauryanarang.Retrospect</string>
 	<key>CFBundleURLSchemes</key>
@@ -55,6 +54,48 @@
 		<string>EBGaramond-InitialsF1.ttf</string>
 		<string>EBGaramond-InitialsF2.ttf</string>
 		<string>HedvigLettersSerif-Regular-VariableFont_opsz.ttf</string>
+		<string>ExposureItalicTrial-0.otf</string>
+		<string>ExposureItalicTrial-Minus10.otf</string>
+		<string>ExposureItalicTrial-Minus100.otf</string>
+		<string>ExposureItalicTrial-Minus20.otf</string>
+		<string>ExposureItalicTrial-Minus30.otf</string>
+		<string>ExposureItalicTrial-Minus40.otf</string>
+		<string>ExposureItalicTrial-Minus50.otf</string>
+		<string>ExposureItalicTrial-Minus60.otf</string>
+		<string>ExposureItalicTrial-Minus70.otf</string>
+		<string>ExposureItalicTrial-Minus80.otf</string>
+		<string>ExposureItalicTrial-Minus90.otf</string>
+		<string>ExposureItalicTrial-Plus10.otf</string>
+		<string>ExposureItalicTrial-Plus100.otf</string>
+		<string>ExposureItalicTrial-Plus20.otf</string>
+		<string>ExposureItalicTrial-Plus30.otf</string>
+		<string>ExposureItalicTrial-Plus40.otf</string>
+		<string>ExposureItalicTrial-Plus50.otf</string>
+		<string>ExposureItalicTrial-Plus60.otf</string>
+		<string>ExposureItalicTrial-Plus70.otf</string>
+		<string>ExposureItalicTrial-Plus80.otf</string>
+		<string>ExposureItalicTrial-Plus90.otf</string>
+		<string>ExposureTrial-0.otf</string>
+		<string>ExposureTrial-Minus10.otf</string>
+		<string>ExposureTrial-Minus100.otf</string>
+		<string>ExposureTrial-Minus20.otf</string>
+		<string>ExposureTrial-Minus30.otf</string>
+		<string>ExposureTrial-Minus40.otf</string>
+		<string>ExposureTrial-Minus50.otf</string>
+		<string>ExposureTrial-Minus60.otf</string>
+		<string>ExposureTrial-Minus70.otf</string>
+		<string>ExposureTrial-Minus80.otf</string>
+		<string>ExposureTrial-Minus90.otf</string>
+		<string>ExposureTrial-Plus10.otf</string>
+		<string>ExposureTrial-Plus100.otf</string>
+		<string>ExposureTrial-Plus20.otf</string>
+		<string>ExposureTrial-Plus30.otf</string>
+		<string>ExposureTrial-Plus40.otf</string>
+		<string>ExposureTrial-Plus50.otf</string>
+		<string>ExposureTrial-Plus60.otf</string>
+		<string>ExposureTrial-Plus70.otf</string>
+		<string>ExposureTrial-Plus80.otf</string>
+		<string>ExposureTrial-Plus90.otf</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

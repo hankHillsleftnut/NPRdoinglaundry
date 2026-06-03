@@ -772,7 +772,7 @@ struct VoiceGoalsPage: View {
     /// This keeps the line layout fixed so words never reflow mid-stream.
     private func revealAttributed(_ full: String, count: Int) -> AttributedString {
         var attr = AttributedString(full)
-        attr.font = .custom("HedvigLettersSerif-24ptRegular", size: Self.titleSize)
+        attr.font = .exposure(0, size: Self.titleSize)
         attr.foregroundColor = OnboardingStyle.primaryText
         attr.tracking = -0.5
         if count < full.count {
@@ -913,14 +913,22 @@ struct VoiceGoalsPage: View {
         }
     }
 
-    /// Strip markdown so streamed text reads as clean prose (no *, _, #, `, etc.).
+    /// Strip markdown/formatting artifacts so streamed text reads as clean prose.
     private static func stripMarkdown(_ s: String) -> String {
         var out = s
-        // Bold/italic/emphasis markers and headings/code ticks
-        for token in ["**", "__", "*", "_", "`", "#", ">"] {
+        // Markdown links [text](url) -> text
+        if let re = try? NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\([^\\)]+\\)") {
+            let range = NSRange(out.startIndex..., in: out)
+            out = re.stringByReplacingMatches(in: out, range: range, withTemplate: "$1")
+        }
+        // Emphasis / heading / code / quote / bullet markers and stray escapes
+        for token in ["**", "__", "*", "_", "`", "#", ">", "\\"] {
             out = out.replacingOccurrences(of: token, with: "")
         }
-        // Collapse any double spaces left behind, trim.
+        // Leading list dashes at line starts
+        out = out.replacingOccurrences(of: "\n- ", with: "\n")
+        if out.hasPrefix("- ") { out = String(out.dropFirst(2)) }
+        // Collapse whitespace left behind, trim.
         while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
     }

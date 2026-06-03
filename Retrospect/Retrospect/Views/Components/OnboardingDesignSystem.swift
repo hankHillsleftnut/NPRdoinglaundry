@@ -14,7 +14,8 @@ enum OnboardingStyle {
     static let accent = Color(red: 0.160, green: 0.155, blue: 0.145)
 
     static func titleFont(size: CGFloat) -> Font {
-        .custom("HedvigLettersSerif-24ptRegular", size: size)
+        // Display type uses the Exposure typeface (axis 0 = neutral exposure).
+        .exposure(0, size: size)
     }
 
     static func bodyFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
