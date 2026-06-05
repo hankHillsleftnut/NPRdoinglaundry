@@ -1,5 +1,6 @@
 import { generateEmbedding, jsonChatCompletion } from '../utils/openai.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { runAgentIngest } from './agent-client.js';
 import type { DbGoal, GoalExtractionResult } from '../types/index.js';
 
 /*
@@ -326,4 +327,115 @@ export async function extractAndSaveGoals(
   }
 
   return { extracted, savedGoals };
+}
+
+/**
+ * Synthesize onboarding goals from the FULL intelligence pipeline (not a one-shot
+ * LLM call). Persists the onboarding answers as raw_content, runs the agent
+ * ingestion + Cook 0 pipeline (identity_inferences -> goal_candidates ->
+ * User Understanding Document active_goals), then surfaces those synthesized,
+ * evidence-grounded goals and saves them to the goals table.
+ *
+ * Falls back to high-confidence goal_candidates if Cook 0 produced no active_goals.
+ */
+export async function synthesizeOnboardingGoals(
+  userId: string,
+  answersText: string
+): Promise<{ extracted: GoalExtractionResult; savedGoals: DbGoal[] }> {
+  // 1. Ensure an onboarding_profile raw_content row exists (the agent reads from DB).
+  let profileId: string | null = null;
+  const { data: existingProfile } = await supabaseAdmin
+    .from(Tables.RAW_CONTENT)
+    .select('id')
+    .eq('user_id', userId)
+    .eq('content_type', 'onboarding_profile')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingProfile?.id) {
+    profileId = existingProfile.id as string;
+  } else {
+    const { data: inserted, error: insErr } = await supabaseAdmin
+      .from(Tables.RAW_CONTENT)
+      .insert({
+        user_id: userId,
+        content_type: 'onboarding_profile',
+        content: answersText,
+        content_date: new Date().toISOString(),
+        metadata: {},
+        processing_status: 'pending',
+      })
+      .select('id')
+      .single();
+    if (insErr || !inserted) {
+      throw new Error(`Failed to store onboarding profile: ${insErr?.message}`);
+    }
+    profileId = inserted.id as string;
+  }
+
+  // 2. Run the full pipeline (ingestion agent + Cook 0) synchronously on the profile.
+  await runAgentIngest({
+    userId,
+    rawContentIds: [profileId],
+    notes: 'onboarding goal synthesis',
+  });
+  await supabaseAdmin
+    .from(Tables.RAW_CONTENT)
+    .update({ processing_status: 'completed', processed_at: new Date().toISOString() })
+    .eq('id', profileId);
+
+  // 3. Read the synthesized active_goals from the latest User Understanding Document.
+  const { data: understanding } = await supabaseAdmin
+    .from(Tables.USER_UNDERSTANDING)
+    .select('document, version')
+    .eq('user_id', userId)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  type ActiveGoal = { goal_id: string | null; title: string; what_its_really_about: string };
+  const activeGoals: ActiveGoal[] =
+    (understanding?.document?.active_goals as ActiveGoal[] | undefined) ?? [];
+
+  let extractedGoals: GoalExtractionResult['goals'] = activeGoals
+    .filter((g) => g.title && g.title.trim().length > 0)
+    .map((g) => ({
+      title: g.title,
+      description: g.what_its_really_about ?? '',
+      reasoning: '', // active_goals carry the deeper read in description; no separate why for v1
+    }));
+
+  // 4. Fallback: if Cook 0 produced no active_goals, surface top goal_candidates.
+  if (extractedGoals.length === 0) {
+    const { data: candidates } = await supabaseAdmin
+      .from(Tables.GOAL_CANDIDATES)
+      .select('title, description, reasoning, confidence_score')
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .order('confidence_score', { ascending: false })
+      .limit(5);
+    extractedGoals = (candidates ?? [])
+      .filter((c) => c.title && String(c.title).trim().length > 0)
+      .map((c) => ({
+        title: c.title as string,
+        description: (c.description as string) ?? '',
+        reasoning: (c.reasoning as string) ?? '',
+      }));
+  }
+
+  // 5. Persist the synthesized goals to the goals table (first-class, embedded).
+  const savedGoals: DbGoal[] = [];
+  for (const goal of extractedGoals) {
+    const saved = await createGoal(userId, goal.title, goal.description);
+    savedGoals.push(saved);
+  }
+
+  return {
+    extracted: {
+      goals: extractedGoals,
+      processingNotes: `Synthesized ${extractedGoals.length} goal(s) from the ingestion + Cook 0 pipeline (document v${understanding?.version ?? '?'}).`,
+    },
+    savedGoals,
+  };
 }

@@ -175,6 +175,26 @@ class RetrospectAPIClient: ObservableObject {
         )
     }
 
+    /// Run the FULL intelligence pipeline (ingestion agent + Cook 0) on the onboarding
+    /// answers and return the synthesized, evidence-grounded goals. This is the deep path
+    /// used by the onboarding goals page (vs the shallow extractAndSaveGoals).
+    /// Note: this triggers the agent pipeline server-side and can take ~20-40s; the
+    /// session timeout (480s) comfortably covers it.
+    func synthesizeGoals(text: String) async throws -> GoalExtractionResponse {
+        let response: GoalExtractionAPIResponse = try await post(
+            path: "/goals/synthesize",
+            body: ["text": text]
+        )
+        guard response.success, let data = response.data else {
+            throw APIError.serverError(response.error ?? "Goal synthesis failed")
+        }
+        return GoalExtractionResponse(
+            extracted: data.extracted,
+            saved: data.saved,
+            processingNotes: response.processingNotes
+        )
+    }
+
     // MARK: - Voice Persona
 
     /// Set the user's voice persona preference.

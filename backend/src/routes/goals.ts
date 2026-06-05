@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createGoal, updateGoal, deleteGoal, listGoals, getGoal, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
+import { createGoal, updateGoal, deleteGoal, listGoals, getGoal, extractGoalsFromText, extractAndSaveGoals, synthesizeOnboardingGoals } from '../services/goals.js';
 import { CreateGoalSchema, UpdateGoalSchema, ExtractGoalsSchema } from '../types/index.js';
 
 export const goalsRouter = Router();
@@ -191,6 +191,47 @@ goalsRouter.post('/extract-and-save', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to extract and save goals',
+    });
+  }
+});
+
+// POST /goals/synthesize - Run the FULL intelligence pipeline (ingestion + Cook 0)
+// on the onboarding answers and return the synthesized, evidence-grounded goals.
+// This is what the onboarding goals page calls (replaces the shallow extract-and-save).
+goalsRouter.post('/synthesize', async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const validationResult = ExtractGoalsSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid request — provide a "text" field with the user\'s onboarding answers',
+        details: validationResult.error.issues,
+      });
+      return;
+    }
+
+    const result = await synthesizeOnboardingGoals(user.id, validationResult.data.text);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        extracted: result.extracted.goals,
+        saved: result.savedGoals,
+      },
+      processingNotes: result.extracted.processingNotes,
+      message: `Synthesized ${result.savedGoals.length} goal(s) from the pipeline.`,
+    });
+  } catch (error) {
+    console.error('Goal synthesize error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to synthesize goals',
     });
   }
 });

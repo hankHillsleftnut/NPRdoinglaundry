@@ -42,6 +42,9 @@ export const Tables = {
   INSIGHTS: 'insights',
   PIPELINE_RUNS: 'pipeline_runs',
   PODCAST_EPISODES: 'podcast_episodes',
+  // Agent-owned tables (read here to surface synthesized goals)
+  USER_UNDERSTANDING: 'user_understanding',
+  GOAL_CANDIDATES: 'goal_candidates',
 } as const;
 
 // Helper to handle Supabase errors

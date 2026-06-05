@@ -195,6 +195,7 @@ struct VoiceGoalsPage: View {
     @State private var processingDotCount: Int = 0
     @State private var processingTimer: Timer?
     @State private var backendNotes: String?
+    @State private var goalsError: Bool = false
 
     @StateObject private var goalsManager = GoalsManager.shared
 
@@ -424,16 +425,44 @@ struct VoiceGoalsPage: View {
 
             Spacer().frame(height: Self.textStartGap)
 
-            HStack {
-                Text("Understanding you\(String(repeating: ".", count: processingDotCount))")
-                    .font(OnboardingStyle.titleFont(size: Self.titleSize))
-                    .foregroundColor(OnboardingStyle.primaryText)
-                    .tracking(-0.5)
+            if goalsError {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("Couldn't read your goals yet.")
+                            .font(OnboardingStyle.titleFont(size: Self.titleSize))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                    }
+                    Text("Something interrupted the analysis. Let's try again.")
+                        .font(OnboardingStyle.bodyFont(size: 15))
+                        .foregroundColor(OnboardingStyle.secondaryText)
+                }
+                .padding(.horizontal, Self.horizontalPad)
+
+                Spacer()
+
+                OnboardingPrimaryButton(title: "Try again") {
+                    HapticManager.shared.playSoftImpact()
+                    goalsError = false
+                    startProcessingDots()
+                    extractGoals()
+                }
+                .padding(.horizontal, 28)
+                .padding(.bottom, 34)
+            } else {
+                HStack {
+                    Text("Understanding you\(String(repeating: ".", count: processingDotCount))")
+                        .font(OnboardingStyle.titleFont(size: Self.titleSize))
+                        .foregroundColor(OnboardingStyle.primaryText)
+                        .tracking(-0.5)
+                    Spacer()
+                }
+                .padding(.horizontal, Self.horizontalPad)
+
                 Spacer()
             }
-            .padding(.horizontal, Self.horizontalPad)
-
-            Spacer()
         }
         .onAppear { startProcessingDots(); extractGoals() }
         .onDisappear { processingTimer?.invalidate() }
@@ -973,14 +1002,15 @@ struct VoiceGoalsPage: View {
             .joined(separator: "\n\n")
 
         guard !combined.isEmpty else {
-            extractedGoals = [RichGoal(title: "Personal growth")]
-            finishProcessing()
+            showGoalsError()
             return
         }
 
         Task {
             do {
-                let response = try await RetrospectAPIClient.shared.extractAndSaveGoals(text: combined)
+                // Deep path: runs the full ingestion + Cook 0 pipeline and returns the
+                // synthesized, evidence-grounded goals (active_goals). No shallow one-shot.
+                let response = try await RetrospectAPIClient.shared.synthesizeGoals(text: combined)
                 let goals = response.extracted.map { e in
                     RichGoal(
                         title: e.title,
@@ -990,17 +1020,24 @@ struct VoiceGoalsPage: View {
                     )
                 }
                 await MainActor.run {
-                    extractedGoals = goals.isEmpty ? [RichGoal(title: "Personal growth")] : goals
-                    backendNotes = response.processingNotes
-                    finishProcessing()
+                    if goals.isEmpty {
+                        // Never fabricate a generic goal — surface the failure so it's visible.
+                        showGoalsError()
+                    } else {
+                        extractedGoals = goals
+                        backendNotes = response.processingNotes
+                        finishProcessing()
+                    }
                 }
             } catch {
-                await MainActor.run {
-                    extractedGoals = [RichGoal(title: "Personal growth")]
-                    finishProcessing()
-                }
+                await MainActor.run { showGoalsError() }
             }
         }
+    }
+
+    private func showGoalsError() {
+        processingTimer?.invalidate()
+        goalsError = true
     }
 
     private func finishProcessing() {
