@@ -186,6 +186,7 @@ struct VoiceGoalsPage: View {
 
     // Goal cards (existing system)
     @State private var extractedGoals: [RichGoal] = []
+    @State private var agreedGoals: [RichGoal] = []   // swiped right = agree
     @State private var currentCardIndex: Int = 0
     @State private var cardOffset: CGSize = .zero
     @State private var cardRotation: Double = 0
@@ -475,6 +476,18 @@ struct VoiceGoalsPage: View {
             topBar(progress: 0.99, showBack: false, backAction: {})
 
             if currentCardIndex < extractedGoals.count {
+                // Top label
+                HStack {
+                    Text("Your goals are ready")
+                        .font(OnboardingStyle.bodyFont(size: 13, weight: .semibold))
+                        .foregroundColor(OnboardingStyle.secondaryText)
+                        .tracking(0.4)
+                    Spacer()
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 6)
+
+                // Full-page goal cards
                 ZStack {
                     ForEach(Array(extractedGoals.enumerated().reversed()), id: \.element.id) { index, goal in
                         if index >= currentCardIndex && index < currentCardIndex + 3 {
@@ -482,7 +495,7 @@ struct VoiceGoalsPage: View {
                             goalCard(goal: goal, isTop: depth == 0)
                                 .scaleEffect(depth == 0 ? 1.0 : 1.0 - CGFloat(depth) * 0.04)
                                 .offset(y: depth == 0 ? 0 : CGFloat(depth) * 10)
-                                .opacity(depth == 0 ? 1.0 : depth == 1 ? 0.5 : 0.25)
+                                .opacity(depth == 0 ? 1.0 : depth == 1 ? 0.6 : 0.35)
                                 .zIndex(Double(extractedGoals.count - index))
                                 .offset(x: depth == 0 ? cardOffset.width : 0)
                                 .rotationEffect(.degrees(depth == 0 ? cardRotation : 0))
@@ -490,9 +503,9 @@ struct VoiceGoalsPage: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 28)
-                .padding(.top, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.top, 14)
                 .opacity(cardRevealed ? 1 : 0)
                 .scaleEffect(cardRevealed ? 1 : 0.92)
 
@@ -508,31 +521,40 @@ struct VoiceGoalsPage: View {
                             .animation(.easeOut(duration: 0.2), value: currentCardIndex)
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, 14)
+
+                // Bottom instruction label
+                VStack(spacing: 4) {
+                    Text("Take a look at these goals.")
+                        .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
+                        .foregroundColor(OnboardingStyle.secondaryText)
+                    Text("Swipe right to agree, left to disagree.")
+                        .font(OnboardingStyle.bodyFont(size: 12))
+                        .foregroundColor(OnboardingStyle.tertiaryText)
+                }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+                .padding(.bottom, 30)
 
             } else {
-                // All cards swiped
-                VStack(spacing: 20) {
-                    if showClosingAck {
-                        HStack {
-                            Text(closingAckText)
-                                .font(OnboardingStyle.titleFont(size: 26))
-                                .foregroundColor(OnboardingStyle.primaryText)
-                                .tracking(-0.5)
-                                .lineSpacing(3)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 28)
-                        .padding(.top, 48)
+                Spacer()
+
+                if showClosingAck {
+                    HStack {
+                        Text(closingAckText)
+                            .font(OnboardingStyle.titleFont(size: 26))
+                            .foregroundColor(OnboardingStyle.primaryText)
+                            .tracking(-0.5)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
                     }
+                    .padding(.horizontal, 28)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
 
-            Spacer()
+                Spacer()
 
-            if currentCardIndex >= extractedGoals.count {
                 OnboardingPrimaryButton(title: "Continue") {
                     HapticManager.shared.playSuccessNotification()
                     finish()  // hand off to integrations; closing screen comes after
@@ -559,6 +581,10 @@ struct VoiceGoalsPage: View {
             .onEnded { v in
                 if abs(v.translation.width) > 110 {
                     let dir: CGFloat = v.translation.width > 0 ? 1 : -1
+                    // Right = agree (keep), left = disagree (drop)
+                    if dir > 0, currentCardIndex < extractedGoals.count {
+                        agreedGoals.append(extractedGoals[currentCardIndex])
+                    }
                     withAnimation(.easeOut(duration: 0.28)) {
                         cardOffset = CGSize(width: dir * 500, height: 0)
                         cardRotation = Double(dir * 25)
@@ -626,26 +652,29 @@ struct VoiceGoalsPage: View {
 
             if isTop {
                 HStack {
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: "hand.draw")
-                            .font(OnboardingStyle.bodyFont(size: 11, weight: .medium))
-                        Text("Swipe to continue")
-                            .font(OnboardingStyle.bodyFont(size: 12, weight: .medium))
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.left")
+                        Text("Disagree")
                     }
                     .foregroundColor(OnboardingStyle.tertiaryText)
                     Spacer()
+                    HStack(spacing: 5) {
+                        Text("Agree")
+                        Image(systemName: "arrow.right")
+                    }
+                    .foregroundColor(OnboardingStyle.secondaryText)
                 }
+                .font(OnboardingStyle.bodyFont(size: 12, weight: .medium))
             }
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading)
+        .padding(26)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(OnboardingStyle.control.opacity(0.82))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(color.opacity(0.15), lineWidth: 1))
-                .shadow(color: .black.opacity(0.10), radius: 12, y: 6)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(OnboardingStyle.control)
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .strokeBorder(color.opacity(0.18), lineWidth: 1))
+                .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
         )
     }
 
@@ -1079,8 +1108,10 @@ struct VoiceGoalsPage: View {
     }
 
     private func finish() {
-        goalsManager.addRichGoals(extractedGoals)
-        OnboardingContextManager.shared.saveExtractedGoals(extractedGoals)
+        // Save the goals the user agreed with (swiped right); fall back to all if none.
+        let chosenGoals = agreedGoals.isEmpty ? extractedGoals : agreedGoals
+        goalsManager.addRichGoals(chosenGoals)
+        OnboardingContextManager.shared.saveExtractedGoals(chosenGoals)
 
         let combined = zip(Self.questions, answers)
             .map { q, a in "Q: \(q.text.replacingOccurrences(of: "{name}", with: userName))\nA: \(a)" }
@@ -1093,7 +1124,7 @@ struct VoiceGoalsPage: View {
             if granted { PodcastNotificationService.shared.scheduleAllRecurringNotifications() }
         }
 
-        onComplete?(extractedGoals, userName)
+        onComplete?(chosenGoals, userName)
     }
 }
 
