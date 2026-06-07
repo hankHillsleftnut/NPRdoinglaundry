@@ -29,6 +29,16 @@
 	<string>554366364287-po5osj24tcqrom1lhfkitm3c4qsb3i2c.apps.googleusercontent.com</string>
 	<key>NSFamilyControlsUsageDescription</key>
 	<string>Retrospect uses Screen Time data to understand your digital habits and surface insights about how you spend time on your device.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Retrospect reads your calendar to understand how you spend your time and what matters to you.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Retrospect reads your calendar to understand how you spend your time and what matters to you.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Retrospect looks at what you listen to to understand your taste and mood.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Retrospect reads only photo details like dates and counts (never the images themselves) to understand the rhythm of your life.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Retrospect reads your contacts to understand the people who matter in your life.</string>
 	<key>OPENAI_API_KEY</key>
 	<string>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</string>
 	<key>PLIST_VERSION</key>

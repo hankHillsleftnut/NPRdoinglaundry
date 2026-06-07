@@ -11,6 +11,10 @@ import SwiftUI
 @main
 struct RetrospectWidgetsBundle: WidgetBundle {
     var body: some Widget {
+        if #available(iOS 18.0, *) {
+            RetrospectWidgetsControl()
+        }
+
         if #available(iOS 16.2, *) {
             VoiceRecordingLiveActivityWidget()
         }

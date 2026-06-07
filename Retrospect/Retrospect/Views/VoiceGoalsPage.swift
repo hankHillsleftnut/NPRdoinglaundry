@@ -197,6 +197,8 @@ struct VoiceGoalsPage: View {
     @State private var processingTimer: Timer?
     @State private var backendNotes: String?
     @State private var goalsError: Bool = false
+    @State private var showPodcastFlow = false
+    @State private var podcastFlowSessionID = UUID()
 
     @StateObject private var goalsManager = GoalsManager.shared
 
@@ -245,7 +247,7 @@ struct VoiceGoalsPage: View {
 
     private func welcomeScreen(upTo line: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            topBar(progress: 0.02, showBack: false, backAction: {})
+            topBar(progress: 0.02, showBack: false, backAction: {}, onSkip: { withAnimation { phase = .complete } })
 
             Spacer().frame(height: Self.textStartGap)
 
@@ -285,7 +287,7 @@ struct VoiceGoalsPage: View {
         let resolvedText = q.text.replacingOccurrences(of: "{name}", with: userName)
 
         return VStack(spacing: 0) {
-            topBar(progress: q.progress, showBack: idx > 0, backAction: { goBack(from: idx) })
+            topBar(progress: q.progress, showBack: idx > 0, backAction: { goBack(from: idx) }, onSkip: { withAnimation { phase = .complete } })
 
             Spacer().frame(height: Self.textStartGap)
 
@@ -344,7 +346,7 @@ struct VoiceGoalsPage: View {
         let q = Self.questions[idx]
 
         return VStack(spacing: 0) {
-            topBar(progress: q.progress, showBack: true, backAction: { goBack(from: idx) })
+            topBar(progress: q.progress, showBack: true, backAction: { goBack(from: idx) }, onSkip: { withAnimation { phase = .complete } })
 
             Spacer().frame(height: Self.textStartGap)
 
@@ -389,7 +391,7 @@ struct VoiceGoalsPage: View {
         let lines = bridgeLines(for: bIdx)
 
         return VStack(alignment: .leading, spacing: 0) {
-            topBar(progress: questionProgressBeforeBridge(bIdx), showBack: false, backAction: {})
+            topBar(progress: questionProgressBeforeBridge(bIdx), showBack: false, backAction: {}, onSkip: { withAnimation { phase = .complete } })
 
             Spacer().frame(height: Self.textStartGap)
 
@@ -694,7 +696,8 @@ struct VoiceGoalsPage: View {
             if isStreamingDone {
                 OnboardingPrimaryButton(title: "Play Podcast") {
                     HapticManager.shared.playSuccessNotification()
-                    finish()
+                    podcastFlowSessionID = UUID()
+                    showPodcastFlow = true
                 }
                 .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 34)
@@ -704,14 +707,30 @@ struct VoiceGoalsPage: View {
                 Spacer(minLength: 100)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             stream("Now let's help you get there.", speed: 0.035) {}
         }
+        .fullScreenCover(isPresented: $showPodcastFlow) {
+            // TEMP transcript keeps the podcast + paywall screens reviewable before
+            // the real first-podcast audio/transcript are wired in.
+            PodcastPaywallFlow(
+                audioURL: nil,
+                transcript: Self.demoTranscript,
+                onClose: { showPodcastFlow = false }
+            )
+            .id(podcastFlowSessionID)
+        }
     }
+
+    // TEMP — placeholder transcript for reviewing the player + paywall screens.
+    private static let demoTranscript = """
+    There is a version of you that already knows what to do. You have spent the last few weeks moving fast, shipping, and quietly carrying a lot. The body keeps showing up in the data even when you do not mention it. There is a thread here worth pulling, about what you are really building and who you are building it for. Let's sit with that for a moment. Because the thing standing in your way is smaller than it feels right now.
+    """
 
     // ── SHARED SUBVIEWS ───────────────────────────────────────────────────
 
-    private func topBar(progress: Double, showBack: Bool, backAction: @escaping () -> Void) -> some View {
+    private func topBar(progress: Double, showBack: Bool, backAction: @escaping () -> Void, onSkip: (() -> Void)? = nil) -> some View {
         // Back button (left) on the SAME line as the centered, rounded progress bar.
         HStack(spacing: 14) {
             // Left slot — back button or an invisible placeholder to keep the bar centered
@@ -743,8 +762,22 @@ struct VoiceGoalsPage: View {
                 .frame(height: 6)
             }
 
-            // Right slot — invisible, mirrors the left so the bar stays centered
-            Color.clear.frame(width: 22, height: 22)
+            // Right slot — DEV-ONLY Skip (fast-forward through onboarding). Never ships.
+            Group {
+                #if DEBUG
+                if let onSkip = onSkip {
+                    Button("Skip") { onSkip() }
+                        .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
+                        .foregroundColor(OnboardingStyle.tertiaryText)
+                        .buttonStyle(PlainButtonStyle())
+                } else {
+                    Color.clear.frame(width: 22, height: 22)
+                }
+                #else
+                Color.clear.frame(width: 22, height: 22)
+                #endif
+            }
+            .fixedSize()
         }
         .padding(.top, 10)
         .padding(.horizontal, 24)

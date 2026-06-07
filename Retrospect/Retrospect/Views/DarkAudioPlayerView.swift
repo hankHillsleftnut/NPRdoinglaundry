@@ -277,189 +277,45 @@ struct DarkAudioPlayerView: View {
     // MARK: - Transcript Reader
 
     private var transcriptReader: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if transcriptSegments.isEmpty {
-                        Text(transcript.processedTranscript ?? "No transcript available.")
-                            .font(.custom("HedvigLettersSerif-24ptRegular", size: 30))
-                            .foregroundColor(playbackMuted)
-                            .lineSpacing(4)
-                    } else {
-                        ForEach(transcriptSegments) { segment in
-                            PodcastTranscriptLine(
-                                segment: segment,
-                                currentIndex: currentSegmentIndex,
-                                ink: playbackInk,
-                                muted: playbackMuted
-                            )
-                            .id(segment.id)
-                        }
-                    }
-                }
-                .padding(.horizontal, 38)
-                .padding(.top, 96)
-                .padding(.bottom, 220)
-            }
-            .frame(maxWidth: .infinity)
-            // Fixed fade edges using the surface color itself — no UIKit blur,
-            // no material tint, no hard seam. Matches the bottom-controls gradient.
-            .overlay(alignment: .top) {
-                LinearGradient(
-                    colors: [
-                        playbackSurface,
-                        playbackSurface,
-                        playbackSurface.opacity(0),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 130)
-                .allowsHitTesting(false)
-            }
-            .overlay(alignment: .bottom) {
-                LinearGradient(
-                    colors: [
-                        playbackSurface.opacity(0),
-                        playbackSurface,
-                        playbackSurface,
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 130)
-                .allowsHitTesting(false)
-            }
-            .onAppear { scrollProxy = proxy }
-            .onChange(of: currentSegmentIndex) { _, newIndex in
-                withAnimation(.easeInOut(duration: 0.7)) {
-                    proxy.scrollTo("segment-\(newIndex)", anchor: .center)
-                }
-            }
-        }
-        .textSelection(.enabled)
+        PodcastTranscriptReader(
+            transcript: transcript.processedTranscript,
+            currentTime: currentTime,
+            duration: duration,
+            theme: .light,
+            fontSize: 30,
+            horizontalPadding: 38,
+            alignment: .leading,
+            topInset: 96,
+            bottomInset: 220
+        )
     }
 
     // MARK: - Bottom Controls
 
     private var bottomControls: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 10) {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(playbackMuted.opacity(0.22))
-                            .frame(height: 3)
-
-                        Capsule()
-                            .fill(playbackMuted.opacity(0.86))
-                            .frame(width: geometry.size.width * progress, height: 3)
-                    }
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                isDragging = true
-                                let newProgress = min(max(value.location.x / geometry.size.width, 0), 1)
-                                currentTime = duration * newProgress
-                                if hasAudio {
-                                    audioManager.seekTo(progress: newProgress)
-                                }
-                            }
-                            .onEnded { _ in
-                                isDragging = false
-                            }
-                    )
-                }
-                .frame(height: 18)
-
-                HStack {
-                    Menu {
-                        if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
-                            Button(action: {
-                                showInsights = true
-                                if insights.isEmpty { loadInsights() }
-                            }) {
-                                Label("View Insights", systemImage: "lightbulb")
-                            }
-                        }
-
-                        Button(action: { shareTranscript() }) {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
-
-                        Button(action: {
-                            HapticManager.shared.playLightImpact()
-                            cycleSpeed()
-                        }) {
-                            Label("\(formatSpeed(playbackSpeed))x Speed", systemImage: "speedometer")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(playbackMuted)
-                            .frame(width: 32, height: 24)
-                    }
-
-                    Spacer()
-
-                    Text(formatTime(max(0, duration - currentTime)))
-                        .font(.system(size: 14, weight: .regular, design: .monospaced))
-                        .foregroundColor(playbackMuted)
-                }
-            }
-
-            HStack(spacing: 20) {
-                Button(action: {
-                    HapticManager.shared.playLightImpact()
-                    if hasAudio {
-                        let newTime = max(currentTime - 15, 0)
-                        audioManager.audioPlayer?.currentTime = newTime
-                        currentTime = newTime
-                    }
-                }) {
-                    Image(systemName: "gobackward.15")
-                        .font(.system(size: 19, weight: .medium))
-                        .frame(width: 26, height: 26)
-                }
-                .disabled(!hasAudio)
-
-                Button(action: {
-                    HapticManager.shared.playMediumImpact()
-                    if hasAudio {
-                        audioManager.togglePlayback()
-                    }
-                }) {
-                    Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .offset(x: audioManager.isPlaying ? 0 : 1.5)
-                        .frame(width: 28, height: 28)
-                }
-                .disabled(!hasAudio)
-
-                Button(action: {
-                    HapticManager.shared.playLightImpact()
-                    if hasAudio {
-                        let newTime = min(currentTime + 15, duration)
-                        audioManager.audioPlayer?.currentTime = newTime
-                        currentTime = newTime
-                    }
-                }) {
-                    Image(systemName: "goforward.15")
-                        .font(.system(size: 19, weight: .medium))
-                        .frame(width: 26, height: 26)
-                }
-                .disabled(!hasAudio)
-            }
-            .foregroundColor(playbackMuted)
-            .opacity(hasAudio ? 1 : 0.42)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 15)
-            .background(
-                Capsule()
-                    .fill(playbackControl)
-            )
-        }
+        PodcastTransport(
+            currentTime: currentTime,
+            duration: duration,
+            isPlaying: audioManager.isPlaying,
+            enabled: hasAudio,
+            theme: .light,
+            onSeek: { newProgress in
+                currentTime = duration * newProgress
+                if hasAudio { audioManager.seekTo(progress: newProgress) }
+            },
+            onSkip: { seconds in
+                HapticManager.shared.playLightImpact()
+                guard hasAudio else { return }
+                let newTime = min(max(currentTime + seconds, 0), duration)
+                audioManager.audioPlayer?.currentTime = newTime
+                currentTime = newTime
+            },
+            onToggle: {
+                HapticManager.shared.playMediumImpact()
+                if hasAudio { audioManager.togglePlayback() }
+            },
+            leadingAccessory: { transportMenu }
+        )
         .padding(.horizontal, 46)
         .padding(.bottom, 38)
         .background(
@@ -470,6 +326,35 @@ struct DarkAudioPlayerView: View {
             )
             .ignoresSafeArea(edges: .bottom)
         )
+    }
+
+    private var transportMenu: some View {
+        Menu {
+            if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
+                Button(action: {
+                    showInsights = true
+                    if insights.isEmpty { loadInsights() }
+                }) {
+                    Label("View Insights", systemImage: "lightbulb")
+                }
+            }
+
+            Button(action: { shareTranscript() }) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+
+            Button(action: {
+                HapticManager.shared.playLightImpact()
+                cycleSpeed()
+            }) {
+                Label("\(formatSpeed(playbackSpeed))x Speed", systemImage: "speedometer")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(playbackMuted)
+                .frame(width: 32, height: 24)
+        }
     }
 
     // MARK: - Helpers

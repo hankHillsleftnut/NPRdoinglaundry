@@ -38,6 +38,10 @@ export const ContentTypeSchema = z.enum([
   'screen_time',
   'twitter_bookmarks',
   'onboarding_profile',
+  // Native iOS sources
+  'apple_music',
+  'photos',
+  'contacts',
 ]);
 
 export type ContentType = z.infer<typeof ContentTypeSchema>;

@@ -67,6 +67,14 @@ struct RetrospectApp: App {
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
     @Environment(\.scenePhase) private var scenePhase
+
+    private var isPodcastLayoutDiagnosticsMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-PodcastLayoutDiagnostics")
+        #else
+        false
+        #endif
+    }
     
     private var isGoogleConfigured: Bool {
         guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String else {
@@ -83,6 +91,9 @@ struct RetrospectApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                if isPodcastLayoutDiagnosticsMode {
+                    PodcastLayoutDiagnosticsHost()
+                } else {
                 // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
                 if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
                     DeviceActivityReport(
@@ -134,6 +145,7 @@ struct RetrospectApp: App {
                     GoogleAuthView(isPresented: $showGoogleAuth)
                         .transition(.opacity)
                         .zIndex(1)
+                }
                 }
             }
             .animation(.easeInOut(duration: 0.5), value: hasCompletedOnboarding)
@@ -274,7 +286,15 @@ struct RetrospectApp: App {
             .onOpenURL { url in
                 guard url.scheme == "retrospect" else { return }
                 
-                if url.host == "stop-recording" {
+                if url.host == "start-recording" {
+                    print("🎙️ Start recording triggered from Lock Screen control")
+
+                    if hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {
+                        shouldStartVoiceRecording = true
+                    } else {
+                        UserDefaults.standard.set(true, forKey: "shouldStartVoiceRecordingFromShortcut")
+                    }
+                } else if url.host == "stop-recording" {
                     print("💾 Save recording triggered from Live Activity")
                     
                     // Show black screen immediately (don't show app UI)
@@ -413,3 +433,36 @@ private struct FirstPodcastCreationView: View {
         RetrospectLoadingScreen(status: status, errorMessage: errorMessage)
     }
 }
+
+#if DEBUG
+private struct PodcastLayoutDiagnosticsHost: View {
+    @State private var showOnboardingLayer = false
+
+    var body: some View {
+        Color.red
+            .ignoresSafeArea()
+            .onAppear { showOnboardingLayer = true }
+            .fullScreenCover(isPresented: $showOnboardingLayer) {
+                PodcastLayoutDiagnosticsOnboardingLayer()
+            }
+    }
+}
+
+private struct PodcastLayoutDiagnosticsOnboardingLayer: View {
+    @State private var showPodcast = false
+
+    var body: some View {
+        Color.blue
+            .ignoresSafeArea()
+            .onAppear { showPodcast = true }
+            .fullScreenCover(isPresented: $showPodcast) {
+                PodcastPaywallFlow(
+                    audioURL: nil,
+                    transcript: "There is a version of you that already knows what to do. You have spent the last few weeks moving fast, shipping, and quietly carrying a lot. The body keeps showing up in the data even when you do not mention it.",
+                    teaseSeconds: 10_000,
+                    diagnosticsEnabled: true
+                )
+            }
+    }
+}
+#endif
