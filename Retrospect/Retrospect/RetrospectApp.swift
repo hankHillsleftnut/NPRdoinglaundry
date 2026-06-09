@@ -49,6 +49,7 @@ struct RetrospectApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("useDarkUI") private var useDarkUI: Bool = true // Default to new dark UI
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
+    @AppStorage("devAuthBypassEnabled") private var devAuthBypassEnabled: Bool = false
     @State private var showGoogleAuth = false
     @State private var shouldStartVoiceRecording = false
     @State private var isProcessingStopFromWidget = false
@@ -73,6 +74,14 @@ struct RetrospectApp: App {
         ProcessInfo.processInfo.arguments.contains("-PodcastLayoutDiagnostics")
         #else
         false
+        #endif
+    }
+
+    private var hasUsableBackendAuth: Bool {
+        #if DEBUG
+        apiClient.isAuthenticated || devAuthBypassEnabled
+        #else
+        apiClient.isAuthenticated
         #endif
     }
     
@@ -122,7 +131,7 @@ struct RetrospectApp: App {
                         startFirstPodcastHandoff(extractedGoals: goals)
                     })
                     .transition(.opacity)
-                } else if !apiClient.isAuthenticated {
+                } else if !hasUsableBackendAuth {
                     // Backend auth gate — user completed onboarding but has no valid JWT
                     BackendAuthGateView(onAuthenticated: {
                         withAnimation(.easeInOut(duration: 0.5)) {
@@ -460,7 +469,7 @@ private struct PodcastLayoutDiagnosticsOnboardingLayer: View {
                     audioURL: nil,
                     transcript: "There is a version of you that already knows what to do. You have spent the last few weeks moving fast, shipping, and quietly carrying a lot. The body keeps showing up in the data even when you do not mention it.",
                     teaseSeconds: 10_000,
-                    diagnosticsEnabled: true
+                    diagnosticsEnabled: false
                 )
             }
     }

@@ -20,7 +20,7 @@ final class SubscriptionManager: ObservableObject {
     static let shared = SubscriptionManager()
 
     @Published var isSubscribed = false
-    @Published var monthlyPriceString = "$19.99"
+    @Published var monthlyPriceString = "$19.99/m"
     @Published var yearlyPriceString = "$239.99/y"
     @Published var isPurchasing = false
     @Published var lastError: String?
@@ -42,7 +42,7 @@ final class SubscriptionManager: ObservableObject {
             let info = try await Purchases.shared.customerInfo()
             isSubscribed = info.entitlements[entitlementID]?.isActive == true
             if let offering = try await Purchases.shared.offerings().current {
-                if let m = offering.monthly { monthlyPriceString = m.storeProduct.localizedPriceString }
+                if let m = offering.monthly { monthlyPriceString = m.storeProduct.localizedPriceString + "/m" }
                 if let y = offering.annual { yearlyPriceString = y.storeProduct.localizedPriceString + "/y" }
             }
         } catch { lastError = error.localizedDescription }

@@ -81,6 +81,7 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private let url: URL?
+    private var fadeTask: Task<Void, Never>?
 
     /// Visual clock used when there is no audio (onboarding tease before audio exists).
     @Published private var visualTime: TimeInterval = 0
@@ -102,6 +103,8 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
 
     func start() {
         removeTimeObserver()
+        fadeTask?.cancel()
+        fadeTask = nil
         visualTask?.cancel()
         visualTask = nil
 
@@ -129,7 +132,10 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
     }
 
     func stop() {
+        fadeTask?.cancel()
+        fadeTask = nil
         player?.pause()
+        player?.volume = 1
         player?.seek(to: .zero)
         removeTimeObserver()
         player = nil
@@ -140,9 +146,41 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
     }
 
     func pauseForPaywall() {
+        fadeTask?.cancel()
+        fadeTask = nil
         player?.pause()
+        player?.volume = 1
         visualTask?.cancel(); visualTask = nil
         isPlaying = false
+    }
+
+    func fadeOutForPaywall(duration: TimeInterval) {
+        fadeTask?.cancel()
+        let safeDuration = max(0.1, duration)
+
+        guard let player else {
+            fadeTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(safeDuration * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                visualTask?.cancel()
+                visualTask = nil
+                isPlaying = false
+            }
+            return
+        }
+
+        let startingVolume = player.volume
+        let steps = 20
+        fadeTask = Task { @MainActor in
+            for step in 1...steps {
+                try? await Task.sleep(nanoseconds: UInt64((safeDuration / Double(steps)) * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                player.volume = startingVolume * Float(1 - Double(step) / Double(steps))
+            }
+            player.pause()
+            player.volume = 1
+            isPlaying = false
+        }
     }
 
     private func startVisual() {
