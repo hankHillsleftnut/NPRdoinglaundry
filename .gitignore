@@ -12,6 +12,8 @@
 # Build generated
 build/
 DerivedData/
+# Ad-hoc derived data dirs kept beside the project (.derivedDataRun, .derivedDataDevice, …)
+.derivedData*/
 *.hmap
 *.ipa
 *.dSYM.zip
