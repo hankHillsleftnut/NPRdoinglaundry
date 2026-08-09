@@ -1,0 +1,30 @@
+name: RetrospectMac
+options:
+  bundleIdPrefix: com.retrospect
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: "N2V84492LM"
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+targets:
+  RetrospectMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: RetrospectMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.retrospect.mac
+        INFOPLIST_FILE: RetrospectMac/Resources/Info.plist
+        ENABLE_HARDENED_RUNTIME: NO
+        ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: NO
+        COMBINE_HIDPI_IMAGES: YES
+        # SIWA + sandbox are documented in README and ship as RetrospectMac.entitlements.template.
+        # They require an App ID with "Sign In with Apple" enabled (paid program), so they are
+        # intentionally NOT wired here to keep local dev builds green.

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPLATE — not wired into the build by default.
+
+  To enable Sign in with Apple + App Sandbox on this macOS target:
+    1. In the Apple Developer portal, create/edit the App ID `com.retrospect.mac`
+       and enable the "Sign In with Apple" capability (requires a paid membership).
+    2. In project.yml, add to the RetrospectMac target settings.base:
+         CODE_SIGN_ENTITLEMENTS: RetrospectMac.entitlements
+         ENABLE_HARDENED_RUNTIME: YES
+       (rename this file to RetrospectMac.entitlements)
+    3. Re-run `xcodegen generate`.
+
+  Until then the app runs unsandboxed with a local-first store and a dev sign-in
+  path so writing + sync can be exercised without the SIWA capability.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>
