@@ -14,6 +14,11 @@ import DeviceActivity
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Initialize RevenueCat (no-op until the purchases-ios SDK is added). Must
+        // run before any paywall queries customerInfo/offerings.
+        SubscriptionManager.shared.configure()
+        IntegrationBackgroundTasks.register()
+        IntegrationBackgroundTasks.schedule()
         return true
     }
     
@@ -58,6 +63,7 @@ struct RetrospectApp: App {
     @State private var notificationPodcastId: String?
     @State private var needsBackendAuth = false // true when onboarding done but no backend JWT
     @State private var isCreatingFirstPodcast = false
+    @State private var isPreviewingPaywall = false
     @State private var firstPodcastTranscript: TranscriptModel?
     @State private var showFirstPodcastArrival = false
     @State private var firstPodcastError: String?
@@ -72,6 +78,38 @@ struct RetrospectApp: App {
     private var isPodcastLayoutDiagnosticsMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-PodcastLayoutDiagnostics")
+        #else
+        false
+        #endif
+    }
+
+    private var isAnimationPreviewMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
+        #else
+        false
+        #endif
+    }
+
+    private var isLearningTouchMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-LearningTouch")
+        #else
+        false
+        #endif
+    }
+
+    private var isLearningTouchAutoMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-LearningTouchAuto")
+        #else
+        false
+        #endif
+    }
+
+    private var isFirstPodcastFinaleMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-FirstPodcastFinale")
         #else
         false
         #endif
@@ -100,8 +138,24 @@ struct RetrospectApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if isPodcastLayoutDiagnosticsMode {
+                if isFirstPodcastFinaleMode {
+                    #if DEBUG
+                    FirstPodcastFinaleDebugHost()
+                    #endif
+                } else if isLearningTouchAutoMode {
+                    #if DEBUG
+                    LearningTouchAutoDemo()
+                    #endif
+                } else if isLearningTouchMode {
+                    #if DEBUG
+                    LearningTouchDebugHost()
+                    #endif
+                } else if isAnimationPreviewMode {
+                    AnimationPreviewView()
+                } else if isPodcastLayoutDiagnosticsMode {
+                    #if DEBUG
                     PodcastLayoutDiagnosticsHost()
+                    #endif
                 } else {
                 // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
                 if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
@@ -121,15 +175,24 @@ struct RetrospectApp: App {
                         .ignoresSafeArea()
                         .transition(.opacity)
                 } else if isCreatingFirstPodcast {
-                    FirstPodcastCreationView(
-                        status: firstPodcastOrchestrator.status,
-                        errorMessage: firstPodcastError
+                    FirstPodcastExperience(
+                        transcript: firstPodcastTranscript?.processedTranscript
+                            ?? firstPodcastTranscript?.originalText ?? "",
+                        audioURL: firstPodcastTranscript?.audioFileURL,
+                        podcastReady: firstPodcastTranscript != nil,
+                        onComplete: { finishFinale() },
+                        startAtPaywall: isPreviewingPaywall
                     )
                     .transition(.opacity)
                 } else if !hasCompletedOnboarding {
-                    DarkOnboardingFlow(onComplete: { goals in
+                DarkOnboardingFlow(
+                    onComplete: { goals in
                         startFirstPodcastHandoff(extractedGoals: goals)
-                    })
+                    },
+                    onPreviewPaywall: {
+                        previewPaywall()
+                    }
+                )
                     .transition(.opacity)
                 } else if !hasUsableBackendAuth {
                     // Backend auth gate — user completed onboarding but has no valid JWT
@@ -277,6 +340,7 @@ struct RetrospectApp: App {
                 // If recording is active and app goes to background, keep it recording
                 if newPhase == .background {
                     print("📱 App moved to background - recording continues")
+                    IntegrationBackgroundTasks.schedule()
                 }
                 
                 // Re-check Screen Time auth and refresh data when app becomes active.
@@ -320,6 +384,19 @@ struct RetrospectApp: App {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.isProcessingStopFromWidget = false
                     }
+                } else if url.host == "integration-connected" {
+                    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                    let values = Dictionary(
+                        uniqueKeysWithValues: (components?.queryItems ?? []).compactMap { item in
+                            item.value.map { (item.name, $0) }
+                        }
+                    )
+                    NotificationCenter.default.post(
+                        name: .integrationConnectionChanged,
+                        object: nil,
+                        userInfo: values
+                    )
+                    IntegrationsSyncService.shared.syncIfNeeded()
                 }
             }
         }
@@ -329,23 +406,38 @@ struct RetrospectApp: App {
 
     private func startFirstPodcastHandoff(extractedGoals: [RichGoal]) {
         firstPodcastError = nil
+        isPreviewingPaywall = false
         isCreatingFirstPodcast = true
 
         Task {
             do {
                 let transcript = try await firstPodcastOrchestrator.runAfterOnboarding(extractedGoals: extractedGoals)
                 await MainActor.run {
+                    // Hand the ready episode to the finale. The FirstPodcastExperience
+                    // (learning ritual → podcast + paywall → reflection) drives the rest
+                    // and calls finishFinale() when the whole sequence is done.
                     firstPodcastTranscript = transcript
-                    completeOnboardingShell()
-                    showFirstPodcastArrival = true
                 }
             } catch {
                 await MainActor.run {
                     firstPodcastError = error.localizedDescription
-                    completeOnboardingShell()
+                    // Couldn't generate — end onboarding gracefully into the app.
+                    finishFinale()
                 }
             }
         }
+    }
+
+    /// Called by FirstPodcastExperience when the end-of-onboarding finale is complete
+    /// (podcast finished + reflection, or backed out) → drop into the app.
+    private func finishFinale() {
+        completeOnboardingShell()
+    }
+
+    private func previewPaywall() {
+        firstPodcastError = nil
+        isPreviewingPaywall = true
+        isCreatingFirstPodcast = true
     }
 
     private func completeOnboardingShell() {
@@ -354,6 +446,7 @@ struct RetrospectApp: App {
             isAuthenticated = true
             needsBackendAuth = false
             isCreatingFirstPodcast = false
+            isPreviewingPaywall = false
         }
     }
     

@@ -176,6 +176,8 @@ struct FigmaLightInlineEntryReader: View {
     let entry: Entry
     @Binding var activeEntry: Entry?
 
+    @Environment(\.openSidePanel) private var openSidePanel
+
     @State private var audioPlayer: AVAudioPlayer?
     @State private var isPlaying = false
     @State private var currentTime: TimeInterval = 0
@@ -264,6 +266,21 @@ struct FigmaLightInlineEntryReader: View {
             timer?.invalidate()
             audioPlayer?.stop()
         }
+        .gesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    let vertical = abs(value.translation.height)
+                    guard vertical < abs(horizontal) else { return }
+                    if horizontal > 60 {
+                        HapticManager.shared.playLightImpact()
+                        activeEntry = nil
+                    } else if horizontal < -60 {
+                        HapticManager.shared.playLightImpact()
+                        openSidePanel()
+                    }
+                }
+        )
     }
 
     private var voicePlayer: some View {

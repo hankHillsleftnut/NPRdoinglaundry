@@ -42,6 +42,13 @@ export const ContentTypeSchema = z.enum([
   'apple_music',
   'photos',
   'contacts',
+  // OAuth/API integrations
+  'gmail',
+  'spotify',
+  'youtube',
+  'reddit',
+  'x',
+  'tiktok',
 ]);
 
 export type ContentType = z.infer<typeof ContentTypeSchema>;
@@ -103,6 +110,34 @@ export const UploadContentSchema = z.object({
 });
 
 export type UploadContentRequest = z.infer<typeof UploadContentSchema>;
+
+export const IntegrationSourceItemSchema = z.object({
+  providerObjectType: z.string().min(1).max(200),
+  providerObjectId: z.string().min(1).max(1000),
+  payload: z.record(z.unknown()),
+  canonicalType: z.string().min(1).max(200),
+  canonicalText: z.string().min(1),
+  normalizedData: z.record(z.unknown()).default({}),
+  occurredAt: z.string().datetime().optional(),
+  analysisEligible: z.boolean().default(true),
+  providerCreatedAt: z.string().datetime().optional(),
+  providerUpdatedAt: z.string().datetime().optional(),
+  parserVersion: z.string().min(1).max(100),
+  normalizerVersion: z.string().min(1).max(100),
+  contentType: ContentTypeSchema,
+  metadata: z.record(z.unknown()).default({}),
+});
+
+export const IngestIntegrationItemsSchema = z.object({
+  idempotencyKey: z.string().min(8).max(500).optional(),
+  runType: z.enum(['initial_backfill', 'incremental_sync', 'webhook_recovery', 'replay', 'export_import']),
+  cursorBefore: z.record(z.unknown()).default({}),
+  cursorAfter: z.record(z.unknown()).default({}),
+  items: z.array(IntegrationSourceItemSchema).min(1).max(100),
+});
+
+export type IntegrationSourceItem = z.infer<typeof IntegrationSourceItemSchema>;
+export type IngestIntegrationItemsRequest = z.infer<typeof IngestIntegrationItemsSchema>;
 
 // Insight Response
 export const InsightUnitSchema = z.object({

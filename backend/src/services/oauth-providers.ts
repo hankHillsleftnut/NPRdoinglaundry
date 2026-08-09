@@ -1,0 +1,197 @@
+import { config } from '../utils/config.js';
+
+export interface OAuthProvider {
+  id: string;
+  authorizationUrl: string;
+  tokenUrl: string;
+  clientId: string;
+  clientSecret: string;
+  scopes: string[];
+  tokenAuth: 'body' | 'basic';
+  supportsPkce: boolean;
+  authorizationClientIdParam?: string;
+  authorizationScopeSeparator?: 'space' | 'comma';
+  tokenClientIdParam?: string;
+  tokenClientSecretParam?: string;
+  extraAuthorizationParams?: Record<string, string>;
+  extraTokenParams?: Record<string, string>;
+}
+
+interface AuthorizationUrlInput {
+  redirectUri: string;
+  state: string;
+  codeChallenge?: string;
+}
+
+interface TokenRequestInput {
+  code: string;
+  redirectUri: string;
+  codeVerifier?: string;
+}
+
+const google = {
+  authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  clientId: config.integrations.googleClientId,
+  clientSecret: config.integrations.googleClientSecret,
+  extraAuthorizationParams: { access_type: 'offline', prompt: 'consent' },
+};
+
+const providers: Record<string, OAuthProvider> = {
+  google_docs: {
+    id: 'google_docs',
+    ...google,
+    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/documents.readonly'],
+    tokenAuth: 'body',
+    supportsPkce: true,
+  },
+  gmail: {
+    id: 'gmail',
+    ...google,
+    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly'],
+    tokenAuth: 'body',
+    supportsPkce: true,
+  },
+  youtube: {
+    id: 'youtube',
+    ...google,
+    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/youtube.readonly'],
+    tokenAuth: 'body',
+    supportsPkce: true,
+  },
+  spotify: {
+    id: 'spotify',
+    authorizationUrl: 'https://accounts.spotify.com/authorize',
+    tokenUrl: 'https://accounts.spotify.com/api/token',
+    clientId: config.integrations.spotifyClientId,
+    clientSecret: config.integrations.spotifyClientSecret,
+    scopes: ['user-read-recently-played', 'user-library-read', 'playlist-read-private', 'user-follow-read'],
+    tokenAuth: 'basic',
+    supportsPkce: true,
+  },
+  reddit: {
+    id: 'reddit',
+    authorizationUrl: 'https://www.reddit.com/api/v1/authorize',
+    tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+    clientId: config.integrations.redditClientId,
+    clientSecret: config.integrations.redditClientSecret,
+    scopes: ['identity', 'history', 'mysubreddits', 'read', 'save'],
+    tokenAuth: 'basic',
+    supportsPkce: false,
+    extraAuthorizationParams: { duration: 'permanent' },
+  },
+  pinterest: {
+    id: 'pinterest',
+    authorizationUrl: 'https://www.pinterest.com/oauth/',
+    tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+    clientId: config.integrations.pinterestClientId,
+    clientSecret: config.integrations.pinterestClientSecret,
+    scopes: ['boards:read', 'pins:read', 'user_accounts:read'],
+    tokenAuth: 'basic',
+    supportsPkce: false,
+  },
+  tiktok: {
+    id: 'tiktok',
+    authorizationUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+    tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+    clientId: config.integrations.tiktokClientKey,
+    clientSecret: config.integrations.tiktokClientSecret,
+    scopes: ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list'],
+    tokenAuth: 'body',
+    supportsPkce: false,
+    authorizationClientIdParam: 'client_key',
+    authorizationScopeSeparator: 'comma',
+    tokenClientIdParam: 'client_key',
+    extraAuthorizationParams: { disable_auto_auth: '0' },
+  },
+  linkedin: {
+    id: 'linkedin',
+    authorizationUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    clientId: config.integrations.linkedinClientId,
+    clientSecret: config.integrations.linkedinClientSecret,
+    scopes: ['openid', 'profile', 'email'],
+    tokenAuth: 'body',
+    supportsPkce: false,
+  },
+  x: {
+    id: 'x',
+    authorizationUrl: 'https://api.x.com/2/oauth2/authorize',
+    tokenUrl: 'https://api.x.com/2/oauth2/token',
+    clientId: config.integrations.xClientId,
+    clientSecret: config.integrations.xClientSecret,
+    scopes: ['tweet.read', 'users.read', 'like.read', 'bookmark.read', 'follows.read', 'offline.access'],
+    tokenAuth: 'basic',
+    supportsPkce: true,
+  },
+};
+
+export function getOAuthProviderReadiness(providerId: string) {
+  const provider = providers[providerId];
+  if (!provider) return null;
+  const missing: string[] = [];
+  if (!provider.clientId) missing.push(provider.authorizationClientIdParam === 'client_key' ? 'client_key' : 'client_id');
+  if (!provider.clientSecret) missing.push('client_secret');
+  return {
+    providerId: provider.id,
+    configured: missing.length === 0,
+    missing,
+    scopes: provider.scopes,
+    supportsPkce: provider.supportsPkce,
+    tokenAuth: provider.tokenAuth,
+  };
+}
+
+export function listOAuthProviderReadiness() {
+  return Object.keys(providers)
+    .sort()
+    .map(getOAuthProviderReadiness)
+    .filter((entry): entry is NonNullable<ReturnType<typeof getOAuthProviderReadiness>> => Boolean(entry));
+}
+
+export function getOAuthProvider(providerId: string): OAuthProvider {
+  const provider = providers[providerId];
+  if (!provider) throw new Error(`${providerId} does not have a continuous OAuth connector`);
+  if (!provider.clientId || !provider.clientSecret) throw new Error(`${providerId} OAuth credentials are not configured`);
+  return provider;
+}
+
+export function buildOAuthAuthorizationUrl(provider: OAuthProvider, input: AuthorizationUrlInput): URL {
+  const url = new URL(provider.authorizationUrl);
+  url.searchParams.set(provider.authorizationClientIdParam ?? 'client_id', provider.clientId);
+  url.searchParams.set('redirect_uri', input.redirectUri);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', provider.scopes.join(provider.authorizationScopeSeparator === 'comma' ? ',' : ' '));
+  url.searchParams.set('state', input.state);
+  if (provider.supportsPkce) {
+    if (!input.codeChallenge) throw new Error(`${provider.id} OAuth authorization requires a PKCE code challenge`);
+    url.searchParams.set('code_challenge', input.codeChallenge);
+    url.searchParams.set('code_challenge_method', 'S256');
+  }
+  for (const [key, value] of Object.entries(provider.extraAuthorizationParams ?? {})) url.searchParams.set(key, value);
+  return url;
+}
+
+export function buildOAuthTokenRequest(provider: OAuthProvider, input: TokenRequestInput) {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: input.code,
+    redirect_uri: input.redirectUri,
+    ...provider.extraTokenParams,
+  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent': 'Retrospect/1.0',
+  };
+  if (provider.tokenAuth === 'basic') {
+    headers.Authorization = `Basic ${Buffer.from(`${provider.clientId}:${provider.clientSecret}`).toString('base64')}`;
+  } else {
+    body.set(provider.tokenClientIdParam ?? 'client_id', provider.clientId);
+    body.set(provider.tokenClientSecretParam ?? 'client_secret', provider.clientSecret);
+  }
+  if (provider.supportsPkce) {
+    if (!input.codeVerifier) throw new Error(`${provider.id} OAuth token exchange requires a PKCE verifier`);
+    body.set('code_verifier', input.codeVerifier);
+  }
+  return { headers, body };
+}

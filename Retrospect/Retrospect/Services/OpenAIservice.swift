@@ -36,10 +36,9 @@ struct DeepResearchResponse {
 
 class OpenAIService {
     static let shared: OpenAIService = {
-        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "OPENAI_API_KEY") as? String else {
-            fatalError("OpenAI API key not found in Info.plist")
-        }
-        return OpenAIService(apiKey: apiKey)
+        // Provider credentials are never shipped in the app. This legacy
+        // compatibility service remains only until all call sites use the API.
+        return OpenAIService(apiKey: "")
     }()
     
     private let apiKey: String

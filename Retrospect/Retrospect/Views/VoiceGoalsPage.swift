@@ -105,7 +105,7 @@ struct VoiceGoalsPage: View {
                  input: .pillsVertical(["Love it", "It's fine for now", "I'm ready for something new", "I'm building something on the side"]), progress: 0.22),
         // Part 3 — Depth (bridge 0 before Q9)
         Question("Has there ever been a goal that someone told you that you couldn't achieve?",
-                 placeholder: "What was it — and who said it?", ack: true, progress: 0.35),
+                 placeholder: "What was it, and who said it?", ack: true, progress: 0.35),
         Question("If a close friend described you in one honest sentence, what would they say?",
                  placeholder: "The real one, not the polished one.", ack: true, progress: 0.46),
         Question("What's something you've been thinking about lately that you haven't really told anyone?",
@@ -137,7 +137,7 @@ struct VoiceGoalsPage: View {
         switch bridgeIdx {
         case 0:
             return ["These next ones go a little deeper.",
-                    "There are no right answers — only honest ones."]
+                    "There are no right answers, only honest ones."]
         case 1:
             return ["Now, the real reason you're here\(userName.isEmpty ? "." : ", \(userName).")",
                     "What you want. Not what you're supposed to want.",
@@ -146,7 +146,7 @@ struct VoiceGoalsPage: View {
         case 2:
             return ["Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
                     "Don't be realistic. Don't hold back.",
-                    "Pretend anything is possible — because with me, it is."]
+                    "Pretend anything is possible, because with me, it is."]
         default: return []
         }
     }
@@ -195,10 +195,18 @@ struct VoiceGoalsPage: View {
     @State private var showClosingAck: Bool = false
     @State private var processingDotCount: Int = 0
     @State private var processingTimer: Timer?
+    @State private var wonderings: [String] = []
+    @State private var currentWondering: String = ""
+    @State private var wonderingIndex: Int = 0
+    @State private var wonderingTimer: Timer?
     @State private var backendNotes: String?
     @State private var goalsError: Bool = false
     @State private var showPodcastFlow = false
+    @State private var showPodcastLayer = false
     @State private var podcastFlowSessionID = UUID()
+    @State private var prefetchedEpisode: PodcastEpisode?
+    @State private var podcastGenerating = false
+    @State private var awaitingPodcast = false
 
     @StateObject private var goalsManager = GoalsManager.shared
 
@@ -232,9 +240,30 @@ struct VoiceGoalsPage: View {
                         .id("done")
                 }
             }
+            .opacity(showPodcastFlow ? 0 : 1)
+            .scaleEffect(showPodcastFlow ? 0.96 : 1)
+            .allowsHitTesting(!showPodcastFlow)
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.25), value: phase.key)
+
+            if showPodcastLayer {
+                PodcastPaywallFlow(
+                    audioURL: prefetchedEpisode?.audioUrl.flatMap { URL(string: $0) },
+                    transcript: prefetchedEpisode?.script ?? Self.demoTranscript,
+                    teaseSeconds: 40,
+                    onClose: {
+                        withAnimation(.easeInOut(duration: 0.45)) {
+                            showPodcastLayer = false
+                            showPodcastFlow = false
+                        }
+                    }
+                )
+                .id(podcastFlowSessionID)
+                .transition(.opacity)
+                .zIndex(10)
+            }
         }
+        .animation(.easeInOut(duration: 0.45), value: showPodcastFlow)
         .preferredColorScheme(.light)
         .onDisappear {
             streamTimer?.invalidate()
@@ -450,25 +479,35 @@ struct VoiceGoalsPage: View {
                     HapticManager.shared.playSoftImpact()
                     goalsError = false
                     startProcessingDots()
+                    startWonderings()
                     extractGoals()
                 }
                 .padding(.horizontal, 28)
                 .padding(.bottom, 34)
             } else {
-                HStack {
-                    Text("Understanding you\(String(repeating: ".", count: processingDotCount))")
-                        .font(OnboardingStyle.titleFont(size: Self.titleSize))
+                Spacer()
+                VStack(spacing: 30) {
+                    RetrospectLoadingMark(width: 140)
+                    Text(currentWondering.isEmpty
+                         ? "Understanding you\(String(repeating: ".", count: processingDotCount))"
+                         : currentWondering)
+                        .font(OnboardingStyle.titleFont(size: 21))
                         .foregroundColor(OnboardingStyle.primaryText)
-                        .tracking(-0.5)
-                    Spacer()
+                        .tracking(-0.4)
+                        .lineSpacing(3)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, Self.horizontalPad)
+                        .id(currentWondering)
+                        .transition(.opacity)
                 }
-                .padding(.horizontal, Self.horizontalPad)
-
+                .frame(maxWidth: .infinity)
                 Spacer()
             }
         }
-        .onAppear { startProcessingDots(); extractGoals() }
-        .onDisappear { processingTimer?.invalidate() }
+        .onAppear { startProcessingDots(); startWonderings(); extractGoals() }
+        .onDisappear { processingTimer?.invalidate(); wonderingTimer?.invalidate() }
     }
 
     // ── REVEALING (goal cards) ────────────────────────────────────────────
@@ -694,10 +733,19 @@ struct VoiceGoalsPage: View {
             Spacer()
 
             if isStreamingDone {
-                OnboardingPrimaryButton(title: "Play Podcast") {
-                    HapticManager.shared.playSuccessNotification()
-                    podcastFlowSessionID = UUID()
-                    showPodcastFlow = true
+                let preparing = awaitingPodcast && prefetchedEpisode == nil
+                OnboardingPrimaryButton(
+                    title: preparing ? "Preparing your episode" : "Play Podcast",
+                    isLoading: preparing,
+                    isDisabled: preparing
+                ) {
+                    if prefetchedEpisode != nil {
+                        presentPodcast()
+                    } else {
+                        // Prefetch hasn't finished (or failed) — wait for it, then auto-open.
+                        awaitingPodcast = true
+                        prefetchPodcast()
+                    }
                 }
                 .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 34)
@@ -710,16 +758,6 @@ struct VoiceGoalsPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             stream("Now let's help you get there.", speed: 0.035) {}
-        }
-        .fullScreenCover(isPresented: $showPodcastFlow) {
-            // TEMP transcript keeps the podcast + paywall screens reviewable before
-            // the real first-podcast audio/transcript are wired in.
-            PodcastPaywallFlow(
-                audioURL: nil,
-                transcript: Self.demoTranscript,
-                onClose: { showPodcastFlow = false }
-            )
-            .id(podcastFlowSessionID)
         }
     }
 
@@ -798,14 +836,21 @@ struct VoiceGoalsPage: View {
                 .keyboardType(keyboard)
                 .focused($isInputFocused)
 
-            // Bare arrow — no bubble. Tucks to the trailing edge with equal inset.
+            // Circular send button. Filled accent when there's text to send,
+            // muted when empty.
             Button(action: {
                 guard !isEmpty else { return }
                 onSubmit()
             }) {
                 Image(systemName: "arrow.up")
-                    .font(OnboardingStyle.bodyFont(size: 20, weight: .semibold))
-                    .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.45) : OnboardingStyle.accent)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.55) : .white)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle().fill(isEmpty
+                            ? OnboardingStyle.hairline.opacity(0.6)
+                            : OnboardingStyle.accent)
+                    )
             }
             .disabled(isEmpty)
             .padding(.bottom, isExpanded ? 2 : 0)
@@ -854,7 +899,7 @@ struct VoiceGoalsPage: View {
         "There's a lot underneath that.",
         "I can tell that one matters to you.",
         "That tells me something real about you.",
-        "Noted — that's the kind of thing I'll remember.",
+        "Noted. That's the kind of thing I'll remember.",
         "That's more honest than most people get."
     ]
 
@@ -937,7 +982,11 @@ struct VoiceGoalsPage: View {
                 t.invalidate()
                 DispatchQueue.main.async {
                     ackDone = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+                    // Give the reader time proportional to the ack's length, with a
+                    // generous floor — these reflections are the emotional beat of the
+                    // flow and were advancing too fast to actually land.
+                    let dwell = min(4.5, max(2.6, Double(total) * 0.022))
+                    DispatchQueue.main.asyncAfter(deadline: .now() + dwell) {
                         if case .acknowledgment(let idx) = self.phase, self.ackDone {
                             self.advanceAfterAck(idx: idx)
                         }
@@ -987,10 +1036,22 @@ struct VoiceGoalsPage: View {
         ackLoading = true
         let q = Self.questions[idx]
         let resolved = q.text.replacingOccurrences(of: "{name}", with: userName)
+
+        // Build prior-answer context so the ack can reference what they said
+        // earlier in the flow, not just the current answer.
+        var priorParts: [String] = []
+        for i in 0..<idx where i < answers.count {
+            let a = answers[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !a.isEmpty else { continue }
+            priorParts.append("Q: \(Self.questions[i].text)\nA: \(a)")
+        }
+        let priorContext = priorParts.joined(separator: "\n")
+
         ClaudeService.shared.generateOnboardingAcknowledgment(
             question: resolved,
             answer: answers[idx],
-            userName: userName
+            userName: userName,
+            priorContext: priorContext
         ) { result in
             DispatchQueue.main.async {
                 self.ackLoading = false
@@ -1019,9 +1080,30 @@ struct VoiceGoalsPage: View {
         // Leading list dashes at line starts
         out = out.replacingOccurrences(of: "\n- ", with: "\n")
         if out.hasPrefix("- ") { out = String(out.dropFirst(2)) }
+        // Em/en dashes read as artifacts in streamed prose — strip them.
+        out = removeDashes(out)
         // Collapse whitespace left behind, trim.
         while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Remove em/en dashes (and tidy the spacing they leave) so neither streamed
+    /// acks nor synthesized goal text ever show a dash. Product rule: no em
+    /// dashes anywhere in onboarding copy.
+    private static func removeDashes(_ s: String) -> String {
+        var out = s
+        out = out.replacingOccurrences(of: " — ", with: ", ")
+        out = out.replacingOccurrences(of: " – ", with: ", ")
+        out = out.replacingOccurrences(of: "—", with: ", ")
+        out = out.replacingOccurrences(of: "–", with: ", ")
+        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
+        return out
+    }
+
+    /// Sanitize backend-synthesized prose (goal title/description/motivation):
+    /// strip dashes and trim. Defense-in-depth alongside the agent/Cook 0 prompt.
+    static func sanitizeProse(_ s: String) -> String {
+        removeDashes(s).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func advanceAfterAck(idx: Int) {
@@ -1058,10 +1140,7 @@ struct VoiceGoalsPage: View {
     // ── GOAL EXTRACTION ───────────────────────────────────────────────────
 
     private func extractGoals() {
-        let combined = zip(Self.questions, answers)
-            .map { q, a in "Q: \(q.text)\nA: \(a)" }
-            .filter { !$0.hasSuffix("A: ") }
-            .joined(separator: "\n\n")
+        let combined = combinedAnswersText()
 
         guard !combined.isEmpty else {
             showGoalsError()
@@ -1075,15 +1154,16 @@ struct VoiceGoalsPage: View {
                 let response = try await RetrospectAPIClient.shared.synthesizeGoals(text: combined)
                 let goals = response.extracted.map { e in
                     RichGoal(
-                        title: e.title,
-                        goalDescription: e.description,
-                        motivation: e.reasoning,
+                        title: Self.sanitizeProse(e.title),
+                        goalDescription: Self.sanitizeProse(e.description),
+                        motivation: Self.sanitizeProse(e.reasoning),
                         category: VoiceGoalsPage.inferCategory(from: e.description)
                     )
                 }
                 await MainActor.run {
                     if goals.isEmpty {
-                        // Never fabricate a generic goal — surface the failure so it's visible.
+                        NSLog("[GoalSynthesis] pipeline returned 0 goals (notes: %@)", response.processingNotes ?? "none")
+                        // Never fabricate a generic goal — surface the failure so the user can retry.
                         showGoalsError()
                     } else {
                         extractedGoals = goals
@@ -1092,6 +1172,7 @@ struct VoiceGoalsPage: View {
                     }
                 }
             } catch {
+                NSLog("[GoalSynthesis] failed: %@", error.localizedDescription)
                 await MainActor.run { showGoalsError() }
             }
         }
@@ -1099,17 +1180,60 @@ struct VoiceGoalsPage: View {
 
     private func showGoalsError() {
         processingTimer?.invalidate()
+        stopWonderings()
         goalsError = true
     }
 
     private func finishProcessing() {
         processingTimer?.invalidate()
+        stopWonderings()
         currentCardIndex = 0
         cardOffset = .zero
         cardRotation = 0
         cardRevealed = false
         showClosingAck = false
         withAnimation { phase = .revealing }
+        // Prefetch the first podcast NOW, while the user swipes through goal cards,
+        // so audio is ready by the time they tap "Play Podcast" (masks 3-5min gen).
+        prefetchPodcast()
+    }
+
+    // ── FIRST PODCAST (prefetch + present) ────────────────────────────────
+
+    private func prefetchPodcast() {
+        guard prefetchedEpisode == nil, !podcastGenerating else { return }
+        podcastGenerating = true
+        Task {
+            do {
+                let ep = try await RetrospectAPIClient.shared.generatePodcast(
+                    generationSource: .onboardingFirstEpisode
+                )
+                await MainActor.run {
+                    prefetchedEpisode = ep
+                    podcastGenerating = false
+                    if awaitingPodcast { awaitingPodcast = false; presentPodcast() }
+                }
+            } catch {
+                NSLog("[Podcast] prefetch failed: %@", error.localizedDescription)
+                await MainActor.run {
+                    podcastGenerating = false
+                    // If the user is waiting, open anyway with the fallback transcript
+                    // (no audio) rather than trapping them on a spinner.
+                    if awaitingPodcast { awaitingPodcast = false; presentPodcast() }
+                }
+            }
+        }
+    }
+
+    private func presentPodcast() {
+        HapticManager.shared.playSuccessNotification()
+        podcastFlowSessionID = UUID()
+        withAnimation(.easeInOut(duration: 0.34)) { showPodcastFlow = true }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 220_000_000)
+            guard showPodcastFlow else { return }
+            withAnimation(.easeInOut(duration: 0.45)) { showPodcastLayer = true }
+        }
     }
 
     private func buildClosingAck() {
@@ -1119,7 +1243,7 @@ struct VoiceGoalsPage: View {
         } else if extractedGoals.count >= 3 {
             closingAckText = "You've got a clear picture of where you're headed."
         } else {
-            closingAckText = "Got it — we know what matters to you."
+            closingAckText = "Got it. We know what matters to you."
         }
     }
 
@@ -1128,6 +1252,69 @@ struct VoiceGoalsPage: View {
         processingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             processingDotCount = (processingDotCount + 1) % 4
         }
+    }
+
+    // ── UNDERSTANDING "WONDERINGS" ────────────────────────────────────────
+    // While the heavy synthesis runs, Retrospect "thinks out loud" — grounded
+    // self-questions about the person — so the wait reads as a mind working.
+
+    private static let fallbackWonderings = [
+        "What are they protecting when they stay this busy?",
+        "Is the drive to achieve about proving something, or building it?",
+        "What would they reach for if nothing were at stake?",
+        "Who are they when no one is watching the metrics?",
+        "Is the calm they want rest, or permission to rest?",
+        "What did they almost say, then hold back?",
+        "Where does the pressure actually come from?",
+        "What are they quietly hoping I notice?",
+    ]
+
+    private func combinedAnswersText() -> String {
+        zip(Self.questions, answers)
+            .map { q, a in "Q: \(q.text)\nA: \(a)" }
+            .filter { !$0.hasSuffix("A: ") }
+            .joined(separator: "\n\n")
+    }
+
+    private func startWonderings() {
+        let combined = combinedAnswersText()
+        guard !combined.isEmpty else {
+            wonderings = Self.fallbackWonderings
+            beginWonderingCycle()
+            return
+        }
+        ClaudeService.shared.generateOnboardingWonderings(answersText: combined) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let list):
+                    let cleaned = list.map { Self.stripMarkdown($0) }.filter { !$0.isEmpty }
+                    self.wonderings = cleaned.count >= 3 ? cleaned : Self.fallbackWonderings
+                case .failure:
+                    self.wonderings = Self.fallbackWonderings
+                }
+                self.beginWonderingCycle()
+            }
+        }
+    }
+
+    private func beginWonderingCycle() {
+        guard !wonderings.isEmpty, case .processing = phase else { return }
+        wonderingTimer?.invalidate()
+        wonderingIndex = 0
+        withAnimation(.easeInOut(duration: 0.5)) { currentWondering = wonderings[0] }
+        wonderingTimer = Timer.scheduledTimer(withTimeInterval: 3.8, repeats: true) { _ in
+            guard case .processing = self.phase else { self.wonderingTimer?.invalidate(); return }
+            self.wonderingIndex = (self.wonderingIndex + 1) % self.wonderings.count
+            withAnimation(.easeInOut(duration: 0.5)) {
+                self.currentWondering = self.wonderings[self.wonderingIndex]
+            }
+        }
+    }
+
+    private func stopWonderings() {
+        wonderingTimer?.invalidate()
+        wonderingTimer = nil
+        currentWondering = ""
     }
 
     private static func inferCategory(from description: String) -> String {

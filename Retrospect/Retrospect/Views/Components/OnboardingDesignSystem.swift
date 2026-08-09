@@ -23,7 +23,8 @@ enum OnboardingStyle {
     }
 }
 
-struct OnboardingScaffold<Content: View, Bottom: View>: View {
+struct OnboardingScaffold<Header: View, Content: View, Bottom: View>: View {
+    let header: Header
     let iconName: String?
     let title: String
     let subtitle: String?
@@ -36,9 +37,11 @@ struct OnboardingScaffold<Content: View, Bottom: View>: View {
         title: String,
         subtitle: String? = nil,
         topSpacing: CGFloat = 82,
+        @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content,
         @ViewBuilder bottom: () -> Bottom
     ) {
+        self.header = header()
         self.iconName = iconName
         self.title = title
         self.subtitle = subtitle
@@ -57,6 +60,8 @@ struct OnboardingScaffold<Content: View, Bottom: View>: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Spacer()
                             .frame(height: topSpacing)
+
+                        header
 
                         if let iconName {
                             Image(systemName: iconName)
@@ -111,6 +116,29 @@ struct OnboardingScaffold<Content: View, Bottom: View>: View {
             }
         }
         .preferredColorScheme(.light)
+    }
+}
+
+// Convenience init for the common case with no header slot, so existing call
+// sites that don't pass a `header:` continue to compile unchanged.
+extension OnboardingScaffold where Header == EmptyView {
+    init(
+        iconName: String? = nil,
+        title: String,
+        subtitle: String? = nil,
+        topSpacing: CGFloat = 82,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder bottom: () -> Bottom
+    ) {
+        self.init(
+            iconName: iconName,
+            title: title,
+            subtitle: subtitle,
+            topSpacing: topSpacing,
+            header: { EmptyView() },
+            content: content,
+            bottom: bottom
+        )
     }
 }
 

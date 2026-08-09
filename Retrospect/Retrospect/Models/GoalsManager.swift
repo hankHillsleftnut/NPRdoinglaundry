@@ -126,6 +126,18 @@ final class OnboardingContextManager: ObservableObject {
         defaults.set(true, forKey: Self.firstPodcastGeneratedKey)
     }
 
+    /// DEV: wipe all onboarding-profile state so the next sign-in runs the full onboarding
+    /// (questions → goals → first podcast) from scratch. Leaves journal entries and already
+    /// generated podcasts intact.
+    func resetForFreshOnboarding() {
+        defaults.removeObject(forKey: Self.contextKey)
+        defaults.removeObject(forKey: Self.firstPodcastGeneratedKey)
+        defaults.removeObject(forKey: GoalsManager.onboardingProfileContextKey)
+        defaults.set(false, forKey: "hasCompletedOnboarding")
+        GoalsManager.shared.clearAllGoals()
+        context = nil
+    }
+
     func saveDepthAnswers(_ answers: [OnboardingAnswer]) {
         var next = context ?? makeEmptyContext()
         next.depthAnswers = answers

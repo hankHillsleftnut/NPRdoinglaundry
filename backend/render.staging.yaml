@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: retrospect-api-staging
+    env: node
+    region: oregon
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: RETROSPECT_ENV, value: staging }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_SERVICE_KEY, sync: false }
+      - { key: SUPABASE_ANON_KEY, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: OPENAI_API_KEY, sync: false }
+      - { key: AGENT_SERVICE_URL, sync: false }
+      - { key: INTERNAL_API_SECRET, sync: false }
+      - { key: JWT_SECRET, generateValue: true }
+      - { key: APPLE_CLIENT_ID, value: com.shauryanarang.Retrospect }
+      - { key: INTEGRATION_OAUTH_CALLBACK_BASE_URL, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_ID, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_SECRET, sync: false }
+      - { key: SPOTIFY_CLIENT_ID, sync: false }
+      - { key: SPOTIFY_CLIENT_SECRET, sync: false }
+      - { key: REDDIT_CLIENT_ID, sync: false }
+      - { key: REDDIT_CLIENT_SECRET, sync: false }
+      - { key: PINTEREST_CLIENT_ID, sync: false }
+      - { key: PINTEREST_CLIENT_SECRET, sync: false }
+      - { key: TIKTOK_CLIENT_KEY, sync: false }
+      - { key: TIKTOK_CLIENT_SECRET, sync: false }
+      - { key: LINKEDIN_CLIENT_ID, sync: false }
+      - { key: LINKEDIN_CLIENT_SECRET, sync: false }
+      - { key: X_CLIENT_ID, sync: false }
+      - { key: X_CLIENT_SECRET, sync: false }
+      - { key: SENTRY_DSN, sync: false }

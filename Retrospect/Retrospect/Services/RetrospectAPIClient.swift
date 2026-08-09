@@ -1,5 +1,7 @@
 import Foundation
 import Security
+import CryptoKit
+import UIKit
 
 // MARK: - API Client for Retrospect Backend
 /// Handles all HTTP communication with the backend, including JWT-based authentication
@@ -80,24 +82,11 @@ class RetrospectAPIClient: ObservableObject {
         }
     }
 
-    /// Attempt to refresh the token using the stored Apple user ID.
+    /// A new Apple identity token is required to renew backend authentication.
+    /// A stored Apple user ID alone is not an authentication credential.
     func refreshToken() async throws {
-        guard let appleUserId = readKeychain(key: appleUserIdKey) else {
-            throw APIError.notAuthenticated
-        }
-
-        let response: RefreshResponse = try await post(
-            path: "/auth/refresh",
-            body: ["appleUserId": appleUserId],
-            authenticated: false
-        )
-
-        guard response.success, let data = response.data else {
-            signOut()
-            throw APIError.authFailed("Token refresh failed")
-        }
-
-        saveKeychain(key: tokenKey, value: data.token)
+        signOut()
+        throw APIError.authFailed("Please sign in with Apple again")
     }
 
     // MARK: - Content Sync
@@ -121,6 +110,147 @@ class RetrospectAPIClient: ObservableObject {
         }
 
         let _: GenericResponse = try await post(path: "/content", body: body)
+    }
+
+    /// Upload provider objects through the agent-owned integration pipeline.
+    /// The payload remains available for provenance while canonical text feeds
+    /// the current intelligence agents.
+    func uploadIntegrationItems(
+        providerId: String,
+        runType: String,
+        cursorBefore: [String: Any] = [:],
+        cursorAfter: [String: Any] = [:],
+        items: [[String: Any]]
+    ) async throws {
+        guard !items.isEmpty else { return }
+
+        let serialized = try JSONSerialization.data(
+            withJSONObject: ["providerId": providerId, "runType": runType, "cursorBefore": cursorBefore, "cursorAfter": cursorAfter, "items": items],
+            options: [.sortedKeys]
+        )
+        let idempotencyKey = SHA256.hash(data: serialized).map { String(format: "%02x", $0) }.joined()
+        let nativeProviders = Set(["healthkit", "screen_time", "calendar", "apple_music", "photos", "contacts"])
+        let endpoint = nativeProviders.contains(providerId)
+            ? "/integrations/\(providerId)/device-batches"
+            : "/integrations/\(providerId)/items"
+        let _: GenericResponse = try await post(
+            path: endpoint,
+            body: [
+                "idempotencyKey": "ios:\(idempotencyKey)",
+                "runType": runType,
+                "cursorBefore": cursorBefore,
+                "cursorAfter": cursorAfter,
+                "items": items,
+            ]
+        )
+    }
+
+    func startOAuthConnection(providerId: String) async throws -> URL {
+        let response: OAuthStartResponse = try await post(
+            path: "/integrations/\(providerId)/connect/start",
+            body: [:]
+        )
+        guard response.success, let value = response.data?.authorizationUrl, let url = URL(string: value) else {
+            throw APIError.serverError(response.error ?? "Could not start connection")
+        }
+        return url
+    }
+
+    @MainActor
+    func openOAuthConnection(providerId: String) async throws {
+        let url = try await startOAuthConnection(providerId: providerId)
+        await UIApplication.shared.open(url)
+    }
+
+    func importIntegrationArchive(providerId: String, fileURL: URL) async throws {
+        let access = fileURL.startAccessingSecurityScopedResource()
+        defer { if access { fileURL.stopAccessingSecurityScopedResource() } }
+        let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+        let response: ImportStartResponse = try await post(
+            path: "/integrations/\(providerId)/imports",
+            body: [
+                "filename": fileURL.lastPathComponent,
+                "contentType": fileURL.pathExtension.lowercased() == "zip"
+                    ? "application/zip"
+                    : fileURL.pathExtension.lowercased() == "csv" ? "text/csv" : "application/json",
+                "byteSize": data.count,
+            ]
+        )
+        guard response.success, let upload = response.data, let signedURL = URL(string: upload.signedUrl) else {
+            throw APIError.serverError(response.error ?? "Could not create archive import")
+        }
+        var request = URLRequest(url: signedURL)
+        request.httpMethod = "PUT"
+        request.setValue(fileURL.pathExtension.lowercased() == "zip" ? "application/zip" : "application/octet-stream", forHTTPHeaderField: "Content-Type")
+        let (_, uploadResponse) = try await session.upload(for: request, from: data)
+        guard let http = uploadResponse as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.serverError("Archive upload failed")
+        }
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let _: GenericResponse = try await post(
+            path: "/integrations/imports/\(upload.importId)/complete",
+            body: ["sha256": digest]
+        )
+    }
+
+    func uploadIntegrationAsset(
+        providerId: String,
+        providerObjectType: String,
+        providerObjectId: String,
+        assetRole: String = "original",
+        contentType: String,
+        data: Data
+    ) async throws {
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let response: AssetStartResponse = try await post(
+            path: "/integrations/\(providerId)/assets",
+            body: [
+                "providerObjectType": providerObjectType,
+                "providerObjectId": providerObjectId,
+                "assetRole": assetRole,
+                "contentType": contentType,
+                "byteSize": data.count,
+                "sha256": digest,
+            ]
+        )
+        guard response.success, let upload = response.data, let signedURL = URL(string: upload.signedUrl) else {
+            throw APIError.serverError(response.error ?? "Could not create source asset")
+        }
+
+        var request = URLRequest(url: signedURL)
+        request.httpMethod = "PUT"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        let (_, uploadResponse) = try await session.upload(for: request, from: data)
+        guard let http = uploadResponse as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.serverError("Source asset upload failed")
+        }
+        let _: GenericResponse = try await post(
+            path: "/integrations/assets/\(upload.assetId)/complete",
+            body: ["sha256": digest]
+        )
+    }
+
+    func fetchIntegrations() async throws -> [BackendIntegrationCatalogItem] {
+        let response: IntegrationsResponse = try await get(path: "/integrations")
+        guard response.success else {
+            throw APIError.serverError(response.error ?? "Could not load integrations")
+        }
+        return response.data ?? []
+    }
+
+    func syncIntegration(connectionId: String) async throws {
+        let _: GenericResponse = try await post(
+            path: "/integrations/connections/\(connectionId)/sync",
+            body: [:]
+        )
+    }
+
+    func disconnectIntegration(connectionId: String) async throws {
+        let _: GenericResponse = try await delete(path: "/integrations/connections/\(connectionId)")
+    }
+
+    func deleteIntegrationData(connectionId: String) async throws {
+        let _: GenericResponse = try await delete(path: "/integrations/connections/\(connectionId)/data")
     }
 
     // MARK: - Goals Sync
@@ -297,6 +427,10 @@ class RetrospectAPIClient: ObservableObject {
         return try await request(method: "PATCH", path: path, body: body)
     }
 
+    private func delete<T: Decodable>(path: String) async throws -> T {
+        return try await request(method: "DELETE", path: path, body: nil)
+    }
+
     private func request<T: Decodable>(
         method: String,
         path: String,
@@ -328,20 +462,10 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.invalidResponse
         }
 
-        // Handle 401 — attempt token refresh once
+        // Apple identity tokens cannot be refreshed from a stored subject ID.
         if response.statusCode == 401 && authenticated {
-            try await refreshToken()
-            // Retry with new token
-            if let newToken = readKeychain(key: tokenKey) {
-                var retryRequest = request
-                retryRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-                let (retryData, retryResponse) = try await session.data(for: retryRequest)
-                guard let retryHttp = retryResponse as? HTTPURLResponse,
-                      (200...299).contains(retryHttp.statusCode) else {
-                    throw APIError.serverError("Request failed after token refresh")
-                }
-                return try JSONDecoder.apiDecoder.decode(T.self, from: retryData)
-            }
+            signOut()
+            throw APIError.authFailed("Please sign in with Apple again")
         }
 
         guard (200...299).contains(response.statusCode) else {
@@ -442,6 +566,66 @@ private struct RefreshResponse: Codable {
 private struct GenericResponse: Codable {
     let success: Bool
     let error: String?
+}
+
+private struct OAuthStartResponse: Codable {
+    let success: Bool
+    let data: OAuthStartData?
+    let error: String?
+
+    struct OAuthStartData: Codable {
+        let authorizationUrl: String
+    }
+}
+
+private struct ImportStartResponse: Codable {
+    let success: Bool
+    let data: ImportStartData?
+    let error: String?
+
+    struct ImportStartData: Codable {
+        let importId: String
+        let storagePath: String
+        let uploadToken: String
+        let signedUrl: String
+    }
+}
+
+private struct AssetStartResponse: Codable {
+    let success: Bool
+    let data: AssetStartData?
+    let error: String?
+
+    struct AssetStartData: Codable {
+        let assetId: String
+        let signedUrl: String
+        let uploadToken: String
+    }
+}
+
+private struct IntegrationsResponse: Codable {
+    let success: Bool
+    let data: [BackendIntegrationCatalogItem]?
+    let error: String?
+}
+
+struct BackendIntegrationCatalogItem: Codable, Identifiable {
+    let id: String
+    let displayName: String
+    let collectionMode: String
+    let availability: String
+    let intelligenceDomains: [String]
+    let connection: BackendIntegrationConnection?
+}
+
+struct BackendIntegrationConnection: Codable {
+    let id: String
+    let providerId: String
+    let collectionMode: String
+    let status: String
+    let providerAccountLabel: String?
+    let connectedAt: String?
+    let lastVerifiedAt: String?
 }
 
 private struct GoalsListResponse: Codable {

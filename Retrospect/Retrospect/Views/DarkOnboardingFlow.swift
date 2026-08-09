@@ -11,6 +11,7 @@ import GoogleSignIn
 // MARK: - Dark Onboarding Flow Container
 struct DarkOnboardingFlow: View {
     var onComplete: (([RichGoal]) -> Void)? = nil
+    var onPreviewPaywall: (() -> Void)? = nil
 
     @StateObject private var onboardingState = OnboardingState()
 
@@ -57,10 +58,17 @@ struct DarkOnboardingFlow: View {
                 ))
             } else {
                 // Final closing — after integrations + persona
-                OnboardingClosingPage(userName: onboardingState.userName) {
-                    onboardingState.clearPersistedStep()
-                    onComplete?([])
-                }
+                OnboardingClosingPage(
+                    userName: onboardingState.userName,
+                    onPlay: {
+                        onboardingState.clearPersistedStep()
+                        onComplete?([])
+                    },
+                    onPreviewPaywall: {
+                        onboardingState.clearPersistedStep()
+                        onPreviewPaywall?()
+                    }
+                )
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .opacity
@@ -930,6 +938,7 @@ struct DarkGoalsOnboardingScreen: View {
 struct OnboardingClosingPage: View {
     let userName: String
     let onPlay: () -> Void
+    var onPreviewPaywall: (() -> Void)? = nil
 
     private let lines: [String]
     @State private var visibleLine: Int = 0
@@ -939,9 +948,14 @@ struct OnboardingClosingPage: View {
     @State private var showButton: Bool = false
     @State private var timer: Timer?
 
-    init(userName: String, onPlay: @escaping () -> Void) {
+    init(
+        userName: String,
+        onPlay: @escaping () -> Void,
+        onPreviewPaywall: (() -> Void)? = nil
+    ) {
         self.userName = userName
         self.onPlay = onPlay
+        self.onPreviewPaywall = onPreviewPaywall
         self.lines = [
             userName.isEmpty ? "Now I know what matters to you." : "Now I know what matters to you, \(userName).",
             "Let's help you get there."
@@ -973,11 +987,23 @@ struct OnboardingClosingPage: View {
                 Spacer()
 
                 if showButton {
-                    OnboardingPrimaryButton(title: "Play Podcast") {
-                        HapticManager.shared.playSuccessNotification()
-                        onPlay()
+                    VStack(spacing: 10) {
+                        OnboardingPrimaryButton(title: "Play Podcast") {
+                            HapticManager.shared.playSuccessNotification()
+                            onPlay()
+                        }
+                        .padding(.horizontal, 28)
+
+                        #if DEBUG
+                        if let onPreviewPaywall {
+                            Button("DEV: Preview paywall") {
+                                onPreviewPaywall()
+                            }
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundStyle(OnboardingStyle.primaryText.opacity(0.72))
+                        }
+                        #endif
                     }
-                    .padding(.horizontal, 28)
                     .padding(.bottom, 34)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 } else {

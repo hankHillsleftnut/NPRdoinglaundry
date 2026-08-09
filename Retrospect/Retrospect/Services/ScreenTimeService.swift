@@ -298,19 +298,19 @@ class ScreenTimeService: ObservableObject {
         
         isSyncing = true
         
-        let content = summary.toNaturalLanguage()
-        
         Task {
             do {
-                try await RetrospectAPIClient.shared.uploadContent(
-                    contentType: "screen_time",
-                    content: content,
-                    contentDate: summary.dateObject
+                try await RetrospectAPIClient.shared.uploadIntegrationItems(
+                    providerId: "screen_time",
+                    runType: "incremental_sync",
+                    cursorBefore: ["last_sync_at": lastSyncDate.map { ISO8601DateFormatter().string(from: $0) } ?? ""],
+                    cursorAfter: ["last_sync_at": ISO8601DateFormatter().string(from: Date())],
+                    items: [summary.integrationItem()]
                 )
                 lastSyncDate = Date()
                 saveLastSyncDate()
                 isSyncing = false
-                print("✅ Screen Time: Summary synced to backend (\(content.count) chars)")
+                print("✅ Screen Time: Structured summary synced to backend")
             } catch {
                 isSyncing = false
                 print("❌ Screen Time: Backend sync failed — \(error.localizedDescription)")
@@ -328,14 +328,12 @@ class ScreenTimeService: ObservableObject {
         Task {
             var syncCount = 0
             for summary in weeklyHistory {
-                let content = summary.toNaturalLanguage()
-                guard !content.isEmpty else { continue }
-                
                 do {
-                    try await RetrospectAPIClient.shared.uploadContent(
-                        contentType: "screen_time",
-                        content: content,
-                        contentDate: summary.dateObject
+                    try await RetrospectAPIClient.shared.uploadIntegrationItems(
+                        providerId: "screen_time",
+                        runType: "initial_backfill",
+                        cursorAfter: ["last_synced_day": summary.date],
+                        items: [summary.integrationItem()]
                     )
                     syncCount += 1
                 } catch {
@@ -409,6 +407,74 @@ struct ScreenTimeSummary: Codable, Identifiable {
             return m > 0 ? "\(h)h \(m)m" : "\(h)h"
         }
         return "\(m)m"
+    }
+
+    func integrationItem() -> [String: Any] {
+        let occurredAt = dateObject ?? Date()
+        let payload: [String: Any] = [
+            "date": date,
+            "timezone": TimeZone.current.identifier,
+            "total_screen_time_minutes": totalScreenTimeMinutes,
+            "total_pickups": totalPickups,
+            "first_pickup_time": firstPickupTime ?? "",
+            "app_usage": appUsage.map {
+                [
+                    "app_name": $0.appName,
+                    "bundle_identifier": $0.bundleIdentifier ?? "",
+                    "minutes": $0.minutes,
+                    "pickups": $0.pickups,
+                    "category_name": $0.categoryName ?? "",
+                ] as [String: Any]
+            },
+            "category_breakdown": categoryBreakdown.map {
+                [
+                    "category_name": $0.categoryName,
+                    "minutes": $0.minutes,
+                ] as [String: Any]
+            },
+        ]
+
+        return [
+            "providerObjectType": "daily_attention_summary",
+            "providerObjectId": date,
+            "payload": payload,
+            "canonicalType": "attention_day",
+            "canonicalText": toSourceCanonicalText(),
+            "normalizedData": payload,
+            "occurredAt": ISO8601DateFormatter().string(from: occurredAt),
+            "parserVersion": "device-activity-v1",
+            "normalizerVersion": "attention-day-v1",
+            "contentType": "screen_time",
+            "metadata": [
+                "source": "screen_time",
+                "sync_day": date,
+                "sync_scope": "daily",
+            ],
+        ]
+    }
+
+    /// Describes only measured source facts. Behavioral interpretation belongs
+    /// to the agent, where it can remain provisional and evidence-grounded.
+    func toSourceCanonicalText() -> String {
+        var lines = [
+            "Screen Time report for \(date):",
+            "Total screen time: \(totalScreenTimeMinutes) minutes",
+            "Phone pickups: \(totalPickups)",
+        ]
+        if let firstPickupTime {
+            lines.append("First pickup: \(firstPickupTime)")
+        }
+        if !categoryBreakdown.isEmpty {
+            lines.append("Usage by category:")
+            lines.append(contentsOf: categoryBreakdown.sorted { $0.minutes > $1.minutes }
+                .map { "- \($0.categoryName): \($0.minutes) minutes" })
+        }
+        if !appUsage.isEmpty {
+            lines.append("Top apps:")
+            lines.append(contentsOf: appUsage.sorted { $0.minutes > $1.minutes }.prefix(15)
+                .map { "- \($0.appName): \($0.minutes) minutes, \($0.pickups) pickups" })
+        }
+        return lines.joined(separator: "\n")
     }
     
     /// Convert the summary into a detailed, structured natural-language format

@@ -50,8 +50,11 @@ struct PodcastPaywallFlow: View {
     let transcript: String
     var teaseSeconds: Double = 10
     var onClose: (() -> Void)? = nil
+    var onFinished: (() -> Void)? = nil
     var diagnosticsEnabled: Bool = false
     var usesTransparentBackground: Bool = false
+    var startWithPaywall: Bool = false
+    var onDebugGoHome: (() -> Void)? = nil
 
     @StateObject private var playback: StreamingPodcastPlayback
     @ObservedObject private var subs = SubscriptionManager.shared
@@ -65,15 +68,21 @@ struct PodcastPaywallFlow: View {
         transcript: String,
         teaseSeconds: Double = 10,
         onClose: (() -> Void)? = nil,
+        onFinished: (() -> Void)? = nil,
         diagnosticsEnabled: Bool = false,
-        usesTransparentBackground: Bool = false
+        usesTransparentBackground: Bool = false,
+        startWithPaywall: Bool = false,
+        onDebugGoHome: (() -> Void)? = nil
     ) {
         self.audioURL = audioURL
         self.transcript = transcript
         self.teaseSeconds = teaseSeconds
         self.onClose = onClose
+        self.onFinished = onFinished
         self.diagnosticsEnabled = diagnosticsEnabled
         self.usesTransparentBackground = usesTransparentBackground
+        self.startWithPaywall = startWithPaywall
+        self.onDebugGoHome = onDebugGoHome
         _playback = StateObject(wrappedValue: StreamingPodcastPlayback(url: audioURL))
     }
 
@@ -132,6 +141,9 @@ struct PodcastPaywallFlow: View {
                 if !playback.isPlaying { playback.toggle() }
             }
         }
+        .onChange(of: playback.didFinish) { finished in
+            if finished { onFinished?() }
+        }
         .statusBarHidden(true)
     }
 
@@ -139,10 +151,11 @@ struct PodcastPaywallFlow: View {
         teaseTask?.cancel()
         playback.stop()
         withoutAnimation {
-            showPaywall = false
-            didTease = false
-            teaseStarted = false
+            showPaywall = startWithPaywall
+            didTease = startWithPaywall
+            teaseStarted = startWithPaywall
         }
+        guard !startWithPaywall else { return }
         playback.start()
         startTease()
     }
@@ -686,6 +699,17 @@ struct PodcastPaywallFlow: View {
             .foregroundColor(Pod.mono)
             .opacity(0.9)
             .position(x: 201, y: 812)
+
+            #if DEBUG
+            if let onDebugGoHome {
+                Button("DEV: Go home") {
+                    onDebugGoHome()
+                }
+                .font(Pod.mono(11))
+                .foregroundStyle(Pod.mono.opacity(0.72))
+                .position(x: 201, y: 850)
+            }
+            #endif
         }
     }
 

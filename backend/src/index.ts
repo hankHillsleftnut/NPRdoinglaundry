@@ -1,4 +1,5 @@
 import express from 'express';
+import { captureException } from './services/telemetry.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -14,6 +15,8 @@ import { adminRouter } from './routes/admin.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
 import { claudeRouter } from './routes/claude.js';
+import { integrationOauthCallbackRouter, integrationsRouter } from './routes/integrations.js';
+import { graphRouter } from './routes/graph.js';
 
 
 const app = express();
@@ -64,6 +67,7 @@ app.use('/admin', adminRouter);
 
 // Auth routes (no auth middleware)
 app.use('/auth', authRouter);
+app.use('/integrations', integrationOauthCallbackRouter);
 
 // Protected routes
 app.use('/content', authMiddleware, contentRouter);
@@ -72,6 +76,8 @@ app.use('/pipeline', authMiddleware, pipelineRouter);
 app.use('/podcasts', authMiddleware, podcastsRouter);
 app.use('/profile', authMiddleware, profileRouter);
 app.use('/claude', authMiddleware, claudeRouter);
+app.use('/integrations', authMiddleware, integrationsRouter);
+app.use('/graph', authMiddleware, graphRouter);
 
 // Error handling middleware
 app.use(
@@ -82,6 +88,7 @@ app.use(
     _next: express.NextFunction
   ) => {
     console.error('Unhandled error:', err);
+    captureException(err, { path: _req.path, method: _req.method });
     res.status(500).json({
       success: false,
       error: config.server.isProduction

@@ -11,6 +11,8 @@ import LocalAuthentication
 struct DarkSettingsView: View {
     @State private var showProfilePersonalization = false
     @State private var showAdvanced = false
+    @State private var showAnimationPreview = false
+    @State private var showIntegrationsData = false
     @State private var showLogoutConfirmation = false
     @State private var showBiometricUnavailableAlert = false
     @State private var showGoogleError = false
@@ -25,6 +27,9 @@ struct DarkSettingsView: View {
     @StateObject private var screenTimeService = ScreenTimeService.shared
     @AppStorage("healthKitEnabled") private var healthKitEnabled: Bool = false
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
+    @AppStorage("devMode") private var devMode: Bool = false
+    @AppStorage("devAuthBypassEnabled") private var devAuthBypassEnabled: Bool = false
+    @State private var showDevWipeConfirmation = false
 
     var body: some View {
         FigmaLightPageScaffold(title: "Settings") {
@@ -50,45 +55,12 @@ struct DarkSettingsView: View {
                         .padding(.horizontal, 4)
 
                     FigmaLightRowCard {
-                        VStack(spacing: 0) {
-                            lightToggleRow(
-                                title: "Google Docs",
-                                subtitle: googleDocsService.isConnected ? "Connected" : "Sync documents as context",
-                                icon: "doc.text.fill",
-                                isOn: Binding(
-                                    get: { googleDocsService.isConnected },
-                                    set: { on in on ? connectGoogle() : disconnectGoogle() }
-                                ),
-                                isLoading: isConnectingGoogle
-                            )
-
-                            lightDivider()
-
-                            lightToggleRow(
-                                title: "Apple Health",
-                                subtitle: healthKitEnabled ? "Sleep, activity & mindfulness" : "Add health data as context",
-                                icon: "heart.fill",
-                                isOn: Binding(
-                                    get: { healthKitEnabled },
-                                    set: { on in on ? connectHealth() : (healthKitEnabled = false) }
-                                ),
-                                isLoading: isConnectingHealth
-                            )
-
-                            lightDivider()
-
-                            lightToggleRow(
-                                title: "Screen Time",
-                                subtitle: screenTimeService.isAuthorized ? "App usage tracking active" : "Track digital habits",
-                                icon: "hourglass",
-                                isOn: Binding(
-                                    get: { screenTimeService.isAuthorized },
-                                    set: { on in
-                                        if on { connectScreenTime() } else { screenTimeService.revokeAuthorization() }
-                                    }
-                                ),
-                                isLoading: isConnectingScreenTime
-                            )
+                        lightSettingsRow(
+                            title: "Integrations & Data",
+                            subtitle: "Connect, disconnect, sync, or delete every source",
+                            icon: "square.grid.2x2.fill"
+                        ) {
+                            showIntegrationsData = true
                         }
                     }
 
@@ -112,6 +84,20 @@ struct DarkSettingsView: View {
                         )
                     }
 
+                    // MARK: Appearance
+                    FigmaLightSectionLabel(text: "Appearance")
+                        .padding(.horizontal, 4)
+
+                    FigmaLightRowCard {
+                        lightSettingsRow(
+                            title: "Animation",
+                            subtitle: "Fluid dots preview",
+                            icon: "sparkles"
+                        ) {
+                            showAnimationPreview = true
+                        }
+                    }
+
                     // MARK: Advanced
                     FigmaLightRowCard {
                         lightSettingsRow(
@@ -126,7 +112,11 @@ struct DarkSettingsView: View {
                     // MARK: Log Out
                     Button(action: {
                         HapticManager.shared.playLightImpact()
-                        showLogoutConfirmation = true
+                        if devMode {
+                            showDevWipeConfirmation = true
+                        } else {
+                            showLogoutConfirmation = true
+                        }
                     }) {
                         Text("Log Out")
                             .font(FigmaLightTheme.body(16, weight: .medium))
@@ -156,11 +146,23 @@ struct DarkSettingsView: View {
         .sheet(isPresented: $showAdvanced) {
             DarkAdvancedSettingsView()
         }
+        .sheet(isPresented: $showAnimationPreview) {
+            AnimationPreviewView()
+        }
+        .sheet(isPresented: $showIntegrationsData) {
+            IntegrationsDataView()
+        }
         .alert("Log Out", isPresented: $showLogoutConfirmation) {
-            Button("Log Out", role: .destructive) { apiClient.signOut() }
+            Button("Log Out", role: .destructive) { fullSignOut(wipeOnboarding: false) }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll need to sign in again to access your data.")
+        }
+        .alert("Dev mode is on", isPresented: $showDevWipeConfirmation) {
+            Button("Wipe & Log Out", role: .destructive) { fullSignOut(wipeOnboarding: true) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Wipe all your onboarding data and start fresh? Next sign-in runs the full onboarding and regenerates your first podcast. Your journal entries and existing podcasts are kept.")
         }
         .alert("Face ID Unavailable", isPresented: $showBiometricUnavailableAlert) {
             Button("OK", role: .cancel) { faceIDEnabled = false }
@@ -270,6 +272,17 @@ struct DarkSettingsView: View {
     }
 
     private func disconnectGoogle() { googleDocsService.signOut() }
+
+    /// Full sign-out that actually gates the app back to sign-in. The old bug: logout only
+    /// cleared the token, but in DEBUG `hasUsableBackendAuth` also checks `devAuthBypassEnabled`,
+    /// which stayed true — so logout did nothing. Here we clear both.
+    private func fullSignOut(wipeOnboarding: Bool) {
+        if wipeOnboarding {
+            OnboardingContextManager.shared.resetForFreshOnboarding()
+        }
+        devAuthBypassEnabled = false
+        apiClient.signOut()
+    }
 
     private func connectHealth() {
         guard HealthKitManager.shared.isHealthDataAvailable() else {
@@ -1176,6 +1189,7 @@ struct DarkAdvancedSettingsView: View {
     @AppStorage("mockAPICalls") private var mockAPICalls: Bool = false
     @AppStorage("experimentalViewEnabled") private var experimentalViewEnabled: Bool = false
     @State private var showOnboarding = false
+    @State private var showOnboardingFinale = false
     @State private var onboardingReplayId = 0
     @State private var showLegacyUI = false
     @State private var showPodcastFlowPreview = false
@@ -1190,9 +1204,9 @@ struct DarkAdvancedSettingsView: View {
     @StateObject private var viewModel = TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared)
     
     var body: some View {
-        darkSettingsSheet(title: "Advanced") {
+        lightSettingsSheet(title: "Advanced") {
             VStack(spacing: 16) {
-                DarkSettingsToggleRow(
+                LightSettingsToggleRow(
                     title: "Dev Mode",
                     subtitle: "Enable developer options",
                     isOn: $devMode
@@ -1200,7 +1214,7 @@ struct DarkAdvancedSettingsView: View {
                 
                 // Mock API Calls - only visible when Dev Mode is on
                 if devMode {
-                    DarkSettingsToggleRow(
+                    LightSettingsToggleRow(
                         title: "Mock API Calls",
                         subtitle: "Use sample data instead of real API calls",
                         isOn: $mockAPICalls
@@ -1209,7 +1223,7 @@ struct DarkAdvancedSettingsView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 
-                DarkSettingsToggleRow(
+                LightSettingsToggleRow(
                     title: "Experimental View",
                     subtitle: "New podcast-focused interface",
                     isOn: $experimentalViewEnabled
@@ -1221,32 +1235,32 @@ struct DarkAdvancedSettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Test Podcast Notification")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                             
                             Text("Send a test notification with your content")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .foregroundColor(FigmaLightTheme.mutedText)
                         }
                         
                         Spacer()
                         
                         if isGeneratingTestPodcast {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
+                                .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
                                 .scaleEffect(0.8)
                         } else {
                             Image(systemName: "bell.badge.fill")
                                 .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(LinearColors.Minimal.accent)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                         }
                     }
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearColors.Minimal.backgroundCard)
+                            .fill(FigmaLightTheme.rowSurface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
                     )
                 }
@@ -1263,26 +1277,26 @@ struct DarkAdvancedSettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Resync Entries to Backend")
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    .foregroundColor(FigmaLightTheme.primaryText)
                                 
                                 Text("\(entryManager.entries.count) entries will be pushed to Supabase")
                                     .font(.system(size: 13, weight: .regular))
-                                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                                    .foregroundColor(FigmaLightTheme.mutedText)
                             }
                             
                             Spacer()
                             
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(LinearColors.Minimal.accent)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                         }
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearColors.Minimal.backgroundCard)
+                                .fill(FigmaLightTheme.rowSurface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                        .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                                 )
                         )
                     }
@@ -1296,16 +1310,16 @@ struct DarkAdvancedSettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    .foregroundColor(FigmaLightTheme.primaryText)
                                 
                                 if isGeneratingTestPodcast {
                                     Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
                                         .font(.system(size: 13, weight: .regular))
-                                        .foregroundColor(LinearColors.Minimal.accent)
+                                        .foregroundColor(FigmaLightTheme.primaryText)
                                 } else {
                                     Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
                                         .font(.system(size: 13, weight: .regular))
-                                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                                        .foregroundColor(FigmaLightTheme.mutedText)
                                 }
                             }
                             
@@ -1313,21 +1327,21 @@ struct DarkAdvancedSettingsView: View {
                             
                             if isGeneratingTestPodcast {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
                                     .scaleEffect(0.8)
                             } else {
                                 Image(systemName: mockAPICalls ? "play.circle.fill" : "sparkles")
                                     .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(LinearColors.Minimal.accent)
+                                    .foregroundColor(FigmaLightTheme.primaryText)
                             }
                         }
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearColors.Minimal.backgroundCard)
+                                .fill(FigmaLightTheme.rowSurface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .strokeBorder(LinearColors.Minimal.accent.opacity(0.3), lineWidth: 1)
+                                        .strokeBorder(FigmaLightTheme.primaryText.opacity(0.3), lineWidth: 1)
                                 )
                         )
                     }
@@ -1347,26 +1361,26 @@ struct DarkAdvancedSettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Replay Onboarding")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                             
                             Text("Go through the setup flow again")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .foregroundColor(FigmaLightTheme.mutedText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .foregroundColor(FigmaLightTheme.faintText)
                     }
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearColors.Minimal.backgroundCard)
+                            .fill(FigmaLightTheme.rowSurface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
                     )
                 }
@@ -1378,26 +1392,26 @@ struct DarkAdvancedSettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Preview Podcast Flow")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                             
                             Text("Test the complete podcast UI flow")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .foregroundColor(FigmaLightTheme.mutedText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "play.rectangle.fill")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.accent)
+                            .foregroundColor(FigmaLightTheme.primaryText)
                     }
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearColors.Minimal.backgroundCard)
+                            .fill(FigmaLightTheme.rowSurface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
                     )
                 }
@@ -1409,26 +1423,26 @@ struct DarkAdvancedSettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Legacy UI (UI1)")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                             
                             Text("Original warm cream interface")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .foregroundColor(FigmaLightTheme.mutedText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.textTertiary)
+                            .foregroundColor(FigmaLightTheme.faintText)
                     }
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearColors.Minimal.backgroundCard)
+                            .fill(FigmaLightTheme.rowSurface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
                     )
                 }
@@ -1440,26 +1454,26 @@ struct DarkAdvancedSettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Preview Podcast Flow")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .foregroundColor(FigmaLightTheme.primaryText)
                             
                             Text("Walk through the complete podcast UI")
                                 .font(.system(size: 13, weight: .regular))
-                                .foregroundColor(LinearColors.Minimal.textSecondary)
+                                .foregroundColor(FigmaLightTheme.mutedText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "play.rectangle.fill")
                             .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.accent)
+                            .foregroundColor(FigmaLightTheme.primaryText)
                     }
                     .padding(16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearColors.Minimal.backgroundCard)
+                            .fill(FigmaLightTheme.rowSurface)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                                    .strokeBorder(FigmaLightTheme.border, lineWidth: 1)
                             )
                     )
                 }
@@ -1472,16 +1486,16 @@ struct DarkAdvancedSettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(LinearColors.Minimal.textPrimary)
+                                    .foregroundColor(FigmaLightTheme.primaryText)
                                 
                                 if isGeneratingTestPodcast {
                                     Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
                                         .font(.system(size: 13, weight: .regular))
-                                        .foregroundColor(LinearColors.Minimal.accent)
+                                        .foregroundColor(FigmaLightTheme.primaryText)
                                 } else {
                                     Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
                                         .font(.system(size: 13, weight: .regular))
-                                        .foregroundColor(LinearColors.Minimal.textSecondary)
+                                        .foregroundColor(FigmaLightTheme.mutedText)
                                 }
                             }
                             
@@ -1489,21 +1503,21 @@ struct DarkAdvancedSettingsView: View {
                             
                             if isGeneratingTestPodcast {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.Minimal.accent))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
                                     .scaleEffect(0.8)
                             } else {
                                 Image(systemName: mockAPICalls ? "play.circle.fill" : "sparkles")
                                     .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(LinearColors.Minimal.accent)
+                                    .foregroundColor(FigmaLightTheme.primaryText)
                             }
                         }
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearColors.Minimal.backgroundCard)
+                                .fill(FigmaLightTheme.rowSurface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14)
-                                        .strokeBorder(LinearColors.Minimal.accent.opacity(0.3), lineWidth: 1)
+                                        .strokeBorder(FigmaLightTheme.primaryText.opacity(0.3), lineWidth: 1)
                                 )
                         )
                     }
@@ -1518,9 +1532,16 @@ struct DarkAdvancedSettingsView: View {
         .fullScreenCover(isPresented: $showOnboarding) {
             DarkOnboardingFlow(onComplete: { _ in
                 showOnboarding = false
+                // Dev: chain into the end-of-onboarding finale (mock podcast) so it's testable here.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showOnboardingFinale = true }
             })
             .id(onboardingReplayId)
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $showOnboardingFinale) {
+            FirstPodcastFinaleDebugHost()
+        }
+        #endif
         .fullScreenCover(isPresented: $showLegacyUI) {
             LegacyHomeScreen()
         }
@@ -1761,6 +1782,70 @@ func darkSettingsSheet(title: String, @ViewBuilder content: () -> some View) -> 
         }
     }
     .preferredColorScheme(.dark)
+}
+
+/// Light variant of `darkSettingsSheet` — used only by the Advanced screen so it matches the
+/// rest of the (light) app. Same structure as the dark sheet, light colors.
+func lightSettingsSheet(title: String, @ViewBuilder content: () -> some View) -> some View {
+    ZStack {
+        FigmaLightTheme.cardSurface
+            .ignoresSafeArea()
+
+        VStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(FigmaLightTheme.faintText)
+                .frame(width: 36, height: 4)
+                .padding(.top, 12)
+
+            Text(title)
+                .font(.custom("HedvigLettersSerif-24ptRegular", size: 24))
+                .foregroundColor(FigmaLightTheme.primaryText)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
+
+            ScrollView {
+                VStack(spacing: 16) {
+                    content()
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+    .preferredColorScheme(.light)
+}
+
+struct LightSettingsToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(FigmaLightTheme.body(15, weight: .semibold))
+                    .foregroundColor(FigmaLightTheme.primaryText)
+                Text(subtitle)
+                    .font(FigmaLightTheme.mono(12))
+                    .foregroundColor(FigmaLightTheme.mutedText)
+            }
+            Spacer()
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(FigmaLightTheme.mutedText)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(FigmaLightTheme.rowSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
 }
 
 // MARK: - Settings Row Components

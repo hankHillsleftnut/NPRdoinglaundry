@@ -2,129 +2,119 @@ import SwiftUI
 import AuthenticationServices
 
 // MARK: - Backend Auth Gate
-// Shown when user completed onboarding but has no valid backend JWT.
-// This is a full-screen sign-in requirement — no way to skip.
+// Shown when the user completed onboarding but has no valid backend JWT.
+// Uses the SAME design as the onboarding `WelcomeSignInPage` so the "true" sign-in matches it,
+// just wired to `onAuthenticated` instead of advancing the onboarding flow.
 
 struct BackendAuthGateView: View {
     let onAuthenticated: () -> Void
-    
+
+    @StateObject private var coordinator = AppleSignInCoordinator()
     @State private var isSigningIn = false
     @State private var signInError: String?
-    @ObservedObject private var apiClient = RetrospectAPIClient.shared
-    
+
+    @State private var logoOpacity: Double = 0
+    @State private var logoScale: CGFloat = 0.85
+    @State private var buttonOpacity: Double = 0
+
     var body: some View {
-        ZStack {
-            LinearColors.Minimal.background
-                .ignoresSafeArea()
-            
-            VStack(spacing: 32) {
-                Spacer()
-                
-                // Icon
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundColor(LinearColors.accent)
-                
-                // Title
-                Text("Sign In Required")
-                    .font(.custom("HedvigLettersSerif-24ptRegular", size: 30))
-                    .foregroundColor(LinearColors.textDisplay)
+        OnboardingScaffold(
+            title: "Retrospect",
+            subtitle: "Your life, turned into a weekly podcast. Journal entries, voice notes, health data, and the thoughts you almost forgot become something you can actually hear.",
+            topSpacing: 116,
+            header: {
+                Image("retrospect-loading-mark")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 82, height: 62)
+                    .opacity(0.26)
+                    .padding(.bottom, 16)
+                    .opacity(logoOpacity)
+                    .scaleEffect(logoScale)
+            }
+        ) {
+            EmptyView()
+        } bottom: {
+            OnboardingPrimaryButton(
+                title: isSigningIn ? "Authenticating..." : "Sign in with Apple",
+                systemImage: "apple.logo",
+                isLoading: isSigningIn,
+                isDisabled: isSigningIn,
+                action: triggerSignIn
+            )
+            .opacity(buttonOpacity)
+
+            #if DEBUG
+            Button("DEV: Bypass authentication") {
+                UserDefaults.standard.set(true, forKey: "devAuthBypassEnabled")
+                onAuthenticated()
+            }
+            .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+            .foregroundColor(OnboardingStyle.tertiaryText)
+            .buttonStyle(.plain)
+            .opacity(buttonOpacity)
+            #endif
+
+            if let error = signInError {
+                Text(error)
+                    .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+                    .foregroundColor(OnboardingStyle.danger)
                     .multilineTextAlignment(.center)
-                
-                // Subtitle
-                Text("Please sign in with Apple to access your data and podcasts.")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(LinearColors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                
-                // Apple Sign In Button
-                VStack(spacing: 12) {
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.email, .fullName]
-                    } onCompletion: { result in
-                        handleAppleSignIn(result: result)
-                    }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 56)
-                    .cornerRadius(16)
-                    .padding(.horizontal, 40)
-                    
-                    if isSigningIn {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: LinearColors.accent))
-                                .scaleEffect(0.8)
-                            Text("Connecting...")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(LinearColors.textSecondary)
-                        }
-                    }
-                    
-                    if let error = signInError {
-                        Text(error)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.red.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                }
-                
-                Spacer()
-                
-                // Privacy footnote
-                Text("Your data stays private. We only use your Apple ID to verify your account.")
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(LinearColors.textTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 40)
+                    .lineSpacing(3)
             }
         }
-        .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.1)) {
+                logoOpacity = 1
+                logoScale = 1.0
+            }
+            withAnimation(.easeOut(duration: 0.5).delay(0.5)) {
+                buttonOpacity = 1
+            }
+        }
     }
-    
-    // MARK: - Apple Sign In Handler
-    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
+
+    // MARK: - Apple Sign-in (same coordinator-based flow as WelcomeSignInPage)
+    private func triggerSignIn() {
+        guard !isSigningIn else { return }
+        signInError = nil
+
+        Task { @MainActor in
+            isSigningIn = true
+
+            let authorization: ASAuthorization
+            do {
+                authorization = try await coordinator.signIn()
+            } catch {
+                isSigningIn = false
+                let nsError = error as NSError
+                if nsError.domain == ASAuthorizationError.errorDomain,
+                   nsError.code == ASAuthorizationError.canceled.rawValue {
+                    return
+                }
+                signInError = error.localizedDescription
+                return
+            }
+
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                isSigningIn = false
                 signInError = "Invalid credential type"
                 return
             }
-            
-            let appleUserId = credential.user
-            let email = credential.email
-            let identityToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
-            
-            isSigningIn = true
-            signInError = nil
-            
-            Task {
-                do {
-                    let _ = try await apiClient.signIn(
-                        appleUserId: appleUserId,
-                        email: email,
-                        identityToken: identityToken
-                    )
-                    
-                    await MainActor.run {
-                        isSigningIn = false
-                        onAuthenticated()
-                    }
-                } catch {
-                    await MainActor.run {
-                        isSigningIn = false
-                        signInError = error.localizedDescription
-                    }
-                }
+
+            do {
+                _ = try await RetrospectAPIClient.shared.signIn(
+                    appleUserId: credential.user,
+                    email: credential.email,
+                    identityToken: credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
+                )
+                isSigningIn = false
+                HapticManager.shared.playSuccessNotification()
+                onAuthenticated()
+            } catch {
+                isSigningIn = false
+                signInError = error.localizedDescription
             }
-            
-        case .failure(let error):
-            if (error as NSError).code == ASAuthorizationError.canceled.rawValue {
-                return
-            }
-            signInError = error.localizedDescription
         }
     }
 }

@@ -56,6 +56,7 @@ export const config = {
 
   // Apple Sign In
   apple: {
+    clientId: optionalEnv('APPLE_CLIENT_ID', 'com.shauryanarang.Retrospect'),
     teamId: optionalEnv('APPLE_TEAM_ID', ''),
     keyId: optionalEnv('APPLE_KEY_ID', ''),
     privateKey: optionalEnv('APPLE_PRIVATE_KEY', ''),
@@ -70,6 +71,24 @@ export const config = {
   agent: {
     serviceUrl: requireEnv('AGENT_SERVICE_URL'),
     internalSecret: requireEnv('INTERNAL_API_SECRET'),
+  },
+  integrations: {
+    oauthCallbackBaseUrl: optionalEnv('INTEGRATION_OAUTH_CALLBACK_BASE_URL', 'https://retrospect-api.onrender.com'),
+    appRedirectUrl: optionalEnv('INTEGRATION_APP_REDIRECT_URL', 'retrospect://integration-connected'),
+    googleClientId: optionalEnv('GOOGLE_OAUTH_CLIENT_ID', ''),
+    googleClientSecret: optionalEnv('GOOGLE_OAUTH_CLIENT_SECRET', ''),
+    spotifyClientId: optionalEnv('SPOTIFY_CLIENT_ID', ''),
+    spotifyClientSecret: optionalEnv('SPOTIFY_CLIENT_SECRET', ''),
+    redditClientId: optionalEnv('REDDIT_CLIENT_ID', ''),
+    redditClientSecret: optionalEnv('REDDIT_CLIENT_SECRET', ''),
+    pinterestClientId: optionalEnv('PINTEREST_CLIENT_ID', ''),
+    pinterestClientSecret: optionalEnv('PINTEREST_CLIENT_SECRET', ''),
+    tiktokClientKey: optionalEnv('TIKTOK_CLIENT_KEY', ''),
+    tiktokClientSecret: optionalEnv('TIKTOK_CLIENT_SECRET', ''),
+    linkedinClientId: optionalEnv('LINKEDIN_CLIENT_ID', ''),
+    linkedinClientSecret: optionalEnv('LINKEDIN_CLIENT_SECRET', ''),
+    xClientId: optionalEnv('X_CLIENT_ID', ''),
+    xClientSecret: optionalEnv('X_CLIENT_SECRET', ''),
   },
 
   // Server

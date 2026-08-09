@@ -13,7 +13,7 @@ import AuthenticationServices
 
 // MARK: - Coordinator (lives as @StateObject, outlives view rebuilds)
 
-private final class AppleSignInCoordinator: NSObject, ObservableObject,
+final class AppleSignInCoordinator: NSObject, ObservableObject,
     ASAuthorizationControllerDelegate,
     ASAuthorizationControllerPresentationContextProviding
 {
@@ -85,16 +85,19 @@ struct WelcomeSignInPage: View {
         OnboardingScaffold(
             title: "Retrospect",
             subtitle: "Your life, turned into a weekly podcast. Journal entries, voice notes, health data, and the thoughts you almost forgot become something you can actually hear.",
-            topSpacing: 116
+            topSpacing: 116,
+            header: {
+                Image("retrospect-loading-mark")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 82, height: 62)
+                    .opacity(0.26)
+                    .padding(.bottom, 16)
+                    .opacity(logoOpacity)
+                    .scaleEffect(logoScale)
+            }
         ) {
-            Image("retrospect-loading-mark")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 82, height: 62)
-                .opacity(0.26)
-                .padding(.top, 12)
-                .opacity(logoOpacity)
-                .scaleEffect(logoScale)
+            EmptyView()
         } bottom: {
             OnboardingPrimaryButton(
                 title: state.signInInProgress || isAwaitingApple ? "Authenticating..." : "Sign in with Apple",
@@ -105,6 +108,19 @@ struct WelcomeSignInPage: View {
             )
             .opacity(buttonOpacity)
 
+            #if DEBUG
+            Button("DEV: Bypass authentication") {
+                UserDefaults.standard.set(true, forKey: "devAuthBypassEnabled")
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    state.markSignedIn()
+                }
+            }
+            .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
+            .foregroundColor(OnboardingStyle.tertiaryText)
+            .buttonStyle(.plain)
+            .opacity(buttonOpacity)
+            #endif
+
             if let error = signInError {
                 Text(error)
                     .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
@@ -112,13 +128,6 @@ struct WelcomeSignInPage: View {
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
             }
-
-            Text("Sign in creates your private Retrospect account. You choose what to connect next.")
-                .font(OnboardingStyle.bodyFont(size: 12))
-                .foregroundColor(OnboardingStyle.tertiaryText)
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .opacity(buttonOpacity)
         }
         .onAppear {
             animateIn()

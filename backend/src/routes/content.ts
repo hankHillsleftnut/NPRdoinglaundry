@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { runAgentIngest } from '../services/agent-client.js';
 import { UploadContentSchema } from '../types/index.js';
+import { INTEGRATION_CATALOG } from '../services/integration-catalog.js';
 
 export const contentRouter = Router();
 
@@ -56,6 +57,31 @@ contentRouter.post('/', async (req: Request, res: Response) => {
         error: 'Failed to store content',
       });
       return;
+    }
+
+    // Best-effort bridge into the durable integration ledger. Content ingestion
+    // must continue if the integration migration has not been deployed yet.
+    const provider = INTEGRATION_CATALOG.find((entry) => entry.id === contentType);
+    if (provider) {
+      const now = new Date().toISOString();
+      const { error: connectionError } = await supabaseAdmin
+        .from(Tables.INTEGRATION_CONNECTIONS)
+        .upsert({
+          user_id: user.id,
+          provider_id: provider.id,
+          collection_mode: provider.collectionMode,
+          status: 'connected',
+          connected_at: now,
+          last_verified_at: now,
+          disconnected_at: null,
+          metadata: {
+            registration_source: 'content_upload',
+          },
+        }, { onConflict: 'user_id,provider_id' });
+
+      if (connectionError) {
+        console.warn(`Could not update integration connection for ${provider.id}: ${connectionError.message}`);
+      }
     }
 
     // Return immediately — agent ingestion runs in the background.

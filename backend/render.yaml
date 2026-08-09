@@ -7,6 +7,7 @@ services:
     env: node
     region: oregon
     plan: starter
+    autoDeploy: false
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /health
@@ -23,6 +24,8 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: AGENT_SERVICE_URL
         sync: false
       - key: INTERNAL_API_SECRET
@@ -33,44 +36,37 @@ services:
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 100
-
-# Cron jobs for pattern detection
-  - type: cron
-    name: daily-pattern-detection
-    env: node
-    schedule: "0 3 * * *"
-    buildCommand: npm install && npm run build
-    startCommand: node -e "console.log('legacy daily-pattern-detection disabled; retrospect-agent owns ingestion')"
-    envVars:
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: SUPABASE_URL
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: SUPABASE_SERVICE_KEY
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: OPENAI_API_KEY
-
-  - type: cron
-    name: weekly-pattern-detection
-    env: node
-    schedule: "0 4 * * 0"
-    buildCommand: npm install && npm run build
-    startCommand: node -e "console.log('legacy weekly-pattern-detection disabled; retrospect-agent owns weekly podcasts')"
-    envVars:
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: SUPABASE_URL
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: SUPABASE_SERVICE_KEY
-      - fromService:
-          type: web
-          name: retrospect-api
-          envVarKey: OPENAI_API_KEY
+      - key: APPLE_CLIENT_ID
+        value: com.shauryanarang.Retrospect
+      - key: INTEGRATION_OAUTH_CALLBACK_BASE_URL
+        value: https://retrospect-api.onrender.com
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: PINTEREST_CLIENT_ID
+        sync: false
+      - key: PINTEREST_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: X_CLIENT_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

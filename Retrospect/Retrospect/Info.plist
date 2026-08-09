@@ -36,11 +36,14 @@
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Retrospect looks at what you listen to to understand your taste and mood.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Retrospect reads only photo details like dates and counts (never the images themselves) to understand the rhythm of your life.</string>
+	<string>Retrospect analyzes the photos you choose to help understand your memories, places, and life patterns.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Retrospect reads your contacts to understand the people who matter in your life.</string>
-	<key>OPENAI_API_KEY</key>
-	<string>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</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.shauryanarang.Retrospect.integrations.refresh</string>
+		<string>com.shauryanarang.Retrospect.integrations.processing</string>
+	</array>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>UIAppFonts</key>
@@ -110,6 +113,8 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

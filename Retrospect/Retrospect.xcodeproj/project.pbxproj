@@ -656,7 +656,7 @@
 				INFOPLIST_FILE = Retrospect/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Retrospect-2026";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Retrospect reads your listening history to understand your taste, routines, and changing mood.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "need to use faceid";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Retrospect uses your health data to provide personalized insights in your weekly reflection podcasts.";
@@ -701,7 +701,7 @@
 				INFOPLIST_FILE = Retrospect/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Retrospect-2026";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Retrospect reads your listening history to understand your taste, routines, and changing mood.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Retrospect needs camera access to record your video journal entries for personal reflection and insights.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "need to use faceid";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Retrospect uses your health data to provide personalized insights in your weekly reflection podcasts.";

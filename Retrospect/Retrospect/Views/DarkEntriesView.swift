@@ -59,7 +59,7 @@ struct DarkEntriesView: View {
     var body: some View {
         FigmaLightPageScaffold(
             title: "Entries",
-            hideHeader: isSearching
+            hideHeader: isSearching || activeEntry != nil
         ) {
             VStack(spacing: 0) {
                 if let entry = activeEntry {

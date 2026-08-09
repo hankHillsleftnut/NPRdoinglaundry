@@ -425,10 +425,27 @@ export async function synthesizeOnboardingGoals(
   }
 
   // 5. Persist the synthesized goals to the goals table (first-class, embedded).
+  //    Idempotency guard: the iOS client can time out (480s) while this 600s
+  //    pipeline keeps running and writes goals; the user then retries and we'd
+  //    re-insert the SAME goals. Skip any whose title already exists for this
+  //    user (title-stable across a retry because step 3 re-reads the persisted
+  //    active_goals). Non-destructive — never deletes manual/existing goals.
+  const { data: existingGoals } = await supabaseAdmin
+    .from(Tables.GOALS)
+    .select('title')
+    .eq('user_id', userId);
+  const existingTitles = new Set(
+    (existingGoals ?? []).map((g: any) => String(g.title).trim().toLowerCase())
+  );
+
   const savedGoals: DbGoal[] = [];
   for (const goal of extractedGoals) {
+    if (existingTitles.has(goal.title.trim().toLowerCase())) {
+      continue; // already saved (likely from a prior attempt) — don't duplicate
+    }
     const saved = await createGoal(userId, goal.title, goal.description);
     savedGoals.push(saved);
+    existingTitles.add(goal.title.trim().toLowerCase());
   }
 
   return {

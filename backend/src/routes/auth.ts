@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { generateToken, getOrCreateUser } from '../middleware/auth.js';
+import { verifyAppleIdentityToken } from '../services/apple-auth.js';
 
 export const authRouter = Router();
 
@@ -8,7 +9,7 @@ export const authRouter = Router();
 const SignInSchema = z.object({
   appleUserId: z.string().min(1),
   email: z.string().email().optional(),
-  identityToken: z.string().optional(), // For future verification
+  identityToken: z.string().min(1),
 });
 
 // POST /auth/signin - Sign in with Apple
@@ -25,12 +26,14 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
       return;
     }
 
-    const { appleUserId, email } = validationResult.data;
+    const { appleUserId, email, identityToken } = validationResult.data;
+    const verified = await verifyAppleIdentityToken(identityToken);
+    if (verified.appleUserId !== appleUserId) {
+      res.status(401).json({ success: false, error: 'Apple identity token subject mismatch' });
+      return;
+    }
 
-    // TODO: Verify Apple identity token in production
-    // For now, we trust the appleUserId from the iOS app
-
-    const user = await getOrCreateUser(appleUserId, email);
+    const user = await getOrCreateUser(verified.appleUserId, verified.email ?? email);
     const token = generateToken(user);
 
     res.json({
@@ -55,17 +58,20 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
 // POST /auth/refresh - Refresh token
 authRouter.post('/refresh', async (req: Request, res: Response) => {
   try {
-    const { appleUserId } = req.body;
-
-    if (!appleUserId) {
+    const parsed = SignInSchema.safeParse(req.body);
+    if (!parsed.success) {
       res.status(400).json({
         success: false,
-        error: 'Missing appleUserId',
+        error: 'A fresh Apple identity token is required',
       });
       return;
     }
-
-    const user = await getOrCreateUser(appleUserId);
+    const verified = await verifyAppleIdentityToken(parsed.data.identityToken);
+    if (verified.appleUserId !== parsed.data.appleUserId) {
+      res.status(401).json({ success: false, error: 'Apple identity token subject mismatch' });
+      return;
+    }
+    const user = await getOrCreateUser(verified.appleUserId, verified.email ?? parsed.data.email);
     const token = generateToken(user);
 
     res.json({

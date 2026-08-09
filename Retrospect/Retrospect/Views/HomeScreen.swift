@@ -937,7 +937,7 @@ struct HomeScreen: View {
         let entryDate = Date()
         
         // Generate metadata for the text entry
-        OpenAIService.shared.analyzeEntryForMetadata(content: reflectionText) { result in
+        AIServiceManager.shared.analyzeEntryForMetadata(content: reflectionText) { result in
             Task { @MainActor in
                 switch result {
                 case .success(let metadata):
@@ -1000,7 +1000,7 @@ struct HomeScreen: View {
         let entryDate = Date()
         
         // Generate metadata for the text entry
-        OpenAIService.shared.analyzeEntryForMetadata(content: reflectionText) { result in
+        AIServiceManager.shared.analyzeEntryForMetadata(content: reflectionText) { result in
             Task { @MainActor in
                 switch result {
                 case .success(let metadata):

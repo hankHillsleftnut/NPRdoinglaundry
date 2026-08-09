@@ -25,14 +25,30 @@ final class SubscriptionManager: ObservableObject {
     @Published var isPurchasing = false
     @Published var lastError: String?
 
-    private let revenueCatAPIKey = "appl_REPLACE_ME"
+    private let revenueCatAPIKey = "appl_AqlNMVteceKaIgyLEbhurRugtDY"
     private let entitlementID = "pro"
 
     func configure() {
         #if canImport(RevenueCat)
         Purchases.logLevel = .warn
         Purchases.configure(withAPIKey: revenueCatAPIKey)
+        // Tie RevenueCat's identity to our backend user so a subscription follows
+        // the person across devices/reinstalls (not just the anonymous install ID).
+        if let uid = RetrospectAPIClient.shared.currentUserId {
+            identify(userId: uid)
+        }
         Task { await refresh() }
+        #endif
+    }
+
+    /// Alias RevenueCat to our backend user id. Safe to call again after sign-in.
+    func identify(userId: String) {
+        #if canImport(RevenueCat)
+        Purchases.shared.logIn(userId) { info, _, _ in
+            if let info {
+                self.isSubscribed = info.entitlements[self.entitlementID]?.isActive == true
+            }
+        }
         #endif
     }
 

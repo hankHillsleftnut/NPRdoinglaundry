@@ -158,25 +158,34 @@ class ClaudeService {
         question: String,
         answer: String,
         userName: String,
+        priorContext: String = "",
         completion: @escaping (Result<String, ClaudeError>) -> Void
     ) {
         let systemPrompt = """
-        You are Retrospect — a perceptive, warm companion that turns a person's life into a weekly podcast. A user just answered an onboarding question. Write a short reflection (1-2 sentences) that makes them feel genuinely SEEN.
+        You are Retrospect, a perceptive, warm companion that turns a person's life into a weekly podcast. A user just answered an onboarding question. Write a short reflection (1-2 sentences) that makes them feel genuinely SEEN.
 
         The bar: they should read it and think "...how did it pick up on that?"
 
         How to do that:
-        - Name the thing UNDERNEATH what they said — the value, fear, or longing implied by their specific words. Don't just repeat their answer back.
+        - Name the thing UNDERNEATH what they said: the value, fear, or longing implied by their specific words. Don't just repeat their answer back.
         - Quote or echo a specific phrase they used so it's unmistakably about THEM, not generic.
+        - When earlier answers are provided, connect the dots BETWEEN answers when there's a real thread. Showing you remember what they said before is the strongest "how did it know" signal.
         - Use their name only if it lands naturally (not every time).
+
+        Tone: DIRECTIONAL, not declarative. Point slightly forward, toward who they're becoming or what this opens up, rather than only summarizing what they said. End on momentum, not a closed full-stop verdict.
 
         Hard rules:
         - NEVER generic praise. Banned: "That makes sense", "Great answer", "That's wonderful", "I hear you", "Thank you for sharing".
         - No advice. No follow-up question. No therapy clichés.
         - One sharp observation beats two soft ones.
+        - NEVER use em dashes or en dashes. Use commas, periods, or rewrite the sentence.
         - Under 35 words. Warm, specific, a little surprising.
         """
-        let userMessage = "User's name: \(userName)\nQuestion asked: \(question)\nTheir answer: \(answer)"
+        var userMessage = "User's name: \(userName)\n"
+        if !priorContext.isEmpty {
+            userMessage += "Earlier in this conversation they shared:\n\(priorContext)\n\n"
+        }
+        userMessage += "Question asked: \(question)\nTheir answer: \(answer)"
         Task {
             do {
                 let text = try await RetrospectAPIClient.shared.claudeGenerate(
@@ -189,6 +198,65 @@ class ClaudeService {
                 completion(.failure(.apiError(error.localizedDescription)))
             }
         }
+    }
+
+    /// Generates short "wonderings" — questions Retrospect asks itself about the
+    /// user, grounded in their onboarding answers — shown over the loader during
+    /// the understanding phase so the wait feels like a mind actually working.
+    func generateOnboardingWonderings(
+        answersText: String,
+        completion: @escaping (Result<[String], ClaudeError>) -> Void
+    ) {
+        let systemPrompt = """
+        You are Retrospect, thinking out loud to yourself as you study someone you've just met through their onboarding answers. Produce a list of short internal "wonderings": questions you are quietly asking yourself about who this person really is, each grounded in something specific they said.
+
+        The feeling: the user should sense a mind actually turning them over and forming hypotheses, not a spinner.
+
+        Rules:
+        - 12 wonderings.
+        - Each is ONE sentence, a question or hypothesis you pose to YOURSELF. Never a conclusion, never advice, never addressed to "you".
+        - Under 14 words each.
+        - Anchor each to their actual answers (echo a real detail) but stay open: "Is X really about Y, or about Z?"
+        - Range across them: drive, fear, what they protect, what they long to become.
+        - Warm and perceptive, never clinical.
+        - Never use em dashes or en dashes.
+
+        Return ONLY a JSON array of strings.
+        """
+        let userMessage = "Their onboarding answers:\n\n\(answersText)\n\nReturn 12 short wonderings as a JSON array of strings."
+        Task {
+            do {
+                let text = try await RetrospectAPIClient.shared.claudeGenerate(
+                    systemPrompt: systemPrompt,
+                    userMessage: userMessage,
+                    maxTokens: 600
+                )
+                if let parsed = Self.parseStringArray(text) {
+                    completion(.success(parsed))
+                } else {
+                    completion(.failure(.parseError))
+                }
+            } catch {
+                completion(.failure(.apiError(error.localizedDescription)))
+            }
+        }
+    }
+
+    /// Best-effort parse of a JSON string array, tolerating fences or surrounding prose.
+    private static func parseStringArray(_ text: String) -> [String]? {
+        if let data = text.data(using: .utf8),
+           let arr = try? JSONSerialization.jsonObject(with: data) as? [String] {
+            return arr
+        }
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let start = cleaned.firstIndex(of: "["), let end = cleaned.lastIndex(of: "]"), start < end {
+            let slice = String(cleaned[start...end])
+            if let data = slice.data(using: .utf8),
+               let arr = try? JSONSerialization.jsonObject(with: data) as? [String] {
+                return arr
+            }
+        }
+        return nil
     }
 
     func extractGoalsFromConversation(conversationHistory: [[String: Any]], completion: @escaping (Result<[String], ClaudeError>) -> Void) {

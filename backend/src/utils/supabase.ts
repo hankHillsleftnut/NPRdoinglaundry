@@ -45,6 +45,27 @@ export const Tables = {
   // Agent-owned tables (read here to surface synthesized goals)
   USER_UNDERSTANDING: 'user_understanding',
   GOAL_CANDIDATES: 'goal_candidates',
+  // Durable integrations and exact source provenance
+  INTEGRATION_CONNECTIONS: 'integration_connections',
+  INTEGRATION_SYNC_STATES: 'integration_sync_states',
+  INTEGRATION_JOBS: 'integration_jobs',
+  INTEGRATION_IMPORTS: 'integration_imports',
+  SOURCE_ASSETS: 'source_assets',
+  INTEGRATION_AUDIT_EVENTS: 'integration_audit_events',
+  INTEGRATION_OAUTH_STATES: 'integration_oauth_states',
+  INTEGRATION_SYNC_RUNS: 'integration_sync_runs',
+  SOURCE_PAYLOADS: 'source_payloads',
+  SOURCE_ITEMS: 'source_items',
+  SOURCE_ITEM_RELATIONS: 'source_item_relations',
+  ANALYSIS_UNITS: 'analysis_units',
+  EVIDENCE_LINKS: 'evidence_links',
+  INTEGRATION_TEST_RUNS: 'integration_test_runs',
+  ASSERTIONS: 'assertions',
+  ASSERTION_EVIDENCE: 'assertion_evidence',
+  ASSERTION_RELATIONS: 'assertion_relations',
+  ENTITIES: 'entities',
+  ENTITY_RESOLUTION_CANDIDATES: 'entity_resolution_candidates',
+  IDENTITY_INFERENCES: 'identity_inferences',
 } as const;
 
 // Helper to handle Supabase errors

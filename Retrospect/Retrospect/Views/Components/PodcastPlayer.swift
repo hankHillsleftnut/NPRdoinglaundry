@@ -77,9 +77,14 @@ protocol PodcastPlayback: ObservableObject {
 @MainActor
 final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
     @Published private(set) var isPlaying = false
+    /// Fires once when real audio plays through to the end (e.g. after the
+    /// listener subscribes and finishes the episode). Used to drive the
+    /// post-podcast reflection in the first-podcast finale.
+    @Published private(set) var didFinish = false
 
     private var player: AVPlayer?
     private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
     private let url: URL?
     private var fadeTask: Task<Void, Never>?
 
@@ -103,6 +108,8 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
 
     func start() {
         removeTimeObserver()
+        removeEndObserver()
+        didFinish = false
         fadeTask?.cancel()
         fadeTask = nil
         visualTask?.cancel()
@@ -117,6 +124,11 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
             let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
             timeObserver = p.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] t in
                 Task { @MainActor in self?.realCurrentTime = CMTimeGetSeconds(t) }
+            }
+            endObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.isPlaying = false; self?.didFinish = true }
             }
             Task {
                 if let d = try? await item.asset.load(.duration) {
@@ -138,6 +150,7 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
         player?.volume = 1
         player?.seek(to: .zero)
         removeTimeObserver()
+        removeEndObserver()
         player = nil
         realCurrentTime = 0
         visualTask?.cancel(); visualTask = nil
@@ -228,6 +241,13 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
         if let timeObserver {
             player?.removeTimeObserver(timeObserver)
             self.timeObserver = nil
+        }
+    }
+
+    private func removeEndObserver() {
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
         }
     }
 
