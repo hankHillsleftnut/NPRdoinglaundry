@@ -161,6 +161,19 @@ struct FigmaLightRowCard<Content: View>: View {
     }
 }
 
+/// A hairline separator between stacked rows inside one `FigmaLightRowCard`,
+/// inset to clear a leading icon column.
+struct FigmaLightDivider: View {
+    var leadingInset: CGFloat = 62
+
+    var body: some View {
+        Rectangle()
+            .fill(FigmaLightTheme.border.opacity(0.65))
+            .frame(height: 0.5)
+            .padding(.leading, leadingInset)
+    }
+}
+
 struct FigmaLightSectionLabel: View {
     let text: String
 

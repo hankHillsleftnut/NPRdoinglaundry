@@ -45,7 +45,7 @@ struct IntegrationsDataView: View {
                                         ForEach(sources) { source in
                                             sourceRow(source)
                                             if source.id != sources.last?.id {
-                                                lightDivider()
+                                                FigmaLightDivider()
                                             }
                                         }
                                     }
@@ -116,20 +116,22 @@ struct IntegrationsDataView: View {
     private var header: some View {
         ZStack {
             Text("Integrations")
-                .font(FigmaLightTheme.mono(13, weight: .medium))
+                .font(.system(size: 18, weight: .regular, design: .monospaced))
                 .foregroundColor(FigmaLightTheme.mutedText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             HStack(spacing: 0) {
                 Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .foregroundColor(FigmaLightTheme.faintText)
                         .frame(width: 38, height: 38)
                         .background(
                             Circle()
                                 .fill(FigmaLightTheme.controlSurface)
-                                .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.14), radius: 4, x: 0, y: 2)
+                                .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                                .shadow(color: Color.black.opacity(0.16), radius: 4, x: 0, y: 2)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -142,15 +144,16 @@ struct IntegrationsDataView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .foregroundColor(FigmaLightTheme.faintText)
                         .frame(width: 38, height: 38)
                         .background(
                             Circle()
                                 .fill(FigmaLightTheme.controlSurface)
-                                .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.14), radius: 4, x: 0, y: 2)
+                                .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                                .shadow(color: Color.black.opacity(0.16), radius: 4, x: 0, y: 2)
                         )
                 }
+                .buttonStyle(PlainButtonStyle())
                 .accessibilityLabel("Refresh integrations")
             }
         }
@@ -194,37 +197,38 @@ struct IntegrationsDataView: View {
         )
     }
 
-    private func lightDivider() -> some View {
-        Rectangle()
-            .fill(FigmaLightTheme.border.opacity(0.65))
-            .frame(height: 0.5)
-            .padding(.leading, 62)
-    }
-
     private func sourceRow(_ source: IntegrationCatalogItem) -> some View {
         let remote = remoteByProvider[source.id]
         let connection = remote?.connection
-        let subtitle = "\(statusText(source, connection: connection)) · \(source.plannedStatus ?? modeLabel(remote?.collectionMode))"
+        let modePart = source.plannedStatus ?? modeLabel(remote?.collectionMode)
 
         return HStack(spacing: 14) {
             Image(systemName: source.icon)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(FigmaLightTheme.mutedText)
-                .frame(width: 30)
+                .frame(width: 30, height: 30)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(source.title)
                     .font(FigmaLightTheme.body(15, weight: .medium))
                     .foregroundColor(FigmaLightTheme.primaryText)
-                Text(subtitle)
-                    .font(FigmaLightTheme.mono(12))
-                    .foregroundColor(statusColor(source, connection: connection))
+                // Two colors in one line: status keeps its semantic color, the
+                // sync-mode half stays neutral so "mode" never reads as if it
+                // were itself erroring or succeeding.
+                (
+                    Text(statusText(source, connection: connection))
+                        .foregroundColor(statusColor(source, connection: connection))
+                    + Text(" · \(modePart)")
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                )
+                .font(FigmaLightTheme.mono(12))
             }
 
             Spacer()
 
             if busyProviderId == source.id {
                 ProgressView()
+                    .tint(FigmaLightTheme.primaryText)
                     .scaleEffect(0.8)
             } else if let connection, connection.status != "disconnected" {
                 HStack(spacing: 2) {
@@ -284,7 +288,8 @@ struct IntegrationsDataView: View {
                 .accessibilityLabel("Turn on \(source.title)")
             }
         }
-        .padding(.horizontal, 18)
+        // Horizontal inset comes from FigmaLightRowCard's own content padding —
+        // adding it again here would double the left/right margin for every row.
         .padding(.vertical, 14)
     }
 
