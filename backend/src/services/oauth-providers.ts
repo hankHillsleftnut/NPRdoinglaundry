@@ -197,11 +197,18 @@ export function listOAuthProviderReadiness() {
 // Resolves a bundled member (e.g. google_docs/gmail/youtube) to the provider
 // that actually owns its OAuth grant, so one authorization can cover several
 // catalog ids at once. Providers that aren't anyone's member pass through.
+//
+// The returned object's `id` is always the caller's requested id, not the
+// resolved aggregate's — callers (redirect URIs, state rows, the connected/
+// error deep link) should identify the specific catalog entry the user
+// interacted with, not the shared grant behind it. `memberProviderIds` still
+// carries through unchanged, so the fan-out on connect still covers every
+// bundled member regardless of which one was requested.
 export function getOAuthProvider(providerId: string): OAuthProvider {
   const provider = providers[resolveProviderKey(providerId)];
   if (!provider) throw new Error(`${providerId} does not have a continuous OAuth connector`);
   if (!provider.clientId || !provider.clientSecret) throw new Error(`${providerId} OAuth credentials are not configured`);
-  return provider;
+  return { ...provider, id: providerId };
 }
 
 export function buildOAuthAuthorizationUrl(provider: OAuthProvider, input: AuthorizationUrlInput): URL {
