@@ -501,16 +501,31 @@ integrationOauthCallbackRouter.get('/:providerId/connect/callback', async (req, 
     });
     const tokens = await tokenResponse.json() as Record<string, unknown>;
     if (!tokenResponse.ok) throw new Error(`Provider token exchange failed (${tokenResponse.status})`);
-    const connection = await ensureConnection(oauthState.user_id, provider.id, 'oauth_api');
-    const expiresIn = typeof tokens.expires_in === 'number' ? tokens.expires_in : null;
-    await storeAgentIntegrationCredentials(connection.id, {
-      userId: oauthState.user_id,
-      credentials: tokens,
-      expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : undefined,
-      metadata: { scopes: provider.scopes },
-    });
+
+    // The code is spent the moment Google accepts it, regardless of what we do
+    // next — mark the state consumed now so a downstream failure below can't
+    // strand it un-consumed with an authorization code that's already dead.
+    // Any connection that fails to write can still be retried individually via
+    // POST /connections/:id/reconnect.
     await supabaseAdmin.from(Tables.INTEGRATION_OAUTH_STATES).update({ consumed_at: new Date().toISOString() }).eq('id', oauthState.id);
-    await requestAgentIntegrationSync(connection.id, oauthState.user_id);
+
+    const expiresIn = typeof tokens.expires_in === 'number' ? tokens.expires_in : null;
+    const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : undefined;
+
+    // A bundled provider (one consent screen, one token) fans out into a
+    // connection per member; other providers just cover themselves.
+    const memberProviderIds = provider.memberProviderIds ?? [provider.id];
+    for (const memberId of memberProviderIds) {
+      const connection = await ensureConnection(oauthState.user_id, memberId, 'oauth_api');
+      await storeAgentIntegrationCredentials(connection.id, {
+        userId: oauthState.user_id,
+        credentials: tokens,
+        expiresAt,
+        metadata: { scopes: provider.scopes },
+      });
+      await requestAgentIntegrationSync(connection.id, oauthState.user_id);
+    }
+
     const redirect = new URL(config.integrations.appRedirectUrl);
     redirect.searchParams.set('provider', provider.id);
     redirect.searchParams.set('status', 'syncing');

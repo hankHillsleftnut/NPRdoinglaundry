@@ -15,6 +15,10 @@ export interface OAuthProvider {
   tokenClientSecretParam?: string;
   extraAuthorizationParams?: Record<string, string>;
   extraTokenParams?: Record<string, string>;
+  /** Catalog ids that share this provider's single OAuth grant (one consent
+   * screen, one token, fanned out into one connection per member). Set only
+   * on the aggregate provider itself. */
+  memberProviderIds?: readonly string[];
 }
 
 interface AuthorizationUrlInput {
@@ -37,6 +41,12 @@ const google = {
   extraAuthorizationParams: { access_type: 'offline', prompt: 'consent' },
 };
 
+// Members of the combined "google" authorization below. One consent screen
+// grants all these scopes at once, so the callback fans a single token out
+// into a connection row per member instead of requiring three separate
+// user-facing connect taps.
+export const GOOGLE_COMBINED_MEMBERS = ['google_docs', 'gmail', 'youtube'] as const;
+
 const providers: Record<string, OAuthProvider> = {
   google_docs: {
     id: 'google_docs',
@@ -58,6 +68,21 @@ const providers: Record<string, OAuthProvider> = {
     scopes: ['openid', 'email', 'https://www.googleapis.com/auth/youtube.readonly'],
     tokenAuth: 'body',
     supportsPkce: true,
+  },
+  google: {
+    id: 'google',
+    ...google,
+    scopes: [
+      'openid',
+      'email',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/documents.readonly',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/youtube.readonly',
+    ],
+    tokenAuth: 'body',
+    supportsPkce: true,
+    memberProviderIds: GOOGLE_COMBINED_MEMBERS,
   },
   spotify: {
     id: 'spotify',
@@ -126,14 +151,33 @@ const providers: Record<string, OAuthProvider> = {
   },
 };
 
+// Derived once from `memberProviderIds`: maps a member catalog id (e.g.
+// "gmail") to the key of the provider that actually owns its OAuth grant
+// (e.g. "google"). A provider not listed as anyone's member resolves to
+// itself. This is the single source of truth for the grouping — anything
+// that needs to know whether/how a provider is bundled reads it from here,
+// not from a hardcoded id.
+const MEMBER_ALIAS: Record<string, string> = Object.fromEntries(
+  Object.entries(providers).flatMap(([key, provider]) =>
+    (provider.memberProviderIds ?? []).map((memberId) => [memberId, key])
+  )
+);
+
+function resolveProviderKey(providerId: string): string {
+  return MEMBER_ALIAS[providerId] ?? providerId;
+}
+
 export function getOAuthProviderReadiness(providerId: string) {
-  const provider = providers[providerId];
+  const provider = providers[resolveProviderKey(providerId)];
   if (!provider) return null;
   const missing: string[] = [];
   if (!provider.clientId) missing.push(provider.authorizationClientIdParam === 'client_key' ? 'client_key' : 'client_id');
   if (!provider.clientSecret) missing.push('client_secret');
   return {
-    providerId: provider.id,
+    // The catalog id the caller asked about, not the aggregate provider's id —
+    // scopes/configured reflect the real (possibly combined) grant, but the
+    // identity stays whatever the client is displaying a row for.
+    providerId,
     configured: missing.length === 0,
     missing,
     scopes: provider.scopes,
@@ -144,13 +188,17 @@ export function getOAuthProviderReadiness(providerId: string) {
 
 export function listOAuthProviderReadiness() {
   return Object.keys(providers)
+    .filter((id) => !providers[id]?.memberProviderIds)
     .sort()
     .map(getOAuthProviderReadiness)
     .filter((entry): entry is NonNullable<ReturnType<typeof getOAuthProviderReadiness>> => Boolean(entry));
 }
 
+// Resolves a bundled member (e.g. google_docs/gmail/youtube) to the provider
+// that actually owns its OAuth grant, so one authorization can cover several
+// catalog ids at once. Providers that aren't anyone's member pass through.
 export function getOAuthProvider(providerId: string): OAuthProvider {
-  const provider = providers[providerId];
+  const provider = providers[resolveProviderKey(providerId)];
   if (!provider) throw new Error(`${providerId} does not have a continuous OAuth connector`);
   if (!provider.clientId || !provider.clientSecret) throw new Error(`${providerId} OAuth credentials are not configured`);
   return provider;
