@@ -24,41 +24,38 @@ struct IntegrationsDataView: View {
 
     var body: some View {
         ZStack {
-            LinearColors.background.ignoresSafeArea()
+            FigmaLightTheme.cardSurface.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
 
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 20) {
                         summary
 
                         ForEach(IntegrationCategory.allCases) { category in
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(category.rawValue.uppercased())
-                                    .font(.serifLabel)
-                                    .foregroundColor(LinearColors.textSecondary)
+                            let sources = IntegrationCatalogItem.all.filter { $0.category == category }
 
-                                VStack(spacing: 0) {
-                                    ForEach(IntegrationCatalogItem.all.filter { $0.category == category }) { source in
-                                        sourceRow(source)
-                                        if source.id != IntegrationCatalogItem.all.filter({ $0.category == category }).last?.id {
-                                            Divider().background(LinearColors.cardBorder)
+                            VStack(alignment: .leading, spacing: 8) {
+                                FigmaLightSectionLabel(text: category.rawValue.uppercased())
+                                    .padding(.horizontal, 4)
+
+                                FigmaLightRowCard {
+                                    VStack(spacing: 0) {
+                                        ForEach(sources) { source in
+                                            sourceRow(source)
+                                            if source.id != sources.last?.id {
+                                                lightDivider()
+                                            }
                                         }
                                     }
                                 }
-                                .background(
-                                    RoundedRectangle(cornerRadius: BorderRadius.card)
-                                        .fill(LinearColors.cardBackground)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: BorderRadius.card)
-                                                .stroke(LinearColors.cardBorder, lineWidth: BorderWidth.standard)
-                                        )
-                                )
                             }
                         }
                     }
-                    .padding(24)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
                 }
                 .refreshable { await loadConnections() }
             }
@@ -117,33 +114,49 @@ struct IntegrationsDataView: View {
     }
 
     private var header: some View {
-        HStack {
-            Button(action: { dismiss() }) {
-                Image(systemName: "chevron.left")
-                    .font(.geistHeadline)
-                    .foregroundColor(LinearColors.textPrimary)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Back")
-
+        ZStack {
             Text("Integrations")
-                .font(.geistDisplay)
-                .foregroundColor(LinearColors.textPrimary)
+                .font(FigmaLightTheme.mono(13, weight: .medium))
+                .foregroundColor(FigmaLightTheme.mutedText)
 
-            Spacer()
+            HStack(spacing: 0) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(FigmaLightTheme.controlSurface)
+                                .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
+                                .shadow(color: Color.black.opacity(0.14), radius: 4, x: 0, y: 2)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("Back")
 
-            Button {
-                Task { await loadConnections() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .foregroundColor(LinearColors.textPrimary)
-                    .frame(width: 44, height: 44)
+                Spacer()
+
+                Button {
+                    Task { await loadConnections() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(FigmaLightTheme.controlSurface)
+                                .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
+                                .shadow(color: Color.black.opacity(0.14), radius: 4, x: 0, y: 2)
+                        )
+                }
+                .accessibilityLabel("Refresh integrations")
             }
-            .accessibilityLabel("Refresh integrations")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(LinearColors.background)
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .padding(.bottom, 18)
     }
 
     private var summary: some View {
@@ -162,50 +175,57 @@ struct IntegrationsDataView: View {
     private func metric(value: Int, label: String) -> some View {
         VStack(spacing: 4) {
             Text("\(value)")
-                .font(.geistDisplay)
-                .foregroundColor(LinearColors.textPrimary)
+                .font(FigmaLightTheme.body(28, weight: .semibold))
+                .foregroundColor(FigmaLightTheme.primaryText)
             Text(label)
-                .font(.serifLabel)
-                .foregroundColor(LinearColors.textSecondary)
+                .font(FigmaLightTheme.mono(12))
+                .foregroundColor(FigmaLightTheme.mutedText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: BorderRadius.card)
-                .fill(LinearColors.cardBackground)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(FigmaLightTheme.rowSurface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: BorderRadius.card)
-                        .stroke(LinearColors.cardBorder, lineWidth: BorderWidth.standard)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 5)
         )
+    }
+
+    private func lightDivider() -> some View {
+        Rectangle()
+            .fill(FigmaLightTheme.border.opacity(0.65))
+            .frame(height: 0.5)
+            .padding(.leading, 62)
     }
 
     private func sourceRow(_ source: IntegrationCatalogItem) -> some View {
         let remote = remoteByProvider[source.id]
         let connection = remote?.connection
+        let subtitle = "\(statusText(source, connection: connection)) · \(source.plannedStatus ?? modeLabel(remote?.collectionMode))"
 
         return HStack(spacing: 14) {
             Image(systemName: source.icon)
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundColor(LinearColors.textPrimary)
-                .frame(width: 30, height: 30)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(FigmaLightTheme.mutedText)
+                .frame(width: 30)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(source.title)
-                    .font(.geistHeadline)
-                    .foregroundColor(LinearColors.textPrimary)
-                Text(statusText(source, connection: connection))
-                    .font(.serifLabel)
+                    .font(FigmaLightTheme.body(15, weight: .medium))
+                    .foregroundColor(FigmaLightTheme.primaryText)
+                Text(subtitle)
+                    .font(FigmaLightTheme.mono(12))
                     .foregroundColor(statusColor(source, connection: connection))
-                Text(source.plannedStatus ?? modeLabel(remote?.collectionMode))
-                    .font(.caption)
-                    .foregroundColor(LinearColors.textSecondary)
             }
 
             Spacer()
 
             if busyProviderId == source.id {
-                ProgressView().tint(LinearColors.textPrimary)
+                ProgressView()
+                    .scaleEffect(0.8)
             } else if let connection, connection.status != "disconnected" {
                 HStack(spacing: 2) {
                     Button {
@@ -214,8 +234,9 @@ struct IntegrationsDataView: View {
                         }
                     } label: {
                         Image(systemName: "power.circle.fill")
-                            .foregroundColor(LinearColors.textPrimary)
-                            .frame(width: 44, height: 44)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(FigmaLightTheme.mutedText)
+                            .frame(width: 34, height: 34)
                     }
                     .accessibilityLabel("Turn off \(source.title)")
 
@@ -235,8 +256,9 @@ struct IntegrationsDataView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .foregroundColor(LinearColors.textPrimary)
-                            .frame(width: 44, height: 44)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(FigmaLightTheme.mutedText)
+                            .frame(width: 34, height: 34)
                     }
                     .accessibilityLabel("Manage \(source.title)")
                 }
@@ -245,8 +267,9 @@ struct IntegrationsDataView: View {
                     disconnectLocal(source)
                 } label: {
                     Image(systemName: "power.circle.fill")
-                        .foregroundColor(LinearColors.textPrimary)
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.mutedText)
+                        .frame(width: 34, height: 34)
                 }
                 .accessibilityLabel("Turn off \(source.title)")
             } else {
@@ -254,14 +277,15 @@ struct IntegrationsDataView: View {
                     connect(source)
                 } label: {
                     Image(systemName: source.connectionKind == .archiveImport ? "square.and.arrow.down" : "plus.circle")
-                        .foregroundColor(LinearColors.textPrimary)
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(FigmaLightTheme.primaryText)
+                        .frame(width: 34, height: 34)
                 }
                 .accessibilityLabel("Turn on \(source.title)")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
     }
 
     private func statusText(_ source: IntegrationCatalogItem, connection: BackendIntegrationConnection?) -> String {
@@ -281,7 +305,7 @@ struct IntegrationsDataView: View {
     private func statusColor(_ source: IntegrationCatalogItem, connection: BackendIntegrationConnection?) -> Color {
         if connection?.status == "connected" { return Color.green }
         if connection?.status == "error" || connection?.status == "expired" { return Color.orange }
-        return localPermissionGranted(source) ? Color.orange : LinearColors.textSecondary
+        return localPermissionGranted(source) ? Color.orange : FigmaLightTheme.mutedText
     }
 
     private func modeLabel(_ mode: String?) -> String {
