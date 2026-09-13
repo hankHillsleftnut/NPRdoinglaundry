@@ -107,6 +107,9 @@ export const UploadContentSchema = z.object({
   content: z.string().min(1),
   contentDate: z.string().datetime().optional(),
   metadata: z.record(z.unknown()).optional(),
+  // Client-generated capture id. When present the upload is idempotent: retrying
+  // the same note any number of times collapses onto a single raw_content row.
+  clientUuid: z.string().uuid().optional(),
 });
 
 export type UploadContentRequest = z.infer<typeof UploadContentSchema>;

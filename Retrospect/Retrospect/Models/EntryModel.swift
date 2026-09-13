@@ -104,6 +104,8 @@ class EntryManager: ObservableObject {
     
     init() {
         loadEntries()
+        // Drain anything a previous session left owing to the backend.
+        Task { @MainActor in NoteSyncQueue.bootstrap() }
     }
     
     // MARK: - Public Methods
@@ -122,62 +124,60 @@ class EntryManager: ObservableObject {
         syncEntryToBackend(entry)
     }
     
-    /// Upload an entry to the Retrospect backend for the observation/insight pipeline.
+    /// Hand an entry to the durable note queue for the observation/insight pipeline.
+    ///
+    /// Deliberately no `isAuthenticated` guard: a note written while signed out
+    /// used to be dropped on the floor. The queue parks it on disk instead and
+    /// sends it when a session exists. `entry.id` doubles as the backend's
+    /// idempotency key, so repeated sends collapse onto one row.
     private func syncEntryToBackend(_ entry: Entry) {
-        guard RetrospectAPIClient.shared.isAuthenticated else {
-            print("⚠️ Skipping backend sync — not authenticated")
-            return
-        }
         guard !entry.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             print("⚠️ Skipping backend sync — empty content for \(entry.id)")
             return
         }
-        Task {
+        Task { @MainActor in
             do {
-                try await RetrospectAPIClient.shared.uploadContent(
-                    contentType: entry.type.backendContentType,
+                try NoteSyncQueue.shared.capture(
+                    id: entry.id,
                     content: entry.content,
-                    contentDate: entry.date
+                    contentType: entry.type.backendContentType,
+                    capturedAt: entry.date
                 )
-                print("✅ Entry \(entry.id) synced to backend as '\(entry.type.backendContentType)'")
             } catch {
-                print("❌ Entry sync failed for \(entry.id): \(error.localizedDescription)")
+                print("❌ Could not queue entry \(entry.id) for sync: \(error.localizedDescription)")
             }
         }
     }
     
     /// Resync all existing entries to the backend. Call this once to push
     /// entries that were never synced due to the content-type mismatch.
+    ///
+    /// Now enqueues rather than uploading directly. Entries the queue has already
+    /// delivered are skipped locally, and anything that does go out carries
+    /// `entry.id` as its idempotency key — so running this repeatedly no longer
+    /// forks an entry into several raw_content rows.
     func resyncAllEntriesToBackend() {
-        guard RetrospectAPIClient.shared.isAuthenticated else {
-            print("⚠️ Cannot resync — not authenticated")
-            return
-        }
         let validEntries = entries.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        print("🔄 Resyncing \(validEntries.count) entries to backend...")
-        
-        Task {
-            var successCount = 0
-            var failCount = 0
-            
+        print("🔄 Queueing \(validEntries.count) entries for backend resync...")
+
+        Task { @MainActor in
+            var queuedCount = 0
+
             for entry in validEntries {
                 do {
-                    try await RetrospectAPIClient.shared.uploadContent(
-                        contentType: entry.type.backendContentType,
+                    try NoteSyncQueue.shared.capture(
+                        id: entry.id,
                         content: entry.content,
-                        contentDate: entry.date
+                        contentType: entry.type.backendContentType,
+                        capturedAt: entry.date
                     )
-                    successCount += 1
+                    queuedCount += 1
                 } catch {
-                    failCount += 1
-                    print("❌ Resync failed for \(entry.id): \(error.localizedDescription)")
+                    print("❌ Could not queue entry \(entry.id): \(error.localizedDescription)")
                 }
-                
-                // Small delay to avoid hammering the API
-                try? await Task.sleep(nanoseconds: 200_000_000)
             }
-            
-            print("🔄 Resync complete: \(successCount) succeeded, \(failCount) failed out of \(validEntries.count)")
+
+            print("🔄 Resync queued: \(queuedCount) of \(validEntries.count) entries")
         }
     }
     
