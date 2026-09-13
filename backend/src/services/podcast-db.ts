@@ -1,5 +1,11 @@
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { countForRealAccounts } from './accounts.js';
 import type { DbPodcastEpisode } from '../types/index.js';
+
+// The three reads below are per-user and stay per-user: a test account listing
+// or generating ITS OWN episodes is the behaviour we want exercisable in
+// production. The aggregate helpers at the bottom of this file are the ones
+// that must exclude test accounts.
 
 export async function listPodcastEpisodes(
   userId: string,
@@ -35,6 +41,18 @@ export async function getPodcastEpisode(
 
   if (error) return null;
   return data as DbPodcastEpisode;
+}
+
+/**
+ * Total episodes across the product, EXCLUDING test accounts.
+ * Podcast generation is the most expensive thing this product does (LLM +
+ * ElevenLabs TTS), so this count doubles as a cost signal — test-account
+ * episodes would make it lie.
+ */
+export async function countAllPodcastEpisodes(
+  knownTestIds?: readonly string[]
+): Promise<number> {
+  return countForRealAccounts(Tables.PODCAST_EPISODES, 'user_id', knownTestIds);
 }
 
 export async function getLatestEpisode(userId: string): Promise<DbPodcastEpisode | null> {

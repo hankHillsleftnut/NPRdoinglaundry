@@ -1,5 +1,5 @@
 import express from 'express';
-import { captureException } from './services/telemetry.js';
+import { captureExceptionForUser } from './services/telemetry.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -7,6 +7,7 @@ import path from 'path';
 
 import { config } from './utils/config.js';
 import { authMiddleware } from './middleware/auth.js';
+import { featureFlagsMiddleware } from './services/feature-flags.js';
 import { authRouter } from './routes/auth.js';
 import { contentRouter } from './routes/content.js';
 import { goalsRouter } from './routes/goals.js';
@@ -72,8 +73,11 @@ app.use('/integrations', integrationOauthCallbackRouter);
 // Protected routes
 app.use('/content', authMiddleware, contentRouter);
 app.use('/goals', authMiddleware, goalsRouter);
-app.use('/pipeline', authMiddleware, pipelineRouter);
-app.use('/podcasts', authMiddleware, podcastsRouter);
+// /pipeline and /podcasts branch on feature flags, so they resolve them once
+// per request. Other routers skip the lookup; a route that reads
+// req.featureFlags without this mounted sees undefined, which reads as all-off.
+app.use('/pipeline', authMiddleware, featureFlagsMiddleware, pipelineRouter);
+app.use('/podcasts', authMiddleware, featureFlagsMiddleware, podcastsRouter);
 app.use('/profile', authMiddleware, profileRouter);
 app.use('/claude', authMiddleware, claudeRouter);
 app.use('/integrations', authMiddleware, integrationsRouter);
@@ -88,7 +92,8 @@ app.use(
     _next: express.NextFunction
   ) => {
     console.error('Unhandled error:', err);
-    captureException(err, { path: _req.path, method: _req.method });
+    // User-aware: errors from test accounts never enter the Sentry aggregates.
+    captureExceptionForUser(err, _req.user, { path: _req.path, method: _req.method });
     res.status(500).json({
       success: false,
       error: config.server.isProduction

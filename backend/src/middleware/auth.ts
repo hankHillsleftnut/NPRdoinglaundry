@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../utils/config.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { normalizeAccountType } from '../services/accounts.js';
 import type { AuthUser, JWTPayload } from '../types/index.js';
 
 // Extend Express Request type to include user
@@ -46,7 +47,7 @@ export async function authMiddleware(
     // Fetch user from database
     const { data: user, error } = await supabaseAdmin
       .from(Tables.USERS)
-      .select('id, apple_user_id, email')
+      .select('id, apple_user_id, email, account_type')
       .eq('id', payload.userId)
       .single();
 
@@ -62,6 +63,7 @@ export async function authMiddleware(
       id: user.id,
       appleUserId: user.apple_user_id,
       email: user.email ?? undefined,
+      accountType: normalizeAccountType(user.account_type),
     };
 
     next();

@@ -4,8 +4,23 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
 import { listObservations } from '../services/observations.js';
 import { listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
-import { listPodcastEpisodes, getPodcastEpisode } from '../services/podcast-db.js';
+import { listPodcastEpisodes, getPodcastEpisode, countAllPodcastEpisodes } from '../services/podcast-db.js';
 import { generateAgentPodcast, runAgentIngest } from '../services/agent-client.js';
+import {
+  ACCOUNT_TYPE_REAL,
+  ACCOUNT_TYPE_TEST,
+  countForRealAccounts,
+  countRealAccounts,
+  excludeTestAccounts,
+  listTestUserIds,
+  scopeToRealAccounts,
+} from '../services/accounts.js';
+import {
+  clearUserFlag,
+  listFlagDefinitions,
+  resolveFlagsForUser,
+  setUserFlag,
+} from '../services/feature-flags.js';
 
 export const adminRouter = Router();
 
@@ -27,13 +42,22 @@ adminRouter.use(adminAuth);
 // Users
 // ============================================
 
-// GET /admin/users — list all users
-adminRouter.get('/users', async (_req: Request, res: Response) => {
+// GET /admin/users — list users. Test accounts are EXCLUDED by default (this
+// is an aggregate view of the user base); pass ?includeTest=1 to see them.
+adminRouter.get('/users', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const includeTest = req.query.includeTest === '1' || req.query.includeTest === 'true';
+
+    let query = supabaseAdmin
       .from(Tables.USERS)
-      .select('id, email, apple_user_id, created_at')
+      .select('id, email, apple_user_id, account_type, created_at')
       .order('created_at', { ascending: false });
+
+    if (!includeTest) {
+      query = excludeTestAccounts(query);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json({ success: true, data: data || [] });
@@ -42,21 +66,102 @@ adminRouter.get('/users', async (_req: Request, res: Response) => {
   }
 });
 
-// POST /admin/users — create a test user
+// POST /admin/users — create a test user.
+// This endpoint has always minted throwaway accounts (note the generated
+// test-*@retrospect.dev email), so they are now marked account_type='test' and
+// drop out of every aggregate. Pass accountType:'real' to opt out.
 adminRouter.post('/users', async (req: Request, res: Response) => {
   try {
-    const { email, appleUserId } = req.body;
+    const { email, appleUserId, accountType } = req.body;
     const { data, error } = await supabaseAdmin
       .from(Tables.USERS)
       .insert({
         email: email || `test-${Date.now()}@retrospect.dev`,
         apple_user_id: appleUserId || `test_apple_${Date.now()}`,
+        account_type: accountType === ACCOUNT_TYPE_REAL ? ACCOUNT_TYPE_REAL : ACCOUNT_TYPE_TEST,
       })
-      .select('id, email, apple_user_id, created_at')
+      .select('id, email, apple_user_id, account_type, created_at')
       .single();
 
     if (error) throw error;
     res.status(201).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// PATCH /admin/users/:userId/account-type — promote/demote an account.
+adminRouter.patch('/users/:userId/account-type', async (req: Request, res: Response) => {
+  try {
+    const userId = req.params['userId'];
+    const { accountType } = req.body ?? {};
+    if (!userId) { res.status(400).json({ success: false, error: 'userId required' }); return; }
+    if (accountType !== ACCOUNT_TYPE_REAL && accountType !== ACCOUNT_TYPE_TEST) {
+      res.status(400).json({ success: false, error: "accountType must be 'real' or 'test'" });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from(Tables.USERS)
+      .update({ account_type: accountType })
+      .eq('id', userId)
+      .select('id, email, account_type')
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// ============================================
+// Feature flags — the production switch
+// ============================================
+
+// GET /admin/feature-flags — flag definitions
+adminRouter.get('/feature-flags', async (_req: Request, res: Response) => {
+  try {
+    res.json({ success: true, data: await listFlagDefinitions() });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// GET /admin/users/:userId/flags — the resolved map for one user
+adminRouter.get('/users/:userId/flags', async (req: Request, res: Response) => {
+  try {
+    const userId = req.params['userId'];
+    if (!userId) { res.status(400).json({ success: false, error: 'userId required' }); return; }
+    res.json({ success: true, data: await resolveFlagsForUser(userId) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) });
+  }
+});
+
+// PUT /admin/users/:userId/flags/:key — flip one flag for ONE user in prod.
+// Body: { enabled: boolean }, or omit `enabled` to clear the override and fall
+// back to the flag's default.
+adminRouter.put('/users/:userId/flags/:key', async (req: Request, res: Response) => {
+  try {
+    const userId = req.params['userId'];
+    const key = req.params['key'];
+    if (!userId || !key) {
+      res.status(400).json({ success: false, error: 'userId and key required' });
+      return;
+    }
+
+    const { enabled } = req.body ?? {};
+    if (enabled === undefined || enabled === null) {
+      await clearUserFlag(userId, key);
+    } else if (typeof enabled === 'boolean') {
+      await setUserFlag(userId, key, enabled);
+    } else {
+      res.status(400).json({ success: false, error: 'enabled must be a boolean, or omitted to clear' });
+      return;
+    }
+
+    res.json({ success: true, data: await resolveFlagsForUser(userId) });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });
   }
@@ -395,7 +500,11 @@ adminRouter.get('/pipeline/runs', async (req: Request, res: Response) => {
       .limit(50);
 
     if (userId) {
+      // Explicitly asked for one user — honour it even for a test account.
       query = query.eq('user_id', userId);
+    } else {
+      // No userId = a cross-user view. Exclude test accounts.
+      query = scopeToRealAccounts(query, await listTestUserIds());
     }
 
     const { data, error } = await query;
@@ -630,26 +739,35 @@ adminRouter.post('/podcasts/generate', async (req: Request, res: Response) => {
 // GET /admin/stats — overall system stats
 adminRouter.get('/stats', async (_req: Request, res: Response) => {
   try {
-    const [users, content, goals, observations, insights, runs, podcasts] = await Promise.all([
-      supabaseAdmin.from(Tables.USERS).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.RAW_CONTENT).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.GOALS).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.OBSERVATIONS).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.INSIGHTS).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.PIPELINE_RUNS).select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from(Tables.PODCAST_EPISODES).select('id', { count: 'exact', head: true }),
-    ]);
+    // Every count here EXCLUDES test accounts — these numbers are how the
+    // founder reads the health and cost of the live product, so a throwaway
+    // account hammering the pipeline in production must not appear in them.
+    // Read the (small) test-account id list ONCE and reuse it for every count.
+    const testIds = await listTestUserIds();
+
+    const [users, content, goals, observations, insights, runs, podcasts] =
+      await Promise.all([
+        countRealAccounts(),
+        countForRealAccounts(Tables.RAW_CONTENT, 'user_id', testIds),
+        countForRealAccounts(Tables.GOALS, 'user_id', testIds),
+        countForRealAccounts(Tables.OBSERVATIONS, 'user_id', testIds),
+        countForRealAccounts(Tables.INSIGHTS, 'user_id', testIds),
+        countForRealAccounts(Tables.PIPELINE_RUNS, 'user_id', testIds),
+        countAllPodcastEpisodes(testIds),
+      ]);
 
     res.json({
       success: true,
       data: {
-        users: users.count || 0,
-        rawContent: content.count || 0,
-        goals: goals.count || 0,
-        observations: observations.count || 0,
-        insights: insights.count || 0,
-        pipelineRuns: runs.count || 0,
-        podcastEpisodes: podcasts.count || 0,
+        users,
+        rawContent: content,
+        goals,
+        observations,
+        insights,
+        pipelineRuns: runs,
+        podcastEpisodes: podcasts,
+        // Reported separately so the exclusion is visible rather than silent.
+        testAccounts: testIds.length,
       },
     });
   } catch (error) {

@@ -495,6 +495,8 @@ export interface AuthUser {
   id: string;
   appleUserId: string;
   email?: string;
+  /** 'test' accounts are excluded from aggregates and batch spend. See services/accounts.ts. */
+  accountType?: 'real' | 'test';
 }
 
 export interface JWTPayload {
