@@ -98,7 +98,8 @@ class RetrospectAPIClient: ObservableObject {
         contentType: String,
         content: String,
         contentDate: Date? = nil,
-        metadata: [String: Any]? = nil
+        metadata: [String: Any]? = nil,
+        clientUuid: String? = nil
     ) async throws {
         var body: [String: Any] = [
             "contentType": contentType,
@@ -109,6 +110,9 @@ class RetrospectAPIClient: ObservableObject {
         }
         if let metadata = metadata {
             body["metadata"] = metadata
+        }
+        if let clientUuid = clientUuid {
+            body["clientUuid"] = clientUuid
         }
 
         let _: GenericResponse = try await post(path: "/content", body: body)
