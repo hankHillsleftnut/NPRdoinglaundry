@@ -65,6 +65,7 @@ class RetrospectAPIClient: ObservableObject {
             self.currentUserId = data.user.id
             self.currentEmail = data.user.email
         }
+        FeatureFlagStore.shared.apply(flags: data.flags, accountType: data.accountType)
 
         return (userId: data.user.id, email: data.user.email)
     }
@@ -74,6 +75,7 @@ class RetrospectAPIClient: ObservableObject {
         deleteKeychain(key: tokenKey)
         deleteKeychain(key: userIdKey)
         deleteKeychain(key: appleUserIdKey)
+        FeatureFlagStore.shared.reset()
 
         DispatchQueue.main.async {
             self.isAuthenticated = false
@@ -545,6 +547,8 @@ private struct SignInResponse: Codable {
     struct SignInData: Codable {
         let token: String
         let user: UserData
+        let accountType: String?
+        let flags: [String: Bool]?
     }
 
     struct UserData: Codable {

@@ -23,6 +23,8 @@ pipelineRouter.post('/observations/extract', async (req: Request, res: Response)
       userId: user.id,
       daysBack: req.body?.daysBack ? parseInt(req.body.daysBack) : 30,
       notes: 'Triggered by retrospect-api /pipeline/observations/extract',
+      featureFlags: req.featureFlags,
+      accountType: user.accountType,
     });
 
     res.json({
@@ -58,6 +60,8 @@ pipelineRouter.post('/observations/extract/:contentId', async (req: Request, res
       userId: user.id,
       rawContentIds: [req.params.contentId!],
       notes: 'Triggered by retrospect-api /pipeline/observations/extract/:contentId',
+      featureFlags: req.featureFlags,
+      accountType: user.accountType,
     });
 
     res.json({
@@ -134,6 +138,8 @@ pipelineRouter.post('/insights/generate', async (req: Request, res: Response) =>
       userId: user.id,
       daysBack,
       notes: 'Triggered by retrospect-api /pipeline/insights/generate',
+      featureFlags: req.featureFlags,
+      accountType: user.accountType,
     });
 
     res.json({
@@ -252,6 +258,8 @@ pipelineRouter.post('/run', async (req: Request, res: Response) => {
         userId: user.id,
         daysBack,
         notes: 'Triggered by retrospect-api /pipeline/run',
+        featureFlags: req.featureFlags,
+        accountType: user.accountType,
       });
 
       // Mark pipeline run as completed

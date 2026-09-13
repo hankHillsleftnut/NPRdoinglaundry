@@ -67,6 +67,9 @@ export const Tables = {
   ENTITIES: 'entities',
   ENTITY_RESOLUTION_CANDIDATES: 'entity_resolution_candidates',
   IDENTITY_INFERENCES: 'identity_inferences',
+  // Per-user feature flags (migration 005)
+  FEATURE_FLAGS: 'feature_flags',
+  USER_FEATURE_FLAGS: 'user_feature_flags',
 } as const;
 
 // Helper to handle Supabase errors

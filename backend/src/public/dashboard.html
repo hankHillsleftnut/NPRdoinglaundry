@@ -1458,7 +1458,10 @@ async function init() {
 // Users
 // ============================================
 async function loadUsers() {
-  const res = await api('GET', '/users');
+  // includeTest: this dashboard IS the founder tooling for driving test
+  // accounts, so the picker must show them. /stats stays exclusive — that is
+  // the number that should never count a test account.
+  const res = await api('GET', '/users?includeTest=1');
   const select = document.getElementById('userSelect');
   select.innerHTML = '';
   if (res.data.length === 0) {

@@ -10,8 +10,35 @@ import {
 } from '../middleware/auth.js';
 import type { AuthIdentityInput } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
+import { resolveFlagsForUser, EMPTY_FLAGS } from '../services/feature-flags.js';
+import { getAccountType } from '../services/accounts.js';
+import type { AuthUser } from '../types/index.js';
 
 export const authRouter = Router();
+
+/**
+ * The single /auth/* success payload:
+ *   { token, user: { id, email }, accountType, flags }
+ * `flags` is the SAME resolved map the server uses for this user's requests,
+ * so the iOS client branches on identical values. Additive only — `token` and
+ * `user` keep their existing shape.
+ */
+async function authPayload(user: AuthUser, token: string) {
+  const [accountType, flags] = await Promise.all([
+    getAccountType(user.id),
+    resolveFlagsForUser(user.id).catch(() => EMPTY_FLAGS),
+  ]);
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    accountType,
+    flags,
+  };
+}
 
 // Sign in with Apple request schema
 const SignInSchema = z.object({
@@ -50,13 +77,7 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-        },
-      },
+      data: await authPayload(user, token),
     });
   } catch (error) {
     console.error('Sign in error:', error);
@@ -92,7 +113,7 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: { token },
+      data: await authPayload(user, token),
     });
   } catch (error) {
     console.error('Token refresh error:', error);

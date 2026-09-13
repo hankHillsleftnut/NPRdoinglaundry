@@ -1,4 +1,5 @@
 import { config } from '../utils/config.js';
+import { getAccountType } from './accounts.js';
 
 interface AgentIngestResponse {
   traceId: string | null;
@@ -122,26 +123,43 @@ async function callAgent<T>(
   );
 }
 
-export function runAgentIngest(options: {
+export async function runAgentIngest(options: {
   userId: string;
   rawContentIds?: string[];
   daysBack?: number;
   notes?: string;
+  /**
+   * The flag map resolved for this user on this request (req.featureFlags).
+   * Forwarded so the agent service — which owns the actual pipeline behaviour
+   * and prompts — can select a variant for ONE user without a deploy. The
+   * agent must treat a missing key as false.
+   */
+  featureFlags?: Readonly<Record<string, boolean>>;
+  /** 'real' | 'test'. Lets the agent keep test runs out of its own aggregates. */
+  accountType?: string;
 }): Promise<AgentIngestResponse> {
   return callAgent<AgentIngestResponse>('/ingest/run', {
     userId: options.userId,
     rawContentIds: options.rawContentIds,
     daysBack: options.daysBack ?? 1,
     notes: options.notes ?? 'Triggered by retrospect-api /content upload',
+    featureFlags: options.featureFlags ?? {},
+    // Resolve rather than defaulting to 'real': most call sites (all the admin
+    // ones, which is exactly how a founder drives a test account) don't pass
+    // it, and defaulting to 'real' would tell the agent to count test runs in
+    // its own aggregates — the precise thing forwarding this is meant to stop.
+    accountType: options.accountType ?? (await getAccountType(options.userId)),
   });
 }
 
-export function generateAgentPodcast(options: {
+export async function generateAgentPodcast(options: {
   userId: string;
   daysBack?: number;
   skipTTS?: boolean;
   persona?: string;
   notes?: string;
+  featureFlags?: Readonly<Record<string, boolean>>;
+  accountType?: string;
 }): Promise<AgentPodcastResponse> {
   return callAgent<AgentPodcastResponse>('/podcasts/generate', {
     userId: options.userId,
@@ -149,6 +167,12 @@ export function generateAgentPodcast(options: {
     skipTTS: options.skipTTS ?? false,
     persona: options.persona,
     notes: options.notes ?? 'Triggered by retrospect-api /podcasts/generate',
+    featureFlags: options.featureFlags ?? {},
+    // Resolve rather than defaulting to 'real': most call sites (all the admin
+    // ones, which is exactly how a founder drives a test account) don't pass
+    // it, and defaulting to 'real' would tell the agent to count test runs in
+    // its own aggregates — the precise thing forwarding this is meant to stop.
+    accountType: options.accountType ?? (await getAccountType(options.userId)),
   });
 }
 

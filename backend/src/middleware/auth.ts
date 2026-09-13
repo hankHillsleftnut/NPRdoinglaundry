@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { config } from '../utils/config.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
+import { normalizeAccountType } from '../services/accounts.js';
+import { resolveFlagsForUser, EMPTY_FLAGS, type FeatureFlagMap } from '../services/feature-flags.js';
 import type { AuthUser, JWTPayload } from '../types/index.js';
 
 // Extend Express Request type to include user
@@ -10,6 +12,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthUser;
+      /** Feature flags resolved ONCE per request. See services/feature-flags.ts. */
+      featureFlags?: FeatureFlagMap;
     }
   }
 }
@@ -47,7 +51,7 @@ export async function authMiddleware(
     // Fetch user from database
     const { data: user, error } = await supabaseAdmin
       .from(Tables.USERS)
-      .select('id, apple_user_id, email')
+      .select('id, apple_user_id, email, account_type')
       .eq('id', payload.userId)
       .single();
 
@@ -65,7 +69,12 @@ export async function authMiddleware(
       // would carry `appleUserId: null` into the next minted JWT.
       appleUserId: user.apple_user_id ?? undefined,
       email: user.email ?? undefined,
+      accountType: normalizeAccountType(user.account_type),
     };
+
+    // Resolve feature flags once per request; never let a flag failure 500 a
+    // request — resolveFlagsForUser already fails closed to an empty map.
+    req.featureFlags = await resolveFlagsForUser(user.id).catch(() => EMPTY_FLAGS);
 
     next();
   } catch (error) {
@@ -117,6 +126,7 @@ interface UserRow {
   id: string;
   apple_user_id: string | null;
   email: string | null;
+  account_type: string | null;
 }
 
 /** Postgres unique-violation SQLSTATE, surfaced by PostgREST as `code`. */
@@ -170,7 +180,7 @@ async function findIdentity(
 async function loadUserRow(userId: string): Promise<UserRow | null> {
   const { data, error } = await supabaseAdmin
     .from(Tables.USERS)
-    .select('id, apple_user_id, email')
+    .select('id, apple_user_id, email, account_type')
     .eq('id', userId)
     .maybeSingle();
 
@@ -186,6 +196,7 @@ function toAuthUser(user: UserRow, email?: string): AuthUser {
     id: user.id,
     appleUserId: user.apple_user_id ?? undefined,
     email: email ?? user.email ?? undefined,
+    accountType: normalizeAccountType(user.account_type),
   };
 }
 
@@ -302,11 +313,16 @@ export async function resolveUserForIdentity(
   // Removed together with the column.
   const insertPayload: Record<string, unknown> = { email: email ?? null };
   if (provider === 'apple') insertPayload.apple_user_id = subject;
+  // Integration seam between 004 (identities) and 005 (account types): the dev
+  // provider only ever mints throwaway accounts, so they must be born `test` or
+  // they land in analytics, admin listings and Sentry as real users. Every other
+  // provider takes the column default (`real`).
+  if (provider === 'dev') insertPayload.account_type = 'test';
 
   const { data: newUser, error: insertError } = await supabaseAdmin
     .from(Tables.USERS)
     .insert(insertPayload)
-    .select('id, apple_user_id, email')
+    .select('id, apple_user_id, email, account_type')
     .single();
 
   if (insertError || !newUser) {
@@ -317,7 +333,7 @@ export async function resolveUserForIdentity(
     if (provider === 'apple' && isUniqueViolation(insertError)) {
       const { data: legacyUser } = await supabaseAdmin
         .from(Tables.USERS)
-        .select('id, apple_user_id, email')
+        .select('id, apple_user_id, email, account_type')
         .eq('apple_user_id', subject)
         .maybeSingle();
 

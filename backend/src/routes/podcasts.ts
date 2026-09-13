@@ -115,6 +115,8 @@ podcastsRouter.post('/generate', async (req: Request, res: Response) => {
       daysBack: daysBack ?? daysSince ?? 14,
       skipTTS: skipTTS ?? false,
       persona,
+      featureFlags: req.featureFlags,
+      accountType: req.user!.accountType,
     });
 
     if (!agentResult.episodeId) {
