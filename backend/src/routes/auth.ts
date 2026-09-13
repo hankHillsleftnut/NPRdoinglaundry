@@ -1,6 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { generateToken, getOrCreateUser } from '../middleware/auth.js';
+import {
+  authMiddleware,
+  generateToken,
+  getOrCreateUser,
+  linkAuthIdentity,
+  verifyProviderIdentityToken,
+  IdentityLinkConflictError,
+} from '../middleware/auth.js';
+import type { AuthIdentityInput } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
 
 export const authRouter = Router();
@@ -33,7 +41,11 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await getOrCreateUser(verified.appleUserId, verified.email ?? email);
+    const user = await getOrCreateUser({
+      provider: 'apple',
+      subject: verified.appleUserId,
+      email: verified.email ?? email,
+    });
     const token = generateToken(user);
 
     res.json({
@@ -71,7 +83,11 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
       res.status(401).json({ success: false, error: 'Apple identity token subject mismatch' });
       return;
     }
-    const user = await getOrCreateUser(verified.appleUserId, verified.email ?? parsed.data.email);
+    const user = await getOrCreateUser({
+      provider: 'apple',
+      subject: verified.appleUserId,
+      email: verified.email ?? parsed.data.email,
+    });
     const token = generateToken(user);
 
     res.json({
@@ -83,6 +99,107 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to refresh token',
+    });
+  }
+});
+
+// Link an additional sign-in method to the account that is already signed in.
+// To support another provider, add it here and to the switch in
+// verifyProviderIdentityToken.
+const LinkIdentitySchema = z.object({
+  provider: z.enum(['apple']),
+  identityToken: z.string().min(1),
+});
+
+// jose tags every "this token is not acceptable" failure with a JWT/JWS/JWK
+// error code; transport failures (JWKS fetch) arrive without one.
+const INVALID_TOKEN_CODES = new Set([
+  'ERR_JWT_EXPIRED',
+  'ERR_JWT_INVALID',
+  'ERR_JWT_CLAIM_VALIDATION_FAILED',
+  'ERR_JWS_INVALID',
+  'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+  'ERR_JWKS_NO_MATCHING_KEY',
+  'ERR_JWKS_MULTIPLE_MATCHING_KEYS',
+]);
+
+function isInvalidTokenError(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) {
+    // e.g. the plain Error thrown for a token with no `sub`.
+    return error instanceof Error && error.message.includes('subject');
+  }
+  return INVALID_TOKEN_CODES.has(String((error as { code?: unknown }).code));
+}
+
+// POST /auth/link - Attach a verified provider credential to req.user.id
+authRouter.post('/link', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const parsed = LinkIdentitySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid request body',
+        details: parsed.error.errors,
+      });
+      return;
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    // The subject is taken only from the verified token, never from the body:
+    // otherwise any signed-in caller could claim someone else's credential.
+    let identity: AuthIdentityInput;
+    try {
+      identity = await verifyProviderIdentityToken(
+        parsed.data.provider,
+        parsed.data.identityToken
+      );
+    } catch (verifyError) {
+      // Only a genuinely bad token is the client's fault. A JWKS fetch failure
+      // during an Apple outage must not look like "your credentials are bad",
+      // or clients will sign the user out over a network blip.
+      if (isInvalidTokenError(verifyError)) {
+        res.status(401).json({
+          success: false,
+          error: 'Invalid or expired identity token',
+        });
+        return;
+      }
+      console.error('Identity token verification unavailable:', verifyError);
+      res.status(503).json({
+        success: false,
+        error: 'Identity provider unavailable, please try again',
+      });
+      return;
+    }
+
+    const { alreadyLinked } = await linkAuthIdentity(userId, identity);
+
+    res.json({
+      success: true,
+      data: {
+        provider: parsed.data.provider,
+        linked: true,
+        alreadyLinked,
+      },
+    });
+  } catch (error) {
+    if (error instanceof IdentityLinkConflictError) {
+      res.status(409).json({
+        success: false,
+        error: error.message,
+        code: error.code,
+      });
+      return;
+    }
+    console.error('Identity link error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to link identity',
     });
   }
 });
