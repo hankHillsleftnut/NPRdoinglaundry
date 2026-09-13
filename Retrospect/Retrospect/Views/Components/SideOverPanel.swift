@@ -19,8 +19,8 @@ struct SideOverPanel: View {
 
     // Panel sizing
     private let panelWidth: CGFloat = min(UIScreen.main.bounds.width * 0.69, 276)
-    private let panelBackgroundColor = Color(red: 228 / 255, green: 228 / 255, blue: 226 / 255)
-    private let panelMutedText = Color(red: 158 / 255, green: 158 / 255, blue: 158 / 255)
+    private let panelBackgroundColor = FigmaLightTheme.drawerBackground
+    private let panelMutedText = FigmaLightTheme.mutedText
 
     var body: some View {
         panelContent(safeAreaTop: safeAreaTop, safeAreaBottom: safeAreaBottom)
@@ -39,10 +39,10 @@ struct SideOverPanel: View {
             Button(action: close) {
                 ZStack {
                     Circle()
-                        .fill(Color(red: 244 / 255, green: 242 / 255, blue: 238 / 255))
+                        .fill(FigmaLightTheme.cardSurface)
                         .overlay(
                             Circle()
-                                .strokeBorder(Color.white.opacity(0.9), lineWidth: 1)
+                                .strokeBorder(FigmaLightTheme.borderStrong, lineWidth: 1)
                         )
                         .shadow(color: Color.black.opacity(0.20), radius: 4, x: 0, y: 2)
 
@@ -164,8 +164,8 @@ private struct SideOverPanelRow: View {
     let isSelected: Bool
     var hasNotification: Bool = false
     let action: () -> Void
-    private let mutedText = Color(red: 158 / 255, green: 158 / 255, blue: 158 / 255)
-    private let selectedText = Color(red: 112 / 255, green: 112 / 255, blue: 112 / 255)
+    private let mutedText = FigmaLightTheme.mutedText
+    private let selectedText = FigmaLightTheme.selectedText
 
     var body: some View {
         Button(action: action) {
@@ -194,7 +194,7 @@ private struct SideOverPanelRow: View {
 private struct SideOverPanelEntryRow: View {
     let entry: Entry
     let action: () -> Void
-    private let mutedText = Color(red: 158 / 255, green: 158 / 255, blue: 158 / 255)
+    private let mutedText = FigmaLightTheme.mutedText
 
     var body: some View {
         Button(action: action) {

@@ -1,17 +1,24 @@
 import SwiftUI
 
+/// Names used by the onboarding flow. Aliases over `RetroTokens`.
+///
+/// Three of these were byte-identical to `FigmaLightTheme` entries written in a
+/// different notation (`background`/`drawerBackground`, `control`/
+/// `controlSurface`, `tertiaryText`/`mutedText`). They now resolve to the same
+/// constant. `primaryText` and `hairline` genuinely differ from their app-shell
+/// counterparts and are kept distinct pending a design decision.
 enum OnboardingStyle {
-    static let background = Color(red: 0.894, green: 0.894, blue: 0.886)
-    static let control = Color(red: 0.969, green: 0.953, blue: 0.933)
-    static let controlPressed = Color(red: 0.929, green: 0.914, blue: 0.895)
-    static let primaryText = Color(red: 0.071, green: 0.071, blue: 0.071)
-    static let secondaryText = Color(red: 0.486, green: 0.475, blue: 0.459)
-    static let tertiaryText = Color(red: 0.620, green: 0.620, blue: 0.620)
-    static let hairline = Color.white.opacity(0.88)
-    static let warmOutline = Color(red: 0.565, green: 0.384, blue: 0.133).opacity(0.15)
-    static let danger = Color(red: 0.650, green: 0.090, blue: 0.070)
-    static let success = Color(red: 0.275, green: 0.455, blue: 0.245)
-    static let accent = Color(red: 0.160, green: 0.155, blue: 0.145)
+    static let background = RetroTokens.surfacePage
+    static let control = RetroTokens.surfaceControl
+    static let controlPressed = RetroTokens.surfaceControlPressed
+    static let primaryText = RetroTokens.textPrimaryStrong
+    static let secondaryText = RetroTokens.textSecondary
+    static let tertiaryText = RetroTokens.textMuted
+    static let hairline = RetroTokens.strokeHairlineSoft
+    static let warmOutline = RetroTokens.strokeWarm
+    static let danger = RetroTokens.statusDanger
+    static let success = RetroTokens.statusSuccess
+    static let accent = RetroTokens.accentInk
 
     static func titleFont(size: CGFloat) -> Font {
         // Display type uses the Exposure typeface (axis 0 = neutral exposure).

@@ -8,16 +8,24 @@
 import SwiftUI
 import AVFoundation
 
+/// Names used by the main app shell. These are aliases over `RetroTokens` —
+/// the values live there, so a token change has exactly one write site.
 enum FigmaLightTheme {
-    static let drawerBackground = Color(red: 228 / 255, green: 228 / 255, blue: 226 / 255)
-    static let cardSurface = Color(red: 244 / 255, green: 242 / 255, blue: 238 / 255)
-    static let controlSurface = Color(red: 247 / 255, green: 243 / 255, blue: 238 / 255)
-    static let rowSurface = Color(red: 234 / 255, green: 231 / 255, blue: 227 / 255)
-    static let primaryText = Color(red: 30 / 255, green: 30 / 255, blue: 30 / 255)
-    static let mutedText = Color(red: 158 / 255, green: 158 / 255, blue: 158 / 255)
-    static let faintText = Color(red: 195 / 255, green: 194 / 255, blue: 190 / 255)
-    static let border = Color.white.opacity(0.9)
-    static let titleSize: CGFloat = 40
+    static let drawerBackground = RetroTokens.surfacePage
+    static let cardSurface = RetroTokens.surfaceCard
+    static let controlSurface = RetroTokens.surfaceControl
+    static let rowSurface = RetroTokens.surfaceRow
+    static let primaryText = RetroTokens.textPrimary
+    static let mutedText = RetroTokens.textMuted
+    static let faintText = RetroTokens.textFaint
+    static let border = RetroTokens.strokeHairline
+
+    /// `border` was being re-multiplied at call sites; these name the two
+    /// strengths it was actually used at, so they can move independently.
+    static let borderStrong = RetroTokens.strokeHairline
+    static let borderCard = RetroTokens.strokeCard
+    static let borderDivider = RetroTokens.strokeDivider
+    static let selectedText = RetroTokens.textSelected
 
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
