@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { config } from '../utils/config.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { resolveUserForIdentity } from '../middleware/auth.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
 import { listObservations } from '../services/observations.js';
 import { listInsights, getInsightWithObservations } from '../services/insight-synthesis.js';
@@ -46,16 +47,26 @@ adminRouter.get('/users', async (_req: Request, res: Response) => {
 adminRouter.post('/users', async (req: Request, res: Response) => {
   try {
     const { email, appleUserId } = req.body;
+    const subject = appleUserId || `test_apple_${Date.now()}`;
+    const userEmail = email || `test-${Date.now()}@retrospect.dev`;
+
+    // Go through the same path as a real sign-in so the user row and its
+    // auth_identities row are created together. Creating the user row directly
+    // would leave it identity-less and unable to ever sign in.
+    const user = await resolveUserForIdentity({
+      provider: 'apple',
+      subject,
+      email: userEmail,
+    });
+
     const { data, error } = await supabaseAdmin
       .from(Tables.USERS)
-      .insert({
-        email: email || `test-${Date.now()}@retrospect.dev`,
-        apple_user_id: appleUserId || `test_apple_${Date.now()}`,
-      })
       .select('id, email, apple_user_id, created_at')
+      .eq('id', user.id)
       .single();
 
     if (error) throw error;
+
     res.status(201).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: String(error) });

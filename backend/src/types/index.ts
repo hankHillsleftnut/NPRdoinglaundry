@@ -493,13 +493,19 @@ export interface PodcastSegment {
 // ============================================
 export interface AuthUser {
   id: string;
-  appleUserId: string;
+  /**
+   * DEPRECATED: mirror of the deprecated `users.apple_user_id` column.
+   * Optional because an account may now sign in with Google or dev only, and
+   * because identity lives in `auth_identities`. Do not add new readers.
+   */
+  appleUserId?: string;
   email?: string;
 }
 
 export interface JWTPayload {
   userId: string;
-  appleUserId: string;
+  /** DEPRECATED: only `userId` is consumed on verification. */
+  appleUserId?: string;
   iat: number;
   exp: number;
 }

@@ -569,3 +569,16 @@ CREATE TRIGGER update_podcast_episodes_updated_at
 -- ============================================
 -- DONE! All tables, functions, and policies created.
 -- ============================================
+
+-- ============================================================
+-- NOT DONE, ACTUALLY: this one-shot file stops at migration 003.
+--
+-- It does NOT include supabase/migrations/004_auth_identities.sql or any
+-- later numbered migration. A database bootstrapped from this file alone has
+-- no `auth_identities` table, and the backend resolves every sign-in through
+-- that table — so /auth/signin would fail with
+-- `relation "auth_identities" does not exist` on a brand new environment.
+--
+-- After running this file, run every file in supabase/migrations/ from 004
+-- onward, in order. supabase/migrations/ is the source of truth.
+-- ============================================================

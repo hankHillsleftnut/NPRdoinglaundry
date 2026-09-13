@@ -27,6 +27,7 @@ export function createUserClient(accessToken: string): SupabaseClient {
 // Database table names
 export const Tables = {
   USERS: 'users',
+  AUTH_IDENTITIES: 'auth_identities',
   DATA_SOURCES: 'data_sources',
   CATEGORIES: 'categories',
   RAW_CONTENT: 'raw_content',
