@@ -74,6 +74,9 @@ struct WelcomeSignInPage: View {
     @StateObject private var coordinator = AppleSignInCoordinator()
     @State private var signInError: String?
     @State private var isAwaitingApple = false
+    #if DEBUG
+    @State private var isAwaitingDevUser = false
+    #endif
 
     @State private var logoOpacity: Double = 0
     @State private var logoScale: CGFloat = 0.85
@@ -109,15 +112,13 @@ struct WelcomeSignInPage: View {
             .opacity(buttonOpacity)
 
             #if DEBUG
-            Button("DEV: Bypass authentication") {
-                UserDefaults.standard.set(true, forKey: "devAuthBypassEnabled")
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                    state.markSignedIn()
-                }
+            Button(isAwaitingDevUser ? "DEV: Creating test account..." : "DEV: Sign in as new test user") {
+                triggerDevTestUserSignIn()
             }
             .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
             .foregroundColor(OnboardingStyle.tertiaryText)
             .buttonStyle(.plain)
+            .disabled(isAwaitingDevUser)
             .opacity(buttonOpacity)
             #endif
 
@@ -211,4 +212,36 @@ struct WelcomeSignInPage: View {
             }
         }
     }
+
+    #if DEBUG
+    // MARK: - Dev test user
+
+    /// Signs in as a brand new throwaway account holding a real JWT, so the new-user
+    /// onboarding path can be walked. Apple hands back the same subject for a given
+    /// Apple ID, so signing in for real always lands on the same account.
+    private func triggerDevTestUserSignIn() {
+        guard !state.signInInProgress, !isAwaitingApple, !isAwaitingDevUser else { return }
+        signInError = nil
+
+        Task { @MainActor in
+            isAwaitingDevUser = true
+            defer { isAwaitingDevUser = false }
+
+            do {
+                _ = try await RetrospectAPIClient.shared.signInAsDevTestUser()
+            } catch {
+                signInError = "\(error.localizedDescription)\n\nThe dev test user needs an API running with NODE_ENV != production."
+                return
+            }
+
+            // The previous account's goals and answers would otherwise be resynced
+            // onto the throwaway user.
+            OnboardingContextManager.shared.resetForFreshOnboarding()
+            HapticManager.shared.playSuccessNotification()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                state.markSignedIn()
+            }
+        }
+    }
+    #endif
 }

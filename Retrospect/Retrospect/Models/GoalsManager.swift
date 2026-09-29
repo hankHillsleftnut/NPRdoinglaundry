@@ -258,6 +258,10 @@ private extension String {
 
 struct RichGoal: Codable, Identifiable, Equatable {
     let id: UUID
+    /// Identity of the matching `goals` row on the backend. Nil until the goal has
+    /// been created server-side; sync keys on this rather than on the title, so a
+    /// goal can be renamed, deactivated, and reactivated without duplicating.
+    var serverId: String?
     var title: String
     var goalDescription: String
     var motivation: String
@@ -267,6 +271,7 @@ struct RichGoal: Codable, Identifiable, Equatable {
 
     init(
         id: UUID = UUID(),
+        serverId: String? = nil,
         title: String,
         goalDescription: String = "",
         motivation: String = "",
@@ -275,6 +280,7 @@ struct RichGoal: Codable, Identifiable, Equatable {
         createdAt: Date = Date()
     ) {
         self.id = id
+        self.serverId = serverId
         self.title = title
         self.goalDescription = goalDescription
         self.motivation = motivation
@@ -345,16 +351,27 @@ class GoalsManager: ObservableObject {
     // MARK: - Rich Goal API
 
     func addRichGoal(_ goal: RichGoal) {
-        guard !goal.title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        guard !richGoals.contains(where: { $0.title.lowercased() == goal.title.lowercased() }) else { return }
+        guard canAppend(goal) else { return }
         richGoals.append(goal)
         saveGoals()
     }
 
+    /// Appends the whole batch and saves once. Saving per goal sends one full-snapshot
+    /// reconcile per goal, and every snapshot but the last is partial, so each sync
+    /// deactivates the goals that have not been appended yet.
     func addRichGoals(_ goals: [RichGoal]) {
-        for goal in goals {
-            addRichGoal(goal)
+        var didAppend = false
+        for goal in goals where canAppend(goal) {
+            richGoals.append(goal)
+            didAppend = true
         }
+        guard didAppend else { return }
+        saveGoals()
+    }
+
+    private func canAppend(_ goal: RichGoal) -> Bool {
+        guard !goal.title.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        return !richGoals.contains { $0.title.lowercased() == goal.title.lowercased() }
     }
 
     func removeRichGoal(id: UUID) {
@@ -396,27 +413,43 @@ class GoalsManager: ObservableObject {
     // MARK: - Persistence
 
     private func saveGoals() {
+        persistLocally()
+        syncToBackend()
+    }
+
+    private func persistLocally() {
         let snapshot = self.richGoals
-        DispatchQueue.global(qos: .background).async { [weak self] in
-            guard self != nil else { return }
+        DispatchQueue.global(qos: .background).async {
             if let data = try? JSONEncoder().encode(snapshot) {
                 UserDefaults.standard.set(data, forKey: GoalsManager.richGoalsKey)
             }
         }
-        syncToBackend()
     }
 
     func syncToBackend() {
         guard RetrospectAPIClient.shared.isAuthenticated else { return }
         let snapshot = self.richGoals
-        Task {
+        Task { [weak self] in
             do {
-                try await RetrospectAPIClient.shared.syncRichGoals(snapshot)
+                let assigned = try await RetrospectAPIClient.shared.syncRichGoals(snapshot)
+                await MainActor.run { self?.applyServerIds(assigned) }
                 print("Goals synced to backend (\(snapshot.count) goals)")
             } catch {
                 print("Goal sync failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Records the server identity of goals that had none. Deliberately persists
+    /// without going through `saveGoals()`, which would start another sync.
+    @MainActor
+    private func applyServerIds(_ assigned: [UUID: String]) {
+        guard !assigned.isEmpty else { return }
+        for index in richGoals.indices {
+            guard let serverId = assigned[richGoals[index].id] else { continue }
+            richGoals[index].serverId = serverId
+        }
+        persistLocally()
     }
 
     private func loadGoals() {

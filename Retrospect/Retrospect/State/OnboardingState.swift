@@ -197,6 +197,14 @@ final class OnboardingState: ObservableObject {
         }
     }
 
+    /// Reopens the sign-in gate without discarding progress. Signing out has to
+    /// clear this key too: `restoreFromDisk` reads `hasSignedIn` from it and skips
+    /// the welcome page, so clearing only the Keychain leaves a signed-out user
+    /// stranded mid-onboarding with no way to reach Apple sign-in.
+    static func clearSignInGate() {
+        UserDefaults.standard.removeObject(forKey: signedInKey)
+    }
+
     func clearPersistedStep() {
         UserDefaults.standard.removeObject(forKey: Self.persistedStepKey)
         UserDefaults.standard.removeObject(forKey: Self.signedInKey)

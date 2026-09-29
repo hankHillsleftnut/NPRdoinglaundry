@@ -111,6 +111,64 @@ export async function updateGoal(
 }
 
 /**
+ * Decline a goal the user pruned (unchecked on the onboarding checklist).
+ * The goal stops being an observational lens, but the desire is kept as a pending
+ * goal_candidate so the ingestion pipeline can re-surface it if behavior says it
+ * still matters. Ingestion loads pending candidates on every run.
+ */
+export async function declineGoal(goalId: string, userId: string): Promise<DbGoal> {
+  const goal = await getGoal(goalId, userId);
+  if (!goal) {
+    throw new Error('Goal not found');
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from(Tables.GOALS)
+    .update({ is_active: false })
+    .eq('id', goalId)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+
+  if (error || !updated) {
+    throw new Error(`Failed to decline goal: ${error?.message}`);
+  }
+
+  // Case/whitespace-insensitive match, consistent with the title normalization
+  // used elsewhere for this same "is this the same goal" question — an exact
+  // .eq() would miss "Get fit" vs "get fit" and insert a duplicate candidate.
+  const { data: pendingCandidates } = await supabaseAdmin
+    .from(Tables.GOAL_CANDIDATES)
+    .select('id, title')
+    .eq('user_id', userId)
+    .eq('status', 'pending');
+
+  const declinedTitleKey = goal.title.trim().toLowerCase();
+  const openCandidate = (pendingCandidates ?? []).find(
+    (candidate) => candidate.title.trim().toLowerCase() === declinedTitleKey
+  );
+
+  if (!openCandidate) {
+    const { error: candidateError } = await supabaseAdmin
+      .from(Tables.GOAL_CANDIDATES)
+      .insert({
+        user_id: userId,
+        title: goal.title,
+        description: goal.description,
+        reasoning:
+          'Surfaced during onboarding synthesis and not selected by the user. Kept as a candidate so later behavior can corroborate it or let it go.',
+        confidence_score: 0.5,
+        status: 'pending',
+      });
+    if (candidateError) {
+      throw new Error(`Failed to record declined goal candidate: ${candidateError.message}`);
+    }
+  }
+
+  return updated as DbGoal;
+}
+
+/**
  * Delete a goal (cascades to observations and insights).
  */
 export async function deleteGoal(goalId: string, userId: string): Promise<void> {
@@ -329,6 +387,9 @@ export async function extractAndSaveGoals(
   return { extracted, savedGoals };
 }
 
+/** How long an identical submission still counts as the same synthesis attempt. */
+const PROFILE_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
+
 /**
  * Synthesize onboarding goals from the FULL intelligence pipeline (not a one-shot
  * LLM call). Persists the onboarding answers as raw_content, runs the agent
@@ -342,19 +403,25 @@ export async function synthesizeOnboardingGoals(
   userId: string,
   answersText: string
 ): Promise<{ extracted: GoalExtractionResult; savedGoals: DbGoal[] }> {
-  // 1. Ensure an onboarding_profile raw_content row exists (the agent reads from DB).
-  let profileId: string | null = null;
-  const { data: existingProfile } = await supabaseAdmin
+  // 1. Store THIS submission as its own onboarding_profile row (the agent reads from
+  //    the DB). Reusing the newest existing row would analyze whatever the user said
+  //    the last time they onboarded and silently discard what they just typed. The
+  //    only row we reuse is a byte-identical recent one, which means the client hit
+  //    its 480s timeout while this pipeline kept running and is now retrying the same
+  //    answers; re-inserting there would double-analyze one submission.
+  let profileId: string;
+  const { data: recentProfile } = await supabaseAdmin
     .from(Tables.RAW_CONTENT)
-    .select('id')
+    .select('id, content')
     .eq('user_id', userId)
     .eq('content_type', 'onboarding_profile')
+    .gte('created_at', new Date(Date.now() - PROFILE_RETRY_WINDOW_MS).toISOString())
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (existingProfile?.id) {
-    profileId = existingProfile.id as string;
+  if (recentProfile?.id && recentProfile.content === answersText) {
+    profileId = recentProfile.id as string;
   } else {
     const { data: inserted, error: insErr } = await supabaseAdmin
       .from(Tables.RAW_CONTENT)
@@ -398,16 +465,21 @@ export async function synthesizeOnboardingGoals(
   const activeGoals: ActiveGoal[] =
     (understanding?.document?.active_goals as ActiveGoal[] | undefined) ?? [];
 
-  let extractedGoals: GoalExtractionResult['goals'] = activeGoals
+  // The document's goal_id is the only identity the pipeline carries out: Cook 0 sees
+  // active goals as `[id] "title"`, so it can name a row it already knows about.
+  type SurfacedGoal = GoalExtractionResult['goals'][number] & { goalId: string | null };
+
+  let surfaced: SurfacedGoal[] = activeGoals
     .filter((g) => g.title && g.title.trim().length > 0)
     .map((g) => ({
       title: g.title,
       description: g.what_its_really_about ?? '',
       reasoning: '', // active_goals carry the deeper read in description; no separate why for v1
+      goalId: g.goal_id ?? null,
     }));
 
   // 4. Fallback: if Cook 0 produced no active_goals, surface top goal_candidates.
-  if (extractedGoals.length === 0) {
+  if (surfaced.length === 0) {
     const { data: candidates } = await supabaseAdmin
       .from(Tables.GOAL_CANDIDATES)
       .select('title, description, reasoning, confidence_score')
@@ -415,43 +487,59 @@ export async function synthesizeOnboardingGoals(
       .eq('status', 'pending')
       .order('confidence_score', { ascending: false })
       .limit(5);
-    extractedGoals = (candidates ?? [])
+    surfaced = (candidates ?? [])
       .filter((c) => c.title && String(c.title).trim().length > 0)
       .map((c) => ({
         title: c.title as string,
         description: (c.description as string) ?? '',
         reasoning: (c.reasoning as string) ?? '',
+        goalId: null,
       }));
   }
 
-  // 5. Persist the synthesized goals to the goals table (first-class, embedded).
-  //    Idempotency guard: the iOS client can time out (480s) while this 600s
-  //    pipeline keeps running and writes goals; the user then retries and we'd
-  //    re-insert the SAME goals. Skip any whose title already exists for this
-  //    user (title-stable across a retry because step 3 re-reads the persisted
-  //    active_goals). Non-destructive — never deletes manual/existing goals.
+  // 5. Resolve every surfaced goal to a goals row and return all of them, so the
+  //    client holds a server id for each checklist item. Match on identity first, and
+  //    on title only for a goal the document named without an id.
+  //
+  //    Reusing the existing row rather than skipping the goal is what keeps a client
+  //    retry idempotent (the 480s client timeout vs this longer pipeline) without also
+  //    hiding a goal from someone onboarding a second time. Whether a reused goal stays
+  //    active is the checklist's call, not ours: the client reactivates what it keeps
+  //    and declines what it prunes.
   const { data: existingGoals } = await supabaseAdmin
     .from(Tables.GOALS)
-    .select('title')
+    .select('*')
     .eq('user_id', userId);
-  const existingTitles = new Set(
-    (existingGoals ?? []).map((g: any) => String(g.title).trim().toLowerCase())
-  );
+
+  const rows = (existingGoals ?? []) as DbGoal[];
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const rowsByTitle = new Map<string, DbGoal>();
+  for (const row of rows) {
+    const key = row.title.trim().toLowerCase();
+    const claimed = rowsByTitle.get(key);
+    if (!claimed || (!claimed.is_active && row.is_active)) {
+      rowsByTitle.set(key, row);
+    }
+  }
 
   const savedGoals: DbGoal[] = [];
-  for (const goal of extractedGoals) {
-    if (existingTitles.has(goal.title.trim().toLowerCase())) {
-      continue; // already saved (likely from a prior attempt) — don't duplicate
+  for (const goal of surfaced) {
+    const titleKey = goal.title.trim().toLowerCase();
+    const existing = (goal.goalId ? rowsById.get(goal.goalId) : undefined) ?? rowsByTitle.get(titleKey);
+    if (existing) {
+      savedGoals.push(existing);
+      continue;
     }
-    const saved = await createGoal(userId, goal.title, goal.description);
-    savedGoals.push(saved);
-    existingTitles.add(goal.title.trim().toLowerCase());
+    const created = await createGoal(userId, goal.title, goal.description);
+    savedGoals.push(created);
+    rowsById.set(created.id, created);
+    rowsByTitle.set(titleKey, created);
   }
 
   return {
     extracted: {
-      goals: extractedGoals,
-      processingNotes: `Synthesized ${extractedGoals.length} goal(s) from the ingestion + Cook 0 pipeline (document v${understanding?.version ?? '?'}).`,
+      goals: surfaced.map(({ title, description, reasoning }) => ({ title, description, reasoning })),
+      processingNotes: `Synthesized ${surfaced.length} goal(s) from the ingestion + Cook 0 pipeline (document v${understanding?.version ?? '?'}).`,
     },
     savedGoals,
   };

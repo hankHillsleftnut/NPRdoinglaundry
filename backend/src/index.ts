@@ -15,6 +15,7 @@ import { adminRouter } from './routes/admin.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
 import { claudeRouter } from './routes/claude.js';
+import { speechRouter } from './routes/speech.js';
 import { integrationOauthCallbackRouter, integrationsRouter } from './routes/integrations.js';
 import { graphRouter } from './routes/graph.js';
 
@@ -76,6 +77,7 @@ app.use('/pipeline', authMiddleware, pipelineRouter);
 app.use('/podcasts', authMiddleware, podcastsRouter);
 app.use('/profile', authMiddleware, profileRouter);
 app.use('/claude', authMiddleware, claudeRouter);
+app.use('/speech', authMiddleware, speechRouter);
 app.use('/integrations', authMiddleware, integrationsRouter);
 app.use('/graph', authMiddleware, graphRouter);
 

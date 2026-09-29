@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createGoal, updateGoal, deleteGoal, listGoals, getGoal, extractGoalsFromText, extractAndSaveGoals, synthesizeOnboardingGoals } from '../services/goals.js';
+import { createGoal, updateGoal, deleteGoal, declineGoal, listGoals, getGoal, extractGoalsFromText, extractAndSaveGoals, synthesizeOnboardingGoals } from '../services/goals.js';
 import { CreateGoalSchema, UpdateGoalSchema, ExtractGoalsSchema } from '../types/index.js';
 
 export const goalsRouter = Router();
@@ -116,6 +116,34 @@ goalsRouter.patch('/:id', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update goal',
+    });
+  }
+});
+
+// POST /goals/:id/decline - The user pruned this goal off the onboarding checklist.
+// Deactivates it and keeps the desire as a pending goal candidate for the pipeline.
+goalsRouter.post('/:id/decline', async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const goal = await getGoal(req.params.id!, user.id);
+    if (!goal) {
+      res.status(404).json({ success: false, error: 'Goal not found' });
+      return;
+    }
+
+    const declined = await declineGoal(req.params.id!, user.id);
+
+    res.json({ success: true, data: declined });
+  } catch (error) {
+    console.error('Decline goal error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to decline goal',
     });
   }
 });

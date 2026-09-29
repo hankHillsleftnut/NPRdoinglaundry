@@ -54,7 +54,6 @@ struct RetrospectApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("useDarkUI") private var useDarkUI: Bool = true // Default to new dark UI
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
-    @AppStorage("devAuthBypassEnabled") private var devAuthBypassEnabled: Bool = false
     @State private var showGoogleAuth = false
     @State private var shouldStartVoiceRecording = false
     @State private var isProcessingStopFromWidget = false
@@ -115,12 +114,11 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// A stored JWT is the only thing that counts, in every configuration. A DEBUG-only
+    /// bypass used to satisfy this without one, which let the app run signed-in while
+    /// every authenticated call failed at the token guard and fell back to canned text.
     private var hasUsableBackendAuth: Bool {
-        #if DEBUG
-        apiClient.isAuthenticated || devAuthBypassEnabled
-        #else
         apiClient.isAuthenticated
-        #endif
     }
     
     private var isGoogleConfigured: Bool {
@@ -191,6 +189,9 @@ struct RetrospectApp: App {
                     },
                     onPreviewPaywall: {
                         previewPaywall()
+                    },
+                    onDebugGoHome: {
+                        completeOnboardingShell()
                     }
                 )
                     .transition(.opacity)
@@ -408,6 +409,13 @@ struct RetrospectApp: App {
         firstPodcastError = nil
         isPreviewingPaywall = false
         isCreatingFirstPodcast = true
+        // Onboarding ends the moment the finale starts. The finale branch sits above
+        // the onboarding branch in this ladder, so flipping the flag here changes
+        // nothing on screen, but it guarantees that every way out of the finale —
+        // finishing, dismissing, a failed generation, or the app being killed during
+        // the several minutes generation takes — lands on the home screen instead of
+        // dropping back into onboarding.
+        hasCompletedOnboarding = true
 
         Task {
             do {
