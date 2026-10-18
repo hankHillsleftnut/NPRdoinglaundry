@@ -3,6 +3,7 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { runAgentIngest } from '../services/agent-client.js';
 import { UploadContentSchema } from '../types/index.js';
 import { INTEGRATION_CATALOG } from '../services/integration-catalog.js';
+import { insertRawContent, type InsertClient, type InsertOutcome } from '../services/content-insert.js';
 
 export const contentRouter = Router();
 
@@ -35,22 +36,38 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       .eq('name', contentType)
       .single();
 
-    // Insert raw content
-    const { data: rawContent, error: insertError } = await supabaseAdmin
-      .from(Tables.RAW_CONTENT)
-      .insert({
-        user_id: user.id,
-        content_type: contentType,
-        content,
-        content_date: contentDate || new Date().toISOString(),
-        metadata: metadata || {},
-        source_id: dataSource?.id || null,
-        processing_status: 'pending',
-      })
-      .select('id')
-      .single();
+    // Insert raw content -- once. A repeat of something already stored is
+    // recognised and answered with the original row, without a second copy and
+    // without a second ingest run. See services/content-insert.ts.
+    const effectiveDate = contentDate || new Date().toISOString();
+    const idempotencyKey = req.header('Idempotency-Key') ?? null;
 
-    if (insertError || !rawContent) {
+    let outcome: InsertOutcome;
+    try {
+      outcome = await insertRawContent(
+        // The real client is far richer than the slice insertRawContent uses;
+        // the cast is confined to this one boundary.
+        supabaseAdmin as unknown as InsertClient,
+        Tables.RAW_CONTENT,
+        {
+          user_id: user.id,
+          content_type: contentType,
+          content,
+          content_date: effectiveDate,
+          metadata: metadata || {},
+          source_id: dataSource?.id || null,
+          processing_status: 'pending',
+        },
+        {
+          userId: user.id,
+          contentType,
+          content,
+          contentDate: effectiveDate,
+          metadata: metadata || {},
+          idempotencyKey,
+        },
+      );
+    } catch (insertError) {
       console.error('Insert error:', insertError);
       res.status(500).json({
         success: false,
@@ -58,6 +75,35 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       });
       return;
     }
+
+    if (outcome.kind === 'duplicate') {
+      // 200, not 409. The iOS "resync all" button replays every local entry
+      // and counts any error as a failure, so a 409 would make a perfectly
+      // healthy resync report hundreds of failures. A replay of the original is
+      // the honest answer, and the standard one for idempotent requests.
+      //
+      // Deliberately no ingest run here: nothing new arrived.
+      res.setHeader('Idempotency-Replayed', 'true');
+      res.status(200).json({
+        success: true,
+        data: {
+          rawContentId: outcome.id,
+          deduplicated: true,
+          dedupReason: outcome.strategy,
+          insightIds: [],
+          insightCount: 0,
+          observationsCreated: 0,
+          insightsCreated: 0,
+          goalCandidatesCreated: 0,
+          agentTraceId: null,
+          processingError: null,
+        },
+        message: 'Already stored; returning the existing entry',
+      });
+      return;
+    }
+
+    const rawContent = { id: outcome.id };
 
     // Best-effort bridge into the durable integration ledger. Content ingestion
     // must continue if the integration migration has not been deployed yet.
