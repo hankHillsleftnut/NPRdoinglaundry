@@ -4,8 +4,38 @@ import { runAgentIngest } from '../services/agent-client.js';
 import { UploadContentSchema } from '../types/index.js';
 import { INTEGRATION_CATALOG } from '../services/integration-catalog.js';
 import { insertRawContent, type InsertClient, type InsertOutcome } from '../services/content-insert.js';
+import { handOffToAgent } from '../services/agent-handoff.js';
 
 export const contentRouter = Router();
+
+/**
+ * THE AGENT OWNS A ROW'S STATUS -- why this route never writes
+ * `processing_status` once a row is handed off.
+ *
+ * The agent owns a row's status from the moment it is inserted as `pending`.
+ * On success it marks it `completed`. On failure it classifies the error and,
+ * if it is worth retrying, puts the row back to `pending` with an attempt count
+ * and a time to try again (retry-policy.ts in the agent).
+ *
+ * This route used to write status itself, after the agent, and both writes were
+ * wrong:
+ *
+ * - On failure it wrote a bare `failed`: no attempt count, no retry time, no
+ *   failure kind. That overwrote the agent's correct, scheduled-for-retry state
+ *   with a permanent dead end. It is the exact signature of all 2,024 rows found
+ *   stranded in production on 18 October 2026, and the reason none of them was
+ *   ever retried -- the retry system was built, and this line hid every failure
+ *   from it.
+ * - On success it wrote `completed` regardless of what the agent did, so a row
+ *   the agent had skipped or not reached was stamped as done and never looked at
+ *   again.
+ *
+ * If the agent cannot be reached at all, the row simply stays `pending`. The
+ * agent's own run picks up every pending row, including ones older than its
+ * usual window, so nothing left this way is lost.
+ */
+// Enforced structurally: the upload path hands off through handOffToAgent(),
+// which is never given a database client and so cannot write status at all.
 
 // POST /content - Upload new content for processing
 contentRouter.post('/', async (req: Request, res: Response) => {
@@ -147,22 +177,10 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       message: 'Content stored; agent ingestion running in background',
     });
 
-    // Fire-and-forget: agent turns raw content into observations/insights
-    setImmediate(async () => {
-      try {
-        await runAgentIngest({ userId: user.id, rawContentIds: [rawContent.id] });
-        await supabaseAdmin
-          .from(Tables.RAW_CONTENT)
-          .update({ processing_status: 'completed', processing_error: null, processed_at: new Date().toISOString() })
-          .eq('id', rawContent.id);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error('Background agent ingestion error:', err);
-        await supabaseAdmin
-          .from(Tables.RAW_CONTENT)
-          .update({ processing_status: 'failed', processing_error: msg })
-          .eq('id', rawContent.id);
-      }
+    // Fire-and-forget: hand the row to the agent, which owns its status from
+    // here. See "THE AGENT OWNS A ROW'S STATUS" at the top of this file.
+    setImmediate(() => {
+      void handOffToAgent(runAgentIngest, { userId: user.id, rawContentIds: [rawContent.id] });
     });
   } catch (error) {
     console.error('Content upload error:', error);
@@ -309,15 +327,8 @@ contentRouter.post('/:id/reprocess', async (req: Request, res: Response) => {
       rawContentIds: [content.id],
       notes: 'Triggered by retrospect-api /content/:id/reprocess',
     });
-
-    await supabaseAdmin
-      .from(Tables.RAW_CONTENT)
-      .update({
-        processing_status: 'completed',
-        processing_error: null,
-        processed_at: new Date().toISOString(),
-      })
-      .eq('id', content.id);
+    // No status write here: the agent has already recorded what really happened
+    // to this row. See "THE AGENT OWNS A ROW'S STATUS" at the top of this file.
 
     res.json({
       success: true,
