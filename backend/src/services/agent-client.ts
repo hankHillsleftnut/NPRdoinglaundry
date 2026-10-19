@@ -152,6 +152,21 @@ export async function runAgentIngest(options: {
   });
 }
 
+export interface AgentStatedGoal {
+  title: string;
+  description: string;
+  reasoning: string;
+  quote: string;
+}
+
+/** The goals stated in onboarding answers, each resting on a verified quote. Seconds. */
+export function getAgentOnboardingGoals(
+  userId: string,
+  answersText: string,
+): Promise<{ goals: AgentStatedGoal[]; dropped: number }> {
+  return callAgent<{ goals: AgentStatedGoal[]; dropped: number }>('/onboarding/goals', { userId, answersText }, 90_000);
+}
+
 export async function generateAgentPodcast(options: {
   userId: string;
   daysBack?: number;

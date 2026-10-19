@@ -1,0 +1,16 @@
+{
+  // Typechecks the source and the tests together, without emitting anything.
+  //
+  // The build config (tsconfig.json) sets rootDir to ./src and excludes test
+  // files, which is right for what ships -- tests should not end up in dist.
+  // But it also meant tests were never typechecked at all. In the agent repo a
+  // typecheck that covers tests caught a real bug the test runner did not, so
+  // the backend gets the same coverage here, separately from the build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

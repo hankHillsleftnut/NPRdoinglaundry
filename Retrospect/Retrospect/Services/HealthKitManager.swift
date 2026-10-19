@@ -225,7 +225,9 @@ class HealthKitManager {
         async let steps = fetchSteps(startDate: startDate, endDate: endDate)
         async let activeEnergy = fetchActiveEnergy(startDate: startDate, endDate: endDate)
         async let averageHeartRate = fetchAverageHeartRate(startDate: startDate, endDate: endDate)
-        async let sleepHours = fetchSleepAnalysis(startDate: startDate, endDate: endDate, averagingDays: 1)
+        // Sleep is counted over the night ending this morning, not from midnight.
+        // See SleepMath for the three ways the old count went wrong.
+        async let night = fetchNight(for: day)
         async let mindfulnessMinutes = fetchMindfulnessMinutes(startDate: startDate, endDate: endDate)
         async let distanceKilometers = fetchCumulativeQuantity(
             identifier: .distanceWalkingRunning,
@@ -251,26 +253,24 @@ class HealthKitManager {
             startDate: startDate,
             endDate: endDate
         )
-        async let sleepStages = fetchSleepStages(startDate: startDate, endDate: endDate)
         async let workouts = fetchWorkouts(startDate: startDate, endDate: endDate)
 
         let values = await (
             steps: steps,
             activeEnergy: activeEnergy,
             averageHeartRate: averageHeartRate,
-            sleepHours: sleepHours,
+            night: night,
             mindfulnessMinutes: mindfulnessMinutes,
             distanceKilometers: distanceKilometers,
             exerciseMinutes: exerciseMinutes,
             restingHeartRate: restingHeartRate,
             heartRateVariability: heartRateVariability,
-            sleepStages: sleepStages,
             workouts: workouts
         )
 
         let roundedEnergy = values.activeEnergy.map { Int($0.rounded()) }
         let roundedHeartRate = values.averageHeartRate.map { Int($0.rounded()) }
-        let sleep = values.sleepHours.map { String(format: "%.1f", $0) } ?? "Unavailable"
+        let sleep = values.night.hours.map { String(format: "%.1f", $0) } ?? "Unavailable"
         let workoutSummary = values.workouts ?? WorkoutDaySummary(count: 0, minutes: 0, activityTypes: [:])
 
         return DailyHealthSnapshot(
@@ -278,13 +278,13 @@ class HealthKitManager {
             steps: values.steps,
             activeEnergyKcal: roundedEnergy,
             averageHeartRateBpm: roundedHeartRate,
-            sleepHours: values.sleepHours,
+            sleepHours: values.night.hours,
             mindfulnessMinutes: values.mindfulnessMinutes,
             distanceKilometers: values.distanceKilometers,
             exerciseMinutes: values.exerciseMinutes.map { Int($0.rounded()) },
             restingHeartRateBpm: values.restingHeartRate.map { Int($0.rounded()) },
             heartRateVariabilityMs: values.heartRateVariability.map { Int($0.rounded()) },
-            sleepStagesHours: values.sleepStages,
+            sleepStagesHours: values.night.stages,
             workoutCount: workoutSummary.count,
             workoutMinutes: workoutSummary.minutes,
             workoutTypes: workoutSummary.activityTypes,
@@ -295,7 +295,7 @@ class HealthKitManager {
             Active Energy: \(roundedEnergy.map(String.init) ?? "Unavailable") kcal
             Average Heart Rate: \(roundedHeartRate.map(String.init) ?? "Unavailable") BPM
             Sleep: \(sleep) hours
-            Sleep stages: \(values.sleepStages.map { "\($0.key) \(String(format: "%.1f", $0.value))h" }.sorted().joined(separator: ", "))
+            Sleep stages: \(values.night.stages.map { "\($0.key) \(String(format: "%.1f", $0.value))h" }.sorted().joined(separator: ", "))
             Mindfulness: \(values.mindfulnessMinutes.map(String.init) ?? "Unavailable") minutes
             Walking and running distance: \(values.distanceKilometers.map { String(format: "%.1f", $0) } ?? "Unavailable") km
             Exercise: \(values.exerciseMinutes.map { String(format: "%.0f", $0) } ?? "Unavailable") minutes
@@ -338,28 +338,38 @@ class HealthKitManager {
         }
     }
 
-    private func fetchSleepStages(startDate: Date, endDate: Date) async -> [String: Double] {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [:] }
-        return await withCheckedContinuation { continuation in
-            let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+    /// One night's sleep: hours asleep (nil if nothing recorded sleep) and hours
+    /// per stage, over the noon-to-noon window ending on `day`.
+    private func fetchNight(for day: Date) async -> (hours: Double?, stages: [String: Double]) {
+        guard
+            let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis),
+            let window = SleepMath.nightWindow(for: day)
+        else { return (nil, [:]) }
+
+        let samples: [SleepMath.Sample] = await withCheckedContinuation { continuation in
+            // No .strictStartDate: a sample that began before the window still
+            // counts for the part inside it. SleepMath clips it.
+            let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end, options: [])
             let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
-                var stages: [String: Double] = [:]
-                for sample in samples as? [HKCategorySample] ?? [] {
-                    let key: String
-                    switch sample.value {
-                    case HKCategoryValueSleepAnalysis.awake.rawValue: key = "awake"
-                    case HKCategoryValueSleepAnalysis.asleepCore.rawValue: key = "core"
-                    case HKCategoryValueSleepAnalysis.asleepDeep.rawValue: key = "deep"
-                    case HKCategoryValueSleepAnalysis.asleepREM.rawValue: key = "rem"
-                    case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue: key = "asleep_unspecified"
-                    case HKCategoryValueSleepAnalysis.inBed.rawValue: key = "in_bed"
-                    default: key = "other"
-                    }
-                    stages[key, default: 0] += sample.endDate.timeIntervalSince(sample.startDate) / 3600
+                let mapped = (samples as? [HKCategorySample] ?? []).map {
+                    SleepMath.Sample(start: $0.startDate, end: $0.endDate, stage: Self.sleepStageKey($0.value))
                 }
-                continuation.resume(returning: stages)
+                continuation.resume(returning: mapped)
             }
             healthStore.execute(query)
+        }
+        return (SleepMath.hoursAsleep(samples, in: window), SleepMath.stageHours(samples, in: window))
+    }
+
+    private static func sleepStageKey(_ value: Int) -> String {
+        switch value {
+        case HKCategoryValueSleepAnalysis.awake.rawValue: return "awake"
+        case HKCategoryValueSleepAnalysis.asleepCore.rawValue: return "core"
+        case HKCategoryValueSleepAnalysis.asleepDeep.rawValue: return "deep"
+        case HKCategoryValueSleepAnalysis.asleepREM.rawValue: return "rem"
+        case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue: return "asleep_unspecified"
+        case HKCategoryValueSleepAnalysis.inBed.rawValue: return "in_bed"
+        default: return "other"
         }
     }
 

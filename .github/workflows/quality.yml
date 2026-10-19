@@ -20,7 +20,10 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: npm test -- --passWithNoTests
+      # Typechecks src and tests together. The build config excludes tests, so
+      # without this step a type error in a test would never be caught.
+      - run: npm run typecheck
+      - run: npm test
 
   ios:
     runs-on: macos-latest
