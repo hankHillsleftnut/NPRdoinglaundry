@@ -380,10 +380,9 @@ export async function synthesizeOnboardingGoals(
     rawContentIds: [profileId],
     notes: 'onboarding goal synthesis',
   });
-  await supabaseAdmin
-    .from(Tables.RAW_CONTENT)
-    .update({ processing_status: 'completed', processed_at: new Date().toISOString() })
-    .eq('id', profileId);
+  // No status write here: the agent records what really happened to the row
+  // (completed, or pending with a retry scheduled). Stamping 'completed' over
+  // that is the two-writers bug that stranded 2,024 rows (agent-handoff.ts).
 
   // 3. Read the synthesized active_goals from the latest User Understanding Document.
   const { data: understanding } = await supabaseAdmin
