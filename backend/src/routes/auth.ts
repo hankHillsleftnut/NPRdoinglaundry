@@ -12,6 +12,10 @@ import {
 import type { AuthIdentityInput } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
 import { authFailureFor, classifyTokenError, failureBody } from '../services/auth-errors.js';
+import { verifyGoogleIdToken, exchangeGoogleServerAuthCode } from '../services/google-auth.js';
+import { GOOGLE_COMBINED_MEMBERS, getOAuthProvider } from '../services/oauth-providers.js';
+import { storeAgentIntegrationCredentials, requestAgentIntegrationSync } from '../services/agent-client.js';
+import { ensureConnection } from './integrations.js';
 import { resolveFlagsForUser, EMPTY_FLAGS } from '../services/feature-flags.js';
 import { getAccountType } from '../services/accounts.js';
 import type { AuthUser } from '../types/index.js';
@@ -129,6 +133,63 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
   }
 });
 
+// POST /auth/google - Sign in with Google, and (optionally) connect Google in
+// the same consent. Body: { idToken, serverAuthCode? }.
+const GoogleSignInSchema = z.object({
+  idToken: z.string().min(1),
+  serverAuthCode: z.string().min(1).optional(),
+});
+
+authRouter.post('/google', async (req: Request, res: Response) => {
+  const parsed = GoogleSignInSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(failureBody(authFailureFor('bad_request', 'Google')));
+    return;
+  }
+  let identity: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
+  try {
+    identity = await verifyGoogleIdToken(parsed.data.idToken);
+  } catch (verifyError) {
+    const f = classifyTokenError(verifyError, 'Google');
+    console.error(`Google sign in error (${f.code}):`, verifyError);
+    res.status(f.status).json(failureBody(f));
+    return;
+  }
+  try {
+    const user = await getOrCreateUser({ provider: 'google', subject: identity.subject, email: identity.email });
+    const token = await issueToken(user);
+
+    // Connecting Google is a bonus on top of signing in: if it fails, they are
+    // still signed in, and the app can offer "Connect Google" again.
+    let googleConnected = false;
+    if (parsed.data.serverAuthCode) {
+      try {
+        const tokens = await exchangeGoogleServerAuthCode(parsed.data.serverAuthCode);
+        const expiresAt = typeof tokens.expires_in === 'number'
+          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+          : undefined;
+        const scopes = getOAuthProvider('google').scopes;
+        await Promise.all(GOOGLE_COMBINED_MEMBERS.map(async (memberId) => {
+          const connection = await ensureConnection(user.id, memberId, 'oauth_api');
+          await storeAgentIntegrationCredentials(connection.id, {
+            userId: user.id, credentials: tokens, expiresAt, metadata: { scopes, via: 'google_sign_in' },
+          });
+          await requestAgentIntegrationSync(connection.id, user.id);
+        }));
+        googleConnected = true;
+      } catch (connectError) {
+        console.error('Google connect during sign-in failed (still signed in):', connectError);
+      }
+    }
+
+    res.json({ success: true, data: { ...(await authPayload(user, token)), googleConnected } });
+  } catch (error) {
+    const f = classifyTokenError(error, 'Google');
+    console.error('Google sign in error:', error);
+    res.status(f.status).json(failureBody(f));
+  }
+});
+
 // POST /auth/sign-out-everywhere - End every session for this account,
 // including this one. The app signs in again afterwards.
 authRouter.post('/sign-out-everywhere', authMiddleware, async (req: Request, res: Response) => {
@@ -145,7 +206,7 @@ authRouter.post('/sign-out-everywhere', authMiddleware, async (req: Request, res
 // To support another provider, add it here and to the switch in
 // verifyProviderIdentityToken.
 const LinkIdentitySchema = z.object({
-  provider: z.enum(['apple']),
+  provider: z.enum(['apple', 'google']),
   identityToken: z.string().min(1),
 });
 

@@ -77,6 +77,8 @@ export const config = {
     appRedirectUrl: optionalEnv('INTEGRATION_APP_REDIRECT_URL', 'retrospect://integration-connected'),
     googleClientId: optionalEnv('GOOGLE_OAUTH_CLIENT_ID', ''),
     googleClientSecret: optionalEnv('GOOGLE_OAUTH_CLIENT_SECRET', ''),
+    /** The iOS app's own Google client ID: Sign in with Google tokens are issued to it. */
+    googleIosClientId: optionalEnv('GOOGLE_IOS_CLIENT_ID', ''),
     spotifyClientId: optionalEnv('SPOTIFY_CLIENT_ID', ''),
     spotifyClientSecret: optionalEnv('SPOTIFY_CLIENT_SECRET', ''),
     redditClientId: optionalEnv('REDDIT_CLIENT_ID', ''),

@@ -30,7 +30,7 @@ function base64url(bytes: Buffer): string {
   return bytes.toString('base64url');
 }
 
-async function ensureConnection(userId: string, providerId: string, collectionMode: string, status = 'action_required') {
+export async function ensureConnection(userId: string, providerId: string, collectionMode: string, status = 'action_required') {
   const now = new Date().toISOString();
   const { data: existing, error: existingError } = await supabaseAdmin
     .from(Tables.INTEGRATION_CONNECTIONS)

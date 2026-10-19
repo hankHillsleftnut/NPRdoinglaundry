@@ -1,4 +1,5 @@
 import { authFailureFor, failureBody } from '../services/auth-errors.js';
+import { verifyGoogleIdToken } from '../services/google-auth.js';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../utils/config.js';
@@ -577,6 +578,10 @@ export async function verifyProviderIdentityToken(
         subject: verified.appleUserId,
         email: verified.email,
       };
+    }
+    case 'google': {
+      const verified = await verifyGoogleIdToken(identityToken);
+      return { provider: 'google', subject: verified.subject, email: verified.email };
     }
     default:
       throw new Error(`Unsupported identity provider: ${provider}`);
