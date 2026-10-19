@@ -8,12 +8,13 @@
     "build": "tsc && cp -r src/public dist/public",
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts",
-    "test": "jest",
+    "test": "tsx --test $(find tests -name '*.test.ts')",
     "db:migrate": "supabase db push",
     "cron:daily": "node -e \"console.log('legacy daily pattern cron disabled; retrospect-agent owns ingestion')\"",
     "cron:weekly": "node -e \"console.log('legacy weekly pattern cron disabled; retrospect-agent owns weekly podcasts')\"",
     "cron:pipeline": "node -e \"console.log('legacy observation/insight pipeline disabled; retrospect-agent owns ingestion')\"",
-    "cron:podcasts": "node -e \"console.log('legacy podcast cron disabled; retrospect-agent owns podcasts')\""
+    "cron:podcasts": "node -e \"console.log('legacy podcast cron disabled; retrospect-agent owns podcasts')\"",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "keywords": [
     "knowledge-graph",

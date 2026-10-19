@@ -3,8 +3,39 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { runAgentIngest } from '../services/agent-client.js';
 import { UploadContentSchema } from '../types/index.js';
 import { INTEGRATION_CATALOG } from '../services/integration-catalog.js';
+import { insertRawContent, type InsertClient, type InsertOutcome } from '../services/content-insert.js';
+import { handOffToAgent } from '../services/agent-handoff.js';
 
 export const contentRouter = Router();
+
+/**
+ * THE AGENT OWNS A ROW'S STATUS -- why this route never writes
+ * `processing_status` once a row is handed off.
+ *
+ * The agent owns a row's status from the moment it is inserted as `pending`.
+ * On success it marks it `completed`. On failure it classifies the error and,
+ * if it is worth retrying, puts the row back to `pending` with an attempt count
+ * and a time to try again (retry-policy.ts in the agent).
+ *
+ * This route used to write status itself, after the agent, and both writes were
+ * wrong:
+ *
+ * - On failure it wrote a bare `failed`: no attempt count, no retry time, no
+ *   failure kind. That overwrote the agent's correct, scheduled-for-retry state
+ *   with a permanent dead end. It is the exact signature of all 2,024 rows found
+ *   stranded in production on 18 October 2026, and the reason none of them was
+ *   ever retried -- the retry system was built, and this line hid every failure
+ *   from it.
+ * - On success it wrote `completed` regardless of what the agent did, so a row
+ *   the agent had skipped or not reached was stamped as done and never looked at
+ *   again.
+ *
+ * If the agent cannot be reached at all, the row simply stays `pending`. The
+ * agent's own run picks up every pending row, including ones older than its
+ * usual window, so nothing left this way is lost.
+ */
+// Enforced structurally: the upload path hands off through handOffToAgent(),
+// which is never given a database client and so cannot write status at all.
 
 // POST /content - Upload new content for processing
 contentRouter.post('/', async (req: Request, res: Response) => {
@@ -35,22 +66,38 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       .eq('name', contentType)
       .single();
 
-    // Insert raw content
-    const { data: rawContent, error: insertError } = await supabaseAdmin
-      .from(Tables.RAW_CONTENT)
-      .insert({
-        user_id: user.id,
-        content_type: contentType,
-        content,
-        content_date: contentDate || new Date().toISOString(),
-        metadata: metadata || {},
-        source_id: dataSource?.id || null,
-        processing_status: 'pending',
-      })
-      .select('id')
-      .single();
+    // Insert raw content -- once. A repeat of something already stored is
+    // recognised and answered with the original row, without a second copy and
+    // without a second ingest run. See services/content-insert.ts.
+    const effectiveDate = contentDate || new Date().toISOString();
+    const idempotencyKey = req.header('Idempotency-Key') ?? null;
 
-    if (insertError || !rawContent) {
+    let outcome: InsertOutcome;
+    try {
+      outcome = await insertRawContent(
+        // The real client is far richer than the slice insertRawContent uses;
+        // the cast is confined to this one boundary.
+        supabaseAdmin as unknown as InsertClient,
+        Tables.RAW_CONTENT,
+        {
+          user_id: user.id,
+          content_type: contentType,
+          content,
+          content_date: effectiveDate,
+          metadata: metadata || {},
+          source_id: dataSource?.id || null,
+          processing_status: 'pending',
+        },
+        {
+          userId: user.id,
+          contentType,
+          content,
+          contentDate: effectiveDate,
+          metadata: metadata || {},
+          idempotencyKey,
+        },
+      );
+    } catch (insertError) {
       console.error('Insert error:', insertError);
       res.status(500).json({
         success: false,
@@ -58,6 +105,35 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       });
       return;
     }
+
+    if (outcome.kind === 'duplicate') {
+      // 200, not 409. The iOS "resync all" button replays every local entry
+      // and counts any error as a failure, so a 409 would make a perfectly
+      // healthy resync report hundreds of failures. A replay of the original is
+      // the honest answer, and the standard one for idempotent requests.
+      //
+      // Deliberately no ingest run here: nothing new arrived.
+      res.setHeader('Idempotency-Replayed', 'true');
+      res.status(200).json({
+        success: true,
+        data: {
+          rawContentId: outcome.id,
+          deduplicated: true,
+          dedupReason: outcome.strategy,
+          insightIds: [],
+          insightCount: 0,
+          observationsCreated: 0,
+          insightsCreated: 0,
+          goalCandidatesCreated: 0,
+          agentTraceId: null,
+          processingError: null,
+        },
+        message: 'Already stored; returning the existing entry',
+      });
+      return;
+    }
+
+    const rawContent = { id: outcome.id };
 
     // Best-effort bridge into the durable integration ledger. Content ingestion
     // must continue if the integration migration has not been deployed yet.
@@ -101,22 +177,10 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       message: 'Content stored; agent ingestion running in background',
     });
 
-    // Fire-and-forget: agent turns raw content into observations/insights
-    setImmediate(async () => {
-      try {
-        await runAgentIngest({ userId: user.id, rawContentIds: [rawContent.id] });
-        await supabaseAdmin
-          .from(Tables.RAW_CONTENT)
-          .update({ processing_status: 'completed', processing_error: null, processed_at: new Date().toISOString() })
-          .eq('id', rawContent.id);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error('Background agent ingestion error:', err);
-        await supabaseAdmin
-          .from(Tables.RAW_CONTENT)
-          .update({ processing_status: 'failed', processing_error: msg })
-          .eq('id', rawContent.id);
-      }
+    // Fire-and-forget: hand the row to the agent, which owns its status from
+    // here. See "THE AGENT OWNS A ROW'S STATUS" at the top of this file.
+    setImmediate(() => {
+      void handOffToAgent(runAgentIngest, { userId: user.id, rawContentIds: [rawContent.id] });
     });
   } catch (error) {
     console.error('Content upload error:', error);
@@ -263,15 +327,8 @@ contentRouter.post('/:id/reprocess', async (req: Request, res: Response) => {
       rawContentIds: [content.id],
       notes: 'Triggered by retrospect-api /content/:id/reprocess',
     });
-
-    await supabaseAdmin
-      .from(Tables.RAW_CONTENT)
-      .update({
-        processing_status: 'completed',
-        processing_error: null,
-        processed_at: new Date().toISOString(),
-      })
-      .eq('id', content.id);
+    // No status write here: the agent has already recorded what really happened
+    // to this row. See "THE AGENT OWNS A ROW'S STATUS" at the top of this file.
 
     res.json({
       success: true,
