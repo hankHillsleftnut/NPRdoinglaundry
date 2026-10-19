@@ -1,6 +1,7 @@
 import { generateEmbedding, jsonChatCompletion } from '../utils/openai.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
-import { runAgentIngest } from './agent-client.js';
+import { runAgentIngest, getAgentOnboardingGoals } from './agent-client.js';
+import { handOffToAgent } from './agent-handoff.js';
 import type { DbGoal, GoalExtractionResult } from '../types/index.js';
 
 /*
@@ -338,7 +339,99 @@ export async function extractAndSaveGoals(
  *
  * Falls back to high-confidence goal_candidates if Cook 0 produced no active_goals.
  */
+/**
+ * Onboarding goals, from the answers themselves.
+ *
+ * The goals come from one call to the agent over the answers (seconds), each
+ * resting on the person's own words. The answers are still stored and read in
+ * full by the pipeline, in the background: the screen no longer waits minutes
+ * for that, and no longer depends on Cook 0, which facts-only reading does not
+ * run on new material.
+ *
+ * ONBOARDING_GOALS_MODE=pipeline restores the previous behaviour.
+ */
 export async function synthesizeOnboardingGoals(
+  userId: string,
+  answersText: string
+): Promise<{ extracted: GoalExtractionResult; savedGoals: DbGoal[] }> {
+  if (process.env.ONBOARDING_GOALS_MODE === 'pipeline') {
+    return synthesizeOnboardingGoalsViaPipeline(userId, answersText);
+  }
+
+  const profileId = await storeOnboardingAnswers(userId, answersText);
+  // Not awaited: the agent reads the answers in full and records the outcome itself.
+  void handOffToAgent(runAgentIngest, { userId, rawContentIds: [profileId] });
+
+  const { goals } = await getAgentOnboardingGoals(userId, answersText);
+  const extractedGoals: GoalExtractionResult['goals'] = goals.map((g) => ({
+    title: g.title,
+    description: g.description,
+    reasoning: g.reasoning,
+  }));
+
+  return {
+    extracted: {
+      goals: extractedGoals,
+      processingNotes: `${extractedGoals.length} goal(s) you stated in onboarding, each resting on your own words.`,
+    },
+    savedGoals: await saveGoalsNotYetSaved(userId, extractedGoals),
+  };
+}
+
+/**
+ * Store this onboarding's answers. Redoing onboarding used to reuse the FIRST
+ * profile ever stored, so new answers were never read. A retry with identical
+ * answers reuses the row instead of duplicating it.
+ */
+async function storeOnboardingAnswers(userId: string, answersText: string): Promise<string> {
+  const { data: latest } = await supabaseAdmin
+    .from(Tables.RAW_CONTENT)
+    .select('id, content')
+    .eq('user_id', userId)
+    .eq('content_type', 'onboarding_profile')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latest?.id && latest.content === answersText) return latest.id as string;
+
+  const { data: inserted, error } = await supabaseAdmin
+    .from(Tables.RAW_CONTENT)
+    .insert({
+      user_id: userId,
+      content_type: 'onboarding_profile',
+      content: answersText,
+      content_date: new Date().toISOString(),
+      metadata: {},
+      processing_status: 'pending',
+    })
+    .select('id')
+    .single();
+  if (error || !inserted) throw new Error(`Failed to store onboarding answers: ${error?.message}`);
+  return inserted.id as string;
+}
+
+/** Save goals whose title isn't already saved, so a retry never duplicates. Never deletes. */
+async function saveGoalsNotYetSaved(userId: string, goals: GoalExtractionResult['goals']): Promise<DbGoal[]> {
+  const { data: existing } = await supabaseAdmin.from(Tables.GOALS).select('title').eq('user_id', userId);
+  const titles = new Set((existing ?? []).map((g: any) => String(g.title).trim().toLowerCase()));
+  const saved: DbGoal[] = [];
+  for (const goal of goals) {
+    const key = goal.title.trim().toLowerCase();
+    if (titles.has(key)) continue;
+    saved.push(await createGoal(userId, goal.title, goal.description));
+    titles.add(key);
+  }
+  return saved;
+}
+
+/**
+ * The previous path, kept so it can be switched back on
+ * (ONBOARDING_GOALS_MODE=pipeline).
+ *
+ * Synthesize onboarding goals from the FULL intelligence pipeline (not a one-shot
+ * LLM call). See git history for its original notes.
+ */
+export async function synthesizeOnboardingGoalsViaPipeline(
   userId: string,
   answersText: string
 ): Promise<{ extracted: GoalExtractionResult; savedGoals: DbGoal[] }> {
