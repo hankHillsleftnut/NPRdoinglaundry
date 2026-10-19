@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import {
   authMiddleware,
-  generateToken,
+  issueToken,
+  signOutEverywhere,
   getOrCreateUser,
   linkAuthIdentity,
   verifyProviderIdentityToken,
@@ -10,6 +11,7 @@ import {
 } from '../middleware/auth.js';
 import type { AuthIdentityInput } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
+import { authFailureFor, classifyTokenError, failureBody } from '../services/auth-errors.js';
 import { resolveFlagsForUser, EMPTY_FLAGS } from '../services/feature-flags.js';
 import { getAccountType } from '../services/accounts.js';
 import type { AuthUser } from '../types/index.js';
@@ -53,18 +55,22 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
     const validationResult = SignInSchema.safeParse(req.body);
 
     if (!validationResult.success) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid request body',
-        details: validationResult.error.errors,
-      });
+      res.status(400).json({ ...failureBody(authFailureFor('bad_request')), details: validationResult.error.errors });
       return;
     }
 
     const { appleUserId, email, identityToken } = validationResult.data;
-    const verified = await verifyAppleIdentityToken(identityToken);
+    let verified: Awaited<ReturnType<typeof verifyAppleIdentityToken>>;
+    try {
+      verified = await verifyAppleIdentityToken(identityToken);
+    } catch (verifyError) {
+      const f = classifyTokenError(verifyError, 'Apple');
+      console.error(`Sign in error (${f.code}):`, verifyError);
+      res.status(f.status).json(failureBody(f));
+      return;
+    }
     if (verified.appleUserId !== appleUserId) {
-      res.status(401).json({ success: false, error: 'Apple identity token subject mismatch' });
+      res.status(401).json(failureBody(authFailureFor('sign_in_not_confirmed', 'Apple')));
       return;
     }
 
@@ -73,7 +79,7 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
       subject: verified.appleUserId,
       email: verified.email ?? email,
     });
-    const token = generateToken(user);
+    const token = await issueToken(user);
 
     res.json({
       success: true,
@@ -81,10 +87,7 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Sign in error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to sign in',
-    });
+    res.status(500).json(failureBody(authFailureFor('server_error')));
   }
 });
 
@@ -93,15 +96,20 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
   try {
     const parsed = SignInSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({
-        success: false,
-        error: 'A fresh Apple identity token is required',
-      });
+      res.status(400).json(failureBody(authFailureFor('bad_request')));
       return;
     }
-    const verified = await verifyAppleIdentityToken(parsed.data.identityToken);
+    let verified: Awaited<ReturnType<typeof verifyAppleIdentityToken>>;
+    try {
+      verified = await verifyAppleIdentityToken(parsed.data.identityToken);
+    } catch (verifyError) {
+      const f = classifyTokenError(verifyError, 'Apple');
+      console.error(`Token refresh error (${f.code}):`, verifyError);
+      res.status(f.status).json(failureBody(f));
+      return;
+    }
     if (verified.appleUserId !== parsed.data.appleUserId) {
-      res.status(401).json({ success: false, error: 'Apple identity token subject mismatch' });
+      res.status(401).json(failureBody(authFailureFor('sign_in_not_confirmed', 'Apple')));
       return;
     }
     const user = await getOrCreateUser({
@@ -109,7 +117,7 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
       subject: verified.appleUserId,
       email: verified.email ?? parsed.data.email,
     });
-    const token = generateToken(user);
+    const token = await issueToken(user);
 
     res.json({
       success: true,
@@ -117,10 +125,19 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Token refresh error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to refresh token',
-    });
+    res.status(500).json(failureBody(authFailureFor('server_error')));
+  }
+});
+
+// POST /auth/sign-out-everywhere - End every session for this account,
+// including this one. The app signs in again afterwards.
+authRouter.post('/sign-out-everywhere', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await signOutEverywhere(req.user!.id);
+    res.json({ success: true, data: { message: 'Signed out on every device. Please sign in again.' } });
+  } catch (error) {
+    console.error('Sign out everywhere error:', error);
+    res.status(500).json(failureBody(authFailureFor('server_error')));
   }
 });
 

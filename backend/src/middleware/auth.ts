@@ -1,3 +1,4 @@
+import { authFailureFor, failureBody } from '../services/auth-errors.js';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../utils/config.js';
@@ -51,15 +52,18 @@ export async function authMiddleware(
     // Fetch user from database
     const { data: user, error } = await supabaseAdmin
       .from(Tables.USERS)
-      .select('id, apple_user_id, email, account_type')
+      .select('id, apple_user_id, email, account_type, session_epoch')
       .eq('id', payload.userId)
       .single();
 
     if (error || !user) {
-      res.status(401).json({
-        success: false,
-        error: 'User not found',
-      });
+      res.status(401).json(failureBody(authFailureFor('session_ended')));
+      return;
+    }
+
+    // "Sign out everywhere" bumped the account's epoch after this token was issued.
+    if (!sessionStillValid(payload, user)) {
+      res.status(401).json(failureBody(authFailureFor('session_ended')));
       return;
     }
 
@@ -86,7 +90,31 @@ export async function authMiddleware(
   }
 }
 
-// Generate JWT for a user
+/** A token is valid only while the account's session_epoch is the one it was issued under. */
+export function sessionStillValid(payload: { se?: number }, user: { session_epoch?: number | null }): boolean {
+  return (payload.se ?? 0) === (user.session_epoch ?? 0);
+}
+
+/** Issue a session token stamped with the account's current session_epoch. */
+export async function issueToken(user: AuthUser): Promise<string> {
+  const { data } = await supabaseAdmin.from(Tables.USERS).select('session_epoch').eq('id', user.id).single();
+  const se = Number((data as { session_epoch?: number } | null)?.session_epoch ?? 0);
+  return jwt.sign({ userId: user.id, appleUserId: user.appleUserId, se }, config.jwt.secret, {
+    expiresIn: config.jwt.expiresIn,
+  });
+}
+
+/** End every session for an account, including the one making the request. */
+export async function signOutEverywhere(userId: string): Promise<void> {
+  const { data, error } = await supabaseAdmin.from(Tables.USERS).select('session_epoch').eq('id', userId).single();
+  if (error) throw new Error(`Could not read session epoch: ${error.message}`);
+  const next = Number((data as { session_epoch?: number } | null)?.session_epoch ?? 0) + 1;
+  const { error: upd } = await supabaseAdmin.from(Tables.USERS).update({ session_epoch: next }).eq('id', userId);
+  if (upd) throw new Error(`Could not sign out everywhere: ${upd.message}`);
+}
+
+// Generate JWT for a user (kept for callers outside sign-in; prefer issueToken,
+// which stamps the session epoch so "sign out everywhere" can end it).
 export function generateToken(user: AuthUser): string {
   const payload: Omit<JWTPayload, 'iat' | 'exp'> = {
     userId: user.id,

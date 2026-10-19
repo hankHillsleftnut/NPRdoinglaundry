@@ -508,6 +508,8 @@ export interface JWTPayload {
   userId: string;
   /** DEPRECATED: only `userId` is consumed on verification. */
   appleUserId?: string;
+  /** The account's session_epoch when issued; a mismatch means signed out everywhere. */
+  se?: number;
   iat: number;
   exp: number;
 }
