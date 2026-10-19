@@ -6,6 +6,28 @@ final class FirstPodcastOrchestrator: ObservableObject {
 
     @Published private(set) var status: String = ""
 
+    /// The one first episode, shared by everything in onboarding that wants it.
+    /// The questions screen used to generate one and the finale a second, from
+    /// scratch: two full episodes (~$4) per onboarding and a 3-5 minute wait at
+    /// a fake 94% (19 October 2026). Now whoever asks first starts it; everyone
+    /// else waits on the same request or reuses the finished episode.
+    private var firstEpisodeTask: Task<PodcastEpisode, Error>?
+
+    func firstEpisode() async throws -> PodcastEpisode {
+        if let task = firstEpisodeTask { return try await task.value }
+        let task = Task { [apiClient] in
+            try await apiClient.generatePodcast(daysSince: 14, generationSource: .onboardingFirstEpisode)
+        }
+        firstEpisodeTask = task
+        do {
+            return try await task.value
+        } catch {
+            // A failed attempt shouldn't stop a later retry.
+            firstEpisodeTask = nil
+            throw error
+        }
+    }
+
     private let contextManager: OnboardingContextManager
     private let apiClient: RetrospectAPIClient
 
@@ -31,10 +53,8 @@ final class FirstPodcastOrchestrator: ObservableObject {
         try await contextManager.uploadContextForFirstPodcastIfPossible(context)
 
         status = "Creating your first Retrospect podcast..."
-        let episode = try await apiClient.generatePodcast(
-            daysSince: 14,
-            generationSource: .onboardingFirstEpisode
-        )
+        // Reuses the episode the questions screen already started, if any.
+        let episode = try await firstEpisode()
 
         let transcript = episode.toTranscriptModel()
         let persistenceViewModel = TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared)
