@@ -69,6 +69,29 @@ class RetrospectAPIClient: ObservableObject {
         return (userId: data.user.id, email: data.user.email)
     }
 
+    /// The plain-words `error` the server sends with every failure, if there is one.
+    static func plainMessage(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let message = json["error"] as? String, !message.isEmpty else { return nil }
+        return message
+    }
+
+    /// End every session for this account on every device, including this one.
+    func signOutEverywhere() async throws {
+        let _: AccountActionResponse = try await post(path: "/auth/sign-out-everywhere", body: [:])
+        signOut()
+    }
+
+    /// Delete the account and everything in it. `appleAuthorizationCode` is a fresh
+    /// code from asking the person to confirm with Apple, so the server can revoke
+    /// their Sign in with Apple link.
+    func deleteAccount(appleAuthorizationCode: String?) async throws {
+        var body: [String: Any] = [:]
+        if let code = appleAuthorizationCode { body["appleAuthorizationCode"] = code }
+        let _: AccountActionResponse = try await request(method: "DELETE", path: "/auth/account", body: body)
+        signOut()
+    }
+
     /// Sign out by clearing Keychain and local state.
     func signOut() {
         deleteKeychain(key: tokenKey)
@@ -465,12 +488,15 @@ class RetrospectAPIClient: ObservableObject {
         // Apple identity tokens cannot be refreshed from a stored subject ID.
         if response.statusCode == 401 && authenticated {
             signOut()
-            throw APIError.authFailed("Please sign in with Apple again")
+            throw APIError.authFailed(Self.plainMessage(from: data) ?? "You were signed out. Please sign in again.")
         }
 
         guard (200...299).contains(response.statusCode) else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown"
-            throw APIError.serverError("HTTP \(response.statusCode): \(errorBody)")
+            // The server explains failures in plain words; show those, never raw output.
+            throw APIError.serverError(
+                Self.plainMessage(from: data)
+                    ?? "Something went wrong on our side (\(response.statusCode)). Please try again."
+            )
         }
 
         return try JSONDecoder.apiDecoder.decode(T.self, from: data)
@@ -529,13 +555,17 @@ enum APIError: LocalizedError {
         case .invalidURL: return "Invalid URL"
         case .invalidResponse: return "Invalid response from server"
         case .notAuthenticated: return "Not authenticated"
-        case .authFailed(let msg): return "Authentication failed: \(msg)"
-        case .serverError(let msg): return "Server error: \(msg)"
+        case .authFailed(let msg): return msg
+        case .serverError(let msg): return msg
         }
     }
 }
 
 // MARK: - Response Models
+
+private struct AccountActionResponse: Codable {
+    let success: Bool
+}
 
 private struct SignInResponse: Codable {
     let success: Bool

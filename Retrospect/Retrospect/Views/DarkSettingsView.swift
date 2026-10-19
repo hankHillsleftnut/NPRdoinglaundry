@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 import LocalAuthentication
 
 struct DarkSettingsView: View {
@@ -13,6 +14,10 @@ struct DarkSettingsView: View {
     @State private var showAdvanced = false
     @State private var showAnimationPreview = false
     @State private var showIntegrationsData = false
+    @State private var showSignOutEverywhereConfirmation = false
+    @State private var showDeleteAccountConfirmation = false
+    @State private var accountActionInProgress = false
+    @State private var accountActionError: String?
     @State private var showLogoutConfirmation = false
     @State private var showBiometricUnavailableAlert = false
     @State private var showGoogleError = false
@@ -109,6 +114,14 @@ struct DarkSettingsView: View {
                         }
                     }
 
+                    // MARK: Account
+                    VStack(spacing: 10) {
+                        accountButton("Sign out of all devices") { showSignOutEverywhereConfirmation = true }
+                        accountButton("Delete my account") { showDeleteAccountConfirmation = true }
+                    }
+                    .disabled(accountActionInProgress)
+                    .padding(.top, 4)
+
                     // MARK: Log Out
                     Button(action: {
                         HapticManager.shared.playLightImpact()
@@ -151,6 +164,23 @@ struct DarkSettingsView: View {
         }
         .sheet(isPresented: $showIntegrationsData) {
             IntegrationsDataView()
+        }
+        .alert("Sign out of all devices?", isPresented: $showSignOutEverywhereConfirmation) {
+            Button("Sign out everywhere", role: .destructive) { signOutEverywhere() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every device signed in to your account, including this one, will be signed out. Your data stays.")
+        }
+        .alert("Delete your account?", isPresented: $showDeleteAccountConfirmation) {
+            Button("Delete everything", role: .destructive) { deleteAccount() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your account, your entries, your episodes and everything Retrospect has learned about you, and disconnects Google. It can't be undone. You'll confirm with Apple next.")
+        }
+        .alert("Couldn't finish", isPresented: Binding(get: { accountActionError != nil }, set: { if !$0 { accountActionError = nil } })) {
+            Button("OK", role: .cancel) { accountActionError = nil }
+        } message: {
+            Text(accountActionError ?? "")
         }
         .alert("Log Out", isPresented: $showLogoutConfirmation) {
             Button("Log Out", role: .destructive) { fullSignOut(wipeOnboarding: false) }
@@ -272,6 +302,51 @@ struct DarkSettingsView: View {
     }
 
     private func disconnectGoogle() { googleDocsService.signOut() }
+
+    private func accountButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            HapticManager.shared.playLightImpact()
+            action()
+        }) {
+            Text(title)
+                .font(FigmaLightTheme.body(15, weight: .medium))
+                .foregroundColor(Color(red: 0.85, green: 0.25, blue: 0.25))
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func signOutEverywhere() {
+        accountActionInProgress = true
+        Task {
+            do {
+                try await apiClient.signOutEverywhere()
+                await MainActor.run { accountActionInProgress = false; fullSignOut(wipeOnboarding: false) }
+            } catch {
+                await MainActor.run { accountActionInProgress = false; accountActionError = error.localizedDescription }
+            }
+        }
+    }
+
+    /// Confirm with Apple (so the server can revoke the Sign in with Apple link),
+    /// then delete. Cancelling the Apple sheet cancels the deletion.
+    private func deleteAccount() {
+        accountActionInProgress = true
+        Task {
+            do {
+                let authorization = try await AppleSignInCoordinator().signIn()
+                let code = (authorization.credential as? ASAuthorizationAppleIDCredential)?
+                    .authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+                try await apiClient.deleteAccount(appleAuthorizationCode: code)
+                await MainActor.run { accountActionInProgress = false; fullSignOut(wipeOnboarding: true) }
+            } catch let error as ASAuthorizationError where error.code == .canceled {
+                await MainActor.run { accountActionInProgress = false }
+            } catch {
+                await MainActor.run { accountActionInProgress = false; accountActionError = error.localizedDescription }
+            }
+        }
+    }
 
     /// Full sign-out that actually gates the app back to sign-in. The old bug: logout only
     /// cleared the token, but in DEBUG `hasUsableBackendAuth` also checks `devAuthBypassEnabled`,
