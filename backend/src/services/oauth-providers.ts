@@ -45,7 +45,10 @@ const google = {
 // grants all these scopes at once, so the callback fans a single token out
 // into a connection row per member instead of requiring three separate
 // user-facing connect taps.
-export const GOOGLE_COMBINED_MEMBERS = ['google_docs', 'gmail', 'youtube'] as const;
+// google_calendar joined 18 October 2026: the founder's decision that Google
+// Calendar comes in as part of the Google integration (Apple Calendar is asked
+// for separately, on the iPhone). See docs/second-brain/brief-phase-4-calendar.md.
+export const GOOGLE_COMBINED_MEMBERS = ['google_docs', 'gmail', 'youtube', 'google_calendar'] as const;
 
 const providers: Record<string, OAuthProvider> = {
   google_docs: {
@@ -69,6 +72,15 @@ const providers: Record<string, OAuthProvider> = {
     tokenAuth: 'body',
     supportsPkce: true,
   },
+  google_calendar: {
+    id: 'google_calendar',
+    ...google,
+    // Read-only. A "sensitive" Google scope: fine for up to 100 test users
+    // while the app is unverified; needs Google's review before public launch.
+    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/calendar.readonly'],
+    tokenAuth: 'body',
+    supportsPkce: true,
+  },
   google: {
     id: 'google',
     ...google,
@@ -79,6 +91,7 @@ const providers: Record<string, OAuthProvider> = {
       'https://www.googleapis.com/auth/documents.readonly',
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/calendar.readonly',
     ],
     tokenAuth: 'body',
     supportsPkce: true,
