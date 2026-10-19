@@ -122,6 +122,19 @@ struct PodcastPaywallFlow: View {
                             .background(Circle().fill(Pod.bubble))
                     }
                     Spacer()
+                    // Leaves the demo player and the rest of this onboarding
+                    // step, from any stage -- the ✕ only returns to the page
+                    // that opened the player.
+                    if let onDebugGoHome {
+                        Button { onDebugGoHome() } label: {
+                            Text("Skip →")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(Pod.mono)
+                                .padding(.horizontal, 14)
+                                .frame(height: 34)
+                                .background(Capsule().fill(Pod.bubble))
+                        }
+                    }
                 }
                 Spacer()
             }

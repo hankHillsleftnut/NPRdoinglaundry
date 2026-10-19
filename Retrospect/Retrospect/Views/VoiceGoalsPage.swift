@@ -203,6 +203,10 @@ struct VoiceGoalsPage: View {
     @State private var goalsError: Bool = false
     @State private var showPodcastFlow = false
     @State private var showPodcastLayer = false
+    /// Set once the podcast has been opened, so the page can offer a way on.
+    /// Without it the page held only "Play Podcast" and closing the player
+    /// returned here with nowhere to go.
+    @State private var hasOpenedPodcast = false
     @State private var podcastFlowSessionID = UUID()
     @State private var prefetchedEpisode: PodcastEpisode?
     @State private var podcastGenerating = false
@@ -256,6 +260,11 @@ struct VoiceGoalsPage: View {
                             showPodcastLayer = false
                             showPodcastFlow = false
                         }
+                    },
+                    onDebugGoHome: {
+                        showPodcastLayer = false
+                        showPodcastFlow = false
+                        finish()
                     }
                 )
                 .id(podcastFlowSessionID)
@@ -748,9 +757,20 @@ struct VoiceGoalsPage: View {
                     }
                 }
                 .padding(.horizontal, Self.horizontalPad)
-                .padding(.bottom, 34)
+                .padding(.bottom, hasOpenedPodcast ? 10 : 34)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
                 .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: isStreamingDone)
+
+                if hasOpenedPodcast {
+                    Button("Continue") {
+                        HapticManager.shared.playSuccessNotification()
+                        finish()
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(OnboardingStyle.primaryText.opacity(0.8))
+                    .padding(.bottom, 30)
+                    .transition(.opacity)
+                }
             } else {
                 Spacer(minLength: 100)
             }
@@ -1228,6 +1248,7 @@ struct VoiceGoalsPage: View {
     private func presentPodcast() {
         HapticManager.shared.playSuccessNotification()
         podcastFlowSessionID = UUID()
+        hasOpenedPodcast = true
         withAnimation(.easeInOut(duration: 0.34)) { showPodcastFlow = true }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 220_000_000)
