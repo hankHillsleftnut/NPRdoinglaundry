@@ -14,7 +14,9 @@ import { verifyAppleIdentityToken } from '../services/apple-auth.js';
 import { authFailureFor, classifyTokenError, failureBody } from '../services/auth-errors.js';
 import { verifyGoogleIdToken, exchangeGoogleServerAuthCode } from '../services/google-auth.js';
 import { GOOGLE_COMBINED_MEMBERS, getOAuthProvider } from '../services/oauth-providers.js';
-import { storeAgentIntegrationCredentials, requestAgentIntegrationSync } from '../services/agent-client.js';
+import { storeAgentIntegrationCredentials, requestAgentIntegrationSync, revokeAgentIntegrations } from '../services/agent-client.js';
+import { deleteAccount, revokeAppleAuthorization } from '../services/account-deletion.js';
+import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { ensureConnection } from './integrations.js';
 import { resolveFlagsForUser, EMPTY_FLAGS } from '../services/feature-flags.js';
 import { getAccountType } from '../services/accounts.js';
@@ -187,6 +189,47 @@ authRouter.post('/google', async (req: Request, res: Response) => {
     const f = classifyTokenError(error, 'Google');
     console.error('Google sign in error:', error);
     res.status(f.status).json(failureBody(f));
+  }
+});
+
+// DELETE /auth/account - Delete the account and everything in it.
+// Body: { appleAuthorizationCode? } -- a fresh code from asking the person to
+// confirm with Apple, so their Sign in with Apple link can be revoked.
+const DeleteAccountSchema = z.object({ appleAuthorizationCode: z.string().min(1).optional() });
+const AUDIO_BUCKET = 'podcast-audio';
+
+authRouter.delete('/account', authMiddleware, async (req: Request, res: Response) => {
+  const parsed = DeleteAccountSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json(failureBody(authFailureFor('bad_request')));
+    return;
+  }
+  const userId = req.user!.id;
+  try {
+    const result = await deleteAccount(userId, { appleAuthorizationCode: parsed.data.appleAuthorizationCode }, {
+      revokeGoogle: async (id) => (await revokeAgentIntegrations(id)).revoked > 0,
+      revokeApple: (code) => revokeAppleAuthorization(code),
+      removeStoredFiles: async (id) => {
+        const folder = `podcasts/${id}`;
+        const { data: files, error } = await supabaseAdmin.storage.from(AUDIO_BUCKET).list(folder, { limit: 1000 });
+        if (error) throw new Error(error.message);
+        const paths = (files ?? []).map((f) => `${folder}/${f.name}`);
+        if (paths.length > 0) {
+          const { error: rmError } = await supabaseAdmin.storage.from(AUDIO_BUCKET).remove(paths);
+          if (rmError) throw new Error(rmError.message);
+        }
+        return paths.length;
+      },
+      deleteUserRow: async (id) => {
+        const { error } = await supabaseAdmin.from(Tables.USERS).delete().eq('id', id);
+        if (error) throw new Error(error.message);
+      },
+    });
+    console.log(`[auth] account ${userId} deleted`, result);
+    res.json({ success: true, data: { ...result, message: 'Your account and everything in it has been deleted.' } });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ success: false, code: 'server_error', error: "We couldn't finish deleting your account. Please try again; your data stays until it succeeds." });
   }
 });
 

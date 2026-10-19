@@ -212,6 +212,11 @@ export function requestAgentIntegrationSync(connectionId: string, userId: string
   return callAgent<AgentQueuedJobResponse>(`/integrations/connections/${connectionId}/sync`, { userId }, 30_000);
 }
 
+/** Revoke every OAuth grant this person gave (Google etc.) -- used when deleting their account. */
+export function revokeAgentIntegrations(userId: string): Promise<{ revoked: number; failed: number }> {
+  return callAgent<{ revoked: number; failed: number }>('/integrations/accounts/revoke', { userId }, 60_000);
+}
+
 export function requestAgentIntegrationDataDeletion(connectionId: string, userId: string): Promise<AgentQueuedJobResponse> {
   return callAgent<AgentQueuedJobResponse>(`/integrations/connections/${connectionId}/delete-data`, { userId }, 30_000);
 }
