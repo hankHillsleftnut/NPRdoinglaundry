@@ -313,14 +313,16 @@ contentRouter.post('/:id/reprocess', async (req: Request, res: Response) => {
       return;
     }
 
-    // Reset status to pending
+    // Reset status to pending -- unless a run is reading it right now. Resetting
+    // a row mid-run lets a second run lease it, and both process it.
     await supabaseAdmin
       .from(Tables.RAW_CONTENT)
       .update({
         processing_status: 'pending',
         processing_error: null,
       })
-      .eq('id', content.id);
+      .eq('id', content.id)
+      .neq('processing_status', 'processing');
 
     const result = await runAgentIngest({
       userId: user.id,
