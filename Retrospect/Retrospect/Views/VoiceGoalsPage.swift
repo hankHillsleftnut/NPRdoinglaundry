@@ -1225,9 +1225,8 @@ struct VoiceGoalsPage: View {
         podcastGenerating = true
         Task {
             do {
-                let ep = try await RetrospectAPIClient.shared.generatePodcast(
-                    generationSource: .onboardingFirstEpisode
-                )
+                // Shared with the onboarding finale, so only one episode is made.
+                let ep = try await FirstPodcastOrchestrator.shared.firstEpisode()
                 await MainActor.run {
                     prefetchedEpisode = ep
                     podcastGenerating = false
