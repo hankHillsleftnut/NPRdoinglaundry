@@ -3,6 +3,7 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { runAgentIngest, getAgentOnboardingGoals } from './agent-client.js';
 import { handOffToAgent } from './agent-handoff.js';
 import type { DbGoal, GoalExtractionResult } from '../types/index.js';
+import { findSameGoal, type ExistingGoal } from './goal-dedupe.js';
 
 /*
  * =========================================================================
@@ -46,6 +47,25 @@ export async function createGoal(
     ? `${title}: ${description}`
     : title;
   const embedding = await generateEmbedding(embeddingText);
+
+  // The person may already have this goal (goal-dedupe.ts): reuse or revive it.
+  const { data: existing } = await supabaseAdmin
+    .from(Tables.GOALS)
+    .select('*')
+    .eq('user_id', userId);
+  const same = findSameGoal((existing ?? []) as ExistingGoal[], embedding);
+  if (same) {
+    const goal = same.goal as unknown as DbGoal & { status?: string };
+    if ((goal.status ?? 'active') === 'active' && goal.is_active !== false) return goal;
+    const { data: revived, error: reviveError } = await supabaseAdmin
+      .from(Tables.GOALS)
+      .update({ status: 'active', is_active: true, merged_into: null, status_reason: 'stated again', status_at: new Date().toISOString() })
+      .eq('id', goal.id)
+      .select('*')
+      .single();
+    if (!reviveError && revived) return revived as DbGoal;
+    // Revival failed (e.g. lifecycle columns not there yet): fall through to a new goal.
+  }
 
   const { data, error } = await supabaseAdmin
     .from(Tables.GOALS)
