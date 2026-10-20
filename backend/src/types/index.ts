@@ -324,6 +324,8 @@ export const UpdateGoalSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(2000).optional(),
   isActive: z.boolean().optional(),
+  // An explicit "bring this back" from the person; automatic syncs never send it.
+  revive: z.boolean().optional(),
 });
 
 export type UpdateGoalRequest = z.infer<typeof UpdateGoalSchema>;

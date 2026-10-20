@@ -4,7 +4,7 @@ import { runAgentIngest, getAgentOnboardingGoals } from './agent-client.js';
 import { handOffToAgent } from './agent-handoff.js';
 import type { DbGoal, GoalExtractionResult } from '../types/index.js';
 import { findSameGoal, type ExistingGoal } from './goal-dedupe.js';
-import { lifecycleFor } from './goal-lifecycle.js';
+import { blocksRevival, lifecycleFor } from './goal-lifecycle.js';
 
 /*
  * =========================================================================
@@ -93,8 +93,15 @@ export async function createGoal(
 export async function updateGoal(
   goalId: string,
   userId: string,
-  updates: { title?: string; description?: string; isActive?: boolean }
+  updates: { title?: string; description?: string; isActive?: boolean; revive?: boolean }
 ): Promise<DbGoal> {
+  // A merged or expired goal is revived only on purpose, never by an app sync (audit G1).
+  if (updates.isActive === true && !updates.revive) {
+    const { data: current } = await supabaseAdmin.from(Tables.GOALS).select('status').eq('id', goalId).eq('user_id', userId).maybeSingle();
+    if (blocksRevival((current as { status?: string } | null)?.status, true, false)) {
+      updates = { ...updates, isActive: undefined };
+    }
+  }
   // Build the update payload
   const payload: Record<string, unknown> = {};
   if (updates.title !== undefined) payload.title = updates.title;
@@ -115,6 +122,13 @@ export async function updateGoal(
     const newDesc = updates.description ?? existing?.description ?? '';
     const embeddingText = newDesc ? `${newTitle}: ${newDesc}` : newTitle;
     payload.embedding = await generateEmbedding(embeddingText);
+  }
+
+  // Nothing left to change (a blocked revival): return the goal as it is.
+  if (Object.keys(payload).length === 0) {
+    const { data: unchanged, error: readError } = await supabaseAdmin.from(Tables.GOALS).select('*').eq('id', goalId).eq('user_id', userId).single();
+    if (readError || !unchanged) throw new Error(`Failed to update goal: ${readError?.message}`);
+    return unchanged as DbGoal;
   }
 
   let { data, error } = await supabaseAdmin
