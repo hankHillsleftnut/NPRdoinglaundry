@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
+import { applyAgentCorrection } from '../services/agent-client.js';
+import { correctionMode } from '../services/assertion-feedback.js';
 
 export const graphRouter = Router();
 
@@ -82,14 +84,21 @@ graphRouter.post('/assertions/:assertionId/feedback', async (req, res) => {
       res.status(404).json({ success: false, error: 'Assertion not found' });
       return;
     }
-    if (parsed.data.decision === 'retire') {
-      const { error } = await supabaseAdmin.from(Tables.ASSERTIONS)
-        .update({ status: 'retired', metadata: { ...assertion.metadata, user_feedback_note: parsed.data.note ?? null } })
+    // Goal 20: "retire" (no longer true) and "contradict" (was wrong) go through the
+    // agent's correction path, which retires everything resting only on this fact
+    // and, for "contradict", keeps it from ever coming back. It no longer writes a
+    // marker copy of the fact, which stayed active and showed in search (finding 51).
+    const mode = correctionMode(parsed.data.decision);
+    if (mode) {
+      await supabaseAdmin.from(Tables.ASSERTIONS)
+        .update({ metadata: { ...assertion.metadata, user_feedback_note: parsed.data.note ?? null } })
         .eq('id', assertion.id)
         .eq('user_id', req.user!.id);
-      if (error) throw error;
+      await applyAgentCorrection({
+        userId: req.user!.id, kind: 'fact', id: assertion.id, note: parsed.data.note ?? null,
+        mode,
+      });
     } else {
-      const relationType = parsed.data.decision === 'confirm' ? 'supports' : 'contradicts';
       const { data: feedbackAssertion, error: feedbackError } = await supabaseAdmin.from(Tables.ASSERTIONS)
         .insert({
           user_id: req.user!.id,
@@ -97,7 +106,7 @@ graphRouter.post('/assertions/:assertionId/feedback', async (req, res) => {
           predicate: assertion.predicate,
           object_entity_id: assertion.object_entity_id,
           object_value: assertion.object_value,
-          assertion_kind: parsed.data.decision === 'confirm' ? 'user_confirmed' : 'contradicted',
+          assertion_kind: 'user_confirmed',
           confidence: 1,
           observed_at: new Date().toISOString(),
           status: 'active',
@@ -115,18 +124,11 @@ graphRouter.post('/assertions/:assertionId/feedback', async (req, res) => {
         user_id: req.user!.id,
         from_assertion_id: feedbackAssertion.id,
         to_assertion_id: assertion.id,
-        relation_type: relationType,
+        relation_type: 'supports',
         confidence: 1,
         metadata: { source: 'user_feedback' },
       });
       if (relationError) throw relationError;
-      if (parsed.data.decision === 'contradict') {
-        const { error } = await supabaseAdmin.from(Tables.ASSERTIONS)
-          .update({ status: 'contradicted' })
-          .eq('id', assertion.id)
-          .eq('user_id', req.user!.id);
-        if (error) throw error;
-      }
     }
 
     const inferenceId = typeof assertion.metadata?.identity_inference_id === 'string'
