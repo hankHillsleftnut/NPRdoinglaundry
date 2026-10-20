@@ -4,6 +4,7 @@ import { runAgentIngest, getAgentOnboardingGoals } from './agent-client.js';
 import { handOffToAgent } from './agent-handoff.js';
 import type { DbGoal, GoalExtractionResult } from '../types/index.js';
 import { findSameGoal, type ExistingGoal } from './goal-dedupe.js';
+import { lifecycleFor } from './goal-lifecycle.js';
 
 /*
  * =========================================================================
@@ -98,7 +99,7 @@ export async function updateGoal(
   const payload: Record<string, unknown> = {};
   if (updates.title !== undefined) payload.title = updates.title;
   if (updates.description !== undefined) payload.description = updates.description;
-  if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+  if (updates.isActive !== undefined) Object.assign(payload, lifecycleFor(updates.isActive));
 
   // Re-generate embedding if text changed
   if (updates.title !== undefined || updates.description !== undefined) {
@@ -116,7 +117,7 @@ export async function updateGoal(
     payload.embedding = await generateEmbedding(embeddingText);
   }
 
-  const { data, error } = await supabaseAdmin
+  let { data, error } = await supabaseAdmin
     .from(Tables.GOALS)
     .update(payload)
     .eq('id', goalId)
@@ -124,12 +125,20 @@ export async function updateGoal(
     .select('*')
     .single();
 
+  // A database without the lifecycle columns (agent migration 139): keep the
+  // old behaviour rather than fail the person's edit.
+  if (error?.code === '42703' && 'status' in payload) {
+    for (const k of ['status', 'status_reason', 'status_at', 'merged_into']) delete payload[k];
+    ({ data, error } = await supabaseAdmin.from(Tables.GOALS).update(payload).eq('id', goalId).eq('user_id', userId).select('*').single());
+  }
+
   if (error || !data) {
     throw new Error(`Failed to update goal: ${error?.message}`);
   }
 
   return data as DbGoal;
 }
+
 
 /**
  * Delete a goal (cascades to observations and insights).
