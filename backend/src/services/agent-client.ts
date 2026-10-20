@@ -167,6 +167,11 @@ export function generateAgentPodcast(options: {
   });
 }
 
+/** Goal 20: a correction goes through the agent, so it propagates and never comes back. */
+export function applyAgentCorrection(body: { userId: string; kind: 'fact'; id: string; note?: string | null; mode: 'wrong' | 'changed' }): Promise<{ outcome: string; retired: number }> {
+  return callAgent<{ outcome: string; retired: number }>('/corrections/confirm', body, 30_000);
+}
+
 export function processAgentIntegrationBatch(body: Record<string, unknown>): Promise<AgentIntegrationResponse> {
   return callAgent<AgentIntegrationResponse>('/integrations/process', body);
 }
