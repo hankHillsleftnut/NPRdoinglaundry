@@ -1,0 +1,18 @@
+{
+  "goal": {
+    "id": "00000000-0000-4000-8000-000000000105",
+    "title": "run a 10k",
+    "status": "off",
+    "origin": "you",
+    "statedAt": "2026-06-02T08:00:00.000Z",
+    "endedAt": "2026-10-12T19:30:00.000Z"
+  },
+  "said": {
+    "count": 9,
+    "firstOn": "2026-06-02",
+    "lastOn": "2026-09-28"
+  },
+  "didThisWeek": {
+    "items": []
+  }
+}

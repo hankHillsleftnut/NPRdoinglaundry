@@ -1,0 +1,27 @@
+{
+  "outcome": "kept",
+  "goal": {
+    "id": "00000000-0000-4000-8000-000000000104",
+    "title": "read before bed",
+    "status": "active",
+    "origin": "you",
+    "statedAt": "2026-10-21T13:06:00.000Z",
+    "card": {
+      "said": {
+        "count": 0
+      },
+      "did": {
+        "state": "tooEarly",
+        "daysIn": 0,
+        "knowMoreOn": "2026-11-04"
+      },
+      "state": "tooEarly",
+      "line": {
+        "kind": "tooEarly",
+        "text": "just started. i'll know more in two weeks.",
+        "sources": []
+      },
+      "computedAt": "2026-10-21T13:06:00.000Z"
+    }
+  }
+}

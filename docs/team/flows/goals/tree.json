@@ -1,0 +1,528 @@
+{
+ "nodes": [
+  {
+   "id": "goals",
+   "parent": null,
+   "title": "goals",
+   "plain": "see whether you're doing what you say matters",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F1",
+   "parent": "goals",
+   "title": "see what you're working toward",
+   "plain": "your goals, with how often you say and do them",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F2",
+   "parent": "goals",
+   "title": "answer retro's questions",
+   "plain": "retro asks, quoting you; one tap answers",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F3",
+   "parent": "goals",
+   "title": "everything behind one goal",
+   "plain": "one goal's words, mentions and what you did this week",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F4",
+   "parent": "goals",
+   "title": "add and rename",
+   "plain": "name a goal, or fix its words",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F5",
+   "parent": "goals",
+   "title": "turn off, and what ended",
+   "plain": "end a goal without a fuss, and bring it back",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F6",
+   "parent": "goals",
+   "title": "check-ins",
+   "plain": "a quiet goal gets one question before it fades",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.F7",
+   "parent": "goals",
+   "title": "flow test",
+   "plain": "proof the whole goals flow works",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.GL-1",
+   "parent": "goals.F1",
+   "title": "GL-1 goals",
+   "plain": "the goals tab",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.GL-2",
+   "parent": "goals.F3",
+   "title": "GL-2 one goal",
+   "plain": "one goal's page",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.GL-3",
+   "parent": "goals.F5",
+   "title": "GL-3 ended goals",
+   "plain": "the goals you ended, still there",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.GL-4",
+   "parent": "goals.F4",
+   "title": "GL-4 add a goal",
+   "plain": "the sheet for a new goal",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "goals.C29",
+   "parent": "goals.GL-1",
+   "title": "C29 goal card",
+   "plain": "one goal's card",
+   "size": null,
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "BE4.0a",
+   "parent": "goals.F1",
+   "title": "brain: said counts and the daily progress snapshot",
+   "plain": "retro counts mentions and what you did once a day",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "BE4.0b",
+   "parent": "goals.F1",
+   "title": "brain: goal progress and one-goal routes",
+   "plain": "the brain hands over each goal's counts",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0a"
+   ]
+  },
+  {
+   "id": "BE4.1a",
+   "parent": "goals.F1",
+   "title": "doors: GET /v2/goals, /ended, /:id",
+   "plain": "the app can read your goals, safely",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0b",
+    "BE0.1",
+    "BE0.2",
+    "BE0.12"
+   ]
+  },
+  {
+   "id": "BE4.1b",
+   "parent": "goals.F4",
+   "title": "doors: POST /v2/goals, PATCH /v2/goals/:id",
+   "plain": "add, rename, turn off and on, each once",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.1a"
+   ]
+  },
+  {
+   "id": "BE4.0c",
+   "parent": "goals.F3",
+   "title": "brain: not-for-this-goal verdicts",
+   "plain": "a wrongly counted thing never counts again",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE4.0b"
+   ]
+  },
+  {
+   "id": "BE4.0f",
+   "parent": "goals.F3",
+   "title": "brain: the guess for one goal",
+   "plain": "retro's one thought about a goal, only when allowed",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE1.4",
+    "BE4.0b"
+   ]
+  },
+  {
+   "id": "BE4.2",
+   "parent": "goals.F3",
+   "title": "doors: not for this goal, and GL-2's guess",
+   "plain": "correct the evidence; see the guess",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0c",
+    "BE4.0f",
+    "BE4.1a"
+   ]
+  },
+  {
+   "id": "BE4.0d",
+   "parent": "goals.F2",
+   "title": "brain: is-that-a-goal from your stated words",
+   "plain": "retro asks about goals you only mentioned",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0b"
+   ]
+  },
+  {
+   "id": "BE4.4",
+   "parent": "goals.F2",
+   "title": "door: answer retro's questions",
+   "plain": "yes / not quite reaches the server once",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0d",
+    "BE4.1b"
+   ]
+  },
+  {
+   "id": "BE4.0e",
+   "parent": "goals.F6",
+   "title": "brain: quiet goals become check-ins",
+   "plain": "a goal gone quiet gets asked about",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0d"
+   ]
+  },
+  {
+   "id": "BE4.3",
+   "parent": "goals.F6",
+   "title": "check-in push and its switch",
+   "plain": "an optional nudge at a sensible hour, saying nothing private",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE4.0e",
+    "BE2.7",
+    "BE4.4",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "PL3.5a",
+   "parent": "goals.F1",
+   "title": "goals repository and reads",
+   "plain": "goals open instantly, offline too",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL2.4",
+    "PL2.5",
+    "PL1.4",
+    "BE4.1a"
+   ]
+  },
+  {
+   "id": "PL3.5b",
+   "parent": "goals.F2",
+   "title": "goal writes through the outbox",
+   "plain": "every tap is instant and sent exactly once",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.5a",
+    "PL2.2",
+    "PL3.1c",
+    "BE4.1b",
+    "BE4.4",
+    "BE4.2"
+   ]
+  },
+  {
+   "id": "PL3.5c",
+   "parent": "goals.F4",
+   "title": "your old goals, reconciled once",
+   "plain": "goals from the current app arrive once, no ghosts",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.5b",
+    "PL2.6"
+   ]
+  },
+  {
+   "id": "PL3.5d",
+   "parent": "goals.F6",
+   "title": "check-in push: category, tap and route",
+   "plain": "a check-in tap opens the question",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.5a",
+    "PL5.1",
+    "PL5.3",
+    "BE4.3"
+   ]
+  },
+  {
+   "id": "UIG.0",
+   "parent": "goals.F1",
+   "title": "SampleGoalsData and scenarios",
+   "plain": "every goals screen in every state before real data",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T02",
+    "UI1.0"
+   ]
+  },
+  {
+   "id": "C29.1",
+   "parent": "goals.C29",
+   "title": "said/did meter row",
+   "plain": "said and did as two bars with words",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "C29.2",
+   "parent": "goals.C29",
+   "title": "goal card",
+   "plain": "the card: honest counts, nothing added",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C29.1",
+    "UIG.0"
+   ]
+  },
+  {
+   "id": "M11",
+   "parent": "goals.C29",
+   "title": "the card folds, the bar eases",
+   "plain": "answering feels settled",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C29.2",
+    "C29.3"
+   ]
+  },
+  {
+   "id": "C29.4",
+   "parent": "goals.GL-1",
+   "title": "ended row",
+   "plain": "ended goals one quiet line away",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "P16.1",
+   "parent": "goals.GL-1",
+   "title": "GL-1 layout, list and states",
+   "plain": "the goals tab in every state",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C29.2",
+    "C29.4",
+    "C17-t",
+    "C18",
+    "C39",
+    "UI0.1"
+   ]
+  },
+  {
+   "id": "P16.2",
+   "parent": "goals.GL-1",
+   "title": "GL-1 questions, toast and the fold",
+   "plain": "retro's question first; answers change the list",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P16.1",
+    "C29.3",
+    "C21-i",
+    "M11"
+   ]
+  },
+  {
+   "id": "C29.3",
+   "parent": "goals.F2",
+   "title": "question card, grey",
+   "plain": "retro asks, quoting you",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "#45",
+    "S01",
+    "#46",
+    "UIG.0",
+    "T01"
+   ]
+  },
+  {
+   "id": "C29.5",
+   "parent": "goals.GL-2",
+   "title": "goal header",
+   "plain": "the goal in your words, big",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "UIG.0",
+    "T01"
+   ]
+  },
+  {
+   "id": "P17.1",
+   "parent": "goals.GL-2",
+   "title": "GL-2 layout, said, did rows and states",
+   "plain": "one goal and what you did this week",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C29.5",
+    "C32",
+    "C17",
+    "C39"
+   ]
+  },
+  {
+   "id": "UIG.3",
+   "parent": "goals.GL-2",
+   "title": "did-row menu: not for this goal",
+   "plain": "say a row doesn't belong, undoably",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P17.1",
+    "C20",
+    "C21-i"
+   ]
+  },
+  {
+   "id": "P17.2",
+   "parent": "goals.GL-2",
+   "title": "GL-2 guess, turn off and turn back on",
+   "plain": "answer retro's thought; end a goal calmly",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P17.1",
+    "C29.3",
+    "C21-i"
+   ]
+  },
+  {
+   "id": "UIG.2",
+   "parent": "goals.F4",
+   "title": "rename on GL-2",
+   "plain": "fix a goal's words where you read them",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P17.1"
+   ]
+  },
+  {
+   "id": "UIG.1",
+   "parent": "goals.GL-4",
+   "title": "the add sheet",
+   "plain": "name a goal by talking or typing",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C19.1",
+    "#56",
+    "UIG.0"
+   ]
+  },
+  {
+   "id": "C21-i",
+   "parent": "goals.F5",
+   "title": "toast: turned off · undo",
+   "plain": "undo instead of are-you-sure",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#48"
+   ]
+  },
+  {
+   "id": "P16b",
+   "parent": "goals.GL-3",
+   "title": "the ended list",
+   "plain": "every ended goal, with when",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C29.4",
+    "#47",
+    "C17"
+   ]
+  },
+  {
+   "id": "T05b",
+   "parent": "goals.F7",
+   "title": "goals flow test",
+   "plain": "one test proves goals work end to end",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P16.2",
+    "P17.2",
+    "P16b",
+    "UIG.1",
+    "UIG.2",
+    "UIG.3"
+   ]
+  }
+ ]
+}

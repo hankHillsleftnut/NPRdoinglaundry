@@ -1,0 +1,27 @@
+{
+  "outcome": "goalCreated",
+  "goal": {
+    "id": "00000000-0000-4000-8000-000000000109",
+    "title": "call home more often",
+    "status": "active",
+    "origin": "question",
+    "statedAt": "2026-10-21T13:05:00.000Z",
+    "card": {
+      "said": {
+        "count": 3
+      },
+      "did": {
+        "state": "tooEarly",
+        "daysIn": 0,
+        "knowMoreOn": "2026-11-04"
+      },
+      "state": "tooEarly",
+      "line": {
+        "kind": "tooEarly",
+        "text": "just started. i'll know more in two weeks.",
+        "sources": []
+      },
+      "computedAt": "2026-10-21T13:05:00.000Z"
+    }
+  }
+}

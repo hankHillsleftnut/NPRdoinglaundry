@@ -1,0 +1,89 @@
+{
+  "goal": {
+    "id": "00000000-0000-4000-8000-000000000101",
+    "title": "learn the cello",
+    "description": "a lesson a week",
+    "status": "active",
+    "origin": "you",
+    "statedAt": "2026-09-01T09:12:00.000Z",
+    "card": {
+      "said": {
+        "count": 6
+      },
+      "did": {
+        "state": "counted",
+        "count": 2
+      },
+      "state": "compared",
+      "line": {
+        "kind": "pattern",
+        "text": "practice slips in weeks with late meetings.",
+        "sources": [
+          {
+            "kind": "pattern",
+            "id": "00000000-0000-4000-8000-000000000901"
+          }
+        ]
+      },
+      "computedAt": "2026-10-21T06:00:12.000Z"
+    }
+  },
+  "said": {
+    "count": 14,
+    "firstOn": "2026-09-01",
+    "lastOn": "2026-10-19"
+  },
+  "didThisWeek": {
+    "hours": 1.5,
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000501",
+        "kind": "calendar",
+        "on": "2026-10-20",
+        "text": "cello lesson",
+        "hours": 1.0
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000502",
+        "kind": "entry",
+        "on": "2026-10-18",
+        "text": "played the scale piece through without stopping",
+        "opens": {
+          "kind": "entry",
+          "id": "00000000-0000-4000-8000-000000000502"
+        }
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000503",
+        "kind": "watched",
+        "on": "2026-10-16",
+        "text": "bow hold basics for beginners"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000504",
+        "kind": "calendar",
+        "on": "2026-10-15",
+        "text": "practice room",
+        "hours": 0.5
+      }
+    ]
+  },
+  "guess": {
+    "id": "00000000-0000-4000-8000-000000000401",
+    "question": "could practice be harder to start after a long day of meetings?",
+    "framework": {
+      "name": "habit cues",
+      "source": "invented for fixtures",
+      "wonders": "what starts and stops a habit"
+    },
+    "rationale": "practice entries fall in weeks with more evening meetings.",
+    "status": "offered",
+    "restsOn": [
+      {
+        "kind": "pattern",
+        "id": "00000000-0000-4000-8000-000000000901",
+        "text": "practice slips in weeks with late meetings."
+      }
+    ]
+  }
+}
