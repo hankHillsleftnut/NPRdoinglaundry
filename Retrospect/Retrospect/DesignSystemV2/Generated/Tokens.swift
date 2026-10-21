@@ -562,6 +562,20 @@ public enum RDimension {
     public static let radiusPopover: CGFloat = 22
     /// The input card: concentric with its 40pt wells at 12pt inset (28 − 12 = 16 … wells are round).
     public static let radiusComposer: CGFloat = 28
+    /// Drag a sheet down this far, or flick faster than dismissVelocity, and it closes.
+    public static let motionGestureDismissDistance: CGFloat = 140
+    /// A menu or sheet arriving is blurred this much and sharpens as it settles.
+    public static let motionBlurEnter: CGFloat = 8
+    /// How far an appearing item rises into place.
+    public static let motionAppearRise: CGFloat = 8
+    /// Blur an appearing item sharpens from.
+    public static let motionAppearBlurFrom: CGFloat = 8
+    /// Horizontal travel of an error shake (three oscillations on snappy).
+    public static let motionShakeDistance: CGFloat = 6
+    /// Ambient drift of toasts and nodes (§7). Never more than 3pt.
+    public static let motionLifeFloatAmplitude: CGFloat = 2
+    /// Most a tile lags behind the scroll.
+    public static let motionScrollLagMaxOffset: CGFloat = 6
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
@@ -694,8 +708,32 @@ public enum RNumber {
     public static let motionDurationPopoverExit: Double = 0.11
     /// The tapped title dims before the menu appears, so the press registers first.
     public static let motionDurationSourceDim: Double = 0.066
+    /// A control while pressed.
+    public static let motionScalePress: Double = 0.98
+    /// Where things grow from as they appear.
+    public static let motionScaleEnter: Double = 0.97
+    /// The screen behind a sheet shrinks to this as the sheet rises (and back as it is dragged down).
+    public static let motionScaleBehindSheet: Double = 0.94
+    /// The thumb grows while you hold it, so your finger never hides it.
+    public static let motionScaleScrubThumb: Double = 1.6
+    /// Where a menu grows from (and shrinks back to), anchored at its source.
+    public static let motionScalePopoverFrom: Double = 0.86
+    /// Press scale for small controls (pills, icon buttons); large things use press (0.98).
+    public static let motionScalePressSmall: Double = 0.94
     /// Delay between elements arriving in sequence.
     public static let motionStagger: Double = 0.06
+    /// Points per second that count as a flick down.
+    public static let motionGestureDismissVelocity: Double = 800
+    /// How much a sheet resists being pulled up past its top (iOS-like).
+    public static let motionGestureRubberBand: Double = 0.55
+    /// One full float cycle. Never under 4s.
+    public static let motionLifeFloatPeriod: Double = 5
+    /// Ambient motion resumes this long after the last touch.
+    public static let motionLifeResumeAfter: Double = 4
+    /// Most a tile tilts, in degrees, while the list moves.
+    public static let motionScrollLagMaxTilt: Double = 1.5
+    /// Stagger at most this many items; the rest arrive together.
+    public static let motionStaggerMax: Double = 6
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.

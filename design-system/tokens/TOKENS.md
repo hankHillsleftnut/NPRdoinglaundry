@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**521 tokens** · 445 semantic · 276 marked *to set*
+**531 tokens** · 455 semantic · 276 marked *to set*
 
 ## palette
 
@@ -488,6 +488,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.scale.behindSheet` | The screen behind a sheet shrinks to this as the sheet rises (and back as it is dragged down). | 0.94 |  | to set: choreography |
 | `motion.scale.scrubThumb` | The thumb grows while you hold it, so your finger never hides it. | 1.6 |  | to set: choreography |
 | `motion.scale.popoverFrom` | Where a menu grows from (and shrinks back to), anchored at its source. | 0.86 |  | to set: from the title-menu recording (20 Oct) |
+| `motion.scale.pressSmall` | Press scale for small controls (pills, icon buttons); large things use press (0.98). | 0.94 |  | motion-and-transitions.md · Touch |
 | `motion.stagger` | Delay between elements arriving in sequence. | 60ms |  | to set |
 | `motion.reduced` | What every motion becomes with Reduce Motion on. | opacity-only, 140ms |  | to set |
 | `motion.spring.map` | Nodes settling after a drag or a zoom. | {"response":0.45,"dampingFraction":0.8} |  | to set: app need |
@@ -502,6 +503,15 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.gesture.dismissVelocity` | Points per second that count as a flick down. | 800 |  | to set: choreography |
 | `motion.gesture.rubberBand` | How much a sheet resists being pulled up past its top (iOS-like). | 0.55 |  | to set: choreography |
 | `motion.blur.enter` | A menu or sheet arriving is blurred this much and sharpens as it settles. | 8pt |  | to set: from the title-menu recording (20 Oct) |
+| `motion.appear.rise` | How far an appearing item rises into place. | 8pt |  | founder 21 Oct: motion-system.md |
+| `motion.appear.blurFrom` | Blur an appearing item sharpens from. | 8pt |  | founder 21 Oct: motion-system.md |
+| `motion.shake.distance` | Horizontal travel of an error shake (three oscillations on snappy). | 6pt |  | founder 21 Oct: motion-system.md |
+| `motion.life.floatAmplitude` | Ambient drift of toasts and nodes (§7). Never more than 3pt. | 2pt |  | founder 21 Oct: motion-system.md |
+| `motion.life.floatPeriod` | One full float cycle. Never under 4s. | 5000ms |  | founder 21 Oct: motion-system.md |
+| `motion.life.resumeAfter` | Ambient motion resumes this long after the last touch. | 4000ms |  | founder 21 Oct: motion-system.md |
+| `motion.scrollLag.maxOffset` | Most a tile lags behind the scroll. | 6pt |  | founder 21 Oct: motion-system.md |
+| `motion.scrollLag.maxTilt` | Most a tile tilts, in degrees, while the list moves. | 1.5 |  | founder 21 Oct: motion-system.md |
+| `motion.staggerMax` | Stagger at most this many items; the rest arrive together. | 6 |  | founder 21 Oct: motion-system.md |
 
 ## haptic
 
