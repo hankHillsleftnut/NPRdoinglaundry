@@ -6,6 +6,7 @@
 //  never branch on it.
 //
 import SwiftUI
+import UIKit
 
 // MARK: - Press
 
@@ -148,12 +149,58 @@ extension EnvironmentValues {
     }
 }
 
+/// Notes every touch on the window without taking part in gesture recognition, so
+/// buttons, pickers and scroll views keep working (a full-screen DragGesture did not).
+private final class TouchObserver: UIGestureRecognizer {
+    var onTouch: (() -> Void)?
+
+    override func touchesBegan(_: Set<UITouch>, with _: UIEvent) {
+        onTouch?()
+        state = .failed
+    }
+}
+
+/// Installs the observer when its host view joins a window and removes it when it leaves,
+/// so it never misses the window (an async lookup could run before the view had one).
+private final class TouchObserverHostView: UIView {
+    let observer = TouchObserver()
+
+    override func willMove(toWindow newWindow: UIWindow?) {
+        super.willMove(toWindow: newWindow)
+        observer.view?.removeGestureRecognizer(observer)
+        newWindow?.addGestureRecognizer(observer)
+    }
+}
+
+private struct TouchObserverInstaller: UIViewRepresentable {
+    let onTouch: () -> Void
+
+    func makeUIView(context _: Context) -> TouchObserverHostView {
+        let view = TouchObserverHostView()
+        view.isUserInteractionEnabled = false
+        view.observer.cancelsTouchesInView = false
+        view.observer.delaysTouchesBegan = false
+        view.observer.delaysTouchesEnded = false
+        view.observer.onTouch = onTouch
+        return view
+    }
+
+    func updateUIView(_ view: TouchObserverHostView, context _: Context) {
+        view.observer.onTouch = onTouch
+    }
+}
+
 private struct RLifeHost: ViewModifier {
     @State private var lastTouch: Date = .distantPast
     func body(content: Content) -> some View {
         content
             .environment(\.rLastTouch, lastTouch)
-            .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in lastTouch = Date() })
+            .background(TouchObserverInstaller {
+                let now = Date()
+                if now.timeIntervalSince(lastTouch) > 1 {
+                    lastTouch = now
+                }
+            })
     }
 }
 
@@ -174,14 +221,12 @@ private struct RFloat: ViewModifier {
                 let t = context.date.timeIntervalSince(start) / RNumber.motionLifeFloatPeriod
                 content.offset(y: RDimension.motionLifeFloatAmplitude * strength * sin((t + phase) * 2 * .pi))
             }
-            .onChange(of: lastTouch) { _, _ in
+            // task(id:) cancels the previous wait on each new touch, so only the last one resumes.
+            .task(id: lastTouch) {
+                guard lastTouch != .distantPast else { return }
                 withAnimation(RMotion.standard(RNumber.motionDurationSlow)) { strength = 0 }
-                Task {
-                    try? await Task.sleep(for: .seconds(RNumber.motionLifeResumeAfter))
-                    if Date().timeIntervalSince(lastTouch) >= RNumber.motionLifeResumeAfter {
-                        withAnimation(RMotion.gentle) { strength = 1 }
-                    }
-                }
+                do { try await Task.sleep(for: .seconds(RNumber.motionLifeResumeAfter)) } catch { return }
+                withAnimation(RMotion.gentle) { strength = 1 }
             }
         }
     }
