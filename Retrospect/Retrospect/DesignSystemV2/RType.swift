@@ -1,0 +1,97 @@
+//
+//  RType.swift
+//  The type roles used in the approved Paper screens (design-system/tokens: --font-*, --text-*,
+//  --tracking-*, --leading-*). Hand-built because type composites don't generate cleanly:
+//  every size, tracking and leading value comes from RDimension / the token table below.
+//
+import SwiftUI
+
+/// Font families, by their token names. PostScript names were read from the font files.
+enum RFamily {
+    /// --font-display: Hedvig Letters Serif.
+    static let display = "HedvigLettersSerif-24ptRegular"
+    /// --font-label: Geist.
+    static func label(_ weight: Font.Weight) -> String {
+        switch weight {
+        case .medium: return "Geist-Medium"
+        case .semibold, .bold: return "Geist-SemiBold"
+        default: return "Geist-Regular"
+        }
+    }
+}
+
+/// One text role: family, size, tracking (em) and leading (multiple of size), as in Paper.
+struct RTextStyle {
+    enum Family { case inky(axis: Int), display, text, label, mono }
+
+    let family: Family
+    let size: CGFloat
+    let weight: Font.Weight
+    let tracking: CGFloat   // em
+    let leading: CGFloat    // line height ÷ size
+    let relativeTo: Font.TextStyle
+
+    var font: Font {
+        switch family {
+        case .inky(let axis):
+            // --font-weight-ink-title / -ink-card select an Exposure axis, not a weight
+            return .custom(ExposureFont.postScriptName(axis: axis, italic: false), size: size, relativeTo: relativeTo)
+        case .display:
+            return .custom(RFamily.display, size: size, relativeTo: relativeTo)
+        case .label:
+            return .custom(RFamily.label(weight), size: size, relativeTo: relativeTo)
+        case .text:
+            return .system(size: size, weight: weight)
+        case .mono:
+            return .system(size: size, weight: weight, design: .monospaced).monospacedDigit()
+        }
+    }
+}
+
+extension RTextStyle {
+    // Exposure axes: --font-weight-ink-title → exposure.title (−20), ink-card → exposure.card (−10)
+    static let inkHero = RTextStyle(family: .inky(axis: -20), size: RDimension.fontSizeHero, weight: .regular, tracking: -0.04, leading: 1.1, relativeTo: .largeTitle)
+    /// Screen titles and the onboarding question (--text-3xl, ink title).
+    static let inkTitle = RTextStyle(family: .inky(axis: -20), size: RDimension.fontSize3xl, weight: .regular, tracking: -0.035, leading: 1.1, relativeTo: .largeTitle)
+    /// Card headlines and quotes (--text-xl, ink card).
+    static let inkCard = RTextStyle(family: .inky(axis: -10), size: RDimension.fontSizeXl, weight: .regular, tracking: -0.02, leading: 1.1, relativeTo: .title2)
+    /// Sheet titles ("sign out?") and section display lines (--font-display, --text-2xl).
+    static let displayTitle = RTextStyle(family: .display, size: RDimension.fontSize2xl, weight: .regular, tracking: -0.035, leading: 1.1, relativeTo: .title)
+
+    /// Reading text: messages, transcripts (--text-body, leading normal).
+    static let bodyReading = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .regular, tracking: -0.02, leading: 1.45, relativeTo: .body)
+    /// Controls and row titles (--text-body, leading snug).
+    static let body = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .body)
+    static let bodyMedium = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .body)
+    static let buttonLabel = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .semibold, tracking: 0, leading: 1.3, relativeTo: .body)
+    /// Supporting lines (--text-md).
+    static let textMd = RTextStyle(family: .text, size: RDimension.fontSizeMd, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .subheadline)
+    static let textMdMedium = RTextStyle(family: .text, size: RDimension.fontSizeMd, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .subheadline)
+
+    /// Geist labels: metadata, section labels, pills (founder 20 Oct: Geist for labels, mono only for figures).
+    static let label = RTextStyle(family: .label, size: RDimension.fontSizeSm, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .caption)
+    static let labelMedium = RTextStyle(family: .label, size: RDimension.fontSizeSm, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .caption)
+    static let pill = RTextStyle(family: .label, size: RDimension.fontSizeMd, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .subheadline)
+    /// Tab bar labels (--text-xs, --tracking-label).
+    static let tab = RTextStyle(family: .label, size: RDimension.fontSizeXs, weight: .regular, tracking: 0.01, leading: 1.3, relativeTo: .caption2)
+    static let tabSelected = RTextStyle(family: .label, size: RDimension.fontSizeXs, weight: .medium, tracking: 0.01, leading: 1.3, relativeTo: .caption2)
+
+    /// Figures only: times, counts, "1 of 3".
+    static let figure = RTextStyle(family: .mono, size: RDimension.fontSizeXs, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .caption2)
+}
+
+private struct RTextModifier: ViewModifier {
+    let style: RTextStyle
+    func body(content: Content) -> some View {
+        content
+            .font(style.font)
+            .tracking(style.tracking * style.size)
+            // SwiftUI's default line height is about 1.2× the size; add the rest as spacing
+            .lineSpacing(max(0, (style.leading - 1.2) * style.size))
+    }
+}
+
+extension View {
+    /// Applies one of the approved text roles.
+    func rText(_ style: RTextStyle) -> some View { modifier(RTextModifier(style: style)) }
+}
