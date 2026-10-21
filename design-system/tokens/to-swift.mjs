@@ -44,7 +44,7 @@ const num = (v) => {
 };
 const f = (x) => (+x.toFixed(4)).toString();
 
-const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], skipped = [];
+const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], artwork = [], skipped = [];
 (function walk(o, path) {
   if (!o || typeof o !== 'object') return;
   if ('$value' in o) {
@@ -58,6 +58,17 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
     } else if (type === 'dimension' && /^(space|size|radius|layout|font\.size|motion\.)/.test(path)) {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : dims.push({ name, n, doc: o.$description });
+    } else if (type === 'gradient' && /^gradient\.mesh/.test(path) && typeof o.$value === 'string' && o.$value.startsWith('base ')) {
+      // "base #hex; blob #hex at X% Y% r R% (alpha A→0); …; grain N%"
+      const v = o.$value;
+      const base = v.match(/base (#[0-9a-f]{6})/i)?.[1];
+      const blobs = [...v.matchAll(/blob (#[0-9a-f]{6}) at (\d+)% (\d+)% r (\d+)%(?:[^;]*?alpha \.?(\d*\.?\d+)→0)?/gi)].map((m) => ({
+        hex: m[1], x: +m[2] / 100, y: +m[3] / 100, r: +m[4] / 100,
+        a: m[5] === undefined ? 1 : (m[5].startsWith('.') ? +('0' + m[5]) : (+m[5] > 1 ? +('0.' + m[5]) : +m[5])),
+      }));
+      const grain = +(v.match(/grain (\d+(?:\.\d+)?)%/)?.[1] ?? 0) / 100;
+      if (base && blobs.length) artwork.push({ name: camel(path.slice('gradient.mesh'.length).replace(/^./, (c) => c.toLowerCase())), base, blobs, grain, doc: o.$description });
+      else skipped.push(path);
     } else if (type === 'spring' && /^motion\.spring\./.test(path)) {
       const v = o.$value;
       springs.push({ name: camel(path.slice('motion.spring.'.length)), r: v.response, d: v.dampingFraction, doc: o.$description });
@@ -65,7 +76,7 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       curves.push({ name: camel(path.slice('motion.curve.'.length)), p: o.$value, doc: o.$description });
     } else if (type === 'string' && /^haptic\./.test(path)) {
       haptics.push({ name: camel(path.slice('haptic.'.length)), v: String(o.$value), doc: o.$description });
-    } else if ((type === 'number' && /^(opacity|layer|motion\.)/.test(path)) || type === 'duration') {
+    } else if ((type === 'number' && /^(opacity|layer|motion\.|radius\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });
     } else skipped.push(path);
@@ -75,6 +86,7 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
 })(T, '');
 
 const doc = (d) => (d ? `    /// ${String(d).replace(/\n/g, ' ')}\n` : '');
+const hexColor = (h) => { const [r, g, b] = rgba(h); return `Color(red: ${f(r)}, green: ${f(g)}, blue: ${f(b)})`; };
 const ui = ([r, g, b, a]) => `UIColor(red: ${f(r)}, green: ${f(g)}, blue: ${f(b)}, alpha: ${f(a)})`;
 // haptic token value → SwiftUI SensoryFeedback (typeOn's intensity is handled by RHaptic.typeOn())
 const feedback = (v) => {
@@ -119,6 +131,11 @@ const lines = [
   ...curves.map((c) => `${doc(c.doc)}    public static func ${c.name}(_ duration: Double) -> Animation { .timingCurve(${c.p.map(f).join(', ')}, duration: duration) }`),
   '}',
   '',
+  '/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: blobs fading in alpha over a base, plus grain).',
+  'public enum RArtworkRecipes {',
+  ...artwork.map((a) => `${doc(a.doc)}    public static let ${a.name} = RArtworkRecipe(base: ${hexColor(a.base)}, blobs: [${a.blobs.map((b) => `.init(color: ${hexColor(b.hex)}, x: ${f(b.x)}, y: ${f(b.y)}, radius: ${f(b.r)}, alpha: ${f(b.a)})`).join(', ')}], grain: ${f(a.grain)})`),
+  '}',
+  '',
   '/// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.',
   'public enum RHaptic {',
   ...haptics.filter((h) => feedback(h.v)).map((h) => `${doc(h.doc)}    public static let ${h.name}: SensoryFeedback = ${feedback(h.v)}`),
@@ -131,4 +148,4 @@ const lines = [
   '',
 ];
 writeFileSync(out, lines.join('\n'));
-console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);
+console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics, ${artwork.length} artworks; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);

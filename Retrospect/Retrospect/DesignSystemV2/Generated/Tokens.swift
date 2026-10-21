@@ -622,6 +622,18 @@ public enum RMotion {
     public static func move(_ duration: Double) -> Animation { .timingCurve(0.65, 0, 0.35, 1, duration: duration) }
 }
 
+/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: blobs fading in alpha over a base, plus grain).
+public enum RArtworkRecipes {
+    /// Episode artwork: morning. Sky with a warm paper glow rising in one corner, never a ramp from sky to beige.
+    public static let morning = RArtworkRecipe(base: Color(red: 0.1843, green: 0.6588, blue: 0.9412), blobs: [.init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.18, y: 0, radius: 0.7, alpha: 1), .init(color: Color(red: 0.1216, green: 0.4902, blue: 0.7294), x: 1, y: 1, radius: 0.8, alpha: 1), .init(color: Color(red: 0.9686, green: 0.9529, blue: 0.9333), x: 0, y: 1, radius: 0.55, alpha: 0.55)], grain: 0.06)
+    /// Episode artwork: evening. Deep sky with low amber light.
+    public static let evening = RArtworkRecipe(base: Color(red: 0.1216, green: 0.4902, blue: 0.7294), blobs: [.init(color: Color(red: 0.949, green: 0.7216, blue: 0.2941), x: 0.85, y: 0.15, radius: 0.55, alpha: 0.7), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.8, alpha: 1), .init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.3, y: 0.2, radius: 0.4, alpha: 0.5)], grain: 0.06)
+    /// Episode artwork: a quiet week. Paper with a breath of sky.
+    public static let quiet = RArtworkRecipe(base: Color(red: 0.9373, green: 0.9255, blue: 0.9059), blobs: [.init(color: Color(red: 0.702, green: 0.8824, blue: 1), x: 0.8, y: 0.1, radius: 0.6, alpha: 0.8), .init(color: Color(red: 0.8941, green: 0.8588, blue: 0.8078), x: 0.1, y: 0.9, radius: 0.7, alpha: 1), .init(color: Color(red: 1, green: 1, blue: 1), x: 0.3, y: 0.2, radius: 0.35, alpha: 0.7)], grain: 0.05)
+    /// Episode artwork: the weekly episode. Night with low amber and a red ember, as drawn on the approved mini-player (ON-11, PC-1).
+    public static let weekly = RArtworkRecipe(base: Color(red: 0.2275, green: 0.2196, blue: 0.2039), blobs: [.init(color: Color(red: 1, green: 0.7843, blue: 0.3608), x: 0.88, y: 0.08, radius: 0.9, alpha: 1), .init(color: Color(red: 0.9412, green: 0.3922, blue: 0.3686), x: 0.3, y: 0.3, radius: 0.75, alpha: 0.55), .init(color: Color(red: 0.7176, green: 0.4745, blue: 0.1216), x: 0.7, y: 0.8, radius: 0.9, alpha: 0.75), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.85, alpha: 1), .init(color: Color(red: 0.9843, green: 0.9412, blue: 0.8549), x: 0.78, y: 0.16, radius: 0.33, alpha: 0.75)], grain: 0.06)
+}
+
 /// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.
 public enum RHaptic {
     /// Choosing between options.
@@ -664,6 +676,8 @@ public enum RHaptic {
 
 /// Opacities, layers and durations (seconds).
 public enum RNumber {
+    /// Artwork corner radius as a share of its size.
+    public static let radiusArtworkRatio: Double = 0.2
     /// Taps and toggles.
     public static let motionDurationInstant: Double = 0.08
     /// Small state changes.
