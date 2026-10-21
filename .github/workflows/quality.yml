@@ -25,21 +25,29 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  ios:
-    runs-on: macos-latest
-    # macOS runners are scarce (GitHub capacity): build only when app code or the project changed.
+  changes:
+    # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
+    # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained).
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.changed.outputs.app }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Did app code change?
-        id: changed
+      - id: changed
         run: |
           base="${{ github.event.pull_request.base.sha }}"
           if [ -z "$base" ] || git diff --name-only "$base" HEAD | grep -qE '^Retrospect/'; then
             echo "app=true" >> "$GITHUB_OUTPUT"
           else
-            echo "app=false" >> "$GITHUB_OUTPUT"; echo "No app changes: skipping the iOS build."
+            echo "app=false" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.changed.outputs.app == 'true'
-        run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
