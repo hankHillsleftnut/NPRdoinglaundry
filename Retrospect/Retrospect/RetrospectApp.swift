@@ -147,7 +147,7 @@ struct RetrospectApp: App {
             ZStack {
                 if isDesignLabMode {
                     #if DEBUG
-                    RFoundationGallery()
+                    RDesignLab()
                     #endif
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG

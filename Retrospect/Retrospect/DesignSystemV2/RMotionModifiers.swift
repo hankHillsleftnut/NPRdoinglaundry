@@ -139,9 +139,30 @@ extension View {
 
 // MARK: - Life (ambient float)
 
+private struct RLastTouchKey: EnvironmentKey { static let defaultValue: Date = .distantPast }
+extension EnvironmentValues {
+    /// When the person last touched the screen. Set once at the root with `.rLifeHost()`.
+    var rLastTouch: Date {
+        get { self[RLastTouchKey.self] }
+        set { self[RLastTouchKey.self] = newValue }
+    }
+}
+
+private struct RLifeHost: ViewModifier {
+    @State private var lastTouch: Date = .distantPast
+    func body(content: Content) -> some View {
+        content
+            .environment(\.rLastTouch, lastTouch)
+            .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in lastTouch = Date() })
+    }
+}
+
 private struct RFloat: ViewModifier {
     let phase: Double
     @State private var start = Date()
+    /// Eases to 0 while the person is touching, back to 1 after motion.life.resumeAfter.
+    @State private var strength: CGFloat = 1
+    @Environment(\.rLastTouch) private var lastTouch
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
@@ -151,7 +172,16 @@ private struct RFloat: ViewModifier {
         } else {
             TimelineView(.animation) { context in
                 let t = context.date.timeIntervalSince(start) / RNumber.motionLifeFloatPeriod
-                content.offset(y: RDimension.motionLifeFloatAmplitude * sin((t + phase) * 2 * .pi))
+                content.offset(y: RDimension.motionLifeFloatAmplitude * strength * sin((t + phase) * 2 * .pi))
+            }
+            .onChange(of: lastTouch) { _, _ in
+                withAnimation(RMotion.standard(RNumber.motionDurationSlow)) { strength = 0 }
+                Task {
+                    try? await Task.sleep(for: .seconds(RNumber.motionLifeResumeAfter))
+                    if Date().timeIntervalSince(lastTouch) >= RNumber.motionLifeResumeAfter {
+                        withAnimation(RMotion.gentle) { strength = 1 }
+                    }
+                }
             }
         }
     }
@@ -159,7 +189,11 @@ private struct RFloat: ViewModifier {
 
 extension View {
     /// Ambient drift (§7): 2pt on a 5s sine. One per screen at most. Give neighbours different phases.
+    /// Stills while the person touches the screen (needs `.rLifeHost()` at the root).
     func rFloat(phase: Double = 0) -> some View { modifier(RFloat(phase: phase)) }
+
+    /// Put once at the app's root so ambient motion knows when the person is touching.
+    func rLifeHost() -> some View { modifier(RLifeHost()) }
 }
 
 // MARK: - Scroll lag (tiles)
