@@ -29,11 +29,18 @@ claudeRouter.post('/generate', async (req: Request, res: Response) => {
     const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
       max_tokens: guard.maxTokens,
-      messages: guard.messages,
+      messages: guard.messages as Anthropic.MessageParam[],
     };
     if (guard.system) params.system = guard.system;
 
-    const message = await getClient().messages.create(params);
+    let message: Anthropic.Message;
+    try {
+      message = await getClient().messages.create(params);
+    } catch (providerError) {
+      // The provider failed: give the call back so an outage doesn't use up quota.
+      callLog.refund(req.user!.id, guard.at);
+      throw providerError;
+    }
     const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
     res.json({ success: true, data: { text } });
   } catch (err) {

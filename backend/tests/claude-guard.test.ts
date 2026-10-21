@@ -30,9 +30,19 @@ test('the daily cap holds even when spread across hours', () => {
   assert.equal(allowed, CLAUDE_LIMITS.perDay);
 });
 
-test('only plain user/assistant text turns get through', () => {
-  const bad = guardClaudeRequest('a', { messages: [{ role: 'user', content: [{ type: 'image' }] }] }, new CallLog());
-  assert.equal(!bad.ok && bad.status, 400);
+test('journal image analysis (text + base64 image blocks) still works', () => {
+  const r = guardClaudeRequest('a', { messages: [{ role: 'user', content: [
+    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' } },
+    { type: 'text', text: 'describe' },
+  ] }] }, new CallLog());
+  assert.equal(r.ok, true);
+});
+
+test('only user/assistant turns with text or base64 images get through', () => {
+  const tool = guardClaudeRequest('a', { messages: [{ role: 'user', content: [{ type: 'tool_use', id: 'x' }] }] }, new CallLog());
+  assert.equal(!tool.ok && tool.status, 400);
+  const url = guardClaudeRequest('a', { messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'url', url: 'http://x' } }] }] }, new CallLog());
+  assert.equal(!url.ok && url.status, 400);
   const sys = guardClaudeRequest('a', { messages: [{ role: 'system', content: 'x' }] }, new CallLog());
   assert.equal(!sys.ok && sys.status, 400);
 });
@@ -42,4 +52,22 @@ test('oversized input is refused and output is capped', () => {
   assert.equal(!big.ok && big.status, 413);
   const capped = guardClaudeRequest('a', { userMessage: 'hi', maxTokens: 999_999 }, new CallLog());
   assert.equal(capped.ok && capped.maxTokens, CLAUDE_LIMITS.maxOutputTokens);
+});
+
+test('a provider failure gives the call back', () => {
+  const log = new CallLog();
+  const now = 3_000_000_000_000;
+  for (let i = 0; i < CLAUDE_LIMITS.perHour - 1; i++) guardClaudeRequest('a', ok, log, now + i);
+  const last = guardClaudeRequest('a', ok, log, now + 50);
+  assert.equal(last.ok, true);
+  log.refund('a', now + 50);
+  assert.equal(guardClaudeRequest('a', ok, log, now + 60).ok, true, 'the refunded slot is usable again');
+});
+
+test('users idle for a day are forgotten', () => {
+  const log = new CallLog();
+  const now = 4_000_000_000_000;
+  guardClaudeRequest('a', ok, log, now);
+  guardClaudeRequest('b', ok, log, now + 25 * 3_600_000);
+  assert.equal(log.size(), 1);
 });
