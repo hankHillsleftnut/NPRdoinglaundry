@@ -64,7 +64,7 @@ private struct RPillBody: ViewModifier {
     func body(content: Content) -> some View {
         switch style {
         case .neutral:
-            content.background(pressed ? RColor.surfaceWashPressed : RColor.surfaceWash, in: Capsule())
+            content.background(pressed ? RColor.surfaceWashPressed : RColor.surfaceWash, in: RShape.pill)
         case .raised, .action:
             content.rSecondary(pressed: pressed)
         }
