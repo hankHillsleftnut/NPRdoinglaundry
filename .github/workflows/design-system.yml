@@ -1,0 +1,23 @@
+name: design system
+on:
+  pull_request:
+    paths:
+      - 'design-system/**'
+      - 'Retrospect/Retrospect/DesignSystemV2/**'
+      - 'Retrospect/Retrospect/Features/**'
+jobs:
+  tokens-and-literals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Tokens validate
+        run: node design-system/tokens/validate.mjs
+      - name: Generated Swift is up to date
+        run: |
+          node design-system/tokens/to-swift.mjs
+          git diff --exit-code Retrospect/Retrospect/DesignSystemV2/Generated/Tokens.swift
+      - name: No raw colours, sizes, springs or haptics in new-design Swift
+        run: node design-system/tools/check-swift-literals.mjs
