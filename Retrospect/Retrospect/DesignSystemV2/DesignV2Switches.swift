@@ -35,8 +35,12 @@ enum DesignV2 {
 
     /// Is the new design on for this screen in this build?
     static func isOn(_ screen: DesignV2Screen) -> Bool {
-        if liveForEveryone.contains(screen) { return true }
-        if let forced = override(for: screen) { return forced }
+        if liveForEveryone.contains(screen) {
+            return true
+        }
+        if let forced = override(for: screen) {
+            return forced
+        }
         return isDebugOrTestFlight
     }
 
@@ -44,8 +48,12 @@ enum DesignV2 {
     /// `designV2.<code>` in UserDefaults to true/false for one screen.
     private static func override(for screen: DesignV2Screen) -> Bool? {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-DesignV2Off") { return false }
-        if let value = UserDefaults.standard.object(forKey: "designV2.\(screen.rawValue)") as? Bool { return value }
+        if ProcessInfo.processInfo.arguments.contains("-DesignV2Off") {
+            return false
+        }
+        if let value = UserDefaults.standard.object(forKey: "designV2.\(screen.rawValue)") as? Bool {
+            return value
+        }
         #endif
         return nil
     }
