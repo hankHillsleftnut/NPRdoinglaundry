@@ -9,23 +9,40 @@ import SwiftUI
 #if DEBUG
 // A debug lab: (name, animation, values) rows read better as tuples here.
 // swiftlint:disable large_tuple
+/// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
+enum RLabPage: String, CaseIterable, Identifiable {
+    case motion, foundation, parts
+
+    var id: String {
+        rawValue
+    }
+
+    static var launch: RLabPage {
+        UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
+    }
+}
+
 struct RDesignLab: View {
-    @State private var page = 0
+    @State private var page = RLabPage.launch
 
     var body: some View {
         VStack(spacing: 0) {
             Picker("lab", selection: $page) {
-                Text("motion").tag(0)
-                Text("foundation").tag(1)
-                Text("parts").tag(2)
+                ForEach(RLabPage.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, RDimension.spaceScreenMargin)
             .padding(.vertical, RDimension.space2)
-            if page == 0 {
-                RMotionLab()
-            } else {
-                RFoundationGallery()
+            switch page {
+            case .motion: RMotionLab()
+            case .foundation: RFoundationGallery()
+            case .parts:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: RDimension.space8) {
+                        RParts1Gallery()
+                        RParts2Gallery()
+                    }
+                }
             }
         }
         .background(RColor.backgroundCanvas)

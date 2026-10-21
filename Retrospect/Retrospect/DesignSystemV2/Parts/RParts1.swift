@@ -96,9 +96,7 @@ struct RStatusDot: View {
     var body: some View {
         HStack(spacing: RDimension.space2) {
             if status == .syncing {
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(status.color)
+                RSpinner().accessibilityHidden(true)
             } else {
                 Circle()
                     .fill(status.color)
