@@ -160,37 +160,33 @@ private final class TouchObserver: UIGestureRecognizer {
     }
 }
 
+/// Installs the observer when its host view joins a window and removes it when it leaves,
+/// so it never misses the window (an async lookup could run before the view had one).
+private final class TouchObserverHostView: UIView {
+    let observer = TouchObserver()
+
+    override func willMove(toWindow newWindow: UIWindow?) {
+        super.willMove(toWindow: newWindow)
+        observer.view?.removeGestureRecognizer(observer)
+        newWindow?.addGestureRecognizer(observer)
+    }
+}
+
 private struct TouchObserverInstaller: UIViewRepresentable {
     let onTouch: () -> Void
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+    func makeUIView(context _: Context) -> TouchObserverHostView {
+        let view = TouchObserverHostView()
         view.isUserInteractionEnabled = false
-        DispatchQueue.main.async {
-            guard let window = view.window else { return }
-            let observer = TouchObserver()
-            observer.cancelsTouchesInView = false
-            observer.delaysTouchesBegan = false
-            observer.delaysTouchesEnded = false
-            observer.onTouch = onTouch
-            window.addGestureRecognizer(observer)
-            context.coordinator.observer = observer
-        }
+        view.observer.cancelsTouchesInView = false
+        view.observer.delaysTouchesBegan = false
+        view.observer.delaysTouchesEnded = false
+        view.observer.onTouch = onTouch
         return view
     }
 
-    func updateUIView(_: UIView, context _: Context) {}
-
-    static func dismantleUIView(_: UIView, coordinator: Coordinator) {
-        if let observer = coordinator.observer {
-            observer.view?.removeGestureRecognizer(observer)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    final class Coordinator {
-        var observer: UIGestureRecognizer?
+    func updateUIView(_ view: TouchObserverHostView, context _: Context) {
+        view.observer.onTouch = onTouch
     }
 }
 
@@ -199,7 +195,12 @@ private struct RLifeHost: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.rLastTouch, lastTouch)
-            .background(TouchObserverInstaller { lastTouch = Date() })
+            .background(TouchObserverInstaller {
+                let now = Date()
+                if now.timeIntervalSince(lastTouch) > 1 {
+                    lastTouch = now
+                }
+            })
     }
 }
 
@@ -220,14 +221,12 @@ private struct RFloat: ViewModifier {
                 let t = context.date.timeIntervalSince(start) / RNumber.motionLifeFloatPeriod
                 content.offset(y: RDimension.motionLifeFloatAmplitude * strength * sin((t + phase) * 2 * .pi))
             }
-            .onChange(of: lastTouch) { _, _ in
+            // task(id:) cancels the previous wait on each new touch, so only the last one resumes.
+            .task(id: lastTouch) {
+                guard lastTouch != .distantPast else { return }
                 withAnimation(RMotion.standard(RNumber.motionDurationSlow)) { strength = 0 }
-                Task {
-                    try? await Task.sleep(for: .seconds(RNumber.motionLifeResumeAfter))
-                    if Date().timeIntervalSince(lastTouch) >= RNumber.motionLifeResumeAfter {
-                        withAnimation(RMotion.gentle) { strength = 1 }
-                    }
-                }
+                do { try await Task.sleep(for: .seconds(RNumber.motionLifeResumeAfter)) } catch { return }
+                withAnimation(RMotion.gentle) { strength = 1 }
             }
         }
     }
