@@ -36,6 +36,8 @@ struct RSourceRow: View {
     var body: some View {
         HStack(spacing: RDimension.space3) {
             RIconWell(symbol: symbol)
+                // like the words and the status, the well lets taps through to the row behind it
+                .allowsHitTesting(false)
                 .accessibilityHidden(true)
             // at accessibility sizes the status or pill moves under the words instead of squeezing them
             let parts = dynamicTypeSize.isAccessibilitySize
