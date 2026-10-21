@@ -440,6 +440,8 @@ public enum RDimension {
     public static let sizeControlLarge: CGFloat = 48
     /// The paywall-scale primary and secondary.
     public static let sizeControlHero: CGFloat = 60
+    /// Top-bar icon buttons (back, close, more): the visible wash circle; the hit area stays 44.
+    public static let sizeControlIcon: CGFloat = 36
     /// Nothing tappable is smaller than this.
     public static let sizeTouchTarget: CGFloat = 44
     /// Inline icons.
