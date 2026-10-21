@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { generateToken, getOrCreateUser } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
-import { DevTestUserRequestSchema, devTestIdentity } from '../services/dev-test-user.js';
+import { devTestUserHandler } from '../services/dev-test-user.js';
 import { config } from '../utils/config.js';
 
 export const authRouter = Router();
@@ -57,49 +57,12 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
   }
 });
 
-// POST /auth/dev/test-user - DEV ONLY. Mints a real JWT for a throwaway user: a brand
-// new one by default, so the new-account path (fresh onboarding) can be exercised, or
-// a seeded staging test account when the body names one (`{ "key": "month" }`).
-// Disabled outside development: in production the route 404s like any unknown path,
-// and it only ever reaches `dev-test-user:` accounts (see devTestIdentity), never a
-// real one.
-authRouter.post('/dev/test-user', async (req: Request, res: Response) => {
-  if (config.server.isProduction) {
-    res.status(404).json({ success: false, error: 'Endpoint not found' });
-    return;
-  }
-
-  const parsed = DevTestUserRequestSchema.safeParse(req.body ?? {});
-  if (!parsed.success) {
-    res.status(400).json({ success: false, error: 'key must be 1-32 lowercase letters, digits or dashes' });
-    return;
-  }
-
-  try {
-    const identity = devTestIdentity(parsed.data.key);
-    const user = await getOrCreateUser(identity.appleUserId, identity.email);
-    const token = generateToken(user);
-
-    console.log(`[dev] issued a test-user token for ${user.id}`);
-
-    res.json({
-      success: true,
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('Dev test user error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create dev test user',
-    });
-  }
-});
+// POST /auth/dev/test-user - DEV ONLY. See services/dev-test-user.ts: off in
+// production (404), and it only ever reaches `dev-test-user:` accounts.
+authRouter.post(
+  '/dev/test-user',
+  devTestUserHandler({ isProduction: config.server.isProduction, getOrCreateUser, generateToken }),
+);
 
 // POST /auth/refresh - Refresh token
 authRouter.post('/refresh', async (req: Request, res: Response) => {

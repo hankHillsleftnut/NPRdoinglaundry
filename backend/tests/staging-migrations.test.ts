@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import {
-  BASE_FILE, LEDGER_TABLE, applyPlan, plan, recordedMigrations, type Executor,
+  BASE_FILE, LEDGER_TABLE, applyPlan, assertOnlyTestUsers, plan, recordedMigrations, type Executor,
 } from '../scripts/staging/migrations.js';
 
 const FILES = ['004_podcast_episodes_and_voice_persona.sql', '001_initial_schema.sql', '003_goals_observations_insights.sql',
@@ -103,4 +103,17 @@ test('the repo migrations are planned in order', () => {
   const files = readdirSync(join(__dirname, '..', '..', 'supabase', 'migrations'));
   const p = plan(files, new Set());
   assert.deepEqual([...p.toBaseline, ...p.toApply], files.filter((f) => /^\d{3}_.*\.sql$/.test(f)).sort());
+});
+
+// Integrator review of #59: refuse any database holding a real person.
+test('a database with a real user is refused; a fresh one or one with only test users is not', async () => {
+  const db = (present: boolean, nonTest: number): Executor => ({
+    async query(sql: string) {
+      if (sql.includes('to_regclass')) return { rows: [{ present }] };
+      return { rows: [{ n: nonTest }] };
+    },
+  });
+  await assert.doesNotReject(assertOnlyTestUsers(db(false, 0)), 'fresh: no users table yet');
+  await assert.doesNotReject(assertOnlyTestUsers(db(true, 0)), 'only dev-test-user accounts');
+  await assert.rejects(assertOnlyTestUsers(db(true, 3)), /3 users who are not test accounts/);
 });

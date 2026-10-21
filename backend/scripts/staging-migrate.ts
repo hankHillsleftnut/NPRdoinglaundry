@@ -4,16 +4,17 @@
  *   npm run staging:migrate              show the plan; change nothing
  *   npm run staging:migrate -- --apply   apply it, then make the staging bucket
  *
- * Staging only: refuses unless .env.staging says RETROSPECT_ENV=staging. Needs
- * DATABASE_URL (the staging project's direct Postgres string). Prints file
+ * Staging only (scripts/staging/guard.ts): reads .env.staging itself, over the
+ * shell; refuses unless it says RETROSPECT_ENV=staging; refuses a database with
+ * any user who isn't a test account. Needs DATABASE_URL (the staging project's direct Postgres string). Prints file
  * names only, never the connection string or its host. The agent's migrations
  * (100 onward) are applied afterwards from the agent repo; see docs/team/staging.md.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
-import { assertStaging, requireVar } from './staging/guard.js';
-import { STAGING_BUCKETS_SQL, applyPlan, plan, recordedMigrations } from './staging/migrations.js';
+import { assertStaging, loadStagingEnv, postgresTls, requireVar } from './staging/guard.js';
+import { STAGING_BUCKETS_SQL, applyPlan, assertOnlyTestUsers, plan, recordedMigrations } from './staging/migrations.js';
 
 const SUPABASE_DIR = join(__dirname, '..', '..', 'supabase');
 const MIGRATIONS_DIR = join(SUPABASE_DIR, 'migrations');
@@ -23,11 +24,13 @@ function readSql(file: string): string {
 }
 
 async function main(): Promise<void> {
+  loadStagingEnv(join(__dirname, '..', '.env.staging'));
   assertStaging(process.env);
   const apply = process.argv.includes('--apply');
-  const client = new pg.Client({ connectionString: requireVar(process.env, 'DATABASE_URL'), ssl: { rejectUnauthorized: false } });
+  const client = new pg.Client({ connectionString: requireVar(process.env, 'DATABASE_URL'), ssl: postgresTls(process.env) });
   await client.connect();
   try {
+    await assertOnlyTestUsers(client);
     const p = plan(readdirSync(MIGRATIONS_DIR), await recordedMigrations(client, { create: apply }));
     console.log(`Already recorded: ${p.alreadyRecorded.length ? p.alreadyRecorded.join(', ') : 'none'}`);
     if (p.base) console.log(`Base schema: ${p.base} (records ${p.toBaseline.join(', ')} as contained in it)`);

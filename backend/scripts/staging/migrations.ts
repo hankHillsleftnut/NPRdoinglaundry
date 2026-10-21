@@ -46,6 +46,25 @@ export interface Executor {
   query(sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
+/** Only accounts the dev route makes start with this; a real Apple subject never does. */
+export const TEST_SUBJECT_PREFIX = 'dev-test-user:';
+
+/**
+ * Refuses a database that holds a real person. A fresh staging database has no
+ * users table; a used one has only dev-test-user accounts. Production has real
+ * users, so this stops a run there even if every env check was fooled.
+ */
+export async function assertOnlyTestUsers(db: Executor): Promise<void> {
+  const { rows: exists } = await db.query(`SELECT to_regclass('public.users') IS NOT NULL AS present`);
+  if (!exists[0]?.present) return;
+  const { rows } = await db.query(
+    `SELECT count(*)::int AS n FROM users WHERE apple_user_id NOT LIKE $1`,
+    [`${TEST_SUBJECT_PREFIX}%`],
+  );
+  const n = Number(rows[0]?.n ?? 0);
+  if (n > 0) throw new Error(`Refusing to run: this database has ${n} users who are not test accounts, so it is not staging.`);
+}
+
 export interface Plan {
   alreadyRecorded: string[];
   /** Applied first, only on a database that has never had it. */

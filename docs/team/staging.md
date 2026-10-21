@@ -9,7 +9,7 @@ The backend and the brain running on this Mac against a second, free Supabase pr
 
 ## The rules
 
-- **Staging only.** Every staging script refuses to run unless its env file says `RETROSPECT_ENV=staging`.
+- **Staging only, checked three ways.** Each staging script reads `.env.staging` itself, with its values winning over anything exported in the shell (so an exported production `DATABASE_URL` can never be used); refuses unless that file says `RETROSPECT_ENV=staging`; and refuses any database that holds a user who isn't a `dev-test-user:` test account. The services do the same: `DOTENV_CONFIG_PATH` (and, for the agent, `DOTENV_CONFIG_OVERRIDE=true`) makes the staging file win over the shell.
 - **No secret leaves the env files.** Values live only in the two untracked `.env.staging` files. Never paste them into a PR, a report, a log or a chat; check them by name or by a successful connection.
 - **No model spend by default.** The model keys are placeholders, so model calls fail and nothing is spent. Real keys go in only when a test needs a real model, and that spend is logged as test spend in `cost-per-user.md`. From BEA.4 the agent also stops all model calls once staging has spent `STAGING_DAILY_CAP_USD` (default $5) in 24 hours.
 - **Invented content only.** The seeded accounts hold made-up words. Never copy a real person's entries into staging.
@@ -18,8 +18,9 @@ The backend and the brain running on this Mac against a second, free Supabase pr
 
 1. **Env files.** In each repo, copy `.env.staging.example` to `.env.staging` and fill in the blanks:
    - the staging project's `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` and `DATABASE_URL` (Supabase dashboard → Project Settings), the same in both files;
-   - `JWT_SECRET`, `ADMIN_SECRET` and `INTERNAL_API_SECRET` from `openssl rand -hex 32`; `INTERNAL_API_SECRET` must be **the same value in both files**.
-   `DOTENV_CONFIG_PATH=.env.staging` (already in the examples) makes each service read only its staging file, so a missing value is never filled in from the `.env` beside it.
+   - `JWT_SECRET`, `ADMIN_SECRET` and `INTERNAL_API_SECRET` from `openssl rand -hex 32`; `INTERNAL_API_SECRET` must be **the same value in both files**;
+   - backend only: `DATABASE_CA_CERT`, the path to Supabase's CA certificate (dashboard → Database settings → SSL configuration → download certificate). Supabase signs database certificates with its own root, so `staging:migrate` verifies the connection against this file and refuses to run without it.
+   `DOTENV_CONFIG_PATH=.env.staging` (already in the examples) makes each service read only its staging file, over the shell, so a missing value is never filled in from the `.env` beside it.
 2. **Install:** `npm ci` in `backend/` and in the agent repo.
 3. **Database, backend first, then the agent:**
    ```sh
@@ -47,7 +48,7 @@ npm run staging:up -- stop    # stops both
 |---|---|
 | `fresh` | nothing: a brand new account |
 | `day-one` | the onboarding answers only (one `onboarding_profile` entry) |
-| `month` | 30 days of typed and voice entries, today's brief quoting two of them, two offered guesses, one episode (no real audio; a placeholder path in its metadata) |
+| `month` | 30 days of typed and voice entries, a brief for the day you seed (quoting two of them; re-seeding on a later day adds that day's), two offered guesses, one episode (no real audio; a placeholder path in its metadata) |
 
 A token for any of them, for a test build or `curl`:
 

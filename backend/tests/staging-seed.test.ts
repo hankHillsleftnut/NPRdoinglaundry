@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertStaging, NotStagingError } from '../scripts/staging/guard.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { assertStaging, loadStagingEnv, NotStagingError, postgresTls } from '../scripts/staging/guard.js';
 import {
-  ACCOUNTS, MONTH_DAYS, SEED_MODEL_VERSION, seedAll, type AccountKey, type Row, type SeedPorts, type SeedTable,
+  ACCOUNTS, MONTH_DAYS, NotStagingDatabaseError, SEED_MODEL_VERSION, seedAll, type AccountKey, type Row, type SeedPorts, type SeedTable,
 } from '../scripts/staging/seed.js';
 
 const NOW = new Date('2026-10-21T12:00:00.000Z');
@@ -13,7 +16,7 @@ const NOW = new Date('2026-10-21T12:00:00.000Z');
  * subject; deleting an account cascades to its rows, as every FK to users does.
  */
 function fakePorts() {
-  const faults: { failInsertInto?: SeedTable } = {};
+  const faults: { failInsertInto?: SeedTable; realUsers?: number } = {};
   const users = new Map<AccountKey, string>();
   const rows: Record<SeedTable, (Row & { id: string })[]> = {
     raw_content: [], daily_briefs: [], hypotheses: [], podcast_episodes: [],
@@ -37,6 +40,12 @@ function fakePorts() {
       const stored = batch.map((r) => ({ ...r, id: `${table}-${next++}` }));
       rows[table].push(...stored);
       return stored.map((r) => r.id);
+    },
+    async hasBriefOn(userId, briefDate) {
+      return rows.daily_briefs.some((r) => r.user_id === userId && r.brief_date === briefDate);
+    },
+    async nonTestUserCount() {
+      return faults.realUsers ?? 0;
     },
     async deleteAccount(userId) {
       for (const [key, id] of users) if (id === userId) users.delete(key);
@@ -141,4 +150,43 @@ test('staging scripts refuse to run outside staging', () => {
   assert.throws(() => assertStaging({}), NotStagingError);
   assert.throws(() => assertStaging({ RETROSPECT_ENV: 'production' }), NotStagingError);
   assert.doesNotThrow(() => assertStaging({ RETROSPECT_ENV: 'staging' }));
+});
+
+// Integrator review of #59: the last line of defence is the database itself.
+test('a database with any real user is refused before anything is written', async () => {
+  const { ports, users, rows, faults } = fakePorts();
+  faults.realUsers = 1;
+  await assert.rejects(seedAll(ports, NOW, { reset: true }), NotStagingDatabaseError);
+  assert.equal(users.size, 0, 'no account was made or removed');
+  assert.equal(rows.raw_content.length, 0);
+});
+
+test('today\'s brief is keyed on the date: a later day gets its own, the same day never clashes', async () => {
+  const { ports, rows, users } = fakePorts();
+  await seedAll(ports, NOW, { reset: false });
+  await seedAll(ports, new Date('2026-10-22T09:00:00.000Z'), { reset: false });
+  assert.deepEqual(rows.daily_briefs.map((b) => b.brief_date), ['2026-10-21', '2026-10-22']);
+
+  // A brief the agent wrote for today (not seeded) is left alone, not duplicated.
+  rows.daily_briefs.push({ id: 'agent-brief', user_id: users.get('month'), brief_date: '2026-10-23', model_version: 'claude' });
+  await seedAll(ports, new Date('2026-10-23T09:00:00.000Z'), { reset: false });
+  assert.equal(rows.daily_briefs.filter((b) => b.brief_date === '2026-10-23').length, 1);
+});
+
+// Integrator review of #59: node --env-file never overrides the shell, so an
+// exported production DATABASE_URL would have won.
+test('the staging env file wins over values already in the shell', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'staging-env-'));
+  const file = join(dir, '.env.staging');
+  writeFileSync(file, 'RETROSPECT_ENV=staging\nDATABASE_URL=postgres://staging.invalid/db\n');
+  const env: NodeJS.ProcessEnv = { RETROSPECT_ENV: 'production', DATABASE_URL: 'postgres://production.invalid/db' };
+  loadStagingEnv(file, env);
+  assert.equal(env.DATABASE_URL, 'postgres://staging.invalid/db');
+  assert.equal(env.RETROSPECT_ENV, 'staging');
+  assert.throws(() => loadStagingEnv(join(dir, 'missing'), {}), /could not read missing/);
+});
+
+test('the Postgres connection is verified against the CA certificate, never unverified', () => {
+  assert.throws(() => postgresTls({}), /DATABASE_CA_CERT is not set/);
+  assert.deepEqual(postgresTls({ DATABASE_CA_CERT: '/ca.crt' }, (p) => `cert at ${p}`), { ca: 'cert at /ca.crt', rejectUnauthorized: true });
 });

@@ -22,9 +22,13 @@ stop() {
   for name in backend agent; do
     pidfile="$LOG_DIR/$name.pid"
     if [[ -f "$pidfile" ]]; then
-      kill_tree "$(cat "$pidfile")"
+      pid="$(cat "$pidfile")"
+      # Only kill it if it is still the npm we started; a reused pid is someone else's.
+      if ps -p "$pid" -o command= 2>/dev/null | grep -q "dev:staging"; then
+        kill_tree "$pid"
+        echo "stopped $name"
+      fi
       rm -f "$pidfile"
-      echo "stopped $name"
     fi
   done
 }
@@ -37,7 +41,14 @@ AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
 BACKEND_ENV="$BACKEND_DIR/.env.staging"
 AGENT_ENV="$AGENT_DIR/.env.staging"
 
-value_of() { grep -E "^$2=" "$1" | tail -1 | cut -d= -f2-; }
+# The value of NAME in an env file, as dotenv reads it: an optional leading
+# "export ", and one layer of matching quotes removed.
+value_of() {
+  local v
+  v="$(grep -E "^(export[[:space:]]+)?$2=" "$1" | tail -1 | cut -d= -f2-)"
+  if [[ "$v" =~ ^\"(.*)\"$ || "$v" =~ ^\'(.*)\'$ ]]; then v="${BASH_REMATCH[1]}"; fi
+  printf '%s' "$v"
+}
 
 check_env() {
   local file="$1"; shift
@@ -52,6 +63,8 @@ check_env() {
 check_env "$BACKEND_ENV" SUPABASE_URL SUPABASE_SERVICE_KEY SUPABASE_ANON_KEY ANTHROPIC_API_KEY OPENAI_API_KEY \
   JWT_SECRET AGENT_SERVICE_URL INTERNAL_API_SECRET RETROSPECT_ENV DOTENV_CONFIG_PATH
 check_env "$AGENT_ENV" SUPABASE_URL SUPABASE_SERVICE_KEY OPENAI_API_KEY INTERNAL_API_SECRET RETROSPECT_ENV DOTENV_CONFIG_PATH
+[[ "$(value_of "$AGENT_ENV" DOTENV_CONFIG_OVERRIDE)" == "true" ]] \
+  || { echo "$AGENT_ENV: DOTENV_CONFIG_OVERRIDE must be true (the file wins over the shell)"; exit 1; }
 [[ "$(value_of "$BACKEND_ENV" SUPABASE_URL)" == "$(value_of "$AGENT_ENV" SUPABASE_URL)" ]] \
   || { echo "SUPABASE_URL differs between the two env files"; exit 1; }
 [[ "$(value_of "$BACKEND_ENV" INTERNAL_API_SECRET)" == "$(value_of "$AGENT_ENV" INTERNAL_API_SECRET)" ]] \
@@ -79,6 +92,11 @@ wait_for() {
   [[ "$code" == "200" ]]
 }
 
-wait_for "agent   GET /health/ready" "http://localhost:3001/health/ready"
-wait_for "backend GET /health      " "http://localhost:3000/health"
+failed() {
+  echo "$1 did not become healthy; see $LOG_DIR/$2.log"
+  echo "stop both with: npm run staging:up -- stop"
+  exit 1
+}
+wait_for "agent   GET /health/ready" "http://localhost:3001/health/ready" || failed agent agent
+wait_for "backend GET /health      " "http://localhost:3000/health" || failed backend backend
 echo "logs: $LOG_DIR (stop with: npm run staging:up -- stop)"

@@ -7,10 +7,14 @@
  *
  * Needs the backend running on local staging (`npm run dev:staging`): accounts
  * are made through its dev route, the way the app's test builds sign in.
- * Prints account names, ids and row counts only.
+ * Prints account names, ids, row counts and error codes only. Staging only
+ * (scripts/staging/guard.ts): reads .env.staging itself, over the shell, and
+ * refuses a database with any user who isn't a test account.
  */
+import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { assertStaging, requireVar } from './staging/guard.js';
+import { assertStaging, loadStagingEnv, requireVar } from './staging/guard.js';
+import { TEST_SUBJECT_PREFIX } from './staging/migrations.js';
 import { seedAll, SEED_MODEL_VERSION, type AccountKey, type Row, type SeedPorts, type SeedTable } from './staging/seed.js';
 
 const MARKED_BY_METADATA: ReadonlySet<SeedTable> = new Set<SeedTable>(['raw_content', 'podcast_episodes']);
@@ -50,8 +54,20 @@ function ports(env: NodeJS.ProcessEnv): SeedPorts {
     },
     async insert(table, rows: Row[]) {
       const { data, error } = await db.from(table).insert(rows).select('id');
-      if (error) throw new Error(`inserting into ${table} failed (${error.code}): ${error.message}`);
+      if (error) throw new Error(`inserting into ${table} failed (${error.code})`);
       return (data ?? []).map((r: { id: string }) => r.id);
+    },
+    async hasBriefOn(userId, briefDate) {
+      const { count, error } = await db.from('daily_briefs').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('brief_date', briefDate);
+      if (error) throw new Error(`reading daily_briefs failed (${error.code})`);
+      return (count ?? 0) > 0;
+    },
+    async nonTestUserCount() {
+      const { count, error } = await db.from('users').select('id', { count: 'exact', head: true })
+        .not('apple_user_id', 'like', `${TEST_SUBJECT_PREFIX}%`);
+      if (error) throw new Error(`reading users failed (${error.code})`);
+      return count ?? 0;
     },
     async deleteAccount(userId) {
       const { error } = await db.from('users').delete().eq('id', userId);
@@ -61,6 +77,7 @@ function ports(env: NodeJS.ProcessEnv): SeedPorts {
 }
 
 async function main(): Promise<void> {
+  loadStagingEnv(join(__dirname, '..', '.env.staging'));
   assertStaging(process.env);
   const reset = process.argv.includes('--reset');
   const reports = await seedAll(ports(process.env), new Date(), { reset });

@@ -12,7 +12,11 @@
  *
  * Re-running is safe: the account is found again through the keyed dev route,
  * and a table that already holds the account's seeded rows is left alone. Each
- * table's rows go in as one insert, so a table is never half-seeded.
+ * table's rows go in as one insert, so a table is never half-seeded. The brief
+ * is the exception: "today's brief" is checked by date, so a re-run on a later
+ * day adds that day's brief (and never clashes with a brief the agent wrote).
+ *
+ * Before anything is written, a database holding any real user is refused.
  *
  * The database sits behind SeedPorts, so this is tested with a fake.
  */
@@ -35,6 +39,17 @@ export interface SeedPorts {
   insert(table: SeedTable, rows: Row[]): Promise<string[]>;
   /** Removes the account and, by cascade, everything it holds. */
   deleteAccount(userId: string): Promise<void>;
+  /** Whether the account has any brief (seeded or not) for this date: one per day is unique. */
+  hasBriefOn(userId: string, briefDate: string): Promise<boolean>;
+  /** Users who are not dev-test-user accounts. Anything above zero means this isn't staging. */
+  nonTestUserCount(): Promise<number>;
+}
+
+export class NotStagingDatabaseError extends Error {
+  constructor(n: number) {
+    super(`Refusing to seed: this database has ${n} users who are not test accounts, so it is not staging.`);
+    this.name = 'NotStagingDatabaseError';
+  }
 }
 
 export type SeedReport = { account: AccountKey; userId: string; inserted: Partial<Record<SeedTable, number>> };
@@ -86,12 +101,14 @@ function onboardingRows(userId: string, now: Date): Row[] {
   }];
 }
 
+export const briefDate = (now: Date): string => now.toISOString().slice(0, 10);
+
 /** One brief for today (UTC, like the agent's brief_date), quoting the two newest entries. */
 export function monthBrief(userId: string, entries: { id: string; content: string }[], now: Date): Row {
   const recent = entries.slice(-2);
   return {
     user_id: userId,
-    brief_date: now.toISOString().slice(0, 10),
+    brief_date: briefDate(now),
     kind: 'brief',
     through_line: 'Test brief: this week kept coming back to early walks and shorter days.',
     items: recent.map((e) => ({
@@ -164,7 +181,10 @@ export async function seedAccount(key: AccountKey, ports: SeedPorts, now: Date):
       report.inserted.raw_content = entries.length;
     }
     const withIds = entries.map((e, i) => ({ id: ids[i] ?? '', content: String(e.content) }));
-    await insertIfMissing(ports, 'daily_briefs', userId, () => [monthBrief(userId, withIds, now)], report);
+    if (!(await ports.hasBriefOn(userId, briefDate(now)))) {
+      await ports.insert('daily_briefs', [monthBrief(userId, withIds, now)]);
+      report.inserted.daily_briefs = 1;
+    }
     await insertIfMissing(ports, 'hypotheses', userId, () => monthGuesses(userId, now), report);
     await insertIfMissing(ports, 'podcast_episodes', userId, () => [monthEpisode(userId, now)], report);
   }
@@ -173,6 +193,8 @@ export async function seedAccount(key: AccountKey, ports: SeedPorts, now: Date):
 
 /** Seeds every account. With `reset`, each account is removed first and seeded fresh. */
 export async function seedAll(ports: SeedPorts, now: Date, opts: { reset: boolean }): Promise<SeedReport[]> {
+  const real = await ports.nonTestUserCount();
+  if (real > 0) throw new NotStagingDatabaseError(real);
   const reports: SeedReport[] = [];
   for (const key of ACCOUNTS) {
     if (opts.reset) await ports.deleteAccount(await ports.ensureAccount(key));
