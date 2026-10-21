@@ -13,11 +13,11 @@ const exempt = [/\/Generated\//, /\/RType\.swift$/, /\/RDepth\.swift$/, /\/RMoti
 const rules = [
   [/\b(UI)?Color\(\s*(red|white|hue)\s*:/, 'raw colour: use RColor'],
   [/#colorLiteral|Color\(\s*"#|Color\(hex/, 'raw colour: use RColor'],
-  [/\.(red|blue|green|black|white|gray|orange|yellow|pink|purple)\b(?!\))/, 'system colour: use RColor'],
+  [/(?<![A-Za-z0-9_])\.(red|blue|green|black|white|gray|grey|orange|yellow|pink|purple|primary|secondary)\b(?!\s*[:(])/, 'system colour: use RColor'],
   [/\.font\(\s*\.system\(\s*size/, 'raw font: use .rText(...)'],
   [/\.(padding|frame|cornerRadius|spacing)\([^)]*\b\d+(\.\d+)?\b/, 'raw size: use RDimension'],
   [/spacing:\s*\d/, 'raw spacing: use RDimension'],
-  [/\.spring\(|\.interpolatingSpring\(|\.easeIn|\.easeOut|\.linear\b|\.bouncy|\.timingCurve\(/, 'raw motion: use RMotion'],
+  [/\.spring\(|\.interpolatingSpring\(|\.interactiveSpring|\.easeIn|\.easeOut|\.linear\b|\.timingCurve\(|(?<!RMotion)\.(smooth|snappy|bouncy)\b|(withAnimation|animation)\(\s*\.default\b/, 'raw motion: use RMotion'],
   [/UI(Impact|Selection|Notification)FeedbackGenerator|\.sensoryFeedback\(\s*\.(impact|selection|success|warning|error)/, 'raw haptic: use RHaptic'],
 ];
 
@@ -29,10 +29,29 @@ const walk = (p) => {
 };
 targets.forEach(walk);
 
+// Drop a trailing // comment, but not a // inside a string literal (URLs).
+const stripComment = (line) => {
+  let inString = false;
+  for (let i = 0; i < line.length - 1; i++) {
+    if (line[i] === '"' && line[i - 1] !== '\\') inString = !inString;
+    if (!inString && line[i] === '/' && line[i + 1] === '/') return line.slice(0, i);
+  }
+  return line;
+};
+
 let problems = 0;
 for (const f of files) {
-  readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
-    const code = line.replace(/\/\/.*$/, '');
+  const text = readFileSync(f, 'utf8');
+  // Sizes in modifiers whose arguments wrap onto the next lines (SwiftFormat wraps long calls).
+  for (const m of text.matchAll(/\.(padding|frame|cornerRadius)\(\s*\n([^)]*)\)/g)) {
+    if (/(^|[^A-Za-z0-9_.])\d+(\.\d+)?\b/.test(m[2].split('\n').map(stripComment).join(' ')) && !/literal-ok:/.test(m[0])) {
+      problems++;
+      const line = text.slice(0, m.index).split('\n').length;
+      console.log(`${relative(root, f)}:${line}: raw size: use RDimension\n    ${m[0].replace(/\s+/g, ' ').trim()}`);
+    }
+  }
+  text.split('\n').forEach((line, i) => {
+    const code = stripComment(line);
     if (/literal-ok:/.test(line) || /^\s*(\/\/\/|\/\/|\*)/.test(line)) return;
     for (const [re, msg] of rules) {
       if (re.test(code)) {
