@@ -11,14 +11,16 @@ import SwiftUI
 // swiftlint:disable large_tuple
 /// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
 enum RLabPage: String, CaseIterable, Identifiable {
-    case motion, foundation, parts, artwork
+    case motion, foundation, parts, artwork, toast
 
     var id: String {
         rawValue
     }
 
+    /// `-DesignLabToast` still opens straight on the toast page (for testing on a phone).
     static var launch: RLabPage {
-        UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
+        if ProcessInfo.processInfo.arguments.contains("-DesignLabToast") { return .toast }
+        return UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
     }
 }
 
@@ -44,6 +46,7 @@ struct RDesignLab: View {
                     }
                 }
             case .artwork: RArtworkLab()
+            case .toast: RToastGallery()
             }
         }
         .background(RColor.backgroundCanvas)
