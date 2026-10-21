@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**533 tokens** · 457 semantic · 276 marked *to set*
+**535 tokens** · 459 semantic · 276 marked *to set*
 
 ## palette
 
@@ -113,6 +113,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.text.primary` | Headlines and the words people read. | {palette.paper.950} | {palette.night.100} | to set: #121212 vs #1E1E1E |
 | `color.text.secondary` | Supporting sentences under a headline. (AA: 5.8:1 light, 7.5:1 dark.) | {palette.paper.680} | {palette.night.300} | to set |
 | `color.text.label` | Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.) | {palette.paper.620} | {palette.night.300} | paywall |
+| `color.text.placeholder` | The hint inside a field on surface.control: the lightest grey that still passes AA there (4.57:1 light, 4.54:1 dark). Founder, 21 Oct: just passes. | {palette.paper.620} | {palette.night.350} | founder 21 Oct, part 32 |
 | `color.text.tertiary` | Hints and the least important metadata. (AA: 4.6:1; never on a control fill.) | {palette.paper.560} | {palette.night.350} | to set |
 | `color.text.disabled` | Anything that cannot be used right now. | {palette.paper.400} | {palette.night.600} | lime |
 | `color.text.inverse` | Text on background.inverse. | {palette.paper.25} | {palette.night.950} | lime |
@@ -441,6 +442,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
 | Token | Purpose | Light | Dark | Source |
 |---|---|---|---|---|
+| `radius.style` | Every corner is a squircle: continuous curvature, pills and wells included, never a circular arc meeting a straight edge. | continuous |  | founder 21 Oct: every rounded corner is a squircle |
 | `radius.small` | Small marks and tags. | 6pt |  | lime |
 | `radius.default` | Small cards and thumbnails. | 10pt |  | lime |
 | `radius.field` | Text fields. | 12pt |  | lime |
