@@ -54,7 +54,7 @@ struct RSearchField: View {
             .buttonStyle(RFieldSlotStyle())
             .accessibilityLabel("talk instead")
         } content: {
-            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(RColor.textTertiary))
+            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(RColor.textPlaceholder))
                 .rText(.body)
                 .foregroundStyle(RColor.textPrimary)
                 .tint(RColor.textPrimary)
