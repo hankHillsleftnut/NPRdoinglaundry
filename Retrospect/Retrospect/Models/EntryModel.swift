@@ -137,7 +137,8 @@ class EntryManager: ObservableObject {
                 try await RetrospectAPIClient.shared.uploadContent(
                     contentType: entry.type.backendContentType,
                     content: entry.content,
-                    contentDate: entry.date
+                    contentDate: entry.date,
+                    idempotencyKey: entry.id.uuidString
                 )
                 print("✅ Entry \(entry.id) synced to backend as '\(entry.type.backendContentType)'")
             } catch {
@@ -165,7 +166,8 @@ class EntryManager: ObservableObject {
                     try await RetrospectAPIClient.shared.uploadContent(
                         contentType: entry.type.backendContentType,
                         content: entry.content,
-                        contentDate: entry.date
+                        contentDate: entry.date,
+                        idempotencyKey: entry.id.uuidString
                     )
                     successCount += 1
                 } catch {

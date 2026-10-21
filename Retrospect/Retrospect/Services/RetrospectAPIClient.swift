@@ -137,11 +137,15 @@ class RetrospectAPIClient: ObservableObject {
     // MARK: - Content Sync
 
     /// Upload content to the backend as raw content for the analysis pipeline.
+    /// - Parameter idempotencyKey: a stable id for this piece of content (an entry's id).
+    ///   The backend treats a repeat upload with the same key and type as the same row,
+    ///   so retries and "resync all" never create copies.
     func uploadContent(
         contentType: String,
         content: String,
         contentDate: Date? = nil,
-        metadata: [String: Any]? = nil
+        metadata: [String: Any]? = nil,
+        idempotencyKey: String? = nil
     ) async throws {
         var body: [String: Any] = [
             "contentType": contentType,
@@ -154,7 +158,8 @@ class RetrospectAPIClient: ObservableObject {
             body["metadata"] = metadata
         }
 
-        let _: GenericResponse = try await post(path: "/content", body: body)
+        let headers = idempotencyKey.map { ["Idempotency-Key": $0] } ?? [:]
+        let _: GenericResponse = try await request(method: "POST", path: "/content", body: body, headers: headers)
     }
 
     /// Upload provider objects through the agent-owned integration pipeline.
@@ -528,7 +533,8 @@ class RetrospectAPIClient: ObservableObject {
         method: String,
         path: String,
         body: [String: Any]?,
-        authenticated: Bool = true
+        authenticated: Bool = true,
+        headers: [String: String] = [:]
     ) async throws -> T {
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -536,6 +542,9 @@ class RetrospectAPIClient: ObservableObject {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        for (field, value) in headers {
+            request.setValue(value, forHTTPHeaderField: field)
+        }
 
         if let body = body {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
