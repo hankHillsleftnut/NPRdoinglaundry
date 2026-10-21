@@ -7,7 +7,7 @@ on:
 
 jobs:
   api:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, retrospect]
     defaults:
       run:
         working-directory: backend
@@ -28,7 +28,7 @@ jobs:
   changes:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
     # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained).
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, retrospect]
     outputs:
       app: ${{ steps.changed.outputs.app }}
     steps:
@@ -47,7 +47,7 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, retrospect]
     steps:
       - uses: actions/checkout@v4
-      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build
