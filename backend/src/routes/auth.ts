@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { generateToken, getOrCreateUser } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
+import { DevTestUserRequestSchema, devTestIdentity } from '../services/dev-test-user.js';
 import { config } from '../utils/config.js';
 
 export const authRouter = Router();
@@ -57,23 +57,27 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
   }
 });
 
-// POST /auth/dev/test-user - DEV ONLY. Mints a real JWT for a brand new throwaway
-// user, so the new-account path (fresh onboarding) can be exercised. Apple returns the
-// same subject for a given Apple ID, so real sign-in always lands on the same account.
+// POST /auth/dev/test-user - DEV ONLY. Mints a real JWT for a throwaway user: a brand
+// new one by default, so the new-account path (fresh onboarding) can be exercised, or
+// a seeded staging test account when the body names one (`{ "key": "month" }`).
 // Disabled outside development: in production the route 404s like any unknown path,
-// and it only ever inserts a new user, so no existing account can be reached with it.
-authRouter.post('/dev/test-user', async (_req: Request, res: Response) => {
+// and it only ever reaches `dev-test-user:` accounts (see devTestIdentity), never a
+// real one.
+authRouter.post('/dev/test-user', async (req: Request, res: Response) => {
   if (config.server.isProduction) {
     res.status(404).json({ success: false, error: 'Endpoint not found' });
     return;
   }
 
+  const parsed = DevTestUserRequestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: 'key must be 1-32 lowercase letters, digits or dashes' });
+    return;
+  }
+
   try {
-    const handle = randomUUID();
-    const user = await getOrCreateUser(
-      `dev-test-user:${handle}`,
-      `dev+${handle.slice(0, 8)}@retrospect.test`
-    );
+    const identity = devTestIdentity(parsed.data.key);
+    const user = await getOrCreateUser(identity.appleUserId, identity.email);
     const token = generateToken(user);
 
     console.log(`[dev] issued a test-user token for ${user.id}`);

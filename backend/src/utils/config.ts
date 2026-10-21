@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+// DOTENV_CONFIG_PATH names the env file to read instead of `.env`. Local staging
+// sets it (in .env.staging) so a variable missing there is never filled in from
+// the `.env` beside it, which may hold another environment's values.
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH });
 
 function requireEnv(key: string): string {
   const value = process.env[key];
