@@ -1,0 +1,3 @@
+{"masters":{"pill/neutral/rest":"<div style={{ height: '36px', borderRadius: 'var(--radius-control)' }}><div style={{ color: 'var(--color-text-secondary)' }}>yes</div></div>"},
+ "copies":[{"name":"c:pill/neutral/rest","screen":"GL-1","jsx":"<div style={{ height: '36px', borderRadius: 'var(--radius-control)' }}><div style={{ color: 'var(--color-text-secondary)' }}>not quite</div></div>"},
+           {"name":"c:pill/neutral/rest","screen":"GL-2","jsx":"<div style={{ height: '40px', borderRadius: 'var(--radius-control)' }}><div style={{ color: 'var(--color-text-secondary)' }}>yes</div></div>"}]}

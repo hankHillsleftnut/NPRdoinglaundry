@@ -1,0 +1,279 @@
+# Retrospect app build plan (M14) · design + backend · **approved 21 Oct**
+
+**Bottom line:** we turn the approved designs into one working app: every screen, wired to the real backend, with sign-in, saving, connectors, the conversation with Retro, ElevenLabs voice, podcasts, payments, push, usage and cost. The plan runs top-down: goal → systems → flows → pages → components → sub-components. The build runs bottom-up in small, reviewed pieces, the same design engineering process as in Paper (`design-system/process.md`). A flow goes live for everyone only when it works end to end on a real account. Nothing is built until you approve this.
+
+Checked against the code on 21 Oct (app, backend and agent; findings in §9). Companion docs:
+- `design-system/principles/motion-system.md`: every curve, spring, haptic and how each part moves.
+- `docs/design/microinteractions-plan.md`: the 13 signature moments.
+- `docs/design/ios-handoff.md` and `ios-build-notes.md`: anatomy, states and your Paper notes.
+- `docs/second-brain/ios-refresh-blueprint.md`: everything the backend can do.
+- Paper `06 · everything · latest`: what every screen must look like.
+
+---
+
+## 0. The shape of the work (top level)
+
+The app is three layers. Each flow needs all three to be done.
+
+```
+ iOS app (SwiftUI)        → screens, components, motion, local cache, StoreKit, push
+   │  one typed API client, signed-in user's token
+ backend (Express, Render) → auth, the only door to everything, payments check, push sender, rate and cost limits
+   │  private, shared secret
+ agent (Render, private)   → brain: ingest, facts, conversation, briefs, search, podcasts, connectors
+   │
+ Supabase (Postgres + storage) → every table and the podcast audio
+```
+
+**The main finding:** the agent already does most of what the designs show: conversation, briefs, guesses, search, facts with evidence, people. But the backend only forwards ingest, podcasts and integrations, so the app can't reach the rest. Most of the backend work is opening those doors safely, not building new brains.
+
+There are two tracks, joined per flow:
+- **UI track** (bottom-up, the design process): foundation → sub-components → components → pages → flows with motion.
+- **Platform track** (the backend and the app's plumbing): baseline → platform foundations → one capability per flow.
+
+They meet at each flow's **ship gate** (§5).
+
+## 0b. Repositories: where every byte is committed
+
+| Repo (local folder) | GitHub | What lives there | Deploys |
+|---|---|---|---|
+| `/Users/shauryanarang/Projects/retrospect-main` | `hankHillsleftnut/NPRdoinglaundry` | iOS app (`Retrospect/`), backend (`backend/`), main Supabase migrations (`supabase/`), design system (`design-system/`), docs (`docs/`), pipeline canvas | Backend: staging auto-deploys from `main`; production is manual (`autoDeploy: false`) |
+| `/Users/shauryanarang/Projects/retrospect-agent` | `hankHillsleftnut/Retrospect-agent` | The agent: brain, conversation, briefs, search, connectors, podcasts, agent migrations 100+ | Render private service |
+| `/Users/shauryanarang/Projects/RETROSPECT_BACKUP_2026-05-28` | none | An old copy. **Never commit here** | none |
+| Paper `01M5D5J321P5X86ZT58002B7NT` | none | The design master | none |
+| Paper `01M5EJJ62QQ1KG533TDSJR1RFV` | none | The archive (full copy, 21 Oct) | none |
+
+Rules:
+- Every byte in the progress map names its repo: **app** = `Retrospect/` in NPRdoinglaundry; **backend** = `backend/` in NPRdoinglaundry; **agent** = Retrospect-agent; **paper** = the Paper master.
+- A byte that touches two repos becomes two PRs, merged agent → backend → app.
+- Before every commit: check `git remote get-url origin` and the branch. Work in a worktree off that repo's fresh `origin/main`.
+- Merging to NPRdoinglaundry `main` redeploys staging, so I say so in the PR. Production deploys and production migrations always need your yes.
+
+## 1. Level 1 · systems (what has to exist for the app to be whole)
+
+| # | System | Today (21 Oct) | What the designs need | Where the work is |
+|---|---|---|---|---|
+| S1 | **Sign-in and session** | Apple sign-in works; JWT in the Keychain. Refresh is a stub that forces a new sign-in. Google is used only for Docs | Apple and Google sign-in (ON-1/2, AC-1), silent refresh, sign out (AC-2) | backend auth, app session |
+| S2 | **Account and data rights** | No account deletion, no server export, no "delete everything" | ST-5 privacy (export, delete data), ST-9 delete account. Required by the App Store | backend + agent cascade |
+| S3 | **API client** | One class, untyped bodies, no retries, no offline queue, failures only printed | Typed requests, retries, an offline outbox for entries, real error states on every screen | app |
+| S4 | **Local data** | JSON files and UserDefaults | A cache so screens open instantly and work offline; one source of truth | app (SwiftData) |
+| S5 | **Onboarding** | Answers saved as text only; the agent's onboarding routes can't be reached | Questions typed out, answers understood (ON-3–9), "what you told retro" (ON-13), readiness (ON-10) | backend door + app |
+| S6 | **Conversation (journal)** | Entries upload fire-and-forget; no chat with Retro, no streaming, no history from the server | JR-1 chat with replies streaming in, "between conversations" content (brief card, follow-ups, guess cards), JR-3 history, JR-4 an entry and what Retro took from it | backend doors to the agent's conversation, briefs and hypotheses + app |
+| S7 | **Voice** | Device transcription, recording and Live Activity work. ElevenLabs goes through the backend, but only on this branch | Talk button, listening field, Retro speaking (ST-7 voice), Live Activity (EX-2) | app + backend speech |
+| S8 | **Connectors** | Pipeline built. Google, Spotify, YouTube and Reddit providers exist; Apple native sources upload. **No Notion or GitHub**, yet ON-6 shows them | ON-6 connect, the knows-you meter, ST-3/4 sources (connected, reconnect, syncing) | backend + agent connectors + app |
+| S9 | **The brain, readable** | Facts, evidence and people exist; the app reads none of it (`/insights` 404s) | YO-1 map, YO-3 a source, YO-4 a node, YO-5 what I know, ST-8 what I've learned, PC-3 why this is here, "not right" corrections | backend doors to the agent's brain routes + app |
+| S10 | **Search** | Built in the agent; no door, no UI | YO-2 "ask anything about yourself" with sources | backend door + app |
+| S11 | **Podcasts** | Work, but generation holds one request open for up to 8 minutes; no "ready" signal | ON-10/11 first episode, PC-1/2, mini-player, weekly episode, push when ready | backend job + push + app |
+| S12 | **Goals** | Local first, partial sync; fixes only on `origin/main` | GL-1 goals with yes / not quite, GL-2 one goal with evidence | merge fixes + app |
+| S13 | **Payments** | Purchase path fails closed on purpose; no StoreKit | ON-12 paywall at $24.99/mo and $239.99/yr (save 20%), restore, ST-9 plan, renewal | StoreKit 2 + backend validation |
+| S14 | **Notifications and push** | Local only, no device tokens | Episode ready, brief, check-ins (EX-3), deep links into the right screen | APNs in backend + app |
+| S15 | **Widgets, Live Activity, intents** | Live Activity and intents work; the widget is the Xcode template | EX-2 lock screen, EX-4 widgets, EX-1 share | app extensions |
+| S16 | **Settings and preferences** | Local only; brief time fixed at 08:00 UTC | ST-2 daily brief time and length, ST-6 how straight, ST-7 voice, ambient switch | backend doors to the agent's settings and preferences |
+| S17 | **Usage, cost and safety** | Agent-side cost only; no product analytics; `/claude/generate` is open to any prompt | Per-user cost, product events, spend limits, abuse limits | app analytics + backend |
+
+## 2. Level 2 · flows (the order we ship)
+
+| Order | Flow | Pages | Systems it needs |
+|---|---|---|---|
+| 1 | **First run** | ON-1/2, ON-3–9, ON-5, ON-6, ON-10, ON-11, ON-12, ON-13 | S1, S3, S4, S5, S7, S8, S11, S13, S14, S17 |
+| 2 | **The daily loop (journal)** | JR-1, JR-2, JR-3, JR-4 | S6, S7, S9 (what Retro took), S11 (today's brief) |
+| 3 | **Podcasts** | PC-1, PC-2, PC-3 | S11, S9 (why this is here) |
+| 4 | **Goals** | GL-1, GL-2 | S12, S9 |
+| 5 | **You** | YO-1 to YO-5 | S9, S10 |
+| 6 | **Settings and account** | ST-1 to ST-9, AC-1, AC-2 | S1, S2, S8, S13, S16 |
+| 7 | **Outside the app** | EX-1 to EX-4 | S14, S15 |
+
+S1, S2, S3, S4 and S17 are built first, in the platform foundation, because every flow stands on them.
+
+## 3. Level 3 · pages, each with its data contract
+
+Every page PR lists, for each thing on screen, where its data comes from and its state: **live** (works today), **door** (agent has it; backend route needed), **new** (must be built), or **local** (on the phone).
+
+| Page | Data | Contract |
+|---|---|---|
+| ON-1/2 splash and sign-in | Apple / Google token → session | Apple live; Google sign-in **new** |
+| ON-3–9 questions | Question text, your answer, understood words | Questions **door** (agent onboarding); answers **door** (`/onboarding/interpret`); voice live |
+| ON-5 privacy | Static | live |
+| ON-6 connect | Sources and their state, knows-you level | Catalogue and connections live; Notion and GitHub **new** connectors; knows-you = count of connected sources (**new** small endpoint) |
+| ON-10 getting ready | Pipeline stages | **door** (`/onboarding/readiness`) |
+| ON-11 the tease | First episode audio and transcript | live, but turned into a job plus push (§S11) |
+| ON-12 paywall | Products, purchase, restore | **new**: StoreKit 2 plus backend validation |
+| ON-13 first home | "Episode ready", what you told Retro | Episode live; answers summary **door** |
+| JR-1 journal | Conversation turns, streaming reply, brief card, follow-ups | **door** (`/conversation`, briefs); streaming **new** in backend |
+| JR-2 today's brief | Brief, audio | **door** (briefs) + ElevenLabs live |
+| JR-3 all entries | Entry history, search | **new** list endpoint (from `raw_content` plus turns), cached locally |
+| JR-4 one entry | Entry, what Retro took, "not right" | Facts per entry **door** (graph/lineage); corrections **door** |
+| PC-1 podcasts | Episodes, briefs | live |
+| PC-2 player | Audio, chapters, transcript | live (chapters from episode JSON) |
+| PC-3 why this is here | Evidence for a claim | **door** (brain evidence) |
+| GL-1 / GL-2 goals | Goals, check-ins, evidence | Goals live (merge main fixes); evidence **door** |
+| YO-1 you map | People and threads, the knows-you level | **door** (people, portrait) |
+| YO-2 search | Answer with sources | **door** (`/search/answer`) |
+| YO-3 a source / YO-4 a node | Evidence and links | **door** |
+| YO-5 what I know | Facts by area, sureness, moved this week | **door** (assertions, trust) |
+| ST-1 settings | Index | local |
+| ST-2 daily brief | Time, length, on/off | **door** (settings, briefs enabled); brief time **new** (today it's a fixed cron) |
+| ST-3 / ST-4 sources | Connections, state, last read, disconnect | live |
+| ST-5 privacy | Read in background, where it's processed, export, delete data | Export and delete **new** |
+| ST-6 how straight | Preference | **door** (preferences) |
+| ST-7 voice | Voice, speed, talk or read | Persona live; speed and mode **door** |
+| ST-8 what I've learned | Answering patterns | **door** (onboarding / question stats) |
+| ST-9 account | Plan, renewal, manage, restore, delete account | StoreKit **new**; deletion **new** |
+| AC-1 / AC-2 | Sign in again, sign out with unsent entries | Session live; outbox **new** (S3) |
+| EX-1 to EX-4 | Share, Live Activity, notifications, widgets | Live Activity live; push **new**; widgets **new** |
+
+
+**Interaction bar for every page (founder, 21 Oct):** before a page's code starts, its PR description carries a short **interaction sheet**, worked out from Paper (the board, the journey map and the 02 parts):
+1. How you arrive and how you leave: the transition, its spring or curve, and what's shared between the screens.
+2. Every touchable thing, with its press and release, its haptic (or none, and why) and its loading, success and error motion.
+3. Where life is allowed on the page (motion-system §7), and where nothing moves.
+4. Which signature moment (M01–M13) lives here, if any.
+5. What Reduce Motion shows instead.
+The page passes only if the sheet is built as written and every motion on it passes the visual pass. Anything that looks plain or linear goes back.
+
+## 4. Levels 4–5 · components and sub-components (UI track)
+
+The same as the Paper process, built bottom-up. Each is one SwiftUI view with a variant enum and a state enum, previews of every state in light and dark, an interaction preview, and its motion from motion-system §6.
+- **Foundation:** tokens (colours, sizes, type, motion, haptics) generated from `tokens.json`; `RType`, `RDepth`, `RMotion`, `RHaptic`; and a motion lab for tuning the springs.
+- **Sub-components:** icon well, hairlines, red dot, glow stack, grain, progress hairline, knows-you track, spinner, the mark.
+- **Components** (by family):
+  - Controls: buttons, icon buttons, pills, toggle, segmented.
+  - Fields: text field, composer, voice composer, search, talk button, listening field.
+  - Rows: settings, value, nav, source.
+  - Structure: top bars, tab bar, sheet and dialog, menus, toast.
+  - Audio: mini-player, player, transport, scrubber.
+  - Cards: brief, episode tile, guess, goal, message, benefit row, tag.
+  - Onboarding: question, progress, knows-you meter, plan pair.
+  - The you map.
+- **Every component has its loading, empty, error and offline states.** That's where the platform track shows up in the UI.
+
+## 5. How the two tracks join: the ship gate per flow
+
+For each flow, in order:
+1. **Pages** (UI track): built from components, with sample data where the contract says door or new. Every piece of sample data is listed in `docs/design/sample-data-ledger.md`.
+2. **Doors and new endpoints** (platform track): backend routes with auth and per-user limits, tested with a real account.
+3. **Wiring PR:** swap sample data for live data. The ledger for that flow must reach zero.
+4. **Flow pass:** navigation, transitions and the signature moments on a device, plus the motion visual pass.
+5. **Ship gate:**
+   - every contract item live;
+   - TestFlight on a real account;
+   - per-user cost logged;
+   - errors and offline handled;
+   - App Store rules met (deletion, restore, privacy manifest);
+   - you've signed off from the recordings.
+   Then the flow's switch turns on for everyone and its old screens are deleted.
+
+## 6. The platform track, broken into PRs
+
+**B0 · Baseline (before anything else)**
+- **Pick one baseline branch.** This branch and `origin/main` have diverged: main has upload dedup, goal fixes and Google Calendar; this branch has the speech proxy and the fail-closed payments. Merge them into `main`, keeping the speech proxy and fail-closed payments.
+- **Rotate the ElevenLabs key.** It's in git history on `main`. You rotate it in ElevenLabs; I make sure no client code holds it.
+- **Lock down `/claude/generate`.** Any signed-in user can send any prompt on our key. Replace it with purpose-specific routes, or add per-user limits.
+- **Fix schema drift.** `podcast_episodes` and some `users` columns exist only in the combined SQL. Add proper migrations.
+- **Fix double uploads.** Voice notes upload twice and resync re-uploads everything. Add an idempotency key per entry.
+
+**B1 · Platform foundation** *(parallel with UI foundation)*
+- Typed API client: Codable requests and responses, retries with backoff, mapped errors, auth refresh.
+- Real token refresh on the backend (today refresh just forces a new sign-in).
+- Local store (SwiftData) with an outbox: entries save on the phone first and send when online, once.
+- Analytics events (one small facade) plus a per-user cost view joined from the agent's traces.
+- Account deletion and "delete all my data": a backend endpoint that cascades through the agent's tables and storage.
+- A safe door pattern on the backend for agent routes: auth → user ID from the token, never from the body → per-user rate and spend limits → forward.
+
+**B2 · First run** (flow 1)
+- Google sign-in for the app.
+- Onboarding doors: interpret, readiness, advance.
+- Answers stored as structured data, not text blobs.
+- Notion and GitHub connectors, or ON-6 shows only what exists. **Your call, below.**
+- Knows-you endpoint.
+- First episode as a background job plus push.
+- StoreKit 2 products ($24.99/mo, $239.99/yr), purchase, restore, server validation, entitlement.
+- APNs device tokens and sender.
+
+**B3 · Daily loop** (flow 2)
+- Conversation door with streaming replies (server-sent events).
+- Today's brief and briefs history.
+- Hypotheses and guess cards.
+- Entry history endpoint.
+- Facts-from-this-entry (lineage) and "not right" corrections.
+
+**B4 · Podcasts** (flow 3)
+- Weekly episode push.
+- "Why this is here" evidence door.
+- Episode feedback.
+
+**B5 · Goals** (flow 4): goal evidence door and check-in push.
+
+**B6 · You** (flow 5): people, portrait, assertions-by-area and trust doors, plus search answer and sources doors.
+
+**B7 · Settings** (flow 6)
+- Settings and preferences doors: ambient, how straight, voice speed and mode.
+- Brief time per user, replacing the fixed 08:00 UTC cron.
+- Server data export.
+- Manage subscription.
+
+**B8 · Outside the app** (flow 7)
+- Widgets (episode and brief), lock screen, share extension.
+- Notification categories with deep links.
+
+Every B item is its own PR in the right repo (app, backend or agent), reviewed before merge, with a test against a real test account.
+
+## 6b. New everywhere: retiring the old app and the old backend paths
+
+**Rule (founder, 21 Oct):** the new app is built on the new backend, the new product and the new code: the agent's brain, the design system and the typed client. Nothing new is built on old screens, old services or old routes. Everything old is retired on purpose, on a schedule, and nothing is left half-alive.
+
+**What counts as old** (inventory, 21 Oct: about 53k lines of Swift):
+
+| Area | Old | Replaced by | Retired when |
+|---|---|---|---|
+| Screens | 65 files in `Views/` (Home ×5 variants, Dark* ×11, Entries, Goals, Settings ×8, Video journal ×5, Polaroid, iMessage onboarding, CoStar inputs…) and 50 in `Views/Components` | `DesignSystemV2` components + new feature screens | The flow's ship gate (G1–G7) deletes the screens it replaces. Video journal and experiments with no new design are removed in X03 |
+| Design system | Old button styles, `ExposureFont` helpers outside DS, ad-hoc colours | `RColor`, `RType`, `RDepth`, `RMotion`, `RHaptic` | X04, after the last old screen goes |
+| Services | `OpenAIService` (calls a model provider directly), `ClaudeService` (open `/claude/generate`), `AIServiceManager`, `TTS.swift` fallbacks, `GoogleDocsService` used only for login-free Docs | Backend doors to the agent; the speech proxy | B0.6 and X05, as each caller moves |
+| Client plumbing | Untyped `RetrospectAPIClient`, JSON files + UserDefaults storage, local-only goals | Typed client (B1.01–03), SwiftData + outbox (B1.06–07) | X06: a migration moves each person's local entries and goals into the new store once, then the old storage is deleted |
+| Backend routes | `/claude/generate` (open proxy), `/pipeline/*` legacy observations and insights, `/goals/extract*` one-shot calls, synchronous `/podcasts/generate` | Purpose routes, agent doors, the podcast job + push | X07: removed only after no supported app version calls them |
+| Data | Legacy `observations` / `insights` tables, the duplicate voice uploads | The agent's assertions and evidence; idempotent uploads | X08, an agent repo migration, after a backup |
+
+**How retirement is made safe:**
+1. **Version floor.** A minimum supported app version, checked at launch with a force-update screen. Old backend routes live until that floor passes the last version that used them.
+2. **Usage check first.** Before removing a backend route, the logs must show no calls for 14 days from supported versions.
+3. **One person's data never strands.** X06 runs the local-data migration with a checksum and keeps the old files until the new store confirms them.
+4. **Deletion is its own small PR.** Each X byte lists exactly what it removes and what replaced it, and the app builds and tests pass after removal.
+5. **Old and new never mix on one screen.** A screen is either old (switch off) or new (switch on).
+
+## 7. Working method (unchanged rules)
+- Small PRs from fresh branches off `main`, in worktrees. Your working copy is never touched.
+- Every PR: a screenshot beside its Paper board (light and dark, 17 Pro and SE); tokens only; every state; the motion visual pass with recordings; accessibility; I review the diff before merging.
+- Paper stays the master. Changes found in code go back to Paper first.
+- Dark mode follows light through its own session.
+- Every step updates the chronicle, findings log, `ios-handoff.md` and the tracker. I flag when each flow, and M14, is close to done.
+
+## 8. Questions for you
+1. ~~Switches~~: **yes**, one per screen.
+2. ~~Exposure~~: **licensed**.
+3. ~~Motion sign-off~~: **recordings in each PR**.
+4. ~~Price~~: **$24.99 a month, $239.99 a year (save 20%)**. Paper is updated; `SubscriptionManager` changes in B2.
+5. ~~Notion and GitHub~~: **build Notion in B2; hide GitHub until its connector exists.**
+6. ~~iOS version~~: **stay on 18.1**; iOS 26 touches behind availability checks.
+7. ~~Baseline~~: **yes, merge first (B0)**, keeping the speech proxy and fail-closed payments.
+
+## 9. Findings from the 21 Oct code check (also in findings-log)
+- Most agent abilities (conversation, search, briefs, corrections, hypotheses, settings) have no backend door. That's the biggest gap.
+- An ElevenLabs key is committed in `main`'s history. It must be rotated.
+- `/claude/generate` lets any signed-in user spend our Anthropic key.
+- Voice notes upload twice, and there's no client-side idempotency.
+- The app calls `/insights`, which 404s. `OpenAIService` is dead code pointing at OpenAI directly.
+- Podcast generation is one request of up to 8 minutes, with no push.
+- No account deletion and no purchase path, which App Store review requires.
+- The widget is the Xcode template.
+- `podcast_episodes` is missing from the numbered migrations.
+- The agent's `/runs` cost dashboard has no auth; it relies on staying private.
+
+## 10. Progress log (newest first)
+
+Every byte is one small PR or one founder action. The full pool, with status, is in `docs/design/m14-progress-map.md` (regenerate it with `python3 docs/design/tools/progress_map.py`). Each line here: date · byte · what changed · PR · checks.
+
+| Date | Byte | What | PR | Checks |
+|---|---|---|---|---|
+| 21 Oct | B0.1 | Merged the redesign branch into main: one baseline. Kept the speech proxy and fail-closed payments plus main's dedup, goals and Calendar fixes; two conflicts resolved | [#20](https://github.com/hankHillsleftnut/NPRdoinglaundry/pull/20), **merged** (6a98b7d), NPRdoinglaundry | tsc clean, 36/36 tests, iOS simulator build OK, no secrets in the diff |
+| 21 Oct | — | Plan approved (design + backend); progress map made (204 bytes); motion system and goal prompt written | docs | — |
+| 21 Oct | — | Paper: archives split into "Retrospect · archive · full copy 21 Oct" (size warning cleared); prices set to $24.99 / $239.99, save 20% | Paper | warning gone |
