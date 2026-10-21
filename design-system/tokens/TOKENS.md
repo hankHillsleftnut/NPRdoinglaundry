@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**531 tokens** · 455 semantic · 276 marked *to set*
+**532 tokens** · 456 semantic · 276 marked *to set*
 
 ## palette
 
@@ -434,6 +434,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.stepDot` | A step dot in onboarding. | 6pt |  | to set: app need |
 | `size.stepDotActive` | The current step (a short pill). | 18pt |  | to set: app need |
 | `size.popoverRow` | A menu row. | 50pt |  | to set: from the title-menu recording (20 Oct) |
+| `size.meter` | Height of the knows-you meter track (ON-6). | 4pt |  | ON-6 c:knows-you-meter, 21 Oct |
 
 ## radius
 

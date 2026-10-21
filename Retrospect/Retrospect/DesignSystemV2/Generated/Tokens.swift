@@ -538,6 +538,8 @@ public enum RDimension {
     public static let sizeStepDotActive: CGFloat = 18
     /// A menu row.
     public static let sizePopoverRow: CGFloat = 50
+    /// Height of the knows-you meter track (ON-6).
+    public static let sizeMeter: CGFloat = 4
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
