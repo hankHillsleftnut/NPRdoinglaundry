@@ -49,6 +49,15 @@ struct RSwitch: View {
                 self.chosen = nil
             }
         }
+        // a failed save sets the value back within moments; after that, a change from elsewhere
+        // (a sync, another device) is not a failure and must not buzz
+        .task(id: chosen) {
+            guard chosen != nil else { return }
+            try? await Task.sleep(for: .seconds(RNumber.motionDurationToastVisible))
+            if !Task.isCancelled {
+                chosen = nil
+            }
+        }
         .sensoryFeedback(RHaptic.select, trigger: selectTick)
         .sensoryFeedback(RHaptic.error, trigger: errorTick)
         .accessibilityRepresentation {
@@ -103,7 +112,7 @@ private struct RSwitchTrack: View {
         let open = RDimension.sizeSwitchWidth - RDimension.sizeSwitchThumb - 2 * RDimension.sizeBorderRing
         return Group {
             if isOn {
-                Capsule().fill(RColor.surfaceThumb)
+                Capsule(style: .continuous).fill(RColor.surfaceThumb)
                     .frame(width: RDimension.sizeBorderDefault, height: RDimension.space2 + RDimension.sizeBorderRing)
             } else {
                 Circle().strokeBorder(RColor.textLabel, lineWidth: RDimension.sizeBorderDefault)
