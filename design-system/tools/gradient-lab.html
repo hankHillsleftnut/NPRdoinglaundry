@@ -1,0 +1,407 @@
+<title>Retrospect Gradient Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&family=Hedvig+Letters+Serif:opsz@12..24&display=swap">
+<style>
+/* Layout: the artwork is the hero on the left at 2× hero size; the controls sit in one
+   quiet column on the right; the recipe line the app reads sits under both. Stacks on phones. */
+:root {
+  --canvas: #F3F1EE;
+  --surface: #FBFAF8;
+  --ink: #1F1E1C;
+  --ink-2: #5F5D5B;
+  --line: #E2DED8;
+  --sky: #2FA8F0;
+  --sky-ink: #FFFFFF;
+  --danger: #B32525;
+  --font-display: "Hedvig Letters Serif", Georgia, serif;
+  --font-text: "Geist", -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --canvas: #161513; --surface: #1F1E1B; --ink: #F1EEE9; --ink-2: #A9A59E; --line: #34312D; --sky: #43B7FF; --sky-ink: #06223A; --danger: #F0645E; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --canvas: #161513; --surface: #1F1E1B; --ink: #F1EEE9; --ink-2: #A9A59E; --line: #34312D; --sky: #43B7FF; --sky-ink: #06223A; --danger: #F0645E; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--canvas); color: var(--ink); font-family: var(--font-text); font-size: 14px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px;
+}
+.page { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 30px; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--ink-2); max-width: 56ch; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.preset { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 500 13px var(--font-text); cursor: pointer; }
+.preset canvas { width: 24px; height: 24px; border-radius: 6px; }
+.preset[aria-pressed="true"] { border-color: var(--ink); }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.stage { display: grid; gap: 16px; justify-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px 16px; }
+.art { position: relative; width: min(480px, 100%); aspect-ratio: 1; max-width: 100%; touch-action: none; }
+.art canvas.main { width: 100%; height: 100%; border-radius: 20%; display: block; }
+.handle { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.25); cursor: grab; padding: 0; }
+.handle[aria-pressed="true"] { outline: 2px solid var(--sky); outline-offset: 3px; }
+.handle:focus-visible { outline: 2px solid var(--sky); outline-offset: 3px; }
+.reach { position: absolute; border-radius: 50%; border: 1px dashed rgba(255,255,255,.7); pointer-events: none; transform: translate(-50%, -50%); }
+.sizes { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: center; color: var(--ink-2); font-size: 12px; }
+.sizes figure { margin: 0; display: grid; gap: 6px; justify-items: center; }
+.sizes canvas { display: block; }
+.hint { color: var(--ink-2); font-size: 12px; margin: 0; text-align: center; }
+.panel { display: grid; gap: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.group { display: grid; gap: 10px; }
+.group h2 { margin: 0; font: 500 11px var(--font-text); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.row { display: grid; grid-template-columns: 76px minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
+.row label { color: var(--ink-2); }
+.row output { font: 12px var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--sky); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--canvas); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { border: 0; border-radius: 8px; padding: 6px; background: transparent; color: var(--ink-2); font: 500 13px var(--font-text); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.swatch { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); padding: 0; background: none; cursor: pointer; }
+.swatch::-webkit-color-swatch-wrapper { padding: 0; } .swatch::-webkit-color-swatch { border: 0; border-radius: 9px; }
+.swatch::-moz-color-swatch { border: 0; border-radius: 9px; }
+.points { display: grid; gap: 8px; }
+.point { display: grid; gap: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); }
+.point[data-selected="true"] { border-color: var(--sky); }
+.point-head { display: flex; align-items: center; gap: 10px; }
+.point-head .hex { font: 12px var(--font-mono); color: var(--ink-2); flex: 1; }
+.icon-btn { border: 0; background: transparent; color: var(--ink-2); font: 500 12px var(--font-text); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.icon-btn:hover { color: var(--danger); }
+.base-row { display: flex; align-items: center; gap: 10px; }
+.base-row .hex { font: 12px var(--font-mono); color: var(--ink-2); }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 9px 14px; font: 500 13px var(--font-text); cursor: pointer; }
+.btn.primary { background: var(--sky); color: var(--sky-ink); border-color: transparent; }
+.btn:focus-visible, .preset:focus-visible, .seg button:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+.recipe { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.recipe-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.recipe h2 { margin: 0; font: 500 11px var(--font-text); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.recipe pre { margin: 0; overflow-x: auto; font: 12.5px/1.6 var(--font-mono); white-space: pre-wrap; word-break: break-word; user-select: all; }
+.recipe p { margin: 0; color: var(--ink-2); font-size: 12px; }
+.status { font-size: 12px; color: var(--ink-2); min-height: 1em; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Gradient Lab</h1>
+    <p>The episode artwork, drawn with the same shader the app uses. Drag the points, tune them, then copy the recipe line and send it to Claude.</p>
+  </header>
+
+  <div class="presets" id="presets" role="group" aria-label="Start from a recipe"></div>
+
+  <div class="work">
+    <section class="stage" aria-label="Artwork preview">
+      <div class="art" id="art">
+        <canvas class="main" id="main" aria-label="Artwork at hero size, doubled"></canvas>
+      </div>
+      <p class="hint">Drag a point to move it. Double-click the artwork to add one. Select a point and press Delete to remove it.</p>
+      <div class="sizes">
+        <figure><canvas id="hero" width="240" height="240"></canvas><figcaption>hero · 240pt</figcaption></figure>
+        <figure><canvas id="row" width="40" height="40"></canvas><figcaption>row · 40pt</figcaption></figure>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Controls">
+      <div class="group">
+        <h2>Base</h2>
+        <div class="base-row"><input type="color" class="swatch" id="base" aria-label="Base colour"><span class="hex" id="baseHex"></span></div>
+        <div class="row"><label for="softness">Softness</label><input type="range" id="softness" min="0" max="1" step="0.05"><output id="softnessOut"></output></div>
+      </div>
+      <div class="group">
+        <h2>Grain</h2>
+        <div class="seg" role="group" aria-label="Grain colour">
+          <button type="button" id="grainMono">Mono</button>
+          <button type="button" id="grainMulti">Multi</button>
+        </div>
+        <div class="row"><label for="grainOpacity">Strength</label><input type="range" id="grainOpacity" min="0" max="0.3" step="0.01"><output id="grainOpacityOut"></output></div>
+        <div class="row"><label for="grainSize">Size</label><input type="range" id="grainSize" min="0.5" max="4" step="0.5"><output id="grainSizeOut"></output></div>
+      </div>
+      <div class="group">
+        <h2>Points</h2>
+        <div class="points" id="points"></div>
+        <button type="button" class="btn" id="addPoint">Add a point</button>
+      </div>
+    </aside>
+  </div>
+
+  <section class="recipe" aria-label="Recipe">
+    <div class="recipe-top">
+      <h2>Recipe for tokens.json</h2>
+      <div style="display:flex;gap:8px;align-items:center"><span class="status" id="status" role="status"></span><button type="button" class="btn primary" id="copy">Copy recipe</button></div>
+    </div>
+    <pre id="recipe"></pre>
+    <p>Paste this to Claude with the artwork's name (morning, evening, quiet, weekly or a new one). It goes into gradient.mesh* and the app draws it exactly as you see here.</p>
+  </section>
+</div>
+
+<script>
+// The shader is a line-for-line port of Retrospect/Retrospect/DesignSystemV2/Parts/RArtwork.metal.
+const PRESETS = {
+  morning: "base #2FA8F0; blob #7FCDFF at 18% 0% r 70%; blob #1F7DBA at 100% 100% r 80%; blob #F7F3EE at 0% 100% r 55% alpha .55→0; softness .7; grain multi 12% size 1.5",
+  evening: "base #1F7DBA; blob #F2B84B at 90% 10% r 45% alpha .8→0; blob #E9906A at 70% 30% r 30% alpha .45→0; blob #165E8C at 0% 100% r 80%; blob #7FCDFF at 12% 30% r 35% alpha .5→0; softness .7; grain multi 12% size 1.5",
+  quiet: "base #EFECE7; blob #B3E1FF at 80% 10% r 60% alpha .8→0; blob #E4DBCE at 10% 90% r 70%; blob #FFFFFF at 30% 20% r 35% alpha .7→0; softness .7; grain multi 12% size 1.5",
+  weekly: "base #3A3834; blob #FFC85C at 88% 8% r 90%; blob #F0645E at 30% 30% r 75% alpha .55→0; blob #B7791F at 70% 80% r 90% alpha .75→0; blob #165E8C at 0% 100% r 85%; blob #FBF0DA at 78% 16% r 33% alpha .75→0; softness .7; grain multi 12% size 1.5",
+};
+const MAX_POINTS = 12;
+
+function parse(v) {
+  const base = (v.match(/base (#[0-9a-f]{6})/i) || [])[1] || "#2FA8F0";
+  const points = [...v.matchAll(/blob (#[0-9a-f]{6}) at (\d+(?:\.\d+)?)% (\d+(?:\.\d+)?)% r (\d+(?:\.\d+)?)%(?:[^;]*?alpha \.?(\d*\.?\d+)→0)?/gi)].map(m => ({
+    hex: m[1].toUpperCase(), x: +m[2] / 100, y: +m[3] / 100, r: +m[4] / 100,
+    w: m[5] === undefined ? 1 : (+m[5] > 1 ? +("0." + m[5]) : +m[5]),
+  }));
+  const g = v.match(/grain (?:(mono|multi) )?(\d+(?:\.\d+)?)%(?: size (\d*\.?\d+))?/i);
+  return {
+    base: base.toUpperCase(), points,
+    softness: +((v.match(/softness (\d*\.?\d+)/) || [])[1] ?? 0.6),
+    grain: { mode: (g && g[1] || "mono").toLowerCase(), opacity: g ? +g[2] / 100 : 0.06, size: g && g[3] ? +g[3] : 1 },
+  };
+}
+function pct(n) { return +(n * 100).toFixed(1) + "%"; }
+function frac(n) { const s = (+n.toFixed(2)).toString(); return s.startsWith("0.") ? s.slice(1) : s; }
+function serialise(s) {
+  const parts = ["base " + s.base];
+  for (const p of s.points) parts.push(`blob ${p.hex} at ${pct(p.x)} ${pct(p.y)} r ${pct(p.r)}` + (p.w < 0.995 ? ` alpha ${frac(p.w)}→0` : ""));
+  parts.push("softness " + frac(s.softness));
+  parts.push(`grain ${s.grain.mode} ${+(s.grain.opacity * 100).toFixed(1)}% size ${+s.grain.size.toFixed(2)}`);
+  return parts.join("; ");
+}
+
+// sRGB hex → OKLab, as RArtworkRecipe.oklab does.
+function oklab(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const l = Math.cbrt(0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2]);
+  const m = Math.cbrt(0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2]);
+  const s = Math.cbrt(0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2]);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+}
+
+const FRAG = `
+precision highp float;
+uniform vec2 uSize;          // in points
+uniform float uScale;        // device pixels per point
+uniform float uPoints[${MAX_POINTS * 7}];
+uniform int uCount;
+uniform vec3 uBase;
+uniform float uSoftness, uGrainOpacity, uGrainMode, uGrainCell;
+vec3 toSRGB(vec3 c) { c = clamp(c, 0.0, 1.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
+vec3 oklabToLinear(vec3 lab) {
+  float l = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+  float m = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+  float s = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+  l = l * l * l; m = m * m * m; s = s * s * s;
+  return vec3(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+}
+float hash(vec2 p, float seed) { vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973) + seed); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+float softLight(float b, float s) {
+  return s <= 0.5 ? b - (1.0 - 2.0 * s) * b * (1.0 - b) : b + (2.0 * s - 1.0) * ((b <= 0.25 ? ((16.0 * b - 12.0) * b + 4.0) * b : sqrt(b)) - b);
+}
+void main() {
+  vec2 position = vec2(gl_FragCoord.x, uSize.y * uScale - gl_FragCoord.y) / uScale;
+  float longest = max(uSize.x, uSize.y);
+  vec2 uv = position / longest;
+  float falloff = mix(5.0, 1.5, clamp(uSoftness, 0.0, 1.0));
+  vec3 lab = vec3(0.0); float total = 0.0; float uncovered = 1.0;
+  for (int k = 0; k < ${MAX_POINTS}; k++) {
+    if (k >= uCount) break;
+    vec2 centre = vec2(uPoints[k * 7], uPoints[k * 7 + 1]) * uSize / longest;
+    float d = distance(uv, centre) / max(uPoints[k * 7 + 2], 0.001);
+    float w = uPoints[k * 7 + 3] * exp(-d * d * falloff);
+    lab += vec3(uPoints[k * 7 + 4], uPoints[k * 7 + 5], uPoints[k * 7 + 6]) * w;
+    total += w; uncovered *= 1.0 - w;
+  }
+  vec3 mixed = total > 0.0001 ? lab / total : uBase;
+  lab = mix(uBase, mixed, 1.0 - uncovered);
+  vec3 rgb = toSRGB(oklabToLinear(lab));
+  vec2 cell = floor(position / max(uGrainCell, 0.0001));
+  vec3 noise = uGrainMode < 0.5 ? vec3(hash(cell, 0.0)) : vec3(hash(cell, 0.0), hash(cell, 1.7), hash(cell, 3.1));
+  vec3 lit = vec3(softLight(rgb.r, noise.r), softLight(rgb.g, noise.g), softLight(rgb.b, noise.b));
+  gl_FragColor = vec4(mix(rgb, lit, uGrainOpacity), 1.0);
+}`;
+const VERT = "attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }";
+
+function makeRenderer(canvas) {
+  try { return makeRendererOrThrow(canvas); } catch (err) { document.getElementById("status").textContent = "The preview couldn't start: " + err.message; return null; }
+}
+function makeRendererOrThrow(canvas) {
+  const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true, antialias: false });
+  if (!gl) return null;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG)); gl.linkProgram(prog); gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const u = n => gl.getUniformLocation(prog, n);
+  const U = { size: u("uSize"), scale: u("uScale"), points: u("uPoints"), count: u("uCount"), base: u("uBase"), soft: u("uSoftness"), go: u("uGrainOpacity"), gm: u("uGrainMode"), gc: u("uGrainCell") };
+  return function draw(state, pointsSize) {
+    const scale = window.devicePixelRatio || 1;
+    const px = Math.round(pointsSize * scale);
+    if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+    canvas.style.width = canvas.style.width || pointsSize + "px";
+    gl.viewport(0, 0, px, px);
+    const flat = new Float32Array(MAX_POINTS * 7);
+    state.points.slice(0, MAX_POINTS).forEach((p, k) => flat.set([p.x, p.y, p.r, p.w, ...oklab(p.hex)], k * 7));
+    gl.uniform2f(U.size, pointsSize, pointsSize); gl.uniform1f(U.scale, scale);
+    gl.uniform1fv(U.points, flat); gl.uniform1i(U.count, Math.min(state.points.length, MAX_POINTS));
+    gl.uniform3fv(U.base, oklab(state.base)); gl.uniform1f(U.soft, state.softness);
+    gl.uniform1f(U.go, state.grain.opacity); gl.uniform1f(U.gm, state.grain.mode === "mono" ? 0 : 1);
+    gl.uniform1f(U.gc, state.grain.size / scale);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+}
+
+// ---- state and UI ----
+let state = parse(PRESETS.morning);
+let current = "morning";
+let selected = 0;
+const $ = id => document.getElementById(id);
+const art = $("art");
+const drawMain = makeRenderer($("main"));
+const drawHero = makeRenderer($("hero"));
+const drawRow = makeRenderer($("row"));
+$("hero").style.width = "120px"; $("hero").style.height = "120px";
+$("row").style.width = "40px"; $("row").style.height = "40px";
+$("hero").style.borderRadius = "20%"; $("row").style.borderRadius = "20%";
+
+function render() {
+  if (!drawMain || !drawHero || !drawRow) { if (!$("status").textContent) $("status").textContent = "This browser has no WebGL, so the preview can't draw."; return; }
+  const size = art.clientWidth / 2; // the main canvas shows hero size at 2×, in points
+  $("main").style.width = "100%";
+  drawMain(state, size);
+  drawHero(state, 240);
+  drawRow(state, 40);
+  $("recipe").textContent = serialise(state);
+  placeHandles();
+}
+
+function placeHandles() {
+  art.querySelectorAll(".handle, .reach").forEach(n => n.remove());
+  const w = art.clientWidth;
+  state.points.forEach((p, i) => {
+    if (i === selected) {
+      const reach = document.createElement("div");
+      reach.className = "reach";
+      reach.style.left = p.x * 100 + "%"; reach.style.top = p.y * 100 + "%";
+      reach.style.width = reach.style.height = p.r * 2 * w + "px";
+      art.appendChild(reach);
+    }
+    const h = document.createElement("button");
+    h.type = "button"; h.className = "handle";
+    h.style.left = p.x * 100 + "%"; h.style.top = p.y * 100 + "%"; h.style.background = p.hex;
+    h.setAttribute("aria-label", `Point ${i + 1}, ${p.hex}`);
+    h.setAttribute("aria-pressed", i === selected ? "true" : "false");
+    h.addEventListener("pointerdown", e => startDrag(e, i));
+    h.addEventListener("keydown", e => {
+      const step = e.shiftKey ? 0.05 : 0.01;
+      const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (moves[e.key]) { e.preventDefault(); p.x = clamp01(p.x + moves[e.key][0]); p.y = clamp01(p.y + moves[e.key][1]); render(); art.querySelectorAll(".handle")[i].focus(); }
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removePoint(i); }
+    });
+    art.appendChild(h);
+  });
+}
+const clamp01 = v => Math.min(1, Math.max(0, v));
+
+function startDrag(e, i) {
+  e.preventDefault();
+  selected = i; buildPoints();
+  const rect = art.getBoundingClientRect();
+  const move = ev => {
+    state.points[i].x = clamp01((ev.clientX - rect.left) / rect.width);
+    state.points[i].y = clamp01((ev.clientY - rect.top) / rect.height);
+    render();
+  };
+  const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); render(); };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  render();
+}
+
+art.addEventListener("dblclick", e => {
+  if (e.target.classList.contains("handle") || state.points.length >= MAX_POINTS) return;
+  const rect = art.getBoundingClientRect();
+  addPoint(clamp01((e.clientX - rect.left) / rect.width), clamp01((e.clientY - rect.top) / rect.height));
+});
+
+function addPoint(x = 0.5, y = 0.5) {
+  if (state.points.length >= MAX_POINTS) return;
+  state.points.push({ hex: "#FFFFFF", x, y, r: 0.4, w: 0.7 });
+  selected = state.points.length - 1; buildPoints(); render();
+}
+function removePoint(i) {
+  if (state.points.length <= 1) return;
+  state.points.splice(i, 1); selected = Math.max(0, Math.min(selected, state.points.length - 1)); buildPoints(); render();
+}
+
+function slider(label, id, min, max, step, value, onInput, fmt) {
+  const row = document.createElement("div"); row.className = "row";
+  row.innerHTML = `<label for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}"><output></output>`;
+  const input = row.querySelector("input"), out = row.querySelector("output");
+  input.value = value; out.textContent = fmt(value);
+  input.addEventListener("input", () => { onInput(+input.value); out.textContent = fmt(+input.value); render(); });
+  return row;
+}
+
+function buildPoints() {
+  const list = $("points"); list.innerHTML = "";
+  state.points.forEach((p, i) => {
+    const card = document.createElement("div"); card.className = "point"; card.dataset.selected = i === selected;
+    const head = document.createElement("div"); head.className = "point-head";
+    head.innerHTML = `<input type="color" class="swatch" id="pc${i}" aria-label="Point ${i + 1} colour" value="${p.hex.toLowerCase()}"><span class="hex">${p.hex}</span><button type="button" class="icon-btn">Remove</button>`;
+    head.querySelector("input").addEventListener("input", e => { p.hex = e.target.value.toUpperCase(); head.querySelector(".hex").textContent = p.hex; render(); });
+    head.querySelector("input").addEventListener("focus", () => { if (selected !== i) { selected = i; markSelected(); render(); } });
+    const rm = head.querySelector("button"); rm.disabled = state.points.length <= 1; rm.addEventListener("click", () => removePoint(i));
+    card.appendChild(head);
+    card.appendChild(slider("Reach", `pr${i}`, 0.05, 1.2, 0.01, p.r, v => p.r = v, v => Math.round(v * 100) + "%"));
+    card.appendChild(slider("Strength", `pw${i}`, 0.05, 1, 0.01, p.w, v => p.w = v, v => v.toFixed(2)));
+    card.addEventListener("pointerdown", () => { if (selected !== i) { selected = i; markSelected(); render(); } });
+    list.appendChild(card);
+  });
+  $("addPoint").disabled = state.points.length >= MAX_POINTS;
+}
+function markSelected() { [...$("points").children].forEach((c, i) => c.dataset.selected = i === selected); }
+
+function bindGlobals() {
+  $("base").value = state.base.toLowerCase(); $("baseHex").textContent = state.base;
+  $("softness").value = state.softness; $("softnessOut").textContent = state.softness.toFixed(2);
+  $("grainOpacity").value = state.grain.opacity; $("grainOpacityOut").textContent = Math.round(state.grain.opacity * 100) + "%";
+  $("grainSize").value = state.grain.size; $("grainSizeOut").textContent = state.grain.size + "px";
+  $("grainMono").setAttribute("aria-pressed", state.grain.mode === "mono"); $("grainMulti").setAttribute("aria-pressed", state.grain.mode === "multi");
+}
+$("base").addEventListener("input", e => { state.base = e.target.value.toUpperCase(); $("baseHex").textContent = state.base; render(); });
+$("softness").addEventListener("input", e => { state.softness = +e.target.value; $("softnessOut").textContent = state.softness.toFixed(2); render(); });
+$("grainOpacity").addEventListener("input", e => { state.grain.opacity = +e.target.value; $("grainOpacityOut").textContent = Math.round(state.grain.opacity * 100) + "%"; render(); });
+$("grainSize").addEventListener("input", e => { state.grain.size = +e.target.value; $("grainSizeOut").textContent = state.grain.size + "px"; render(); });
+$("grainMono").addEventListener("click", () => { state.grain.mode = "mono"; bindGlobals(); render(); });
+$("grainMulti").addEventListener("click", () => { state.grain.mode = "multi"; bindGlobals(); render(); });
+$("addPoint").addEventListener("click", () => addPoint());
+
+function loadPreset(name) {
+  current = name; state = parse(PRESETS[name]); selected = 0;
+  [...$("presets").children].forEach(b => b.setAttribute("aria-pressed", b.dataset.name === name));
+  bindGlobals(); buildPoints(); render();
+}
+for (const name of Object.keys(PRESETS)) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "preset"; b.dataset.name = name;
+  const c = document.createElement("canvas"); c.width = 48; c.height = 48; b.appendChild(c);
+  b.appendChild(document.createTextNode(name));
+  b.addEventListener("click", () => loadPreset(name));
+  $("presets").appendChild(b);
+  const r = makeRenderer(c); if (r) { r(parse(PRESETS[name]), 24); c.style.width = "24px"; c.style.height = "24px"; }
+}
+
+$("copy").addEventListener("click", async () => {
+  const text = `${current}: ${serialise(state)}`;
+  try { await navigator.clipboard.writeText(text); $("status").textContent = "Copied"; }
+  catch { const range = document.createRange(); range.selectNodeContents($("recipe")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); $("status").textContent = "Selected. Press Copy on your keyboard."; }
+  setTimeout(() => $("status").textContent = "", 2400);
+});
+
+new ResizeObserver(() => render()).observe(art);
+loadPreset("morning");
+</script>
