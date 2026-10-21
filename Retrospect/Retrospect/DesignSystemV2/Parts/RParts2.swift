@@ -77,8 +77,10 @@ struct RSpinner: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(RColor.borderStrong, lineWidth: diameter / 4)
+            // Both strokes sit inside the frame, so the spinner is exactly the dot's size.
+            Circle().strokeBorder(RColor.borderStrong, lineWidth: diameter / 4)
             Circle()
+                .inset(by: diameter / 8)
                 .trim(from: 0, to: 0.25)
                 .stroke(RColor.textSecondary, style: StrokeStyle(lineWidth: diameter / 4, lineCap: .round))
                 .rotationEffect(.degrees(turning ? 360 : 0))
