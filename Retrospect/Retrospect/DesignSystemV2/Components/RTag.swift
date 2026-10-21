@@ -16,7 +16,7 @@ extension RTextStyle {
         size: RDimension.fontSizeXs,
         weight: .regular,
         tracking: RNumber.fontTrackingNone,
-        leading: 1.3,
+        leading: 14 / 11, // literal-ok: Paper's 14pt line on 11pt words
         relativeTo: .caption2
     )
 }
@@ -94,10 +94,11 @@ struct RTagGallery: View {
             HStack(spacing: RDimension.space3) {
                 RTag(text: "a guess", style: .guess)
             }
-            HStack(spacing: RDimension.space2) {
+            HStack(alignment: .firstTextBaseline, spacing: RDimension.space2) {
                 Text("the week you kept choosing the river")
                     .rText(.textMd)
                     .foregroundStyle(RColor.textPrimary)
+                    .layoutPriority(1)
                 RTag(text: "today")
             }
         }
