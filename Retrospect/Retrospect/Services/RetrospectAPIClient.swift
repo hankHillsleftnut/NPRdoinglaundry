@@ -137,15 +137,11 @@ class RetrospectAPIClient: ObservableObject {
     // MARK: - Content Sync
 
     /// Upload content to the backend as raw content for the analysis pipeline.
-    /// - Parameter idempotencyKey: a stable id for this piece of content (an entry's id).
-    ///   The backend treats a repeat upload with the same key and type as the same row,
-    ///   so retries and "resync all" never create copies.
     func uploadContent(
         contentType: String,
         content: String,
         contentDate: Date? = nil,
-        metadata: [String: Any]? = nil,
-        idempotencyKey: String? = nil
+        metadata: [String: Any]? = nil
     ) async throws {
         var body: [String: Any] = [
             "contentType": contentType,
@@ -158,8 +154,7 @@ class RetrospectAPIClient: ObservableObject {
             body["metadata"] = metadata
         }
 
-        let headers = idempotencyKey.map { ["Idempotency-Key": $0] } ?? [:]
-        let _: GenericResponse = try await request(method: "POST", path: "/content", body: body, headers: headers)
+        let _: GenericResponse = try await post(path: "/content", body: body)
     }
 
     /// Upload provider objects through the agent-owned integration pipeline.
@@ -505,7 +500,7 @@ class RetrospectAPIClient: ObservableObject {
 
     /// Fetch insights for the current user.
     func fetchInsights(goalId: String? = nil, limit: Int = 50) async throws -> [BackendInsight] {
-        var path = "/insights?limit=\(limit)"
+        var path = "/pipeline/insights?limit=\(limit)"
         if let goalId = goalId { path += "&goalId=\(goalId)" }
         let response: InsightsListResponse = try await get(path: path)
         return response.data ?? []
@@ -533,8 +528,7 @@ class RetrospectAPIClient: ObservableObject {
         method: String,
         path: String,
         body: [String: Any]?,
-        authenticated: Bool = true,
-        headers: [String: String] = [:]
+        authenticated: Bool = true
     ) async throws -> T {
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -542,9 +536,6 @@ class RetrospectAPIClient: ObservableObject {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        for (field, value) in headers {
-            request.setValue(value, forHTTPHeaderField: field)
-        }
 
         if let body = body {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
