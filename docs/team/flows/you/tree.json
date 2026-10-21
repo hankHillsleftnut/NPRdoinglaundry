@@ -5,7 +5,7 @@
    "parent": null,
    "title": "You (contract 05)",
    "plain": "see what Retro knows about your life, ask it anything, and fix what's wrong",
-   "size": "46 PRs",
+   "size": "45 PRs",
    "side": "views",
    "needs": []
   },
@@ -32,7 +32,7 @@
    "parent": "you",
    "title": "flow: one thing Retro believes",
    "plain": "tap anything to see how sure Retro is and why, and say if it's right",
-   "size": "10 PRs",
+   "size": "8 PRs",
    "side": "views",
    "needs": []
   },
@@ -41,7 +41,7 @@
    "parent": "you",
    "title": "flow: what Retro knows about you",
    "plain": "everything Retro has concluded, area by area, each one fixable",
-   "size": "5 PRs",
+   "size": "6 PRs",
    "side": "views",
    "needs": []
   },
@@ -95,7 +95,7 @@
    "parent": "you.node",
    "title": "page: YO-4 a node",
    "plain": "one person, theme, goal or belief, with its evidence",
-   "size": "10 PRs",
+   "size": "8 PRs",
    "side": "views",
    "needs": []
   },
@@ -104,7 +104,7 @@
    "parent": "you.knows",
    "title": "page: YO-5 what i know about you",
    "plain": "eight areas of your life, each answer with how sure Retro is",
-   "size": "5 PRs",
+   "size": "6 PRs",
    "side": "views",
    "needs": []
   },
@@ -183,9 +183,9 @@
   {
    "id": "you.yo4.claim",
    "parent": "you.yo4",
-   "title": "component: the claim, sureness and links",
-   "plain": "the belief, how sure it is, and what it connects to",
-   "size": "3 PRs",
+   "title": "component: linked chips (the claim is reused from podcasts)",
+   "plain": "what this belief connects to, one tap away",
+   "size": "1 PR",
    "side": "views",
    "needs": []
   },
@@ -212,7 +212,7 @@
    "parent": "you.yo5",
    "title": "component: answer row",
    "plain": "one answer with its question and how sure Retro is",
-   "size": "1 PR",
+   "size": "2 PRs",
    "side": "views",
    "needs": []
   },
@@ -721,24 +721,12 @@
   },
   {
    "id": "UI6.3",
-   "parent": "you.yo4.claim",
+   "parent": "you.yo5.row",
    "title": "UI6.3 sureness word and dots",
    "plain": "how sure Retro is, in a word and four dots",
    "size": "S",
    "side": "views",
    "needs": [
-    "T01"
-   ]
-  },
-  {
-   "id": "UI6.2",
-   "parent": "you.yo4.claim",
-   "title": "UI6.2 claim block, stated and asked",
-   "plain": "the belief, large, and a guess shaped like a guess",
-   "size": "S",
-   "side": "views",
-   "needs": [
-    "UI6.3",
     "T01"
    ]
   },
@@ -762,7 +750,7 @@
    "side": "views",
    "needs": [
     "C19.1",
-    "UI6.2",
+    "claim component (podcasts plan)",
     "UI6.4",
     "C32",
     "#45",

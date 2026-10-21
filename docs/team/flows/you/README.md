@@ -1,10 +1,10 @@
 # You · the plan, every piece to PR level
 
-Area slug `you` · contract [05-you.md](../../contracts/05-you.md) · fixtures [`fixtures/05/`](../../contracts/fixtures/05/) · cards: [backend.md](./backend.md) (13), [platform.md](./platform.md) (6), [views.md](./views.md) (27) · build board: [tree.json](./tree.json).
+Area slug `you` · contract [05-you.md](../../contracts/05-you.md) · fixtures [`fixtures/05/`](../../contracts/fixtures/05/) · cards: [backend.md](./backend.md) (13), [platform.md](./platform.md) (6), [views.md](./views.md) (26) · build board: [tree.json](./tree.json).
 
-**46 PRs: 13 backend, 6 Platform, 27 views.** 6 pages (YO-1, its list view, YO-2, YO-3, YO-4, YO-5), 12 components, 46 leaves. Phase 5 (after Beta 1, after podcasts and goals): nothing here is in [first-ship.md](../../first-ship.md)'s Beta 1.
+**45 PRs: 13 backend, 6 Platform, 26 views.** 6 pages (YO-1, its list view, YO-2, YO-3, YO-4, YO-5), 12 components, 45 leaves. The claim component is reused from the podcasts plan (integrator, 21 Oct), not built here. Phase 5 (after Beta 1, after podcasts and goals): nothing here is in [first-ship.md](../../first-ship.md)'s Beta 1.
 
-**Not verified:** Paper Desktop wasn't running when this was planned (21 Oct), so no value was read with `get_computed_styles` or `get_jsx`. Node ids come from `reference/paper-inventory.md` (21 Oct), values from `design-reference.md`, `ios-handoff.md` and `ios-build-notes.md`. Every view card's first step is to read its nodes; where Paper disagrees with a number here, Paper wins and the card's PR says so.
+**Verified against Paper (second pass, 21 Oct):** the five approved You phones (YO-1 to YO-5) were read with `get_jsx` and `get_computed_styles`, read only. The view cards now carry Paper's values, marked **(Paper)**, and the list of what changed is at the end of [views.md](./views.md). The masters on parts 05, 41 and 50 were not re-read; each card reads its master first. Paper wins where anything still disagrees.
 
 ## 1. The big picture
 
@@ -66,7 +66,7 @@ What You is for the person, in their words: **"what does Retro actually think ab
 Area › flow › page › component › PR (size · side · needs). Sub-components are the split PRs (C38.1–C38.5, UI6.1a–c, P19.1–2, P21.1–2).
 
 ```
-you (contract 05) · 46 PRs
+you (contract 05) · 45 PRs
 ├── flow: you, at a glance
 │   ├── page: YO-1 you (1G5Y-0)
 │   │   ├── top bar, You variant ── C17-y (S · views · C17, C17-t, #45)
@@ -101,17 +101,17 @@ you (contract 05) · 46 PRs
 │       └── P20 records and saved links (S · views · C17, UI5.0)
 ├── flow: one thing Retro believes
 │   └── page: YO-4 a node (1GC2-0)
-│       ├── claim, sureness, links ── UI6.3 sureness (S) · UI6.2 claim (S · UI6.3) · UI6.4 link chips (S)
+│       ├── links ── UI6.4 link chips (S)   (the claim is the podcasts plan's component, reused)
 │       ├── node data + still true ── BE5.0 claim reader (M · backend · BEA.2)
 │       │                          ├─ BE5.1a people (M · backend · BEA.2, BE5.0)
 │       │                          ├─ BE5.3b still true (M · backend · BEA.1, BEA.2, BE5.0)
 │       │                          └─ PL3.6c node, verdicts, questions live (M · platform · PL3.6a, PL2.2, PL3.1e, BE5.5c, BE5.3c, BE5.1b)
 │       ├── same person? ── BE5.1b doors (S · backend · BE5.1a)
-│       ├── P21.1 node sheet (M · views · C19.1, UI6.2, UI6.4, C32, #45, UI5.0, P18)
+│       ├── P21.1 node sheet (M · views · C19.1, podcasts' claim component, UI6.4, C32, #45, UI5.0, P18)
 │       └── P21.2 question state (S · views · P21.1, C28)
 ├── flow: what Retro knows about you
 │   └── page: YO-5 what i know (1SZX-0)
-│       ├── answer row ── UI6.5 (S · views · UI6.3)
+│       ├── answer row ── UI6.3 sureness dots (S) · UI6.5 (S · views · UI6.3)
 │       ├── understanding data ── BE5.3a (M · backend · BEA.2) · BE5.3c doors (M · backend · BE5.3a, BE5.3b, BE1.6) · PL3.6d (S · platform · BE5.3c)
 │       └── P22 YO-5 page (M · views · C17, UI6.5, C39, UI5.0)
 └── flow: the whole of You
@@ -133,7 +133,7 @@ Each needs only merged work. Backend and app run at the same time (README §2); 
 | b2 | BE5.1a people ranked, one person | M | a2 | UI5.0 sample data | M |
 | b3 | BE5.1b same-person doors | S | a3 | UI6.3 sureness | S |
 | b4 | BE5.3a understanding in your words | M | a4 | UI6.5 answer row | S |
-| b5 | BE5.3b still true | M | a5 | UI6.2 claim | S |
+| b5 | BE5.3b still true | M | a5 | (UI6.2 withdrawn: claim from podcasts) | — |
 | b6 | BE5.3c understanding + verdict doors | M | a6 | UI6.4 link chips | S |
 | b7 | BE5.2a portrait | M | a7 | C32-n numbered row | S |
 | b8 | BE5.2b portrait door | S | a8 | C17-y top bar | S |
@@ -205,6 +205,10 @@ From other areas: C17, C18, C19.1, C28, C32, C39 (journal, phase 0/1); C17-t (po
 - B. A layout algorithm tuned to look like your drawing.
 - **Lean A** (your build note: "don't generate it from a layout algorithm without my sign-off"). Under B, C38.1 grows by a day and needs your review of recordings.
 
+**2b. How many slots the map has.** Paper's approved map draws 9 orbs in two tiers (4 near at 44, 5 far at 20). A. **You draw up to 24 slots in the same two-tier language** (lean; the quotas below stay). B. The map shows at most 9 (4 near, 5 far). Under B, `MAP_QUOTAS` drops to 9 and the list view carries the rest.
+
+**2c. Lines between things.** Paper draws only lines from you to each thing. A. **Add node-to-node lines as fainter 0.75 hairlines** (lean; BE5.5b computes them). B. You-to-node lines only. Under B, BE5.5b keeps only `linked` for YO-4's chips (the map ignores node-to-node edges); nothing else changes.
+
 **3. How many of each on the map?** A. **10 people, 8 themes, 6 goals** (24, the spec's limit). B. People only at first. C. Your numbers. **Lean A.** Places wait until the brain ranks them.
 
 **4. YO-3 and JR-4.**
@@ -232,7 +236,13 @@ From other areas: C17, C18, C19.1, C28, C32, C39 (journal, phase 0/1); C17-t (po
 
 **11. "One question waiting":** A. **a same-person question first, then a guess** (lean). B. Guesses first.
 
-**12. "Moved this week · 2 answers changed":** A. **a quiet line; the moved answers are marked "moved"** (lean). B. Tapping it filters to the moved answers. Under B, P22 gains a filtered state (+½ day).
+**12. "Moved this week · 2 answers changed":** A. A quiet line; the moved answers are marked "moved". B. **Tapping it filters to the moved answers.** **Lean B, changed after reading Paper:** YO-5 draws the row with a chevron. P22 gains the filtered state (+½ day, inside P22).
+
+**14. Grouped sources in search.** Paper's YO-2 shows one row per kind of source ("journal · 3 entries", "apple health · 14 nights"). A. **One row per item for v1** ("20 oct · journal"), grouping later (lean). B. Group in the door now (+1 backend byte; the citation numbers then point at groups). Under B, contract 05 §6 gains `items` per source.
+
+**15. What YO-4's big line says.** Paper draws a two-sentence synthesis about a person ("a close colleague. you come back lighter after time with her."). A. **The best-supported single fact for v1, with no model call** (lean; the claim ladder keeps it honest). B. A guarded, cited synthesis per person (a new brain byte with a model call, the claim guard and spend). Under B, BE5.1a grows to L and the claim gains `cites`.
+
+**16. YO-5's areas.** Paper draws life areas ("work", "health", "family") with questions that aren't the canonical 36. A. **The brain's 8 areas with titles in Paper's tone**, which you name ("who you are", "what you want", …) (lean; it's the data that exists). B. Life areas, which needs a brain grouping of answers into areas (new brain byte, M). Under B, contract 05 §7's `areas` change ids.
 
 **13. Copy to approve** (all lowercase, Retro's voice): the eight area titles and silent-area sentences (YO-5), the portrait's section titles, "nothing certain here; turn this off to see the guess.", "this isn't here any more.", "search needs a connection", "linked." / "kept apart.", and the abstain lines.
 
@@ -243,7 +253,7 @@ From other areas: C17, C18, C19.1, C28, C32, C39 (journal, phase 0/1); C17-t (po
 - `docs/team/backend/phase-0.md`: real numbers for agent migrations `16a_question_you_text.sql`, `16b_confirm_fact.sql`, `16c_search_person_content_date.sql`.
 - `docs/team/backend/later-phases.md` phase 5: replace BE5.1–BE5.4 outlines with a pointer to this folder (13 cards; BE5.0 and BE5.5a–c are new).
 - `docs/team/plumbing/outline.md` PL3.6 → split PL3.6a–f here; `PL2.5.md`: its people/portrait/understanding half moves into PL3.6a.
-- `docs/team/ui/later.md` phase 5: C38 → C38.1–C38.5; UI6.1 → UI6.1a–c; P19 → P19.1–2; P21 → P21.1–2; new UI5.0, C17-y, C12-y, UI6.2–UI6.7; C32-n kept.
+- `docs/team/ui/later.md` phase 5: C38 → C38.1–C38.5; UI6.1 → UI6.1a–c; P19 → P19.1–2; P21 → P21.1–2; new UI5.0, C17-y, C12-y, UI6.3–UI6.7; C32-n kept; the claim card is the podcasts plan's.
 - `Platform/Flows/You.swift` (integrator-owned): the protocol proposal in platform.md.
 - `docs/design/sample-data-ledger.md`: You rows arrive with UI5.0.
 - Paper: a drawing of the portrait list view (UI6.7), and a YO-3 record and saved-link variant (only a journal entry is drawn).

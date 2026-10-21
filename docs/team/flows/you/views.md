@@ -1,13 +1,13 @@
 # You · view cards (components, pages, motion, the flow test)
 
-The tree for this side: **you** › sample data (UI5.0) › YO-1 you (P18: top bar C17-y, search field C12-y, the map C38.1–C38.5, M12, rows) › the list view (UI6.7, the portrait) › YO-2 search (P19.1, P19.2: the answer card UI6.1a–c, numbered sources C32-n) › YO-3 a source (P20, UI6.6) › YO-4 a node (P21.1, P21.2: claim UI6.2, sureness UI6.3, link chips UI6.4, C32, C19.1, C28 variant) › YO-5 what Retro knows (P22: answer row UI6.5) › the flow test (T05c).
+The tree for this side: **you** › sample data (UI5.0) › YO-1 you (P18: top bar C17-y, search field C12-y, the map C38.1–C38.5, M12, rows) › the list view (UI6.7, the portrait) › YO-2 search (P19.1, P19.2: the answer card UI6.1a–c, numbered sources C32-n) › YO-3 a source (P20, UI6.6) › YO-4 a node (P21.1, P21.2: the podcasts plan's claim component, link chips UI6.4, C32, C19.1, C28 variant) › YO-5 what Retro knows (P22: answer row UI6.5) › the flow test (T05c).
 
-**Paper was not running when this plan was written** (21 Oct). Node ids come from `reference/paper-inventory.md` and `docs/design/ios-handoff.md`; every card says "values from `get_computed_styles`" and its first step is to read them. Any value written here as a number is from the design reference or build notes and is checked against Paper in the PR; Paper wins (newest source).
+**Verified against Paper, 21 Oct (second pass).** The first draft was written while Paper was closed. Afterwards the approved phone instances were read with `get_jsx` / `get_computed_styles`: YO-1 `1G5Y-0`, YO-2 `1G8E-0`, YO-3 `1GAS-0`, YO-4 `1GC2-0` and YO-5 `1SZX-0` (read only; nothing in Paper was changed). Values below marked **(Paper)** are read from those nodes. The masters on parts 05, 41 and 50 were not re-read; each card still reads its master first. The changes this pass made are listed in "Verified against Paper" at the end of this file. Paper wins (newest source).
 
 **Reused, not rebuilt:** C17 top bar, C18 tab bar, C19.1 sheet host, C19.2 dialog, C20 menu, C28 guess card, C32 evidence row, C39.1–C39.4 shared states, C22 mini-player, `RSettingsRow` (switch and nav rows), `RPill` (#45), `RSunkenField` (#53), `RIconButton` (#44), `RSpinner`, `RSymbol`, `RIconWell`, `RMotion`, `RHaptic`, `.rBlurReplace`, `.rPress`, P12 (JR-4: your own words opened from search).
 
 **Shared with other areas (the integrator decides the owner):**
-- `c:claim/stated` and `c:claim/asked` (part 41 `G2A-0`, `G3C-0`) are also PC-3's and GL-2's. UI6.2 builds both here unless the podcasts plan's claim card merges first; then UI6.2 shrinks to the YO-4 variant.
+- **The claim component** (`c:claim/stated`, `c:claim/asked`, part 41 `G2A-0`, `G3C-0`) is **owned and built by the podcasts plan** (integrator, 21 Oct). You reuses it in P21.1 and builds nothing of its own; the old UI6.2 card is withdrawn.
 - C38's orbits variant without labels is also the splash (UI4.4), AC-1 (P32) and the paywall tile; C38.1–C38.3 are built so those can pass `labels: .hidden`.
 - C17-t (the plain tab title) belongs to the podcasts plan; C17-y adds only the You trailing items.
 
@@ -52,9 +52,10 @@ Why: "you" sits where every tab's title sits; the list view and your settings ar
 Inputs: Paper YO-1 `c:top-bar/title/rest` `1G7X-0`, YO-2 `1GAB-0`; design-reference §C17 variant 2 ("you" with a trailing "list" wash pill + your picture, avatar aligned to the field's right edge); finding 55 (YO-2's bar still shows the old "list" text and grey mic: match YO-1).
 
 Spec:
-- Trailing group: a wash `RPill` "list" (opens the list view, UI6.7) and your picture (a 36 circle in a 44 hit area, opening ST-1). The picture is the person's initial on `surface.wash` when there's no photo (text 0.5pt high, craft §2.9). Its right edge aligns to the search field's right edge (one shared leading/trailing guide in P18).
-- On YO-2 the bar is the same; the pill's label is "list" while the map shows and is hidden while a search result shows (the list view is the map's alternative, not the result's).
-- Values from `get_computed_styles` on `1G7X-0`.
+- **(Paper `1G7X-0`)** height `spacing.size.navBar`, inline padding `spacing.screenMargin`, gap `spacing.2`; title "you" `font.displayInky` `text.3xl` weight `inkTitle`, `tracking.title`, `leading.tight`, `text.primary`; trailing group gap `spacing.3`.
+- The "list" pill: `surface.wash`, `radius.control`, 36 high, inline padding `spacing.3`, label Geist `text.md` medium `text.primary` (no icon). It opens the list view (UI6.7).
+- Your picture: a 36 circle, `radius.control`; the person's photo, else the drawn fallback (`sky.500` with an `amber.200` and a `sky.800` radial, a 1pt `depth.stroke.innerTop` inset ring and a 0.5 `depth.stroke.outer`). With no photo the fallback shows the person's initial, 0.5pt high (craft §2.9). It opens ST-1. Its right edge aligns with the search field's right edge.
+- **(Paper `1GAB-0`)** YO-2 keeps the pill and picture while a result shows (the first draft hid the pill: wrong). YO-2's trailing frames are 44 hit areas around the same 36 visuals; build both pages with 44 hit areas (screen rule 33).
 
 State table: rest · pill pressed (0.94, 80/240) · picture pressed (0.94) · AX3 (the title wraps to two lines; pill and picture stay one line, the pill's label never truncates) · dark.
 
@@ -84,7 +85,9 @@ Why: you can ask anything about your life, by typing or talking, from the top of
 Inputs: Paper YO-1 `c:search-field/rest` `1G7R-0` + mic `1G7U-0`; YO-2 `c:search-field/typed` `1GA2-0`, mic `1GA8-0`, clear `1GA4-0`; part 50 masters `K0B-0` (rest), `K0J-0` (typed), `K0D-0` (mic), `K0P-0` (close); handoff part 50 ("48 high, `surface.control`, sunken inner shadow, 36 mic well first, placeholder `text.tertiary`, clear × when typed"); build notes "Search and type" (sunken = translucent dark wash over its parent, `surface.washPressed`; SF Pro body tracking, never 0).
 
 Spec:
-- `RSunkenField` with a leading 36 raised mic well (YO-1 draws the mic **raised 40**; take the size from `1G7U-0`), the placeholder (copy from Paper), and a trailing clear × (`RIconButton` 32 in field) once there's text.
+- **(Paper `1G7R-0`, `1GA2-0`)** `RSunkenField`: 354 × 48, `surface.control`, `radius.control`, an inset `depth.shadow.sunken` 0 1 2 plus a 0.5 inset `depth.stroke.outer`, inline padding `spacing.1`. Placeholder "ask anything about yourself", SF `text.body` `leading.snug` `text.tertiary`; typed text `text.primary`, one line.
+- The mic well **differs between the two pages in Paper**. At rest (YO-1) it is 40, raised: `background.canvas` with a 0.5 `depth.stroke.outer` and `depth.shadow.contact` 0 1 1.5, gap `spacing.3`. Typed (YO-2) it is 36 on `surface.wash`, flat, gap `spacing.2`. Both hold an 18pt `mic` glyph in `icon.default`. Finding 55 says they should match; **build both states as drawn** (raised at rest, wash once typing, cross-fade 200ms) and raise the mismatch with the founder in the PR.
+- Clear ×: a 36 frame with a 16pt `close` glyph in `icon.muted` (not an `RIconButton` well: Paper draws no well). It appears once there's text.
 - Submit on return (`.submitLabel(.search)`); no search-as-you-type (each search costs money and seconds).
 - Mic (founder question 10, lean A): starts on-device dictation into the field (the composer's speech recogniser through its existing protocol); the well shows the listening job (blue, the only blue here) while listening; stopping leaves the words in the field for you to send.
 - Focused: the field's ring per `RSunkenField`; the keyboard rises.
@@ -122,9 +125,9 @@ Inputs:
 
 Spec:
 - `RYouMap` canvas: the page (level 0), grain 4%, bleeds past the margins (`.ignoresSafeArea(edges: .horizontal)` inside its frame).
-- The orbit rings (count, radii and stroke from `get_computed_styles` on `9BS-0`), drawn first.
-- The you-orb, 56, centred, not a button (`accessibilityHidden`, the list carries meaning).
-- **The slot table** (founder question 2, lean A): `YouMapSlots.swift`, the orb positions read from Paper's `1G6Z-0` children as unit coordinates on the rings (angle + ring index), at most 24, grouped by kind as drawn; the data fills slots in `weight` order per kind. The PR body shows the slot table drawn over the Paper screenshot for the founder's sign-off. No force layout, no randomness.
+- **(Paper `1G6Z-0`)** the map is a 390 × 360 frame, centred in the 354 column and clipped to its own bounds: it bleeds 18 past each margin. Centre (195, 180). **Two** orbit rings: r 92 at opacity 0.5 and r 158 at opacity 0.35, both `map.edge` at 0.5pt. They're drawn first.
+- **(Paper)** the you-orb is **64, not 56**. It's a radial `sky.300` → `map.node.self` (55%) → `sky.800` from 34%/28%, with an inset `glow.primary.rim` top line, a 4pt `background.canvas` ring and a 5pt `glow.primary.ring`. Under it sit a `depth.tint.primary` cast 0 10 22 −8 and a 48pt `glow.primary.bloom`. Centred, not a button (`accessibilityHidden`; the list carries meaning).
+- **The slot table** (founder question 2, lean A): `YouMapSlots.swift`, the orb positions read from Paper's `1G6Z-0` children as unit coordinates on the rings (angle, ring index), filled in `weight` order per kind. **(Paper)** the approved instance draws **9 orbs in two tiers**. Four near orbs, 44, sit near the inner ring at (115, 134), (265, 121), (275, 226) and (125, 239) (centres). Five far orbs, 20, sit on or near the outer ring at (168, 24), (351, 153), (249, 328), (141, 328) and (47, 126). So the drawn table has 9 slots, not 24. The founder either draws more slots (up to the spec's 24) or the quotas drop to 9 (4 near, 5 far): **new founder question 2b**, lean "draw up to 24 in the same two-tier language", built on the 9 until then. The PR body shows the slot table drawn over the Paper screenshot for the founder's sign-off. No force layout, no randomness.
 - Scale: YO-1 0.82 on SE (c-o1stxz, by container height, never the device model); AC-1 0.78.
 - Variant `labels: .shown | .hidden` (hidden for the splash, AC-1 and the paywall tile: "never show node names before auth").
 
@@ -147,15 +150,23 @@ Why: each person, theme and goal is a small glass sphere sized by how much it ma
 Inputs: design-reference §C38 anatomy; build notes ("frosted glass: a 12% white base under its gradient and ~1.5pt backdrop blur"; "glass spheres: two light gradients, a top rim, a hairline, a soft cast; far ones smaller, blurred and dimmed"; "names never sit on a thread or a ring: on the side away from you, on a canvas-coloured plate, 2 × 4 padding"); tokens `map.node.person/goal/theme`, `size.map.nodeMin/nodeMax`, `inference.border`, `map.nodeLabel`.
 
 Spec:
-- `RMapOrb(kind:, weight:, isGuess:, label:, depth:)`: diameter = lerp(`size.map.nodeMin`, `size.map.nodeMax`, weight) (tokens; Paper's values win over the older spec's 12 → 44); fill by kind; 12% white base + backdrop blur ~1.5pt clipped to the circle (iOS 26: a material; iOS 18: a blurred snapshot of the layer behind, measured for cost); two light gradients + top rim + hairline + soft cast (card tier only when > 24, per spec).
+- `RMapOrb(kind:, tier:, isGuess:, label:)`. **(Paper)** orbs come in **two tiers, not a continuous size**:
+  - **near**: 44, `alpha.white12` base, backdrop blur 1.5, cast `depth.shadow.cast` 0 7 15 −5;
+  - **far**: 20, backdrop blur 3, the orb itself blurred 1.5 (`filter`), opacity `opacity.pressed`, cast 0 3 7 −3.
+  The heaviest nodes take near slots and the rest take far slots. `weight` orders them; it doesn't size them.
+- **(Paper)** every orb has an inset `glow.primary.rim` 0 1 0 top line and a 0.5 `depth.stroke.outer`. The fill is two radial gradients by kind:
+  - person: `sky.200` from 80%/10% plus `paper.300` from 10%/90%;
+  - a second person look: `sky.300` from 25%/10% plus `sky.700` from 100%/100%. Paper uses it for the near orbs labelled "maya" and "the river"; the PR asks the founder whether it's a kind (place?) or a variety;
+  - theme: `map.node.theme` from 85%/15% plus `sky.800` from 0%/100%;
+  - goal: `map.node.goal` from 30%/15% plus `sky.800` from 90%/95%.
+  iOS 26 uses a material for the frosting; iOS 18 uses a blurred snapshot of the layer behind, measured for cost.
 - Guess: dashed ring `inference.border` and no fill change (never colour alone).
-- Label: under or beside on the side away from you, mono 11 `map.nodeLabel` (Geist if Paper shows Geist: screen rule 4 "almost no mono"; check `1G6Z-0`), on a canvas plate (2 × 4, small radius); only for nodes over 20pt; smaller ones label on press. Collisions: the smaller label hides.
-- Depth: `depth` 0…1 from the slot (far = smaller, blurred, dimmed).
+- **(Paper)** labels are **Geist** (`font.label`) `text.xs` regular `text.secondary`, `leading.snug`. They're not mono and not `map.nodeLabel`. Padding is `spacing.size.borderRing` × `spacing.1` and the radius is `radius.small`. They sit on the side away from you (right-aligned for left-side orbs) and **only near (44) orbs are labelled**; far orbs label on press. Paper's plates have **no fill**, because nothing passes behind them there. The founder's comment asks for a canvas-coloured plate, so fill it with `background.canvas` only when a thread crosses it, and confirm in review. On a collision the smaller label hides.
 
 State table: rest · pressed (1.1×, 2pt `map.selectedRing`) · dimmed (`opacity.dimmed` 0.25) · guess · waiting (one quiet glow, `map.star.self.halo` at low opacity, still: no pulse; life rules) · dark · Increase Contrast (labels `text.primary`, ring full opacity) · Reduce Transparency (solid base).
 Accessibility: orbs are not individually focusable on the canvas (C38.4's list is).
-Acceptance: an orb of each kind at min and max, guess and waiting, matches part 05 in light and dark at 4×.
-Tests: (snapshot) each kind × min/max, guess, waiting, pressed, dimmed, light/dark · (unit) `labels never sit on the line toward you`.
+Acceptance: an orb of each kind in both tiers, guess and waiting, matches `1G6Z-0` and part 05 in light and dark at 4×.
+Tests: (snapshot) each kind × near/far, guess, waiting, pressed, dimmed, light/dark · (unit) `labels never sit on the line toward you`.
 Watch out: data stars emit light, no white specular highlight (surfaces.md); the frosting must not grey the orb in dark mode (measure contrast).
 
 ---
@@ -165,7 +176,7 @@ Place in the tree: you › YO-1 › the map › threads
 Repo · branch: NPRdoinglaundry · `ui/C38.3-map-threads`
 Needs: C38.1      Unblocks: C38.4, M12
 
-Spec: one `Canvas` pass under the orbs: straight segments only ("straight lines", never curves); width lerp(`size.map.edgeMin` 0.5, `edgeMax` 3, strength); colour `map.edge`, strong links (≥ 0.67) `map.edgeStrong`; dark: white 20%. Threads stop at each orb's edge and never cross a label plate (the plate is drawn above). Increase Contrast: one step stronger.
+Spec: one `Canvas` pass under the orbs, straight segments only ("straight lines", never curves), with round caps. **(Paper `1G6Z-0`)** the approved map draws **only you-to-node threads, all 0.75pt `map.edge`**, and no node-to-node lines. The first draft's width-by-strength and node-to-node lines go beyond Paper. Build both: you-to-node at 0.75, and node-to-node lines (contract 05 §2) only if the founder approves them in C38.1's review (**new founder question 2c**, lean "yes, same 0.75 hairline at lower opacity"). Strength may vary opacity, never width, until the founder says otherwise. Dark: white 20%. Threads stop at each orb's edge and never cross a label plate (the plate is drawn above). Increase Contrast: one step stronger.
 State table: rest · dimmed (with unrelated orbs) · drawing (M12 owns the draw-on) · dark.
 Tests: (snapshot) light, dark, increase contrast · (unit) `a thread's width follows its strength`.
 
@@ -238,7 +249,7 @@ Why: each source under the answer carries the number its citation uses, and your
 
 Inputs: Paper YO-2 `c:source-result/rest` `1G9P-0`, chevron `1G9Q-0`, part 50 master `K14-0`; design-reference §C32 variants; build notes "Search and type" (matched words `accent.text`, medium, one `AttributedString` run per match; blue job 4).
 
-Spec: C32's `leading: .number(Int)` case: a 32 well with a mono figure (text-xs, tabular) instead of the glyph; the label line "date · via" (Geist 12 `text.label`); the snippet one line with `matches` rendered as `accent.text` medium runs (ranges converted safely; past-the-end ranges dropped). A `highlighted: Bool` state for UI6.1b (a `surface.washPressed` wash fading out over 1.2 s).
+Spec: C32's `leading: .number(Int)` case. **(Paper `1G9P-0`)** the well is 32, `surface.wash`, `radius.default`, holding a `font.mono` **`text.sm`** figure in `text.secondary` (the first draft said text-xs). The label line is Geist `text.sm` `text.label`. The excerpt is SF `text.md` `tracking.card` `text.primary`, one line, then a 14pt chevron in `icon.muted`. Rows are 12 × 16 padded, min height `spacing.size.rowDefault`, with 1pt `border.subtle` separators, inside a grouped panel (`background.canvas`, `radius.panel`, 0.5 `depth.stroke.outer`). The excerpt's `matches` render as `accent.text` medium runs (ranges converted safely; past-the-end ranges dropped). **(Paper)** the label line reads "apple health · 14 nights", "journal · 3 entries", "calendar · 4 weekends": **one row per grouped source**, not one per item. The contract gives one source per item, so v1 shows "date · via" per item and grouping is **new founder question 14** (lean: per item for v1, grouping later as a brain byte). A `highlighted: Bool` state for UI6.1b (a `surface.washPressed` wash fading out over 1.2 s).
 State table: rest · pressed · highlighted · no matches · dark · AX3 (two lines, C32's rule).
 Accessibility: "source 2, 20 october, calendar, board prep until 8, button".
 Tests: (snapshot) rest, with matches, highlighted, dark, ax3 · (unit) `a match past the end of the snippet is dropped`.
@@ -255,7 +266,7 @@ Why: what Retro found sits on top in plain words; when there's nothing, it says 
 Inputs: Paper YO-2 `c:answer/found` `1G9Y-0`, part 50 master `K0U-0`, board `JZQ-0`; handoff part 50 ("'what i found' label, facts inky xl, guess sentence starts 'a guess:' in body/secondary"; states found, nothing found "abstains, then 'the closest: …'"); craft §7.2 (text arrives with blur).
 
 Spec:
-- `RAnswerCard(state:)`: a raised card (card tier, `radius.card`, padding from `1G9Y-0`); the label "what i found" (Geist label); sentences as one flowing paragraph in the inky face at `text.xl` (certain) with guess sentences handled by UI6.1c.
+- `RAnswerCard(state:)`. **(Paper `1G9Y-0`)** `background.raised`, `radius.card`, padding `spacing.5`, gap `spacing.2`. The stack: an inset `depth.stroke.innerTop` 0 1 0, a 0.5 `depth.stroke.outer`, `depth.shadow.contact` 0 1 2 and `depth.shadow.cast` 0 10 24 −12. The label "what i found" is Geist `text.sm` medium, `tracking.label`, `text.label`. Certain sentences are one paragraph in `font.displayInky` `text.xl`, weight `inkCard`, `tracking.card`, `leading.snug`, balanced, `text.primary`. Guess sentences are handled by UI6.1c.
 - States:
   - `writing`: the label + three skeleton lines in the paragraph's shape (C39.1, only after 400ms); after 8 s "still working" under them (C39.4).
   - `found`: sentences arrive with a 4pt blur → 0 over 240ms, staggered 60ms per sentence (craft §7.2).
@@ -300,36 +311,25 @@ Why: a guess never reads like a fact; you can hide guesses entirely.
 Inputs: build notes ("a guess sentence starts with 'a guess:' in the label style and is set in body type (text-secondary), not the inky answer type"); Paper `c:settings-row/switch · only certain` `1G91-0`, `c:switch/default/off` `1G92-0`, part 50 `K1V-0`; handoff ("'only what's certain' row with the switch ('hides the 1 guess')"; "switch sits just above the tabs"); build notes "Switch" (no pending visual; toggles at once).
 
 Spec:
-- A `sure == .guess` sentence: "a guess:" (Geist label) + the sentence in body `text-secondary`, after the certain sentences' flow (keeps its citation chips).
-- The switch row: `surface.wash`, `radius.panel`; title "only what's certain"; subline "hides the 1 guess" / "hides 2 guesses" (plural rule). The row is hidden when `guessCount == 0` (nothing to hide; restraint, craft §12). Placement per P19.1.
+- A `sure == .guess` sentence sits in its own paragraph after the certain ones. **(Paper)** it's SF `text.body` `text.secondary` `leading.snug`, balanced, and keeps its citation chips. Paper draws "a guess:" in the same run because it flattens inline styles. Per the build note, build "a guess:" as a Geist label-style run in front.
+- **(Paper `1G91-0`)** the switch row: `surface.wash`, `radius.panel`, min height `spacing.size.rowDefault`, padding `spacing.2` × `spacing.4`, gap `spacing.3`. Title "only what's certain" in SF `text.md` medium `text.primary`; subline "hides the 1 guess" / "hides 2 guesses" in Geist `text.sm` `text.label`; the switch is 51 × 31 (C07). It's **in the scroll after the sources**, `spacing.2` below them (40 in all with the page gap), **not pinned above the tabs** as the handoff said. The row is hidden when `guessCount == 0` (nothing to hide; restraint, craft §12).
 - Toggling hides/shows guess sentences with a 200ms blur-replace, `select` haptic; the choice is `onlyCertain` (remembered).
 - When everything is a guess and the switch is on: the card says "nothing certain here; turn this off to see the guess." (copy for the founder).
 Tests: (snapshot) guess shown, hidden, all-guess hidden, dark · (UI) the switch hides the guess and stays on after relaunch.
 
 ---
 
-### UI6.2 · Claim block (stated and asked) with its sureness line           size: S
-Place in the tree: you › YO-4 › claim
-Repo · branch: NPRdoinglaundry · `ui/UI6.2-claim`
-Needs: UI6.3, T01      Unblocks: P21.1 (and PC-3, GL-2 if not built there)
-
-Why: the one thing Retro believes, large, with how sure it is in words, so you can judge it.
-
-Inputs: Paper YO-4 `c:claim/stated` `1GDS-0`, part 41 masters `G2A-0` (stated), `G3C-0` (asked); handoff YO-4 ("belief inky 2xl; 'fairly sure · from 5 things · moved last week'").
-
-Spec: `RClaim(text:, sureness:, dots:, sourceCount:, movedAt:, isGuess:)`: the claim in the inky display face `text.2xl`, wrapping; a claim is never truncated; the line under it (Geist 12 `text.label`): sureness word + UI6.3 dots · "from 5 things" · "moved last week" (relative, from `movedAt`, today injected). `isGuess`: the asked variant (`G3C-0`): dashed card, a question form ("is this right?" framing per part 41), never the stated look. `claim == nil` (person with no fact): the line "comes up 5 times" only.
-State table: stated · asked (guess) · confirmed (the line gains "you said this is still true") · long · AX3 · dark.
-Tests: (snapshot) stated, asked, confirmed, no-claim, long, dark, ax3 · (unit) `moved last week reads relative to the injected today`.
-Watch out: "guesses never look like facts" (context.md §2): the asked variant must differ in shape, not only colour.
+### UI6.2 · (withdrawn) Claim block: reused from the podcasts plan
+The claim component (`c:claim/stated` `G2A-0`, `c:claim/asked` `G3C-0`) is owned and built by the podcasts plan (integrator, 21 Oct). You builds no claim component. P21.1 passes its YO-4 content to that component; the values it must support are in P21.1's spec. This id is left here only so links to it resolve; it is not a PR and is not in `tree.json`.
 
 ---
 
 ### UI6.3 · Sureness: the word and four dots                                size: S
-Place in the tree: you › YO-4 / YO-5 › sureness
+Place in the tree: you › YO-5 › sureness
 Repo · branch: NPRdoinglaundry · `ui/UI6.3-sureness`
-Needs: T01      Unblocks: UI6.2, UI6.5
+Needs: T01      Unblocks: UI6.5
 
-Spec: `RSureness(word:, dots:)`: the word (Geist 12) + 4 dots, 6pt, 2 apart, filled `text.secondary`, empty `surface.track` (handoff YO-5); dots centred on the word's x-height (craft §2.4). Increase Contrast: empty dots get a 1pt ring. The dots are decorative for VoiceOver (the word carries it).
+Spec: `RSureness(word:, dots:)`. **(Paper `1T0Z-0`)** the word is Geist `text.sm` `text.label`; 4 dots of 6pt, `radius.control`, `spacing.size.borderRing` apart, filled `text.secondary`, empty `surface.track`; then "· from 9 things" in the same label style; group gap `spacing.2`. Dots centre on the word's x-height (craft §2.4). **(Paper `1GC2-0`)** YO-4 shows the word **without dots** ("fairly sure · from 5 things · moved last week"), so this part is YO-5's only. Increase Contrast: empty dots get a 1pt ring. The dots are decorative for VoiceOver (the word carries it).
 Tests: (snapshot) 1–4 dots, each word, dark, increase contrast.
 
 ---
@@ -339,8 +339,8 @@ Place in the tree: you › YO-4 › linked chips
 Repo · branch: NPRdoinglaundry · `ui/UI6.4-link-chip`
 Needs: T01      Unblocks: P21.1
 
-Inputs: Paper `c:chip/link` `1GCV-0`; `design-system/components/chip.md` (32 visual in 44, raised, mono 13 label, optional 20 icon well with a kind glyph).
-Spec: `RChip(.link(kind:, label:))` per chip.md (no status dot); a wrapping row (`Layout` flow, 12 apart `space.inline`); tapping replaces the sheet's content with that node (P21.1 owns the transition); long labels ellipsise after 18 characters, full name read aloud.
+Inputs: Paper `c:chip/link` `1GCV-0` (wins over the older `design-system/components/chip.md`).
+Spec: **(Paper `1GCV-0`)** a **flat wash pill, not chip.md's raised chip**: `surface.wash`, `radius.control`, 32 high (44 hit area), inline padding `spacing.3`, label SF `text.md` medium `text.primary`. No icon well, no shadow, no mono. A wrapping row (`Layout` flow) with **`spacing.2` (8) gaps**, under a "linked" section label (Geist `text.sm` medium `tracking.label` `text.label`, `spacing.2` above the row); tapping replaces the sheet's content with that node (P21.1 owns the transition); long labels ellipsise after 18 characters, full name read aloud.
 State table: rest · pressed (0.94) · focused · dark · AX3 (rows wrap).
 Tests: (snapshot) rest, pressed, long label, wrapped row, dark, ax3.
 
@@ -352,7 +352,7 @@ Repo · branch: NPRdoinglaundry · `ui/UI6.5-answer-row`
 Needs: UI6.3, T01      Unblocks: P22
 
 Inputs: Paper `c:answer-row/rest` `1T0Z-0` (no master on 02: take everything from the instance); handoff YO-5 ("question (label sm) · answer (body) · how sure word + 4 dots · 'from n things' · ›").
-Spec: the question (Geist sm `text.label`), the answer (body `text.primary`, wraps, never truncates), a meta line (UI6.3 + "from 3 things"), a trailing chevron; the settings row's press. `isGuess`: the answer in `text-secondary` with "a guess:" before it (the same language as search, UI6.1c). `movedThisWeek`: a small "moved" word in the meta line (Geist 12 `text.label`; no colour, no dot: restraint).
+Spec: **(Paper `1T0Z-0`)** padding `spacing.3` × `spacing.4`, gap `spacing.3`, lines `spacing.1` apart. The question is Geist `text.sm` `text.label`; the answer is SF `text.body` `tracking.card` `leading.snug` `text.primary`, balanced, wrapping and never truncated; the meta line is UI6.3; the trailing chevron is 14pt `icon.muted`. Rows sit in one grouped panel per area (`background.canvas`, `radius.panel`, 0.5 `depth.stroke.outer`, 1pt `border.subtle` separators) and use the settings row's press. `isGuess`: the answer in `text-secondary` with "a guess:" before it (the same language as search, UI6.1c). `movedThisWeek`: a small "moved" word in the meta line (Geist 12 `text.label`; no colour, no dot: restraint).
 State table: rest · pressed · guess · moved · confirmed · long · dark · AX3.
 Accessibility: one element "what have you said you want? to run the half in march. very sure, from 3 things. button".
 Tests: (snapshot) each state, dark, ax3.
@@ -362,12 +362,12 @@ Tests: (snapshot) each state, dark, ax3.
 ### UI6.6 · "This supports" on the entry page (YO-3 merged into JR-4)      size: S
 Place in the tree: you › YO-3 › this supports
 Repo · branch: NPRdoinglaundry · `ui/UI6.6-this-supports`
-Needs: P12, C32, founder question 4 answered (lean A)      Unblocks: P19.2 (opening an own-words source)
+Needs: P12, `RSettingsRow`, founder question 4 answered (lean A)      Unblocks: P19.2 (opening an own-words source)
 
 Why: open something you wrote from search and see what it backs up: a belief, a goal.
 
 Inputs: Paper YO-3 `1GAS-0`, its `c:settings-row/nav` `1GB2-0` rows; handoff YO-3 ("**this supports** rows (a belief, a goal)"); contract 02 §6 (`took` gives the claims taken from an entry).
-Spec: when JR-4 is opened from search (`origin: .search(query)`), it shows "this supports" (section label) with one C32 row per item from `took(id:)` that is still live (belief → YO-4 kind fact/answer; goal → YO-4 kind goal), above "what i took"'s correction controls; the matched query words are not re-highlighted in the full text (founder rule only covers result lists). Under option B (YO-3 stays its own page), this becomes P20's content instead.
+Spec: when JR-4 is opened from search (`origin: .search(query)`), it shows "this supports" (Geist `text.sm` medium `text.label`, `spacing.2` above the rows) with one row per item from `took(id:)` that is still live. **(Paper `1GAS-0`)** these are **`RSettingsRow` nav rows, not C32 evidence rows**. The title is the claim (SF `text.md` medium `text.primary`). The subline says where it lives ("what i know about you" for a belief, "a goal", "a theme"; Geist `text.sm` `text.label`). They have no well, end in a 14pt chevron, and sit in a grouped panel. Each row opens its node (belief → YO-4 kind fact/answer; goal → YO-4 kind goal), above "what i took"'s correction controls; the matched query words are not re-highlighted in the full text (founder rule only covers result lists). Under option B (YO-3 stays its own page), this becomes P20's content instead.
 Tests: (snapshot) JR-4 from search with two supports, dark · (UI) a support row opens its node.
 
 ---
@@ -394,7 +394,7 @@ Why: you, at a glance: a map of your life, a way to ask anything about it, and w
 
 Inputs: Paper YO-1 `1G5Y-0` (approved), its instances (top bar `1G7X-0`, field `1G7R-0`, map `1G6Z-0`, rows `1G6S-0` "what i know about you" with subline "every fact and guess, each one you can fix", `1G6M-0` "one question waiting · about sam", tab bar `1G62-0`); hi-fi board `K2D-0`; design-reference §E P18 ("title spacing-2 above, field spacing-4, map scaled 0.82 so both rows sit above the tabs" on SE; "lit: none, the field is the action, raised"); handoff YO-1 day one.
 
-Spec (layout): top bar (C17-y) · search field (C12-y) · the map (C38), bleeding past the margins · the two rows (`RSettingsRow` nav with their 32 glyph wells) · tab bar with the progressive edge. The "one question waiting" row appears only when `map.waiting` exists; its subline is the waiting node's label ("about sam"). No lit object (Paper: none).
+Spec (layout): top bar (C17-y) · search field (C12-y) · the map (C38), bleeding past the margins · the two rows · tab bar with the progressive edge. **(Paper `1G6K-0`)** the scroll has `spacing.screenMargin` margins, `spacing.5` top padding and **`spacing.6` (24) between field, map and rows**. The map slot is 354 × 360 with the 390 map bleeding past it. The rows are one grouped panel (`background.canvas`, `radius.panel`, 0.5 `depth.stroke.outer`, 1pt `border.subtle` separator), each `RSettingsRow` nav with **no glyph well** (the first draft added wells: wrong). Each row has a title in SF `text.md` medium `text.primary`, a subline in Geist `text.sm` `text.label` (gap `spacing.size.borderRing`), padding 12 × 16, min height `spacing.size.rowDefault`, and a 14pt `icon.muted` chevron. The "one question waiting" row appears only when `map.waiting` exists; its subline is the waiting node's label ("about sam"). No lit object (Paper: none).
 
 Interaction sheet:
 
@@ -433,7 +433,7 @@ Why: ask anything about your life and read what Retro found, with every source u
 
 Inputs: Paper YO-2 `1G8E-0` "found" (approved) and its instances; part 50 `JZQ-0`; handoff ("**in place** in the You tab: the map gives way to the answer; clearing the field brings it back"; "16 gaps; switch sits just above the tabs"); design-reference §E P19; finding 55 (match YO-1's bar and mic).
 
-Spec (layout): same top bar and field as YO-1 (typed, clear ×); below, one scroll: the answer card (UI6.1a/c) · the sources (C32-n rows, numbered; under "the closest:" when abstained) · the "only what's certain" row pinned just above the tab bar (when there are guesses), content fading under it (progressive blur, screen rule 17). 16 between groups (Paper), 24 margins.
+Spec (layout): same top bar and field as YO-1 (typed, clear ×); below, one scroll: the answer card (UI6.1a/c) · the sources (C32-n rows, numbered; under "the closest:" when abstained) · the "only what's certain" row (when there are guesses). **(Paper `1G90-0`)** that row is **in the scroll after the sources, not pinned above the tab bar**, and content fades under the tab bar as on every tab (screen rule 17). Groups are **`spacing.8` (32) apart** (the first draft said 16), with `spacing.5` top padding and screen margins. The sources have a section label, "sources" (Geist `text.sm` medium `tracking.label` `text.label`), `spacing.2` above their grouped panel.
 - Submitting: the map cross-fades out (blur-replace 200ms) and the answer card's `writing` state takes its place; the sources appear with the answer (one response).
 - Clearing the field (×) or emptying it: the result fades and the map returns (at rest, no open choreography).
 - The result survives going to YO-4/JR-4 and back.
@@ -445,7 +445,7 @@ Interaction sheet:
 | 1 | submit | map → writing card | blur-replace 200 | — | 140 fade |
 | 2 | > 8 s | "still working" | `.rBlurReplace` | — | same |
 | 3 | answer arrives | sentences blur in, sources stagger 40ms | craft §7.2 | none | fade |
-| 4 | nothing found | the one line, no card, no switch | blur-in | — | fade |
+| 4 | nothing found | the one line, no card, no switch (Paper draws no nothing-found phone; the line follows C39.2's empty style) | blur-in | — | fade |
 | 5 | toggle only certain | guess hides/shows | 200 blur-replace | `select` | fade |
 | 6 | clear × | back to the map | 200 | — | fade |
 | 7 | new submit while searching | the old one cancels; writing restarts | — | — | — |
@@ -480,7 +480,7 @@ Needs: C17 entry variant, UI5.0 (live data: PL3.6e's `source(_:)`), founder ques
 Why: open a calendar event, an email or a saved link that search used, and see exactly what it says.
 
 Inputs: Paper YO-3 `1GAS-0` ("a journal entry"): top bar `1GBJ-0` (back only; no edit for things you didn't write), words `1GBI-0`, meta line "tue 14 oct · 7:40 · written · read", link `1GBA-0`, rows `1GB2-0`; handoff YO-3.
-Spec (under lean A, YO-3 shows only what isn't your own words): the entry frame; the body in the inky face if it's a record's text (`text.primary` sans if Paper's record look differs: confirm with the integrator, as Paper only draws a journal entry); the meta line "date · via"; for a saved link: title inky, "why you saved it: <yourReason>" in your words, the url as a `text.link` opening Safari (`SFSafariViewController`, never fetched by the app); no "show it in the conversation" (records were never in it); no edit, no delete (deleting a source is ST-4's job).
+Spec (under lean A, YO-3 shows only what isn't your own words). **(Paper `1GAS-0`)** the frame is the entry frame. The bar is back (36 wash in 44) and "edit" (Geist `text.md` medium); records and saved links **drop "edit"** because you didn't write them. The content has `spacing.4` top padding and `spacing.8` gaps. The words are `font.displayInky` `text.xl` `inkCard` `tracking.card`, balanced. The meta line is Geist `text.sm` `text.label` with a 12pt check in `icon.muted` for "read". The link row is SF `text.md` in `text.link` with a 14pt chevron, 44 high. The page then continues: the body in the inky face if it's a record's text (`text.primary` sans if Paper's record look differs: confirm with the integrator, as Paper only draws a journal entry); the meta line "date · via"; for a saved link: title inky, "why you saved it: <yourReason>" in your words, the url as a `text.link` opening Safari (`SFSafariViewController`, never fetched by the app); no "show it in the conversation" (records were never in it); no edit, no delete (deleting a source is ST-4's job).
 State table: record · saved · saved without a reason · loading (C39.1) · gone (`not_found`: "this isn't here any more.") · offline (cached if opened before, else C39.4) · long · dark · AX3.
 Tests: (snapshot) record, saved, gone, dark, ax3 · (UI) the link opens outside the app.
 Watch out: a record's body may be long mail text: never truncate, never render HTML (plain text only).
@@ -490,7 +490,7 @@ Watch out: a record's body may be long mail text: never truncate, never render H
 ### P21.1 · YO-4 a node: person, theme, goal, belief                         size: M
 Place in the tree: you › YO-4 › node sheet
 Repo · branch: NPRdoinglaundry · `ui/P21.1-node`
-Needs: C19.1, UI6.2, UI6.4, C32, `RPill` (#45), UI5.0, P18 (live data arrives with PL3.6c and the wiring PR)      Unblocks: P21.2, P19.2, T05c
+Needs: C19.1, the podcasts plan's claim component (PC-3), UI6.4, C32, `RPill` (#45), UI5.0, P18 (live data arrives with PL3.6c and the wiring PR)      Unblocks: P21.2, P19.2, T05c
 
 Why: one thing Retro believes about your life, how sure it is, every piece of your own record behind it, and a way to say it's right or wrong.
 
@@ -498,7 +498,15 @@ Inputs: Paper YO-4 `1GC2-0` "a person" (approved): sheet `c:player-sheet/brief/p
 
 Spec:
 - C19.1 sheet over the map (the map stays visible behind, scaled and dimmed); header "<kindLabel> · <name>" (Geist) + dismiss chevron (34 visual in 44).
-- Content: UI6.2 claim · "what it rests on" C32 rows (≤ 20, "see all 12" when `evidenceTotal` > shown, loading the rest in place) · linked chips (UI6.4) · the action pair at the bottom: "still true" (`RPill` neutral with check) and "not right" (`RPill` neutral with the correct glyph). Neither is lit (Paper: no lit object).
+- **(Paper `1GC2-0`)** the sheet is `background.raised` with top corners 38 (`radius.sheet`). Inline padding is **28**, with 10 above the grabber (36 × 5, `border.strong`) and 18 below it. The page behind shows `spacing.12` above the sheet. The header is "<kindLabel> · <name>" in **Geist `text.md` medium `text.primary`**, one line (220 wide), with the 34 wash dismiss circle (18pt chevron-down) trailing.
+- Content, `spacing.6` below the header with groups **`spacing.8` (32) apart**:
+  - **the claim**, from the podcasts plan's claim component (reused, not built here; the integrator's call). YO-4's values for it: the text in `font.displayInky` `text.2xl`, weight `inkTitle`, `tracking.title`, `leading.tight`, balanced. The line under it is Geist `text.sm` `text.label`: "fairly sure · from 5 things · moved last week", the **word only, no dots**. `isGuess` uses that component's asked (dashed) variant. With no claim, the line reads "comes up 5 times". **(Paper)** the drawn claim is a two-sentence synthesis ("a close colleague. you come back lighter after time with her."); contract 05 gives the best-supported single fact (no model call). That gap is **new founder question 15**, lean: a single fact for v1.
+  - **"what it rests on"**: a section label (Geist `text.sm` medium `tracking.label` `text.label`, `spacing.2` above the panel), then C32 rows (≤ 20, "see all 12" when `evidenceTotal` > shown, loading the rest in place). **(Paper)** the row glyph is 18 in the 32 well, and the label line reads "12 oct · your words" / "18 oct · calendar": own-words entries are labelled **"your words"**, not "journal".
+  - **"linked"**: the same section label, then UI6.4's wash pills.
+- **(Paper)** the action pair is pinned under the scroll, `spacing.4` above it and `spacing.10` bottom padding, `spacing.2` apart. Both are `surface.wash` pills 36 high with a 16pt glyph and a Geist `text.md` medium label:
+  - "still true": check glyph, padding `spacing.3` / `spacing.4`, gap `spacing.1`;
+  - "not right": correct glyph, padding `spacing.4`, gap `spacing.2`.
+  Neither is lit (Paper: no lit object).
 - "still true": optimistic; the pill becomes "still true ✓" (`1GCK-0`'s look), `confirm` haptic, the claim's line gains "you said this is still true"; queued offline shows the same with "will send when you're back" in the line. Hidden when `canConfirm` is false.
 - "not right": opens the journal's correction flow (UI1.2's states, contract 02 §6) inside the sheet with `about = claim.ref`; after `.applied`, the claim shows "noted" (struck through per contract 02 decision 2) and the map refreshes behind.
 - A chip tap replaces the sheet's content with that node (cross-fade 200 + slide 8pt; back chevron appears in the header to return; one level of history only).
@@ -549,11 +557,17 @@ Why: everything Retro has concluded about you, area by area, how sure it is, and
 
 Inputs: Paper YO-5 `1SZX-0` (approved): top bar `1T1K-0` (back `1T1O-0`), answer row `1T0Z-0`; hi-fi `LBO-0`; handoff YO-5 ("pushed frame (back only); title inky 3xl; 'moved this week · 2 answers changed' wash row; areas as inky xl sections; silent area = one warm sentence; thin day one: most areas silent; SE: 20 margins, 24 between areas"); design-reference §E P22 ("settings top bar (small centred title, content top padding spacing-4)"); note the two disagree on the title (handoff: inky 3xl title; reference: small centred title): **Paper `1SZX-0` decides**, checked at build.
 
-Spec: the settings bar · the "moved this week · 2 answers changed" wash row (only when `answersChanged` > 0; not tappable, founder question 12) · eight areas in order, each an inky xl section title (app copy per area id) followed by UI6.5 rows, or the area's one warm sentence when silent (app copy per area, founder to approve) · 24 between areas.
+Spec: **(Paper `1SZX-0`)**:
+- **The settings bar** with the small centred title "what i know about you" (Geist `text.md` medium `tracking.label` `text.secondary`), back 36 wash in 44. This settles the handoff-vs-reference conflict: there is no inky 3xl title.
+- **Content:** `spacing.4` top padding, screen margins, and **`spacing.8` (32) between groups** (the first draft said 24).
+- **"moved this week · 2 answers changed":** a `surface.wash` `radius.panel` row (padding `spacing.2` × `spacing.4`, min height `spacing.size.rowDefault`; title SF `text.md` medium, subline Geist `text.sm` `text.label`). It **has a chevron, so Paper makes it tappable**, which reverses question 12's lean. It opens the same page filtered to the moved answers: a `moved` state with the settings title "moved this week" and back to the full list. Shown only when `answersChanged` > 0.
+- **Areas:** each title is `font.displayInky` `text.xl` `inkCard` `tracking.card` `leading.tight`, with `spacing.3` above its grouped panel of UI6.5 rows.
+- **A silent area** is the title plus one sentence in SF `text.body` `text.secondary`, balanced. Paper's: "i don't know much about your family yet. tell me about them whenever you like."
+- **(Paper)** the area titles drawn are **life areas ("work", "health", "family")** and the questions aren't the canonical 36 ("what drives you most?"). Contract 05 groups by the brain's 8 question-store areas. That gap is **new founder question 16**, lean: the 8 brain areas with app titles in Paper's tone for v1 (no brain grouping by life area exists), the founder to name them.
 Row tap → YO-4 for that answer (kind `answer`), as a sheet over this page.
 
 Interaction sheet: arrive (cached at once, then fresh) · row → YO-4 sheet (`sheet`, `sheetSnap`) · back · pull to refresh · offline line · after a verdict or correction in YO-4 the row updates in place (blur-replace).
-State table (`-State`): `full`, `dayOne` (all silent but one), `allSilent`, `moved`, `loading`, `offline`, `error`, `long`, dark, AX3, SE.
+State table (`-State`): `full`, `dayOne` (all silent but one), `allSilent`, `moved` (the row shown), `movedFiltered` (the filtered list), `loading`, `offline`, `error`, `long`, dark, AX3, SE.
 Accessibility: each area is a heading; rows as UI6.5; audit passes in full and dayOne.
 Tests: (snapshot) every state, light/dark/ax3, SE · (UI) a row opens its answer and "still true" updates the row · (accessibility) audit.
 Proof: page proof.
@@ -583,3 +597,34 @@ Acceptance: passes three runs in a row on the integrator's simulator; on local s
 Tests: the flow above as one test with named steps; plus `each You page passes the accessibility audit` (sweep).
 Proof: the test log, a recording of the full run, the staging run's counts.
 Watch out: search on staging costs real model money: the staging run uses at most 3 searches and records them as test spend (cost-per-user.md keeps test spend separate).
+
+---
+
+## Verified against Paper (21 Oct, second pass)
+
+Read only (`get_jsx`, `get_computed_styles`, `get_tree_summary`) on YO-1 `1G5Y-0`, YO-2 `1G8E-0`, YO-3 `1GAS-0`, YO-4 `1GC2-0` and YO-5 `1SZX-0`. Nothing in Paper was edited. What changed in these cards:
+
+| Card | Was (from the reference docs) | Now (Paper) |
+|---|---|---|
+| C17-y | the "list" pill hidden while a search result shows | the pill and picture stay on YO-2; exact bar values; 44 hit areas |
+| C12-y | one 36 raised mic; clear × as an `RIconButton` | rest: a 40 raised mic (`background.canvas`); typed: a 36 `surface.wash` mic; clear × a bare 16pt glyph; placeholder "ask anything about yourself" |
+| C38.1 | you-orb 56; rings from the master | you-orb **64** with canvas ring, glow ring and bloom; **two** rings (r 92 at 0.5, r 158 at 0.35); a 390 × 360 map clipped and centred |
+| C38.1 | a 24-slot table | Paper draws **9 slots** (4 near, 5 far); new question 2b |
+| C38.2 | size by weight (lerp min→max); mono labels | **two tiers** (near 44, far 20 blurred and dimmed); exact gradients per kind; labels Geist `text.xs` `text.secondary`, only on near orbs; plates unfilled in Paper |
+| C38.3 | width by strength; node-to-node lines | only you-to-node threads, 0.75pt `map.edge`, round caps; node-to-node lines are new question 2c |
+| C32-n | a text-xs mono figure | a `text.sm` mono figure in `text.secondary`; Paper groups sources ("journal · 3 entries"), new question 14 |
+| UI6.1a | card padding unknown | `background.raised`, `radius.card`, padding `spacing.5`, exact depth stack; the label in Geist `text.sm` medium |
+| UI6.1c | the switch row pinned above the tabs | in the scroll after the sources; exact row values |
+| UI6.2 | built here | **withdrawn: the podcasts plan owns the claim component** (integrator) |
+| UI6.3 | dots on YO-4 and YO-5 | dots on YO-5 only; YO-4 shows the word alone |
+| UI6.4 | chip.md's raised chip, mono, 12 apart | a flat `surface.wash` pill, SF `text.md` medium, 8 apart, no icon |
+| UI6.5 | values from the instance | exact paddings, type and grouped panel |
+| UI6.6 | C32 evidence rows | `RSettingsRow` nav rows: the claim plus where it lives ("what i know about you", "a goal") |
+| P18 | rows with 32 glyph wells; spacing unknown | rows with no wells; 24 between groups; exact row values |
+| P19.1 | 16 between groups; switch pinned | 32 between groups; a "sources" section label; switch in the scroll |
+| P20 | no edit | Paper's own-words entry has "edit"; records and saved links still drop it; exact type |
+| P21.1 | built its own claim; spacing unknown | reuses the podcasts claim component; exact sheet, header, group and action values; evidence labelled "your words"; Paper's claim is a synthesis (new question 15) |
+| P22 | an inky 3xl title or a small one (conflict); "moved" not tappable; 24 between areas | the small centred settings title; **"moved this week" has a chevron (tappable, filtered list)**; 32 between groups; Paper's areas are life areas (new question 16) |
+
+The PR's count changes from 46 to **45 PRs** (views 27 → 26) with UI6.2 withdrawn.
+
