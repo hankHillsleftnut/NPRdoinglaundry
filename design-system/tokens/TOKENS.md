@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**516 tokens** · 440 semantic · 276 marked *to set*
+**521 tokens** · 445 semantic · 276 marked *to set*
 
 ## palette
 
@@ -482,6 +482,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.curve.standard` | Things arriving. | [0.16,1,0.3,1] |  | lime |
 | `motion.curve.exit` | Things leaving. | [0.4,0,1,1] |  | lime |
 | `motion.curve.reveal` | SwiftUI .smooth with a whisper of bounce: the paywall reveal. | {"kind":"smooth","extraBounce":0.02} |  | paywall |
+| `motion.curve.move` | Symmetric in-out for non-gesture moves that start and end at rest (meter fill, progress steps). | [0.65,0,0.35,1] |  | founder 21 Oct: motion-system.md §3 |
 | `motion.scale.press` | A control while pressed. | 0.98 |  | lime |
 | `motion.scale.enter` | Where things grow from as they appear. | 0.97 |  | lime |
 | `motion.scale.behindSheet` | The screen behind a sheet shrinks to this as the sheet rises (and back as it is dragged down). | 0.94 |  | to set: choreography |
@@ -493,6 +494,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.spring.sheet` | A sheet arriving or being dragged. | {"response":0.4,"dampingFraction":0.86} |  | to set: app need |
 | `motion.spring.sheetDismiss` | A sheet leaving after a flick or a drag past the threshold. | {"response":0.32,"dampingFraction":0.9} |  | to set: choreography |
 | `motion.spring.popover` | A menu growing out of the thing you tapped: settles in about 230ms with a slight overshoot (about 3%). | {"response":0.3,"dampingFraction":0.74} |  | to set: from the title-menu recording (20 Oct) |
+| `motion.spring.snappy` | Firm and immediate, ~1% overshoot: press release, toggles, segmented thumb, checkmarks, tab icon. | {"response":0.25,"dampingFraction":0.82} |  | founder 21 Oct: motion-system.md §3 |
+| `motion.spring.settle` | Dragged through water, ~5% overshoot: tiles lagging the scroll, off-axis cards settling on appear. | {"response":0.45,"dampingFraction":0.7} |  | founder 21 Oct: motion-system.md §3 |
+| `motion.spring.pop` | Delight, ~10% overshoot, used rarely: knows-you-well, a goal met, first episode ready, badges. | {"response":0.35,"dampingFraction":0.6} |  | founder 21 Oct: motion-system.md §3 |
+| `motion.spring.gentle` | Big and calm, no overshoot: large layout changes, the page behind a sheet. | {"response":0.55,"dampingFraction":0.92} |  | founder 21 Oct: motion-system.md §3 |
 | `motion.gesture.dismissDistance` | Drag a sheet down this far, or flick faster than dismissVelocity, and it closes. | 140pt |  | to set: choreography |
 | `motion.gesture.dismissVelocity` | Points per second that count as a flick down. | 800 |  | to set: choreography |
 | `motion.gesture.rubberBand` | How much a sheet resists being pulled up past its top (iOS-like). | 0.55 |  | to set: choreography |
