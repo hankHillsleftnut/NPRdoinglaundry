@@ -26,6 +26,10 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
       - key: AGENT_SERVICE_URL
         sync: false
       - key: INTERNAL_API_SECRET

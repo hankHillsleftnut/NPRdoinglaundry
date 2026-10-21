@@ -15,6 +15,8 @@ services:
       - { key: SUPABASE_SERVICE_KEY, sync: false }
       - { key: SUPABASE_ANON_KEY, sync: false }
       - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: ELEVENLABS_API_KEY, sync: false }
+      - { key: ELEVENLABS_VOICE_ID, sync: false }
       - { key: OPENAI_API_KEY, sync: false }
       - { key: AGENT_SERVICE_URL, sync: false }
       - { key: INTERNAL_API_SECRET, sync: false }

@@ -12,6 +12,7 @@ import GoogleSignIn
 struct DarkOnboardingFlow: View {
     var onComplete: (([RichGoal]) -> Void)? = nil
     var onPreviewPaywall: (() -> Void)? = nil
+    var onDebugGoHome: (() -> Void)? = nil
 
     @StateObject private var onboardingState = OnboardingState()
 
@@ -35,7 +36,7 @@ struct DarkOnboardingFlow: View {
                 VoiceGoalsPage(onComplete: { goals, name in
                     onboardingState.markQuestionsCompleted(name: name)
                     GoalsManager.shared.addRichGoals(goals)
-                })
+                }, onDebugGoHome: onDebugGoHome)
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)

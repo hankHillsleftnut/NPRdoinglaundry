@@ -82,6 +82,11 @@ private enum FlowPhase: Equatable {
 
 struct VoiceGoalsPage: View {
     var onComplete: (([RichGoal], String) -> Void)?
+    /// Escape hatch for the demo/preview podcast player below — it plays a
+    /// placeholder episode with no real goals behind it, so closing it should
+    /// drop straight into the app rather than back into a completeScreen with
+    /// no further way forward.
+    var onDebugGoHome: (() -> Void)?
 
     // ── Questions ─────────────────────────────────────────────────────────
     private static let questions: [Question] = [
@@ -162,6 +167,8 @@ struct VoiceGoalsPage: View {
     private static let titleSize: CGFloat = 28
     private static let textStartGap: CGFloat = 96    // fixed gap below top bar → uniform text start (higher on page)
     private static let horizontalPad: CGFloat = 28
+    private static let topBarHeight: CGFloat = 32          // 10pt top pad + 22pt row
+    private static let wonderingSlotHeight: CGFloat = 88   // three lines at 21pt + 3pt leading
 
     // ── State ─────────────────────────────────────────────────────────────
     @State private var phase: FlowPhase = .welcome(0)
@@ -174,7 +181,6 @@ struct VoiceGoalsPage: View {
     @State private var streamCount: Int = 0
     @State private var isStreamingDone: Bool = false
     @State private var streamTimer: Timer?
-    @State private var inputFieldHeight: CGFloat = 0
     @FocusState private var isInputFocused: Bool
 
     // Acknowledgment
@@ -183,16 +189,17 @@ struct VoiceGoalsPage: View {
     @State private var ackTimer: Timer?
     @State private var ackDone: Bool = false
     @State private var ackLoading: Bool = false
+    @State private var ackDissolving: Bool = false
+    @State private var ackDissolveWorkItem: DispatchWorkItem?
+    @State private var ackDissolveStart: Date?
+    @State private var ackParticles: [AckDissolveParticle] = []
+    @State private var ackTextSize: CGSize = .zero
+    private static let ackDissolveDuration: TimeInterval = 1.05
 
-    // Goal cards (existing system)
+    // Synthesized goals — the checklist prunes this set, it never adds to it.
     @State private var extractedGoals: [RichGoal] = []
-    @State private var agreedGoals: [RichGoal] = []   // swiped right = agree
-    @State private var currentCardIndex: Int = 0
-    @State private var cardOffset: CGSize = .zero
-    @State private var cardRotation: Double = 0
-    @State private var cardRevealed: Bool = false
-    @State private var closingAckText: String = ""
-    @State private var showClosingAck: Bool = false
+    @State private var keptGoalIDs: Set<UUID> = []
+    @State private var goalsRevealed: Bool = false
     @State private var processingDotCount: Int = 0
     @State private var processingTimer: Timer?
     @State private var wonderings: [String] = []
@@ -392,33 +399,57 @@ struct VoiceGoalsPage: View {
                 if ackLoading && ackCount == 0 {
                     ThinkingDots()
                 } else {
-                    Text(revealAttributed(ackText, count: ackCount))
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
+                    ZStack(alignment: .topLeading) {
+                        Text(revealAttributed(ackText, count: ackCount))
+                            .lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .opacity(ackDissolving ? 0 : 1)
+                            .scaleEffect(ackDissolving ? 0.92 : 1.0, anchor: .topLeading)
+                            .animation(.easeOut(duration: 0.38), value: ackDissolving)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(key: AckTextSizeKey.self, value: geo.size)
+                                }
+                            )
+
+                        if ackDissolving, let start = ackDissolveStart {
+                            AckParticleField(
+                                particles: ackParticles,
+                                start: start,
+                                duration: Self.ackDissolveDuration
+                            )
+                            .frame(width: ackTextSize.width, height: ackTextSize.height)
+                        }
+                    }
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Self.horizontalPad)
+            .onPreferenceChange(AckTextSizeKey.self) { ackTextSize = $0 }
 
             Spacer()
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            // Ignore taps while waiting for Claude.
+            // Ignore taps while waiting for Claude or mid-dissolve.
             if ackLoading && ackCount == 0 { return }
+            if ackDissolving { return }
             guard ackDone else {
                 ackTimer?.invalidate()
                 ackCount = ackText.count
                 ackDone = true
                 return
             }
-            advanceAfterAck(idx: idx)
+            beginAckDissolve(idx: idx)
         }
         .onAppear {
             ackText = ""
             ackCount = 0
             ackDone = false
             ackLoading = false
+            ackDissolving = false
+            ackDissolveStart = nil
+            ackParticles = []
             loadAndStreamAck(idx: idx)
         }
     }
@@ -464,9 +495,9 @@ struct VoiceGoalsPage: View {
         VStack(spacing: 0) {
             topBar(progress: 0.98, showBack: false, backAction: {})
 
-            Spacer().frame(height: Self.textStartGap)
-
             if goalsError {
+                Spacer().frame(height: Self.textStartGap)
+
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Text("Couldn't read your goals yet.")
@@ -494,9 +525,8 @@ struct VoiceGoalsPage: View {
                 .padding(.horizontal, 28)
                 .padding(.bottom, 34)
             } else {
-                Spacer()
-                VStack(spacing: 30) {
-                    RetrospectLoadingMark(width: 140)
+                VStack(spacing: 24) {
+                    RetrospectLoadingMark(width: 96)
                     Text(currentWondering.isEmpty
                          ? "Understanding you\(String(repeating: ".", count: processingDotCount))"
                          : currentWondering)
@@ -506,226 +536,89 @@ struct VoiceGoalsPage: View {
                         .lineSpacing(3)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity)
+                        // Reserved slot: wonderings differ in line count, and
+                        // without a fixed height every swap re-centers the
+                        // stack and slides the mark.
+                        .frame(maxWidth: .infinity, minHeight: Self.wonderingSlotHeight)
                         .padding(.horizontal, Self.horizontalPad)
                         .id(currentWondering)
                         .transition(.opacity)
                 }
-                .frame(maxWidth: .infinity)
-                Spacer()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Cancels the top bar above, so the block lands on the screen's
+                // vertical center rather than the center of the space below it.
+                .padding(.bottom, Self.topBarHeight)
             }
         }
         .onAppear { startProcessingDots(); startWonderings(); extractGoals() }
         .onDisappear { processingTimer?.invalidate(); wonderingTimer?.invalidate() }
     }
 
-    // ── REVEALING (goal cards) ────────────────────────────────────────────
+    // ── REVEALING (goal checklist) ────────────────────────────────────────
 
     private var revealingScreen: some View {
         VStack(spacing: 0) {
             topBar(progress: 0.99, showBack: false, backAction: {})
 
-            if currentCardIndex < extractedGoals.count {
-                // Top label
-                HStack {
-                    Text("Your goals are ready")
-                        .font(OnboardingStyle.bodyFont(size: 13, weight: .semibold))
-                        .foregroundColor(OnboardingStyle.secondaryText)
-                        .tracking(0.4)
-                    Spacer()
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 6)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Here's what I heard")
+                    .font(OnboardingStyle.titleFont(size: Self.titleSize))
+                    .foregroundColor(OnboardingStyle.primaryText)
+                    .tracking(-0.5)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                // Full-page goal cards
-                ZStack {
-                    ForEach(Array(extractedGoals.enumerated().reversed()), id: \.element.id) { index, goal in
-                        if index >= currentCardIndex && index < currentCardIndex + 3 {
-                            let depth = index - currentCardIndex
-                            goalCard(goal: goal, isTop: depth == 0)
-                                .scaleEffect(depth == 0 ? 1.0 : 1.0 - CGFloat(depth) * 0.04)
-                                .offset(y: depth == 0 ? 0 : CGFloat(depth) * 10)
-                                .opacity(depth == 0 ? 1.0 : depth == 1 ? 0.6 : 0.35)
-                                .zIndex(Double(extractedGoals.count - index))
-                                .offset(x: depth == 0 ? cardOffset.width : 0)
-                                .rotationEffect(.degrees(depth == 0 ? cardRotation : 0))
-                                .gesture(depth == 0 ? cardDragGesture : nil)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.top, 14)
-                .opacity(cardRevealed ? 1 : 0)
-                .scaleEffect(cardRevealed ? 1 : 0.92)
-
-                // Dot indicator
-                HStack(spacing: 6) {
-                    ForEach(0..<extractedGoals.count, id: \.self) { i in
-                        Circle()
-                            .fill(i <= currentCardIndex
-                                  ? OnboardingStyle.primaryText.opacity(0.65)
-                                  : OnboardingStyle.tertiaryText.opacity(0.35))
-                            .frame(width: i == currentCardIndex ? 8 : 6,
-                                   height: i == currentCardIndex ? 8 : 6)
-                            .animation(.easeOut(duration: 0.2), value: currentCardIndex)
-                    }
-                }
-                .padding(.top, 14)
-
-                // Bottom instruction label
-                VStack(spacing: 4) {
-                    Text("Take a look at these goals.")
-                        .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
-                        .foregroundColor(OnboardingStyle.secondaryText)
-                    Text("Swipe right to agree, left to disagree.")
-                        .font(OnboardingStyle.bodyFont(size: 12))
-                        .foregroundColor(OnboardingStyle.tertiaryText)
-                }
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 12)
-                .padding(.bottom, 30)
-
-            } else {
-                Spacer()
-
-                if showClosingAck {
-                    HStack {
-                        Text(closingAckText)
-                            .font(OnboardingStyle.titleFont(size: 26))
-                            .foregroundColor(OnboardingStyle.primaryText)
-                            .tracking(-0.5)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 28)
-                }
-
-                Spacer()
-
-                OnboardingPrimaryButton(title: "Continue") {
-                    HapticManager.shared.playSuccessNotification()
-                    finish()  // hand off to integrations; closing screen comes after
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 34)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-        }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { cardRevealed = true }
-                HapticManager.shared.playSoftImpact()
-            }
-        }
-    }
-
-    private var cardDragGesture: some Gesture {
-        DragGesture()
-            .onChanged { v in
-                cardOffset = v.translation
-                cardRotation = Double(v.translation.width / 20)
-            }
-            .onEnded { v in
-                if abs(v.translation.width) > 110 {
-                    let dir: CGFloat = v.translation.width > 0 ? 1 : -1
-                    // Right = agree (keep), left = disagree (drop)
-                    if dir > 0, currentCardIndex < extractedGoals.count {
-                        agreedGoals.append(extractedGoals[currentCardIndex])
-                    }
-                    withAnimation(.easeOut(duration: 0.28)) {
-                        cardOffset = CGSize(width: dir * 500, height: 0)
-                        cardRotation = Double(dir * 25)
-                    }
-                    HapticManager.shared.playSoftImpact()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        currentCardIndex += 1
-                        cardOffset = .zero
-                        cardRotation = 0
-                        if currentCardIndex >= extractedGoals.count {
-                            HapticManager.shared.playSuccessNotification()
-                            buildClosingAck()
-                            withAnimation(.easeIn(duration: 0.3).delay(0.1)) { showClosingAck = true }
-                        }
-                    }
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        cardOffset = .zero; cardRotation = 0
-                    }
-                }
-            }
-    }
-
-    private func goalCard(goal: RichGoal, isTop: Bool) -> some View {
-        let color = GoalCategory(from: goal.category).color
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(goal.category.uppercased())
-                    .font(OnboardingStyle.bodyFont(size: 11, weight: .semibold))
-                    .foregroundColor(OnboardingStyle.secondaryText)
-                    .tracking(1.2)
-                Spacer()
-                RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 24, height: 4)
-            }
-            .padding(.bottom, 14)
-
-            Text(goal.title)
-                .font(OnboardingStyle.titleFont(size: 22))
-                .foregroundColor(OnboardingStyle.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, goal.goalDescription.isEmpty ? 0 : 10)
-
-            if !goal.goalDescription.isEmpty {
-                Text(goal.goalDescription)
+                Text("Uncheck anything that isn't yours. I'll watch your life through the rest.")
                     .font(OnboardingStyle.bodyFont(size: 15))
                     .foregroundColor(OnboardingStyle.secondaryText)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Self.horizontalPad)
+            .padding(.top, 28)
 
-            if !goal.motivation.isEmpty {
-                Divider().background(OnboardingStyle.tertiaryText.opacity(0.18)).padding(.vertical, 14)
-                Text("Why this matters")
-                    .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
-                    .foregroundColor(OnboardingStyle.tertiaryText)
-                    .padding(.bottom, 6)
-                Text(goal.motivation)
-                    .font(OnboardingStyle.bodyFont(size: 14))
-                    .foregroundColor(OnboardingStyle.secondaryText)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 16)
-
-            if isTop {
-                HStack {
-                    HStack(spacing: 5) {
-                        Image(systemName: "arrow.left")
-                        Text("Disagree")
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(extractedGoals) { goal in
+                        GoalChecklistRow(
+                            title: goal.title,
+                            isKept: keptGoalIDs.contains(goal.id)
+                        ) {
+                            toggleGoal(goal)
+                        }
                     }
-                    .foregroundColor(OnboardingStyle.tertiaryText)
-                    Spacer()
-                    HStack(spacing: 5) {
-                        Text("Agree")
-                        Image(systemName: "arrow.right")
-                    }
-                    .foregroundColor(OnboardingStyle.secondaryText)
                 }
-                .font(OnboardingStyle.bodyFont(size: 12, weight: .medium))
+                .padding(.horizontal, Self.horizontalPad)
+                .padding(.top, 24)
+                .padding(.bottom, 24)
+            }
+            .opacity(goalsRevealed ? 1 : 0)
+            .offset(y: goalsRevealed ? 0 : 14)
+
+            OnboardingPrimaryButton(title: "Continue") {
+                HapticManager.shared.playSuccessNotification()
+                finish()  // hand off to integrations; closing screen comes after
+            }
+            .padding(.horizontal, Self.horizontalPad)
+            .padding(.bottom, 34)
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { goalsRevealed = true }
+                HapticManager.shared.playSoftImpact()
             }
         }
-        .padding(26)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(OnboardingStyle.control)
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .strokeBorder(color.opacity(0.18), lineWidth: 1))
-                .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
-        )
+    }
+
+    private func toggleGoal(_ goal: RichGoal) {
+        HapticManager.shared.playLightImpact()
+        withAnimation(.easeOut(duration: 0.18)) {
+            if keptGoalIDs.contains(goal.id) {
+                keptGoalIDs.remove(goal.id)
+            } else {
+                keptGoalIDs.insert(goal.id)
+            }
+        }
     }
 
     // ── COMPLETE ──────────────────────────────────────────────────────────
@@ -843,21 +736,30 @@ struct VoiceGoalsPage: View {
 
     private func inputBar(placeholder: String, keyboard: UIKeyboardType, onSubmit: @escaping () -> Void) -> some View {
         let isEmpty = inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        // Single-line baseline ≈ font line height + vertical padding. Above that = expanded.
-        let isExpanded = inputFieldHeight > 64
-        let corner: CGFloat = isExpanded ? 22 : max(26, inputFieldHeight / 2)
+        // Button sits inset from the corner; outer radius = button radius + inset
+        // so the card curve stays concentric with the send circle at every height.
+        let sendSize: CGFloat = 32
+        let sendInset: CGFloat = 12
+        let corner = sendSize / 2 + sendInset
 
-        return HStack(alignment: isExpanded ? .bottom : .center, spacing: 10) {
-            // Multi-line input: wraps and grows up to 5 lines, never scrolls horizontally
+        return ZStack(alignment: .bottomTrailing) {
+            // Multi-line input: wraps and grows upward; trailing pad reserves the button.
             TextField(placeholder, text: $inputText, axis: .vertical)
                 .font(OnboardingStyle.bodyFont(size: 17))
                 .foregroundColor(OnboardingStyle.primaryText)
                 .lineLimit(1...6)
                 .keyboardType(keyboard)
                 .focused($isInputFocused)
+                // Text row is at least button-tall so the resting bar is
+                // sendSize + 2 * sendInset. That makes `corner` exactly half the
+                // height: a true pill at rest, still concentric once expanded.
+                .frame(minHeight: sendSize)
+                .padding(.leading, 20)
+                .padding(.trailing, sendSize + sendInset + 10)
+                .padding(.vertical, sendInset)
 
-            // Circular send button. Filled accent when there's text to send,
-            // muted when empty.
+            // Always bottom-trailing so multi-line growth expands the bar upward
+            // while the send control stays in the corner with even padding.
             Button(action: {
                 guard !isEmpty else { return }
                 onSubmit()
@@ -865,7 +767,7 @@ struct VoiceGoalsPage: View {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(isEmpty ? OnboardingStyle.tertiaryText.opacity(0.55) : .white)
-                    .frame(width: 32, height: 32)
+                    .frame(width: sendSize, height: sendSize)
                     .background(
                         Circle().fill(isEmpty
                             ? OnboardingStyle.hairline.opacity(0.6)
@@ -873,21 +775,16 @@ struct VoiceGoalsPage: View {
                     )
             }
             .disabled(isEmpty)
-            .padding(.bottom, isExpanded ? 2 : 0)
+            .padding(.trailing, sendInset)
+            .padding(.bottom, sendInset)
             .animation(.easeOut(duration: 0.15), value: isEmpty)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, isExpanded ? 14 : 12)
         .background(
-            GeometryReader { geo in
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(OnboardingStyle.control)
-                    .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
-                    .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
-                    .onChange(of: geo.size.height) { _, h in inputFieldHeight = h }
-                    .onAppear { inputFieldHeight = geo.size.height }
-            }
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(OnboardingStyle.control)
+                .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .strokeBorder(OnboardingStyle.hairline, lineWidth: 1))
+                .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 4)
         )
     }
 
@@ -1007,8 +904,8 @@ struct VoiceGoalsPage: View {
                     // flow and were advancing too fast to actually land.
                     let dwell = min(4.5, max(2.6, Double(total) * 0.022))
                     DispatchQueue.main.asyncAfter(deadline: .now() + dwell) {
-                        if case .acknowledgment(let idx) = self.phase, self.ackDone {
-                            self.advanceAfterAck(idx: idx)
+                        if case .acknowledgment(let idx) = self.phase, self.ackDone, !self.ackDissolving {
+                            self.beginAckDissolve(idx: idx)
                         }
                     }
                 }
@@ -1078,7 +975,10 @@ struct VoiceGoalsPage: View {
                 switch result {
                 case .success(let text):
                     self.streamAck(Self.stripMarkdown(text))
-                case .failure:
+                case .failure(let error):
+                    // Never fail silently — a generic fallback here is the
+                    // difference between "it sees me" and "it's a form".
+                    NSLog("[OnboardingAck] q%d failed, using fallback: %@", idx, String(describing: error))
                     self.streamAck(Self.fallbackAcks.randomElement() ?? "I'm taking that in.")
                 }
             }
@@ -1126,9 +1026,47 @@ struct VoiceGoalsPage: View {
         removeDashes(s).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func advanceAfterAck(idx: Int) {
+    private func beginAckDissolve(idx: Int) {
+        guard !ackDissolving else { return }
         ackTimer?.invalidate()
-        advanceFromQuestion(idx)
+        ackDone = true
+        ackCount = ackText.count
+        ackParticles = Self.seedAckParticles(in: ackTextSize, text: ackText)
+        ackDissolveStart = Date()
+        ackDissolving = true
+        HapticManager.shared.playSoftImpact()
+
+        let workItem = DispatchWorkItem { [self] in
+            ackDissolving = false
+            ackParticles = []
+            ackDissolveStart = nil
+            ackDissolveWorkItem = nil
+            advanceFromQuestion(idx)
+        }
+        ackDissolveWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.ackDissolveDuration, execute: workItem)
+    }
+
+    private static func seedAckParticles(in size: CGSize, text: String) -> [AckDissolveParticle] {
+        let w = max(size.width, 120)
+        let h = max(size.height, 36)
+        // Dense field — enough particles that the words read as dissolving into dust.
+        let count = min(520, max(220, text.count * 7))
+        return (0..<count).map { i in
+            // Bias toward the left/top of the text block so particles read as
+            // rising out of the words rather than the empty trailing space.
+            let x = CGFloat.random(in: 0...(w * 0.96))
+            let y = CGFloat.random(in: 0...h)
+            let drift = CGFloat.random(in: -36...36)
+            let lift = CGFloat.random(in: -88 ... -22)
+            return AckDissolveParticle(
+                id: i,
+                origin: CGPoint(x: x, y: y),
+                velocity: CGPoint(x: drift, y: lift),
+                size: CGFloat.random(in: 0.7...2.6),
+                delay: Double.random(in: 0...0.38)
+            )
+        }
     }
 
     private func advanceFromQuestion(_ idx: Int) {
@@ -1149,6 +1087,11 @@ struct VoiceGoalsPage: View {
         HapticManager.shared.playLightImpact()
         streamTimer?.invalidate()
         ackTimer?.invalidate()
+        ackDissolveWorkItem?.cancel()
+        ackDissolveWorkItem = nil
+        ackDissolving = false
+        ackDissolveStart = nil
+        ackParticles = []
         if idx == 0 {
             // Back to welcome
             withAnimation { phase = .welcome(Self.welcomeLines.count - 1) }
@@ -1172,14 +1115,7 @@ struct VoiceGoalsPage: View {
                 // Deep path: runs the full ingestion + Cook 0 pipeline and returns the
                 // synthesized, evidence-grounded goals (active_goals). No shallow one-shot.
                 let response = try await RetrospectAPIClient.shared.synthesizeGoals(text: combined)
-                let goals = response.extracted.map { e in
-                    RichGoal(
-                        title: Self.sanitizeProse(e.title),
-                        goalDescription: Self.sanitizeProse(e.description),
-                        motivation: Self.sanitizeProse(e.reasoning),
-                        category: VoiceGoalsPage.inferCategory(from: e.description)
-                    )
-                }
+                let goals = Self.richGoals(from: response)
                 await MainActor.run {
                     if goals.isEmpty {
                         NSLog("[GoalSynthesis] pipeline returned 0 goals (notes: %@)", response.processingNotes ?? "none")
@@ -1198,6 +1134,44 @@ struct VoiceGoalsPage: View {
         }
     }
 
+    /// Builds the checklist from the goal rows the backend persisted, so every row
+    /// carries its server identity and the checklist can decline by id. `extracted`
+    /// only adds the reasoning, matched back by title. Falls back to `extracted`
+    /// alone when the backend saved nothing, which keeps the flow working against a
+    /// deployment that has not shipped the identity-returning synthesize yet.
+    private static func richGoals(from response: GoalExtractionResponse) -> [RichGoal] {
+        let reasoningByTitle = Dictionary(
+            response.extracted.map { (titleKey($0.title), $0.reasoning) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        guard !response.saved.isEmpty else {
+            return response.extracted.map { extracted in
+                RichGoal(
+                    title: sanitizeProse(extracted.title),
+                    goalDescription: sanitizeProse(extracted.description),
+                    motivation: sanitizeProse(extracted.reasoning),
+                    category: inferCategory(from: extracted.description)
+                )
+            }
+        }
+
+        return response.saved.map { saved in
+            let description = saved.description ?? ""
+            return RichGoal(
+                serverId: saved.id,
+                title: sanitizeProse(saved.title),
+                goalDescription: sanitizeProse(description),
+                motivation: sanitizeProse(reasoningByTitle[titleKey(saved.title)] ?? ""),
+                category: inferCategory(from: description)
+            )
+        }
+    }
+
+    private static func titleKey(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
     private func showGoalsError() {
         processingTimer?.invalidate()
         stopWonderings()
@@ -1207,11 +1181,9 @@ struct VoiceGoalsPage: View {
     private func finishProcessing() {
         processingTimer?.invalidate()
         stopWonderings()
-        currentCardIndex = 0
-        cardOffset = .zero
-        cardRotation = 0
-        cardRevealed = false
-        showClosingAck = false
+        // The list is a prune, not a pick: everything starts kept.
+        keptGoalIDs = Set(extractedGoals.map { $0.id })
+        goalsRevealed = false
         withAnimation { phase = .revealing }
         // Prefetch the first podcast NOW, while the user swipes through goal cards,
         // so audio is ready by the time they tap "Play Podcast" (masks 3-5min gen).
@@ -1253,17 +1225,6 @@ struct VoiceGoalsPage: View {
             try? await Task.sleep(nanoseconds: 220_000_000)
             guard showPodcastFlow else { return }
             withAnimation(.easeInOut(duration: 0.45)) { showPodcastLayer = true }
-        }
-    }
-
-    private func buildClosingAck() {
-        let categories = Set(extractedGoals.map { $0.category.lowercased() })
-        if categories.contains(where: { $0.contains("health") || $0.contains("fitness") }) && categories.contains(where: { $0.contains("career") || $0.contains("work") }) {
-            closingAckText = "Body and ambition. We'll keep you honest on both."
-        } else if extractedGoals.count >= 3 {
-            closingAckText = "You've got a clear picture of where you're headed."
-        } else {
-            closingAckText = "Got it. We know what matters to you."
         }
     }
 
@@ -1348,10 +1309,12 @@ struct VoiceGoalsPage: View {
     }
 
     private func finish() {
-        // Save the goals the user agreed with (swiped right); fall back to all if none.
-        let chosenGoals = agreedGoals.isEmpty ? extractedGoals : agreedGoals
-        goalsManager.addRichGoals(chosenGoals)
-        OnboardingContextManager.shared.saveExtractedGoals(chosenGoals)
+        let keptGoals = extractedGoals.filter { keptGoalIDs.contains($0.id) }
+        let declinedGoals = extractedGoals.filter { !keptGoalIDs.contains($0.id) }
+
+        goalsManager.addRichGoals(keptGoals)
+        OnboardingContextManager.shared.saveExtractedGoals(keptGoals)
+        declineGoals(declinedGoals)
 
         let combined = zip(Self.questions, answers)
             .map { q, a in "Q: \(q.text.replacingOccurrences(of: "{name}", with: userName))\nA: \(a)" }
@@ -1364,7 +1327,65 @@ struct VoiceGoalsPage: View {
             if granted { PodcastNotificationService.shared.scheduleAllRecurringNotifications() }
         }
 
-        onComplete?(chosenGoals, userName)
+        onComplete?(keptGoals, userName)
+    }
+
+    /// A pruned goal stops being an observational lens but stays in the system as a
+    /// pending candidate, so later behavior can bring it back on its own.
+    private func declineGoals(_ goals: [RichGoal]) {
+        let serverIds = goals.compactMap { $0.serverId }
+        guard !serverIds.isEmpty else { return }
+
+        Task {
+            for serverId in serverIds {
+                do {
+                    try await RetrospectAPIClient.shared.declineGoal(serverId: serverId)
+                } catch {
+                    NSLog("[GoalDecline] %@ failed: %@", serverId, error.localizedDescription)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Goal checklist row (all goals start kept; tapping prunes one)
+
+private struct GoalChecklistRow: View {
+    let title: String
+    let isKept: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Text(title)
+                    .font(OnboardingStyle.bodyFont(size: 16, weight: .medium))
+                    .foregroundColor(isKept ? OnboardingStyle.primaryText : OnboardingStyle.tertiaryText)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: isKept ? "checkmark.circle.fill" : "circle")
+                    .font(OnboardingStyle.bodyFont(size: 20, weight: .medium))
+                    .foregroundColor(isKept
+                        ? OnboardingStyle.success
+                        : OnboardingStyle.tertiaryText.opacity(0.55))
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 15)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(OnboardingStyle.control.opacity(isKept ? 0.78 : 0.4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(isKept
+                                ? OnboardingStyle.primaryText.opacity(0.16)
+                                : OnboardingStyle.hairline, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(isKept ? 0.10 : 0.04), radius: 8, x: 0, y: 4)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -1385,5 +1406,50 @@ private struct ThinkingDots: View {
             }
         }
         .onReceive(timer) { _ in phase = (phase + 1) % 3 }
+    }
+}
+
+// MARK: - Ack particle dissolve
+
+private struct AckTextSizeKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
+    }
+}
+
+private struct AckDissolveParticle: Identifiable {
+    let id: Int
+    let origin: CGPoint
+    let velocity: CGPoint
+    let size: CGFloat
+    let delay: Double
+}
+
+private struct AckParticleField: View {
+    let particles: [AckDissolveParticle]
+    let start: Date
+    let duration: TimeInterval
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+            let t = min(1.0, timeline.date.timeIntervalSince(start) / duration)
+            Canvas { context, _ in
+                for p in particles {
+                    let local = max(0, (t - p.delay) / max(0.001, 1 - p.delay))
+                    guard local > 0, local < 1 else { continue }
+                    let x = p.origin.x + p.velocity.x * CGFloat(local)
+                    let y = p.origin.y + p.velocity.y * CGFloat(local)
+                    let opacity = pow(1 - local, 1.4) * 0.9
+                    let r = p.size * (1 - CGFloat(local) * 0.5)
+                    let rect = CGRect(x: x - r / 2, y: y - r / 2, width: r, height: r)
+                    context.fill(
+                        Path(ellipseIn: rect),
+                        with: .color(OnboardingStyle.primaryText.opacity(opacity))
+                    )
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 }

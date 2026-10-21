@@ -10,10 +10,22 @@ class RetrospectAPIClient: ObservableObject {
     static let shared = RetrospectAPIClient()
 
     // MARK: - Configuration
+    static let productionBaseURL = "https://retrospect-api.onrender.com"
+
     #if DEBUG
-    private let baseURL = "https://retrospect-api.onrender.com"
+    /// Defaults key (settable as a launch argument, `-devAPIBaseURL http://localhost:3000`)
+    /// that points a DEBUG build at another API. The dev test-user sign-in below needs
+    /// it: that endpoint is disabled whenever the server runs with NODE_ENV=production,
+    /// which every deployed Render service does.
+    static let devBaseURLKey = "devAPIBaseURL"
+
+    private let baseURL: String = {
+        let override = UserDefaults.standard.string(forKey: RetrospectAPIClient.devBaseURLKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return override.isEmpty ? RetrospectAPIClient.productionBaseURL : override
+    }()
     #else
-    private let baseURL = "https://retrospect-api.onrender.com"
+    private let baseURL = RetrospectAPIClient.productionBaseURL
     #endif
 
     @Published var isAuthenticated: Bool = false
@@ -68,6 +80,39 @@ class RetrospectAPIClient: ObservableObject {
 
         return (userId: data.user.id, email: data.user.email)
     }
+
+    #if DEBUG
+    /// DEV ONLY: sign in as a brand new throwaway user and store its real JWT, so a
+    /// fresh-account path (new-user onboarding) can be exercised end to end. Apple
+    /// returns the same subject for a given Apple ID, so real sign-in always lands on
+    /// the same account and can never reach that path.
+    ///
+    /// The backing endpoint 404s whenever the server runs with NODE_ENV=production, so
+    /// this needs a non-production API. See `devBaseURLKey`.
+    func signInAsDevTestUser() async throws -> (userId: String, email: String?) {
+        let response: SignInResponse = try await post(
+            path: "/auth/dev/test-user",
+            body: [:],
+            authenticated: false
+        )
+
+        guard response.success, let data = response.data else {
+            throw APIError.authFailed(response.error ?? "Dev test user unavailable")
+        }
+
+        saveKeychain(key: tokenKey, value: data.token)
+        saveKeychain(key: userIdKey, value: data.user.id)
+        deleteKeychain(key: appleUserIdKey)
+
+        await MainActor.run {
+            self.isAuthenticated = true
+            self.currentUserId = data.user.id
+            self.currentEmail = data.user.email
+        }
+
+        return (userId: data.user.id, email: data.user.email)
+    }
+    #endif
 
     /// Sign out by clearing Keychain and local state.
     func signOut() {
@@ -258,31 +303,79 @@ class RetrospectAPIClient: ObservableObject {
     /// Sync a list of goal titles to the backend.
     /// Fetches existing goals, adds new ones, deactivates removed ones.
     func syncGoals(_ goals: [String]) async throws {
-        try await syncRichGoals(goals.map { RichGoal(title: $0) })
+        _ = try await syncRichGoals(goals.map { RichGoal(title: $0) })
     }
 
-    func syncRichGoals(_ goals: [RichGoal]) async throws {
+    /// Reconcile the local goal list against the server, keyed by server id.
+    /// Three branches: create a goal the server has never seen, reactivate one the
+    /// server has marked inactive, and deactivate a server goal the user removed
+    /// locally. Returns the server ids resolved for goals that arrived without one,
+    /// so the caller can record them and stop relying on titles.
+    func syncRichGoals(_ goals: [RichGoal]) async throws -> [UUID: String] {
         let existing: GoalsListResponse = try await get(path: "/goals")
-        let existingTitles = Set((existing.data ?? []).map { $0.title.lowercased() })
-        let localTitles = Set(goals.map { $0.title.lowercased() })
+        let serverGoals = existing.data ?? []
+        let serverById = Dictionary(serverGoals.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+        // Title lookup is the migration path for goals stored before `serverId`
+        // existed. An active row wins so a stale inactive duplicate cannot shadow it.
+        var serverByTitle: [String: BackendGoal] = [:]
+        for serverGoal in serverGoals {
+            let key = Self.titleKey(serverGoal.title)
+            if let claimed = serverByTitle[key], claimed.isActive { continue }
+            serverByTitle[key] = serverGoal
+        }
+
+        var resolved: [UUID: String] = [:]
+        var matchedServerIds: Set<String> = []
 
         for goal in goals {
-            if !existingTitles.contains(goal.title.lowercased()) {
-                let _: GenericResponse = try await post(path: "/goals", body: [
+            let match = goal.serverId.flatMap { serverById[$0] } ?? serverByTitle[Self.titleKey(goal.title)]
+
+            guard let match else {
+                let response: GoalSingleResponse = try await post(path: "/goals", body: [
                     "title": goal.title,
                     "description": goal.backendDescription,
                 ])
+                guard let created = response.data else { continue }
+                resolved[goal.id] = created.id
+                matchedServerIds.insert(created.id)
+                continue
             }
-        }
 
-        for existingGoal in (existing.data ?? []) {
-            if !localTitles.contains(existingGoal.title.lowercased()) && existingGoal.isActive {
+            matchedServerIds.insert(match.id)
+            if goal.serverId == nil {
+                resolved[goal.id] = match.id
+            }
+            if !match.isActive {
                 let _: GenericResponse = try await patch(
-                    path: "/goals/\(existingGoal.id)",
-                    body: ["isActive": false]
+                    path: "/goals/\(match.id)",
+                    body: ["isActive": true]
                 )
             }
         }
+
+        // An empty local list is indistinguishable from "not loaded from disk yet",
+        // so it never deactivates everything the user has on the server.
+        guard !goals.isEmpty else { return resolved }
+
+        for serverGoal in serverGoals where serverGoal.isActive && !matchedServerIds.contains(serverGoal.id) {
+            let _: GenericResponse = try await patch(
+                path: "/goals/\(serverGoal.id)",
+                body: ["isActive": false]
+            )
+        }
+
+        return resolved
+    }
+
+    /// Deactivate a goal the user pruned and keep the desire as a pending candidate,
+    /// so the ingestion pipeline can re-surface it if behavior says it still matters.
+    func declineGoal(serverId: String) async throws {
+        let _: GenericResponse = try await post(path: "/goals/\(serverId)/decline", body: [:])
+    }
+
+    private static func titleKey(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     // MARK: - Goal Extraction (Backend)
@@ -465,6 +558,12 @@ class RetrospectAPIClient: ObservableObject {
         // Apple identity tokens cannot be refreshed from a stored subject ID.
         if response.statusCode == 401 && authenticated {
             signOut()
+            // Clearing just the Keychain token isn't enough: if this 401 lands
+            // mid-onboarding (before hasCompletedOnboarding is set), OnboardingState
+            // would otherwise still read its own persisted "signed in" flag and skip
+            // straight past the welcome page into a screen that assumes a session
+            // that no longer exists.
+            OnboardingState.clearSignInGate()
             throw APIError.authFailed("Please sign in with Apple again")
         }
 
@@ -631,6 +730,12 @@ struct BackendIntegrationConnection: Codable {
 private struct GoalsListResponse: Codable {
     let success: Bool
     let data: [BackendGoal]?
+    let error: String?
+}
+
+private struct GoalSingleResponse: Codable {
+    let success: Bool
+    let data: BackendGoal?
     let error: String?
 }
 

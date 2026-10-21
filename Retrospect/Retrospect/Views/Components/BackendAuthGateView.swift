@@ -12,6 +12,9 @@ struct BackendAuthGateView: View {
     @StateObject private var coordinator = AppleSignInCoordinator()
     @State private var isSigningIn = false
     @State private var signInError: String?
+    #if DEBUG
+    @State private var isSigningInDevUser = false
+    #endif
 
     @State private var logoOpacity: Double = 0
     @State private var logoScale: CGFloat = 0.85
@@ -45,13 +48,13 @@ struct BackendAuthGateView: View {
             .opacity(buttonOpacity)
 
             #if DEBUG
-            Button("DEV: Bypass authentication") {
-                UserDefaults.standard.set(true, forKey: "devAuthBypassEnabled")
-                onAuthenticated()
+            Button(isSigningInDevUser ? "DEV: Creating test account..." : "DEV: Sign in as new test user") {
+                triggerDevTestUserSignIn()
             }
             .font(OnboardingStyle.bodyFont(size: 13, weight: .medium))
             .foregroundColor(OnboardingStyle.tertiaryText)
             .buttonStyle(.plain)
+            .disabled(isSigningInDevUser)
             .opacity(buttonOpacity)
             #endif
 
@@ -117,6 +120,33 @@ struct BackendAuthGateView: View {
             }
         }
     }
+
+    #if DEBUG
+    /// Signs in as a brand new throwaway account holding a real JWT. Needs an API
+    /// running with NODE_ENV != production, where the endpoint exists.
+    private func triggerDevTestUserSignIn() {
+        guard !isSigningIn, !isSigningInDevUser else { return }
+        signInError = nil
+
+        Task { @MainActor in
+            isSigningInDevUser = true
+            defer { isSigningInDevUser = false }
+
+            do {
+                _ = try await RetrospectAPIClient.shared.signInAsDevTestUser()
+            } catch {
+                signInError = "\(error.localizedDescription)\n\nThe dev test user needs an API running with NODE_ENV != production."
+                return
+            }
+
+            // The account just signed out of is gone; without this the throwaway
+            // user's first sync would resend the previous account's goals/answers.
+            OnboardingContextManager.shared.resetForFreshOnboarding()
+            HapticManager.shared.playSuccessNotification()
+            onAuthenticated()
+        }
+    }
+    #endif
 }
 
 #Preview {
