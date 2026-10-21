@@ -58,6 +58,10 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
     } else if (type === 'dimension' && /^(space|size|radius|layout|font\.size|motion\.)/.test(path)) {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : dims.push({ name, n, doc: o.$description });
+    } else if (type === 'dimension' && /^font\.tracking\./.test(path)) {
+      // em values: a fraction of the font size, applied by RType
+      const n = num(resolve(o.$value, false));
+      n === null ? skipped.push(path) : numbers.push({ name, n, doc: o.$description });
     } else if (type === 'spring' && /^motion\.spring\./.test(path)) {
       const v = o.$value;
       springs.push({ name: camel(path.slice('motion.spring.'.length)), r: v.response, d: v.dampingFraction, doc: o.$description });

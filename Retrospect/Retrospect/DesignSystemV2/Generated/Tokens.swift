@@ -666,6 +666,20 @@ public enum RHaptic {
 
 /// Opacities, layers and durations (seconds).
 public enum RNumber {
+    /// Display type (paywall: -0.6 at 30pt).
+    public static let fontTrackingDisplay: Double = -0.02
+    /// Text headlines.
+    public static let fontTrackingTight: Double = -0.01
+    /// Body.
+    public static let fontTrackingNone: Double = 0
+    /// Mono labels.
+    public static let fontTrackingLabel: Double = 0.01
+    /// 64pt and up: tight, the word reads as one shape.
+    public static let fontTrackingHero: Double = -0.04
+    /// 28–40pt titles.
+    public static let fontTrackingTitle: Double = -0.035
+    /// 20–24pt headlines and quotes.
+    public static let fontTrackingCard: Double = -0.02
     /// Taps and toggles.
     public static let motionDurationInstant: Double = 0.08
     /// Small state changes.

@@ -54,7 +54,7 @@ extension RTextStyle {
         family: .inky(axis: -20),
         size: RDimension.fontSizeHero,
         weight: .regular,
-        tracking: -0.04,
+        tracking: RNumber.fontTrackingHero,
         leading: 1.1,
         relativeTo: .largeTitle
     )
@@ -63,35 +63,133 @@ extension RTextStyle {
         family: .inky(axis: -20),
         size: RDimension.fontSize3xl,
         weight: .regular,
-        tracking: -0.035,
+        tracking: RNumber.fontTrackingTitle,
         leading: 1.1,
         relativeTo: .largeTitle
     )
     /// Card headlines and quotes (--text-xl, ink card).
-    static let inkCard = RTextStyle(family: .inky(axis: -10), size: RDimension.fontSizeXl, weight: .regular, tracking: -0.02, leading: 1.1, relativeTo: .title2)
+    static let inkCard = RTextStyle(
+        family: .inky(axis: -10),
+        size: RDimension.fontSizeXl,
+        weight: .regular,
+        tracking: RNumber.fontTrackingCard,
+        leading: 1.1,
+        relativeTo: .title2
+    )
     /// Sheet titles ("sign out?") and section display lines (--font-display, --text-2xl).
-    static let displayTitle = RTextStyle(family: .display, size: RDimension.fontSize2xl, weight: .regular, tracking: -0.035, leading: 1.1, relativeTo: .title)
+    static let displayTitle = RTextStyle(
+        family: .display,
+        size: RDimension.fontSize2xl,
+        weight: .regular,
+        tracking: RNumber.fontTrackingTitle,
+        leading: 1.1,
+        relativeTo: .title
+    )
 
     /// Reading text: messages, transcripts (--text-body, leading normal).
-    static let bodyReading = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .regular, tracking: -0.02, leading: 1.45, relativeTo: .body)
+    static let bodyReading = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeBody,
+        weight: .regular,
+        tracking: RNumber.fontTrackingCard,
+        leading: 1.45,
+        relativeTo: .body
+    )
     /// Controls and row titles (--text-body, leading snug).
-    static let body = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .body)
-    static let bodyMedium = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .body)
-    static let buttonLabel = RTextStyle(family: .text, size: RDimension.fontSizeBody, weight: .semibold, tracking: 0, leading: 1.3, relativeTo: .body)
+    static let body = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeBody,
+        weight: .regular,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .body
+    )
+    static let bodyMedium = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeBody,
+        weight: .medium,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .body
+    )
+    static let buttonLabel = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeBody,
+        weight: .semibold,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .body
+    )
     /// Supporting lines (--text-md).
-    static let textMd = RTextStyle(family: .text, size: RDimension.fontSizeMd, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .subheadline)
-    static let textMdMedium = RTextStyle(family: .text, size: RDimension.fontSizeMd, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .subheadline)
+    static let textMd = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeMd,
+        weight: .regular,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .subheadline
+    )
+    static let textMdMedium = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeMd,
+        weight: .medium,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .subheadline
+    )
 
     /// Geist labels: metadata, section labels, pills (founder 20 Oct: Geist for labels, mono only for figures).
-    static let label = RTextStyle(family: .label, size: RDimension.fontSizeSm, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .caption)
-    static let labelMedium = RTextStyle(family: .label, size: RDimension.fontSizeSm, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .caption)
-    static let pill = RTextStyle(family: .label, size: RDimension.fontSizeMd, weight: .medium, tracking: 0, leading: 1.3, relativeTo: .subheadline)
+    static let label = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeSm,
+        weight: .regular,
+        tracking: RNumber.fontTrackingLabel,
+        leading: 1.3,
+        relativeTo: .caption
+    )
+    static let labelMedium = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeSm,
+        weight: .medium,
+        tracking: RNumber.fontTrackingLabel,
+        leading: 1.3,
+        relativeTo: .caption
+    )
+    static let pill = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeMd,
+        weight: .medium,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .subheadline
+    )
     /// Tab bar labels (--text-xs, --tracking-label).
-    static let tab = RTextStyle(family: .label, size: RDimension.fontSizeXs, weight: .regular, tracking: 0.01, leading: 1.3, relativeTo: .caption2)
-    static let tabSelected = RTextStyle(family: .label, size: RDimension.fontSizeXs, weight: .medium, tracking: 0.01, leading: 1.3, relativeTo: .caption2)
+    static let tab = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeXs,
+        weight: .regular,
+        tracking: RNumber.fontTrackingLabel,
+        leading: 1.3,
+        relativeTo: .caption2
+    )
+    static let tabSelected = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeXs,
+        weight: .medium,
+        tracking: RNumber.fontTrackingLabel,
+        leading: 1.3,
+        relativeTo: .caption2
+    )
 
     /// Figures only: times, counts, "1 of 3".
-    static let figure = RTextStyle(family: .mono, size: RDimension.fontSizeXs, weight: .regular, tracking: 0, leading: 1.3, relativeTo: .caption2)
+    static let figure = RTextStyle(
+        family: .mono,
+        size: RDimension.fontSizeXs,
+        weight: .regular,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .caption2
+    )
 }
 
 private struct RTextModifier: ViewModifier {
