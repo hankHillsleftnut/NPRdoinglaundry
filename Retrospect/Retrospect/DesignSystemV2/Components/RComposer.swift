@@ -57,7 +57,7 @@ struct RComposer: View {
         .overlay {
             // Increase Contrast: a 1pt border.control ring at rest (composer.md)
             if contrast == .increased {
-                RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
+                RShape.rect(Self.radius)
                     .strokeBorder(RColor.borderControl, lineWidth: RDimension.sizeBorderDefault)
             }
         }
@@ -76,7 +76,7 @@ struct RComposer: View {
                 Text(placeholder)
                     .rText(.body)
                     .lineLimit(1)
-                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textTertiary)
+                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textPlaceholder)
                     // fades out as the first character lands, back in when the field empties
                     .opacity(text.isEmpty ? 1 : 0)
                     .animation(RMotion.standard(RNumber.motionDurationInstant), value: text.isEmpty)
