@@ -20,10 +20,14 @@ struct RSectionLabel: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: RDimension.space3)
             if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .rText(.labelMedium)
-                    .foregroundStyle(RColor.textLink)
-                    .rPress(small: true)
+                Button(action: action) {
+                    Text(actionTitle)
+                        .rText(.labelMedium)
+                        .foregroundStyle(RColor.textLink)
+                        // 44pt hit area around 12pt text without changing the label's layout (craft 1.7)
+                        .contentShape(Rectangle().inset(by: -(RDimension.sizeTouchTarget - RDimension.fontSizeSm) / 2))
+                }
+                .rPress(small: true)
             }
         }
         .padding(.bottom, RDimension.space1)
