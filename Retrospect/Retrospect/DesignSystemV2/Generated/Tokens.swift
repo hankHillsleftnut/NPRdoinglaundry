@@ -56,6 +56,8 @@ public enum RColor {
     public static let textSecondary = dynamic(UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
     /// Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.)
     public static let textLabel = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    /// The hint inside a field on surface.control: the lightest grey that still passes AA there (4.57:1 light, 4.54:1 dark). Founder, 21 Oct: just passes.
+    public static let textPlaceholder = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
     /// Hints and the least important metadata. (AA: 4.6:1; never on a control fill.)
     public static let textTertiary = dynamic(UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
     /// Anything that cannot be used right now.
