@@ -10,13 +10,17 @@ import SwiftUI
 
 /// The sunken field: 48 tall, a true pill, surface.control with the sunken shade and a 0.5
 /// inner hairline (rSunken), 4 padding, 8 between its parts. Dynamic Type grows the height.
+/// The composer (C13) sets a wider gap, bottom alignment and a concentric corner, so it can grow.
 struct RSunkenField<Leading: View, Content: View, Trailing: View>: View {
+    var spacing: CGFloat = RDimension.space2
+    var alignment: VerticalAlignment = .center
+    var radius: CGFloat = RDimension.radiusControl
     @ViewBuilder let leading: Leading
     @ViewBuilder let content: Content
     @ViewBuilder let trailing: Trailing
 
     var body: some View {
-        HStack(spacing: RDimension.space2) {
+        HStack(alignment: alignment, spacing: spacing) {
             leading
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -24,7 +28,7 @@ struct RSunkenField<Leading: View, Content: View, Trailing: View>: View {
         }
         .padding(.horizontal, RDimension.space1)
         .frame(minHeight: RDimension.sizeControlLarge)
-        .rSunken()
+        .rSunken(radius)
     }
 }
 

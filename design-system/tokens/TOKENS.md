@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**542 tokens** · 466 semantic · 276 marked *to set*
+**543 tokens** · 467 semantic · 276 marked *to set*
 
 ## palette
 
@@ -432,6 +432,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.composer.minHeight` | The writing field, empty. | 44pt |  | to set: app need |
 | `size.composer.maxHeight` | The writing field before it scrolls. | 160pt |  | to set: app need |
 | `size.composer.cardMinHeight` | The input card at rest: room for two lines of words above the well row. | 120pt |  | current app input bar (MinimalJournalInput.swift), founder 20 Oct |
+| `size.composer.well` | The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24). | 40pt |  | Paper c:composer/compact (everything · latest, EX-1 share sheet; dark file), 21 Oct |
 | `size.goal.ring` | The progress ring on a goal. | 44pt |  | to set: app need |
 | `size.goal.ringStroke` | The progress ring's thickness. | 4pt |  | to set: app need |
 | `size.sourceIcon` | A source's app icon in a row. | 32pt |  | to set: app need |
