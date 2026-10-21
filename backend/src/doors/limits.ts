@@ -8,7 +8,8 @@
  * refused for spend (founder rule); only `expensive` doors check it.
  *
  * Pure and clock-free: every call takes `now` (milliseconds), so tests need no
- * real time. In memory, so counts reset when the one Render instance restarts;
+ * real time. A `now` earlier than the last one recorded (a clock stepping
+ * back) is recorded at the last time instead, so every list stays oldest first. In memory, so counts reset when the one Render instance restarts;
  * a shared store replaces MemoryLimiter behind the same interface in BE0.9.
  */
 
@@ -23,6 +24,12 @@ export interface Limiter {
   recordSpend(userId: string, usd: number, now: number): void;
   /** The user's model spend (dollars) in the 24 hours before `now`. */
   spentToday(userId: string, now: number): number;
+  /**
+   * Seconds until the user's rolling spend drops back under `capUsd`, as the
+   * oldest spend ages out; 0 when already under it. For `spend_limited`'s
+   * retryAfterSeconds (contract 00 §2).
+   */
+  spendRetryAfterSeconds(userId: string, now: number, capUsd: number): number;
 }
 
 const MINUTE = 60_000;
@@ -73,7 +80,7 @@ export class MemoryLimiter implements Limiter {
       this.hits.set(key, times);
       return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil(waitMs / 1000)) };
     }
-    times.push(now);
+    times.push(Math.max(now, times[times.length - 1] ?? now));
     this.hits.set(key, times);
     return { ok: true };
   }
@@ -81,7 +88,7 @@ export class MemoryLimiter implements Limiter {
   recordSpend(userId: string, usd: number, now: number): void {
     if (!(usd > 0)) return;
     const entries = this.recentSpend(userId, now);
-    entries.push({ at: now, usd });
+    entries.push({ at: Math.max(now, entries[entries.length - 1]?.at ?? now), usd });
     this.spend.set(userId, entries);
   }
 
@@ -92,9 +99,27 @@ export class MemoryLimiter implements Limiter {
     return entries.reduce((sum, e) => sum + e.usd, 0);
   }
 
-  /** How many users are tracked; for tests of forgetting. */
+  spendRetryAfterSeconds(userId: string, now: number, capUsd: number): number {
+    const entries = this.recentSpend(userId, now);
+    let total = entries.reduce((sum, e) => sum + e.usd, 0);
+    if (capUsd <= 0 || total < capUsd) return 0;
+    for (const e of entries) {
+      total -= e.usd;
+      if (total < capUsd) {
+        return Math.max(1, Math.ceil((e.at + DOOR_LIMITS.spendWindowMs - now) / 1000));
+      }
+    }
+    return Math.max(1, Math.ceil(DOOR_LIMITS.spendWindowMs / 1000));
+  }
+
+  /** How many users have request counts tracked; for tests of forgetting. */
   size(): number {
     return new Set([...this.hits.keys()].map((k) => k.split('\0')[1])).size;
+  }
+
+  /** How many users have spend tracked; for tests of forgetting. */
+  spendSize(): number {
+    return this.spend.size;
   }
 
   private recentSpend(userId: string, now: number): { at: number; usd: number }[] {
@@ -117,7 +142,13 @@ export class MemoryLimiter implements Limiter {
   }
 }
 
-/** True when the user's rolling 24-hour spend has reached the cap (expensive doors only). */
-export function overSpendCap(limiter: Limiter, userId: string, now: number, capUsd: number = DOOR_LIMITS.dailySpendCapUsd): boolean {
-  return capUsd > 0 && limiter.spentToday(userId, now) >= capUsd;
+/**
+ * Whether the user's rolling 24-hour spend has reached the cap (expensive doors
+ * only), and if so how long until it drops back under it.
+ */
+export function checkSpendCap(
+  limiter: Limiter, userId: string, now: number, capUsd: number = DOOR_LIMITS.dailySpendCapUsd,
+): { over: false } | { over: true; retryAfterSeconds: number } {
+  if (capUsd <= 0 || limiter.spentToday(userId, now) < capUsd) return { over: false };
+  return { over: true, retryAfterSeconds: limiter.spendRetryAfterSeconds(userId, now, capUsd) };
 }

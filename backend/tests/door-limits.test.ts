@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DOOR_LIMITS, MemoryLimiter, overSpendCap, type LimitBucket } from '../src/doors/limits.js';
+import { checkSpendCap, DOOR_LIMITS, MemoryLimiter, type LimitBucket } from '../src/doors/limits.js';
 
 const T0 = 1_800_000_000_000;
 const MINUTE = 60_000;
@@ -72,12 +72,12 @@ test('a refused request is not counted', () => {
 test('spend over the daily cap is reported until the window rolls', () => {
   const limiter = new MemoryLimiter();
   limiter.recordSpend('a', 10, T0);
-  assert.equal(overSpendCap(limiter, 'a', T0), false);
+  assert.equal(checkSpendCap(limiter, 'a', T0).over, false);
   limiter.recordSpend('a', 5, T0 + HOUR);
   assert.equal(limiter.spentToday('a', T0 + HOUR), 15);
-  assert.equal(overSpendCap(limiter, 'a', T0 + HOUR), true, 'at the cap');
-  assert.equal(overSpendCap(limiter, 'a', T0 + 23 * HOUR), true, 'still within 24 hours of both');
-  assert.equal(overSpendCap(limiter, 'a', T0 + 24 * HOUR + 1), false, 'the first $10 aged out');
+  assert.equal(checkSpendCap(limiter, 'a', T0 + HOUR).over, true, 'at the cap');
+  assert.equal(checkSpendCap(limiter, 'a', T0 + 23 * HOUR).over, true, 'still within 24 hours of both');
+  assert.equal(checkSpendCap(limiter, 'a', T0 + 24 * HOUR + 1).over, false, 'the first $10 aged out');
   assert.equal(limiter.spentToday('a', T0 + 24 * HOUR + 1), 5);
   assert.equal(limiter.spentToday('a', T0 + 25 * HOUR + 1), 0);
 });
@@ -89,7 +89,7 @@ test('zero, negative and non-numeric spend is ignored; a cap of 0 means no cap',
   limiter.recordSpend('a', Number.NaN, T0);
   assert.equal(limiter.spentToday('a', T0), 0);
   limiter.recordSpend('a', 100, T0);
-  assert.equal(overSpendCap(limiter, 'a', T0, 0), false);
+  assert.equal(checkSpendCap(limiter, 'a', T0, 0).over, false);
 });
 
 test('users idle past their longest window are forgotten', () => {
@@ -98,4 +98,44 @@ test('users idle past their longest window are forgotten', () => {
   limiter.take('b', 'expensive', T0);
   limiter.take('c', 'read', T0 + 2 * HOUR);
   assert.equal(limiter.size(), 1, 'a (one-minute bucket) and b (one-hour bucket) are both gone two hours later');
+});
+
+// Contract 00 §2: spend_limited carries retryAfterSeconds.
+test('over the spend cap, the wait is until enough of the oldest spend ages out', () => {
+  const limiter = new MemoryLimiter();
+  limiter.recordSpend('a', 6, T0);
+  limiter.recordSpend('a', 6, T0 + HOUR);
+  limiter.recordSpend('a', 6, T0 + 2 * HOUR);
+  const now = T0 + 3 * HOUR;
+  // $18 against a $15 cap: dropping the first $6 (at T0) brings it to $12.
+  assert.deepEqual(checkSpendCap(limiter, 'a', now), { over: true, retryAfterSeconds: 21 * 3600 });
+  // Against a $10 cap, two entries must age out ($18 → $12 → $6): the wait runs to the second.
+  assert.equal(limiter.spendRetryAfterSeconds('a', now, 10), 22 * 3600);
+  assert.equal(limiter.spendRetryAfterSeconds('a', now, 100), 0, 'under the cap: no wait');
+  assert.deepEqual(checkSpendCap(limiter, 'a', T0 + 24 * HOUR + 1), { over: false }, 'after the first ages out');
+});
+
+// A clock stepping back (NTP) must not break the oldest-first order the windows rely on.
+test('a clock that goes backwards never lets extra requests through', () => {
+  const limiter = new MemoryLimiter();
+  const max = DOOR_LIMITS.buckets.write[0]!.max;
+  for (let i = 0; i < max - 1; i++) assert.equal(limiter.take('a', 'write', T0 + 30_000).ok, true);
+  assert.equal(limiter.take('a', 'write', T0).ok, true, 'one more, 30 s in the past');
+  assert.equal(limiter.take('a', 'write', T0 + 30_001).ok, false, 'the window is full');
+  assert.equal(limiter.take('a', 'write', T0 + 30_000 + MINUTE - 1).ok, false, 'still full: the stepped-back one counts as recorded at the later time');
+  assert.equal(limiter.take('a', 'write', T0 + 30_000 + MINUTE).ok, true);
+
+  limiter.recordSpend('b', 10, T0 + HOUR);
+  limiter.recordSpend('b', 10, T0);
+  assert.equal(limiter.spentToday('b', T0 + HOUR + 24 * HOUR - 1), 20, 'both still counted until the later time ages out');
+  assert.equal(limiter.spentToday('b', T0 + HOUR + 24 * HOUR), 0);
+});
+
+test('spend records idle for 24 hours are forgotten too', () => {
+  const limiter = new MemoryLimiter();
+  limiter.recordSpend('a', 1, T0);
+  limiter.recordSpend('b', 1, T0 + 23 * HOUR);
+  assert.equal(limiter.spendSize(), 2);
+  limiter.take('c', 'read', T0 + 25 * HOUR);
+  assert.equal(limiter.spendSize(), 1, 'a is gone; b spent within the last 24 hours');
 });
