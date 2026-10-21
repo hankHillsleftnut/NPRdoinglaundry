@@ -36,6 +36,8 @@ struct RSwitch: View {
         // the thumb on motion.spring.snappy (toggles, motion-system.md §3); Reduce Motion: instant
         .animation(reduceMotion ? nil : RMotion.snappy, value: isOn)
         .animation(reduceMotion ? nil : RMotion.snappy, value: held)
+        // fade the switch as one layer (as Paper's opacity does), so the track never shows through the thumb
+        .compositingGroup()
         .opacity(isDisabled ? RNumber.opacityDisabled : 1)
         // at least 44 tall around the 31 track, padding the frame, never the visual (craft 1.7)
         .frame(minHeight: hitHeight)
