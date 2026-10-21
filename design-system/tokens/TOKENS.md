@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**540 tokens** · 464 semantic · 276 marked *to set*
+**541 tokens** · 465 semantic · 276 marked *to set*
 
 ## palette
 
@@ -411,6 +411,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.illustration` | The drawing on an empty or error state. | 120pt |  | to set: Lime coverage |
 | `size.navBar` | The navigation bar (without the status bar). | 44pt |  | to set: app need |
 | `size.tabBar` | The tab bar (without the home indicator). | 49pt |  | to set: app need |
+| `size.fieldWell` | A well or button slot inside a 48 field: the search field's mic well and its clear slot. | 36pt |  | Paper approvals · part 23 c:search-field/rest, /typed (21 Oct) |
 | `size.searchField` | The search field on You. | 36pt |  | to set: app need |
 | `size.grabber.width` | The handle at the top of a sheet. | 36pt |  | to set: app need |
 | `size.grabber.height` | The handle at the top of a sheet. | 5pt |  | to set: app need |
