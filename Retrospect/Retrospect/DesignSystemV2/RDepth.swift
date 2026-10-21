@@ -49,14 +49,16 @@ extension View {
             .shadow(color: RColor.depthShadowAmbient, radius: 30, y: 24)
     }
 
-    /// The cream secondary control (raised pills, plan buttons, the mark's disc).
-    func rSecondary(_ radius: CGFloat = RDimension.radiusControl) -> some View {
+    /// The cream secondary control (raised pills, plan buttons, the mark's disc). Pressed, the
+    /// shadow collapses toward the page (Paper c:pill/raised/pressed: 0 .5 1 contact, 0 1 2 −1 cast).
+    func rSecondary(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         return background(RColor.surfaceSecondaryAction, in: shape)
             .overlay(shape.strokeBorder(RColor.depthStrokeInner, lineWidth: 1))
+            .overlay(alignment: .top) { shape.strokeBorder(RColor.depthStrokeInnerTop, lineWidth: 1).mask(alignment: .top) { Rectangle().frame(height: 1) } }
             .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
-            .shadow(color: RColor.depthShadowContact, radius: 0.75, y: 1)
-            .shadow(color: RColor.depthShadowCast, radius: 3, y: 4)
+            .shadow(color: RColor.depthShadowContact, radius: pressed ? 0.5 : 0.75, y: pressed ? 0.5 : 1)
+            .shadow(color: RColor.depthShadowCast, radius: pressed ? 1 : 3, y: pressed ? 1 : 4)
     }
 
     /// The one lit object on a screen (primary buttons, plan "yearly", the play well).
