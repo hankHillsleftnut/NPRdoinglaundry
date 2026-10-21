@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Tokens validate
         run: node design-system/tokens/validate.mjs
       - name: Generated Swift is up to date
