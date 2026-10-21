@@ -1,0 +1,92 @@
+{
+  "success": true,
+  "data": {
+    "understanding": {
+      "asOf": "2026-10-21",
+      "moved": {
+        "since": "2026-10-14",
+        "answersChanged": 2
+      },
+      "areas": [
+        {
+          "id": "who",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "want",
+          "silent": false,
+          "answers": [
+            {
+              "id": "00000000-0000-4000-8000-000000000703",
+              "questionId": 6,
+              "question": "what have you said you want?",
+              "answer": "to run the half in march",
+              "sureness": "very sure",
+              "dots": 4,
+              "isGuess": false,
+              "sourceCount": 3,
+              "confirmed": false,
+              "movedThisWeek": false
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000704",
+              "questionId": 9,
+              "question": "what have you quit, and when?",
+              "answer": "evening runs, in october",
+              "sureness": "fairly sure",
+              "dots": 3,
+              "isGuess": false,
+              "sourceCount": 2,
+              "confirmed": false,
+              "movedThisWeek": true
+            }
+          ]
+        },
+        {
+          "id": "do",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "attention",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "people",
+          "silent": false,
+          "answers": [
+            {
+              "id": "00000000-0000-4000-8000-000000000705",
+              "questionId": 23,
+              "question": "who matters most, as distinct from most frequent?",
+              "answer": "priya",
+              "sureness": "just a hunch",
+              "dots": 2,
+              "isGuess": true,
+              "sourceCount": 1,
+              "confirmed": false,
+              "movedThisWeek": true
+            }
+          ]
+        },
+        {
+          "id": "how",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "inTheWay",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "speak",
+          "silent": true,
+          "answers": []
+        }
+      ]
+    }
+  }
+}

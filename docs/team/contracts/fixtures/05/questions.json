@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "data": {
+    "questions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000401",
+        "kind": "samePerson",
+        "inYourWriting": "sam",
+        "inYourContacts": "sam okafor",
+        "writingRef": {
+          "kind": "person",
+          "id": "00000000-0000-4000-8000-000000000102"
+        },
+        "contactRef": {
+          "kind": "person",
+          "id": "00000000-0000-4000-8000-000000000104"
+        }
+      }
+    ]
+  }
+}

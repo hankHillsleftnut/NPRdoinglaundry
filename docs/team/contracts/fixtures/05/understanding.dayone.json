@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "data": {
+    "understanding": {
+      "asOf": "2026-10-21",
+      "moved": {
+        "since": null,
+        "answersChanged": 0
+      },
+      "areas": [
+        {
+          "id": "who",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "want",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "do",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "attention",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "people",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "how",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "inTheWay",
+          "silent": true,
+          "answers": []
+        },
+        {
+          "id": "speak",
+          "silent": true,
+          "answers": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "data": {
+    "source": {
+      "source": {
+        "kind": "saved",
+        "id": "00000000-0000-4000-8000-000000000901"
+      },
+      "via": "saved",
+      "date": "2026-10-03",
+      "title": "a beginner's half marathon plan",
+      "body": "twelve weeks, three runs a week.",
+      "url": "https://example.com/half-plan",
+      "yourReason": "for march"
+    }
+  }
+}

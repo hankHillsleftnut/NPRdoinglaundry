@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "map": {
+      "asOf": "2026-10-21T08:00:04.200Z",
+      "nodes": [],
+      "edges": [],
+      "waiting": null,
+      "counts": {
+        "people": 0,
+        "themes": 0,
+        "goals": 0
+      }
+    }
+  }
+}

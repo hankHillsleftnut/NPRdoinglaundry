@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "search": {
+      "id": "00000000-0000-4000-8000-000000000803",
+      "query": "what did i think of lisbon",
+      "outcome": "abstained",
+      "sentences": [],
+      "guessCount": 0,
+      "abstain": {
+        "reason": "nothingFound"
+      },
+      "sources": []
+    }
+  }
+}
