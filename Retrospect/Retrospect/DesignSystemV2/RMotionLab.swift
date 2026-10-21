@@ -7,6 +7,8 @@
 import SwiftUI
 
 #if DEBUG
+// A debug lab: (name, animation, values) rows read better as tuples here.
+// swiftlint:disable large_tuple
 struct RDesignLab: View {
     @State private var page = 0
 
@@ -19,7 +21,11 @@ struct RDesignLab: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, RDimension.spaceScreenMargin)
             .padding(.vertical, RDimension.space2)
-            if page == 0 { RMotionLab() } else { RFoundationGallery() }
+            if page == 0 {
+                RMotionLab()
+            } else {
+                RFoundationGallery()
+            }
         }
         .background(RColor.backgroundCanvas)
         .rLifeHost()
@@ -87,14 +93,14 @@ struct RMotionLab: View {
                         .rFloat()
                     VStack(alignment: .leading, spacing: RDimension.space2) {
                         if listShown {
-                            ForEach(0..<5, id: \.self) { i in
+                            ForEach(0 ..< 5, id: \.self) { i in
                                 Text("row \(i + 1) appears").rText(.body).rAppear(index: i)
                             }
                         }
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: RDimension.space3) {
-                            ForEach(0..<8, id: \.self) { i in
+                            ForEach(0 ..< 8, id: \.self) { i in
                                 RoundedRectangle(cornerRadius: RDimension.radiusPanel, style: .continuous)
                                     .fill(RColor.surfaceWash)
                                     .frame(width: 96, height: 96)
@@ -111,7 +117,7 @@ struct RMotionLab: View {
         .foregroundStyle(RColor.textPrimary)
     }
 
-    private func section<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
+    private func section(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: RDimension.space3) {
             Text(title).rText(.labelMedium).foregroundStyle(RColor.textLabel)
             content()
@@ -143,5 +149,6 @@ struct RMotionLab: View {
     }
 }
 
+// swiftlint:enable large_tuple
 #Preview("motion lab") { RDesignLab() }
 #endif

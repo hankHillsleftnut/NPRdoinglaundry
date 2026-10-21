@@ -13,7 +13,7 @@ import SwiftUI
 /// Pass a haptic for lit or destructive actions (it fires once, on touch down).
 struct RPressStyle: ButtonStyle {
     var scale: CGFloat = RNumber.motionScalePress
-    var haptic: SensoryFeedback? = nil
+    var haptic: SensoryFeedback?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
@@ -89,7 +89,7 @@ private struct RPop<T: Equatable>: ViewModifier {
 
 extension View {
     /// A delight pop (~10% overshoot). Use rarely: knows-you-well, a goal met, the first episode ready.
-    func rPop<T: Equatable>(trigger: T, haptic: SensoryFeedback? = RHaptic.confirm) -> some View {
+    func rPop(trigger: some Equatable, haptic: SensoryFeedback? = RHaptic.confirm) -> some View {
         modifier(RPop(trigger: trigger, haptic: haptic))
     }
 }
@@ -99,7 +99,7 @@ extension View {
 private struct ShakeEffect: GeometryEffect {
     var travel: CGFloat
     var animatableData: CGFloat
-    func effectValue(size: CGSize) -> ProjectionTransform {
+    func effectValue(size _: CGSize) -> ProjectionTransform {
         // Three oscillations that die out as the animation completes.
         let x = travel * sin(animatableData * .pi * 6) * (1 - animatableData)
         return ProjectionTransform(CGAffineTransform(translationX: x, y: 0))
@@ -124,7 +124,7 @@ private struct RShake<T: Equatable>: ViewModifier {
 
 extension View {
     /// Error shake: 6pt, three oscillations, with the warning haptic.
-    func rShake<T: Equatable>(trigger: T) -> some View { modifier(RShake(trigger: trigger)) }
+    func rShake(trigger: some Equatable) -> some View { modifier(RShake(trigger: trigger)) }
 }
 
 // MARK: - Blur replace (changing text)

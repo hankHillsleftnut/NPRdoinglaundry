@@ -1,0 +1,32 @@
+# SwiftLint for the new app (M14). Only new-design code is held to it; old
+# screens are retired, not linted (plan §6b).
+included:
+  - Retrospect/Retrospect/DesignSystemV2
+  - Retrospect/Retrospect/Features
+excluded:
+  - Retrospect/Retrospect/DesignSystemV2/Generated
+opt_in_rules:
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - fatal_error_message
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - last_where
+  - modifier_order
+  - private_swiftui_state
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - unused_parameter
+  - weak_delegate
+disabled_rules:
+  - todo
+  - trailing_comma
+line_length:
+  warning: 160
+  error: 200
+type_body_length: 400
+file_length: 600
+identifier_name:
+  min_length: 1

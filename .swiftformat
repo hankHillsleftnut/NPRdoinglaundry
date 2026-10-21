@@ -1,0 +1,11 @@
+# SwiftFormat for new-design code (M14), checked in CI with --lint.
+--swiftversion 5.10
+--indent 4
+--maxwidth 160
+--wraparguments before-first
+--wrapcollections before-first
+--self remove
+--stripunusedargs closure-only
+--disable redundantReturn,wrapMultilineStatementBraces,blankLinesAtStartOfScope,wrapFunctionBodies
+--ifdef no-indent
+--minversion 0.64.0

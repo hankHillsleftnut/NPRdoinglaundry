@@ -27,13 +27,13 @@ struct RTextStyle {
     let family: Family
     let size: CGFloat
     let weight: Font.Weight
-    let tracking: CGFloat   // em
-    let leading: CGFloat    // line height ÷ size
+    let tracking: CGFloat // em
+    let leading: CGFloat // line height ÷ size
     let relativeTo: Font.TextStyle
 
     var font: Font {
         switch family {
-        case .inky(let axis):
+        case let .inky(axis):
             // --font-weight-ink-title / -ink-card select an Exposure axis, not a weight
             return .custom(ExposureFont.postScriptName(axis: axis, italic: false), size: size, relativeTo: relativeTo)
         case .display:
@@ -49,10 +49,24 @@ struct RTextStyle {
 }
 
 extension RTextStyle {
-    // Exposure axes: --font-weight-ink-title → exposure.title (−20), ink-card → exposure.card (−10)
-    static let inkHero = RTextStyle(family: .inky(axis: -20), size: RDimension.fontSizeHero, weight: .regular, tracking: -0.04, leading: 1.1, relativeTo: .largeTitle)
+    /// Exposure axes: --font-weight-ink-title → exposure.title (−20), ink-card → exposure.card (−10)
+    static let inkHero = RTextStyle(
+        family: .inky(axis: -20),
+        size: RDimension.fontSizeHero,
+        weight: .regular,
+        tracking: -0.04,
+        leading: 1.1,
+        relativeTo: .largeTitle
+    )
     /// Screen titles and the onboarding question (--text-3xl, ink title).
-    static let inkTitle = RTextStyle(family: .inky(axis: -20), size: RDimension.fontSize3xl, weight: .regular, tracking: -0.035, leading: 1.1, relativeTo: .largeTitle)
+    static let inkTitle = RTextStyle(
+        family: .inky(axis: -20),
+        size: RDimension.fontSize3xl,
+        weight: .regular,
+        tracking: -0.035,
+        leading: 1.1,
+        relativeTo: .largeTitle
+    )
     /// Card headlines and quotes (--text-xl, ink card).
     static let inkCard = RTextStyle(family: .inky(axis: -10), size: RDimension.fontSizeXl, weight: .regular, tracking: -0.02, leading: 1.1, relativeTo: .title2)
     /// Sheet titles ("sign out?") and section display lines (--font-display, --text-2xl).
