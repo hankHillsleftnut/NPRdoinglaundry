@@ -57,11 +57,11 @@ private struct RTagBody: View {
     var body: some View {
         switch style {
         case .status:
-            Capsule().fill(RColor.accentSubtle)
+            RShape.pill.fill(RColor.accentSubtle)
         case .guess:
             GeometryReader { proxy in
                 // the dash sits inside the shape, so the tag is the same size either way (craft 3.4)
-                Capsule().strokeBorder(
+                RShape.pill.strokeBorder(
                     RColor.inferenceBorder,
                     style: StrokeStyle(lineWidth: RDimension.sizeBorderDefault, dash: [Self.evenDash(around: proxy.size)])
                 )
