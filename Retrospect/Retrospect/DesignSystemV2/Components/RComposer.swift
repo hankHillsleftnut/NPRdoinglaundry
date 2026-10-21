@@ -11,6 +11,83 @@
 //
 import SwiftUI
 
+/// How a writing field grows (C13 composer, C14 voice composer): one line centred at rest,
+/// then up to size.composer.maxHeight, then it scrolls inside. Follows Dynamic Type: the same
+/// number of lines at every size, and the control beside the words stays on the last line.
+struct RFieldGrowth {
+    let style: RTextStyle
+    /// The field's height at rest, holding one line.
+    let restHeight: CGFloat
+
+    private var baseLine: CGFloat {
+        style.size * style.leading
+    }
+
+    /// Above and below the words: centres one line in the field at rest.
+    var textInset: CGFloat {
+        (restHeight - baseLine) / 2
+    }
+
+    /// One line at this Dynamic Type size.
+    func lineHeight(at size: DynamicTypeSize) -> CGFloat {
+        style.scaledSize(at: size) * style.leading
+    }
+
+    /// The words grow to this, then scroll (six lines of body at every size).
+    func maxTextHeight(at size: DynamicTypeSize) -> CGFloat {
+        (RDimension.sizeComposerMaxHeight - 2 * textInset) * lineHeight(at: size) / baseLine
+    }
+
+    /// The bottom inset that centres a control of this height on the last line.
+    func bottomInset(centring control: CGFloat, at size: DynamicTypeSize) -> CGFloat {
+        textInset + (lineHeight(at: size) - control) / 2
+    }
+}
+
+/// The words of a writing field (C13, C14): a vertical TextField that grows per RFieldGrowth,
+/// the placeholder fading out in 80ms as the first character lands, an ink caret, and the
+/// whole field (not only the line) taking the tap. VoiceOver reads it once, by its label.
+struct RGrowingField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    let style: RTextStyle
+    let growth: RFieldGrowth
+    var focused: FocusState<Bool>.Binding
+
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            // In the layout only while empty, so a long hint wraps (accessibility sizes) rather
+            // than truncating; fades out as the first character lands, back in when it empties.
+            if text.isEmpty {
+                Text(placeholder)
+                    .rText(style)
+                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textPlaceholder)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
+            }
+            TextField("", text: $text, axis: .vertical)
+                .rText(style)
+                .frame(maxHeight: growth.maxTextHeight(at: dynamicTypeSize))
+                .foregroundStyle(RColor.textPrimary)
+                // ink caret: accent.default reads 2.14 : 1 on surface.control (needs 3)
+                .tint(RColor.textPrimary)
+                .focused(focused)
+                .accessibilityLabel(label)
+        }
+        .animation(RMotion.standard(RNumber.motionDurationInstant), value: text.isEmpty)
+        .padding(.vertical, growth.textInset)
+        // the whole field focuses, not only the line of text
+        .contentShape(Rectangle())
+        .onTapGesture { focused.wrappedValue = true }
+    }
+}
+
 struct RComposer: View {
     /// What VoiceOver calls the field ("add why"). The placeholder is a hint, read only by sight.
     let label: String
@@ -23,25 +100,14 @@ struct RComposer: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// The inset above and below the words: centres one 17/22.1 line in the 48 field.
-    private static let textInset = (RDimension.sizeControlLarge - RTextStyle.body.size * RTextStyle.body.leading) / 2
+    /// One 17/22.1 line centred in the 48 field.
+    private static let growth = RFieldGrowth(style: .body, restHeight: RDimension.sizeControlLarge)
     /// Concentric with the well: its radius plus the 4pt inset. Equals the pill at 48.
     private static let radius = RDimension.sizeComposerWell / 2 + RDimension.space1
 
-    /// One line of body text at the current Dynamic Type size.
-    private var lineHeight: CGFloat {
-        RTextStyle.body.scaledSize(at: dynamicTypeSize) * RTextStyle.body.leading
-    }
-
-    /// The words grow to this, then scroll: size.composer.maxHeight at the default size (six lines),
-    /// the same six lines at larger sizes.
-    private var maxTextHeight: CGFloat {
-        (RDimension.sizeComposerMaxHeight - 2 * Self.textInset) * lineHeight / (RTextStyle.body.size * RTextStyle.body.leading)
-    }
-
     /// Keeps the well centred on the last line as the type grows (4 at the default size).
     private var wellBottomInset: CGFloat {
-        max(RDimension.space1, Self.textInset + (lineHeight - RDimension.sizeComposerWell) / 2)
+        max(RDimension.space1, Self.growth.bottomInset(centring: RDimension.sizeComposerWell, at: dynamicTypeSize))
     }
 
     var body: some View {
@@ -64,29 +130,7 @@ struct RComposer: View {
     }
 
     private var field: some View {
-        TextField("", text: $text, axis: .vertical)
-            .rText(.body)
-            .frame(maxHeight: maxTextHeight)
-            .foregroundStyle(RColor.textPrimary)
-            // ink caret: accent.default reads 2.14 : 1 on surface.control (needs 3)
-            .tint(RColor.textPrimary)
-            .focused($focused)
-            .accessibilityLabel(label)
-            .overlay(alignment: .topLeading) {
-                Text(placeholder)
-                    .rText(.body)
-                    .lineLimit(1)
-                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textPlaceholder)
-                    // fades out as the first character lands, back in when the field empties
-                    .opacity(text.isEmpty ? 1 : 0)
-                    .animation(RMotion.standard(RNumber.motionDurationInstant), value: text.isEmpty)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-            .padding(.vertical, Self.textInset)
-            // the whole field focuses, not only the line of text
-            .contentShape(Rectangle())
-            .onTapGesture { focused = true }
+        RGrowingField(label: label, placeholder: placeholder, text: $text, style: .body, growth: Self.growth, focused: $focused)
     }
 
     private var micWell: some View {
