@@ -19,7 +19,9 @@ enum RLabPage: String, CaseIterable, Identifiable {
 
     /// `-DesignLabToast` still opens straight on the toast page (for testing on a phone).
     static var launch: RLabPage {
-        if ProcessInfo.processInfo.arguments.contains("-DesignLabToast") { return .toast }
+        if ProcessInfo.processInfo.arguments.contains("-DesignLabToast") {
+            return .toast
+        }
         return UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
     }
 }
