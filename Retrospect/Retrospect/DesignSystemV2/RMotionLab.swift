@@ -10,7 +10,8 @@ import SwiftUI
 // A debug lab: (name, animation, values) rows read better as tuples here.
 // swiftlint:disable large_tuple
 struct RDesignLab: View {
-    @State private var page = 0
+    /// -DesignLabToast opens straight on the toast page (for testing on a phone).
+    @State private var page = ProcessInfo.processInfo.arguments.contains("-DesignLabToast") ? 3 : 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,12 +19,15 @@ struct RDesignLab: View {
                 Text("motion").tag(0)
                 Text("foundation").tag(1)
                 Text("parts").tag(2)
+                Text("toast").tag(3)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, RDimension.spaceScreenMargin)
             .padding(.vertical, RDimension.space2)
             if page == 0 {
                 RMotionLab()
+            } else if page == 3 {
+                RToastGallery()
             } else {
                 RFoundationGallery()
             }
