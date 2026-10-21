@@ -4,12 +4,12 @@ Contract: [07-outside.md](../../contracts/07-outside.md). Every door is built wi
 
 **The tree on this side:**
 - **share** › reading a link (BE7.1a agent, BE7.1b door) · saving it (BE7.2a agent, BE7.2b door)
-- **notifications** › preferences (BE7.3) · when to send (BE7.4) · brief ready (BE7.5) · one question (BE7.6) · silent refresh (BE7.7)
+- **notifications** › preferences (BE7.3) · the writer (BE7.8a agent, BE7.8b deny list and checks) · the text door and notify token (BE7.9a, BE7.9b) · when to send (BE7.4) · the brief's push (BE7.5) · one question (BE7.6) · silent refresh (BE7.7)
 - **retiring the old** › version floor (X02a) · route tombstones (X07.0) · old route groups (X07a–X07g) · private episode audio (X07h) · legacy brain tables (X08a–X08c)
 
 **Order:**
 1. BE7.3 → BE7.2a → BE7.2b → BE7.1a → BE7.1b, which lets the share extension save and read.
-2. BE7.4 → BE7.7 → BE7.5 → BE7.6, which need BE2.6, BE2.7 and BE6.2 merged first.
+2. BE7.8b → BE7.8a → BE7.9b → BE7.4 → BE7.9a → BE7.7 → BE7.5 → BE7.6. BE7.4 onwards needs BE2.6, BE2.7 and BE6.2 merged first. Founder decision 21 Oct: every notification is written custom (contract 07 §5.1).
 3. Retirement runs on its own clock: X02a any time after BE0.10; X07.0 before any X07 group; X08 only after X07b.
 
 At most two in review at once.
@@ -239,26 +239,26 @@ Watch out: the settings screen is contract 06's. This door is only the data, so 
 ### BE7.4 · Deciding when to send: one a day, never at night               size: M
 Place in the tree: outside › EX-3 notifications › when to send
 Repo · branch: backend · `be/BE7.4-push-schedule`
-Needs: BE2.6 (devices), BE2.7 (the sender), BE7.3      Unblocks: BE7.5, BE7.6, BE7.7, BE3.3 and BE4.3 (they call it instead of the sender)
+Needs: BE2.6 (devices), BE2.7 (the sender), BE7.3, BE7.8a (the writer)      Unblocks: BE7.9a, BE7.5, BE7.6, BE7.7, BE3.3 and BE4.3 (they call it instead of the sender)
 
 Why: Retro never buzzes you twice in a day or in the middle of the night, whatever it has to say.
 
-Inputs: contract 07 §5.1–§5.3, push fixtures; later-phases BE2.7 (sender, collapse ids, content-free payloads).
+Inputs: contract 07 §5.1–§5.3, §5.5, push fixtures; later-phases BE2.7 (sender, collapse ids).
 
 Spec:
-- Migration `0NN_notification_log.sql`: `notification_log (id uuid pk, user_id uuid references users on delete cascade, kind text check (kind in ('briefReady','episodeReady','question','checkIn','exportReady','refresh')), ref_id uuid null, local_day date not null, status text check (status in ('held','sent','dropped','failed')), reason text null, due_at timestamptz, sent_at timestamptz null, created_at timestamptz default now())` with:
+- Migration `0NN_notification_log.sql`: `notification_log (id uuid pk, user_id uuid references users on delete cascade, kind text check (kind in ('briefReady','episodeReady','question','checkIn','exportReady','refresh')), ref_id uuid null, local_day date not null, status text check (status in ('held','sent','dropped','failed')), reason text null, due_at timestamptz, sent_at timestamptz null, title text null, body text null, fallback_title text null, fallback_body text null, writer text null check (writer in ('model','no_model')), created_at timestamptz default now())`. The four text columns are the person's own data: they cascade with the user and are nulled by a daily job after 7 days, when the content door stops serving them with:
   - unique `(user_id, local_day)` where `kind in ('briefReady','episodeReady','question','checkIn') and status = 'sent'`, so the one-a-day rule is enforced by the database
   - unique `(user_id, kind, ref_id)`, so the same thing is never announced twice
 - `src/push/schedule.ts`: `schedule({ userId, kind, refId, dueAt })`, which:
   1. reads the preferences (BE7.3) and drops with reason `off` when the kind is off, or when `briefReady` and `daily_brief_enabled` is false
   2. computes the local day and time from `users.time_zone`; inside 21:00–08:00 it inserts `held` with `due_at` = the next 08:00 local
   3. otherwise tries `sent` inside a transaction: on a unique violation of the one-a-day rule, it compares priority (episode › brief › question › check-in). A lower or equal priority is `dropped` (`reason: 'daily'`). A **higher** priority that arrives after a lower one was already sent is also dropped: nothing is ever recalled
-  4. calls the BE2.7 sender with the §5.2 payload built by `buildPayload(kind, refId, args)` (one pure function, tested against every push fixture)
+  4. **at the moment of sending** (also for held rows, so the words fit when they arrive), calls the writer (BE7.8a) with `{ kind, refId, localTime }`. It stores the full text and the fallback on the row, then calls the BE2.7 sender with the §5.2 payload built by `buildPayload(row)`. That's one pure function: `aps.alert` = the fallback, `mutable-content: 1`, `r.v: 2`, `r.id` = the row id. It's tested against every push fixture. If the writer fails or times out (8 s), the no-model fallback (BE7.8b) fills both texts and the push still goes
 - A minute cron (`ENABLE_PUSH_SCHEDULE`) sends `held` rows whose `due_at` has passed. A held `briefReady` or `question` from an earlier local day is `dropped` (`stale`).
 - `refresh` (silent) skips the daily rule, with at most 4 a day per user (a count query).
 - `exportReady` skips the daily rule.
-- **Ordering rule:** a new `kind` is added to `buildPayload` only after an app version whose catalog has its `loc-key` is the version floor (X02a). A test lists the kinds and the minimum version for each.
-- Logs: userId, kind, status, reason, ms. Never a payload body.
+- **Ordering rule:** a new `kind` is sent only after an app version whose service extension and router know it is the version floor (X02a). Older apps would still show its fallback, but couldn't route the tap. A test lists the kinds and the minimum version for each.
+- Logs: userId, kind, status, reason, writer (`model` or `no_model`), ms. Never a payload body or any notification text.
 
 Acceptance: two alerts on one local day → one sent; an alert at 23:00 local → sent at 08:00; turned-off kinds are never sent; a refresh never counts against the one a day.
 
@@ -273,7 +273,11 @@ Tests:
 - `the same brief is never announced twice` (retry)
 - `silent refreshes stop at four a day and never count as the daily one`
 - `every payload matches its fixture`
-- `payloads carry no personal text` (scan every built payload for anything but loc keys, numbers, ids and links)
+- `the payload's alert is the stored fallback and carries mutable-content`
+- `a payload never contains the full text` (the full text is only on the row and served by BE7.9a)
+- `a held push is written when it is sent, not when it was held`
+- `when the writer fails the push still goes with the no-model fallback`
+- `notification text is nulled after seven days`
 - `two users' daily counts never mix`
 
 Proof: test output; local staging with a sandbox device token (integrator; counts only).
@@ -282,20 +286,20 @@ Watch out: APNs collapse ids stop stacking on the phone but don't stop the send,
 
 ---
 
-### BE7.5 · "your brief is ready"                                         size: S
+### BE7.5 · The brief's notification                                       size: S
 Place in the tree: outside › EX-3 notifications › brief ready
 Repo · branch: backend (+ agent hook) · `be/BE7.5-brief-ready-push`
 Needs: BE7.4, BE6.2 (per-user brief time), BE1.3b (audio, for the minutes)      Unblocks: PL5.3's brief tap, T05d
 
-Why: on mornings you've asked for a brief, your phone tells you once it's ready, with how long it is, and nothing about what's in it.
+Why: on mornings you've asked for a brief, your phone tells you once it's ready, in a line written about your day that's safe for anyone to glance at.
 
 Inputs: contract 07 §5.2 `briefReady`; agent-api-reference §2 (briefs); later-phases BE6.2.
 
 Spec:
-- How the backend learns a brief is made: BE6.2's per-minute scheduler already runs in the backend and calls the agent's generate. On success with `kind = 'brief'`, it calls `schedule({ kind: 'briefReady', refId: brief.id, dueAt: now })` with `minutes = ceil(audio.durationSeconds / 60)`. With no audio it uses the `noaudio` key. On a quiet brief, no alert, only `refresh` (BE7.7).
+- How the backend learns a brief is made: BE6.2's per-minute scheduler already runs in the backend and calls the agent's generate. On success with `kind = 'brief'`, it calls `schedule({ kind: 'briefReady', refId: brief.id, dueAt: now })`. The writer reads the brief itself (BE7.8a's inputs: weekday, minutes from `audio.durationSeconds`, part count, the parts' text for its own use). A brief with no audio is written as "ready to read". On a quiet brief, no alert, only `refresh` (BE7.7).
 - When the door later refetches, the brief id in the link is the contract-02 id (UUID).
 
-Tests: `a made brief with audio sends brief ready with its minutes` · `a quiet brief sends no alert` · `a brief with no audio uses the no-audio copy` · `a regenerated brief for the same day is not announced again`.
+Tests: `a made brief schedules one brief push` · `a quiet brief sends no alert` · `a brief with no audio is written as ready to read` · `a regenerated brief for the same day is not announced again`.
 
 Proof: test output.
 
@@ -316,7 +320,7 @@ Spec:
 
 Tests: `at most one question a week` · `no question when speaking is off` · `an answered guess is never announced` · `never another user's guess`.
 
-Watch out: the old `POST /notifications/generate` (agent) writes push copy with a model and reads legacy tables. It is **not** used here (contract 07 §5.1: no prose in payloads).
+Watch out: the old `POST /notifications/generate` (agent) reads legacy tables and has no safety rules. It is **not** used here; BE7.8a is the writer. The question's text is about a guess, so the writer is given only `{ kind: 'guess' }` and the guess's topic word when it passes the deny list. It never gets the guess sentence, so it can't assert it.
 
 ---
 
@@ -332,6 +336,136 @@ Spec: on every made brief (quiet or not) and every made episode, call `schedule(
 Tests: `a made brief sends one refresh with scope brief` · `refreshes are background pushes with priority 5 and no alert` · `the fifth refresh in a day is dropped`.
 
 Watch out: iOS may never deliver a background push (low power, a force-quit app). Nothing on the phone may depend on it (PL7.9).
+
+### BE7.8a · Agent: the notification writer                                size: M
+Place in the tree: outside › EX-3 notifications › the writer › agent `POST /notifications/:userId/write`
+Repo · branch: Retrospect-agent · `agent/BE7.8a-notification-writer`
+Needs: BEA.2, BEA.4 (counted model calls), BE7.8b (the checks it must pass)      Unblocks: BE7.4, and through it every push
+
+Why: founder, 21 Oct: "every notification needs to be written custom, even the notification for showing briefs." Every notification reads like Retro talking to you about your day, never a generic line, and never something you'd mind a stranger seeing.
+
+Inputs:
+- Contract 07 §5.1, §5.2, §5.5.
+- agent-api-reference §2 (briefs), §3 (hypotheses), §7 (episodes), §8.4 (the old `POST /notifications/generate`: model `ANTHROPIC_COOK_B_MODEL`, legacy tables; replaced, not reused).
+
+Spec:
+- Route `POST /notifications/:userId/write { kind, refId, localTime, timeZone }` → `{ title, body, fallback: { title, body }, checks, usage }` (fixture `notification.write.agent.json`).
+- **Inputs it gathers** (a closed list per kind, each a short fact; `facts[]` is what the invented-fact check compares against):
+  - `briefReady`: weekday, minutes, part count, and each part's first sentence (for its own understanding)
+  - `episodeReady`: the episode title, the first chapter's title, minutes
+  - `question`: "a question is waiting", and the guess's **topic word** only if it passes the deny list; never the guess text (rule: never asserts a guess)
+  - `checkIn`: the goal's title, the days since it was last mentioned
+  - `exportReady`: the expiry date
+- One model call (the cheap writing model, as in the old route, through the counted wrapper with run kind `notification_write`) writes both texts with the house-voice prompt `NOTIFY_SYSTEM`:
+  - lowercase, at most 40 / 110 characters
+  - a tease, not a disclosure
+  - no health, body, relationships, money, places or other people's names
+  - a guess only as a question that's waiting
+  - only the facts given
+- Every reply goes through BE7.8b's `checkNotification(reply, facts)`. On failure it retries once with the failures named. If that fails too: if only the full text failed, the full text becomes the fallback; if the fallback failed, the no-model fallback (BE7.8b) fills it.
+- Spend: `checkDailySpend` first. Over the cap, there's no model call, only the no-model fallback for both texts (`checks.usedNoModelFallback: true`).
+- Timeout 6 s per call; the whole route stays under 8 s (BE7.4's wait).
+- Logs: route, userId, kind, check counts, retried, usedNoModelFallback, tokens, ms. **Never the text.**
+
+Acceptance:
+- Every kind gets a title and body within the limits, and a fallback with zero deny-list hits.
+- Over the spend cap, it still returns custom text without a model call.
+
+Tests (layer 1–2):
+- `each kind returns a title, body and fallback within the length limits`
+- `the fallback never contains a deny-list term` (property test across invented inputs that contain health, relationship and money words)
+- `a reply naming a fact not in the inputs is retried, then replaced`
+- `the question's text never contains the guess's sentence`
+- `a reply with a capital letter, emoji or exclamation mark fails the house-voice check`
+- `over the daily spend cap no model is called and the no-model fallback is returned`
+- `the call is counted against the spend cap as notification_write`
+- `another user's brief can never be an input` (two users)
+- `no log line contains a title or body`
+
+Proof: test output; twenty written examples over invented test users in the PR body. They're invented accounts, so showing them is allowed.
+
+Watch out:
+- The writer reads the brief's real words to write well. Those words never leave the agent except through the checked texts.
+- The model is told the lock screen is public. The deny list is the guarantee, not the prompt.
+
+---
+
+### BE7.8b · Agent: the deny list, the checks and the no-model fallback    size: S
+Place in the tree: outside › EX-3 notifications › the writer › checks
+Repo · branch: Retrospect-agent · `agent/BE7.8b-notification-checks`
+Needs: —      Unblocks: BE7.8a
+
+Why: whatever the writer produces, a notification on your lock screen never says something sensitive or untrue.
+
+Spec:
+- `src/notifications/deny-list.ts`: a reviewed term list across health and body, mental health, sex and relationships, money and debt, legal, religion and politics, places and addresses, plus the names of people in the user's graph (passed in). Matching is whole-word and stemmed, case-insensitive.
+- **The founder reviews the list in the PR.** The list is data: changing it is a PR with a test case.
+- `checkNotification(reply, facts)` is pure and returns the failures:
+  - length
+  - house voice
+  - deny-list hits (full text and fallback, counted separately)
+  - **invented terms:** numbers and capitalised or rare words not in `facts`
+- An optional classifier call for replies the list can't decide (ambiguous words), counted and capped at one per push.
+- `noModelFallback(kind, facts)` is pure, built from non-sensitive facts only: weekday, minutes, part count, kind. For example: "tuesday, in four minutes" / "three things from your day worth hearing." Each kind has a few shapes, chosen by a hash of `(userId, day)` so it varies. Its output is itself run through `checkNotification` in tests.
+
+Tests:
+- `every deny-list category catches its test words`
+- `a person's own name in the graph is caught`
+- `an invented number is flagged`
+- `the no-model fallback passes every check for every kind`
+- `the no-model fallback differs across days`
+
+Watch out: a deny list over-blocks (a goal titled "run" is fine; "therapy" isn't). False positives fall back safely, so tune toward blocking.
+
+---
+
+### BE7.9a · Door: `GET /v2/notifications/:id/content`                   size: S
+Place in the tree: outside › EX-3 notifications › the text door
+Repo · branch: backend · `be/BE7.9a-notification-content`
+Needs: BE0.1, BE0.2, BE7.9b, BE7.4 (its `notification_log` holds the text)      Unblocks: PL7.11. Until it ships, pushes still go out showing their custom fallback
+
+Why: the custom words reach your phone directly from Retro, not through Apple.
+
+Spec:
+- Auth: **only** the notify token (BE7.9b); a normal access token is refused here, so a compromised notify token can read nothing else.
+- Ownership: `notification_log.user_id` must equal the token's user, else `not_found`. A row older than 7 days or with null text is `not_found`.
+- Response `{ title, body, expiresAt }`.
+- Bucket `read`.
+- Logs: door, userId, status, ms. Never text.
+
+Tests:
+- `the person's notification text is returned`
+- `another user's notification is not_found` (two users)
+- `an access token is refused here`
+- `a notify token is refused on every other door` (the door suite iterates every route)
+- `text older than seven days is not_found`
+- `no log line contains the text`
+- fixtures `notification.content.json`, `error.notification.not_found.json`
+
+---
+
+### BE7.9b · The notify token                                               size: S
+Place in the tree: outside › EX-3 notifications › the notify token
+Repo · branch: backend · `be/BE7.9b-notify-token`
+Needs: BE0.4 (sessions, device ids)      Unblocks: BE7.9a, PL7.12
+
+Why: the notification on your phone can fetch its own words even if you haven't opened Retro for days, without the phone keeping anything that could sign you in.
+
+Spec:
+- Migration `0NN_notify_tokens.sql`: `notify_tokens (id uuid pk, user_id uuid references users on delete cascade, device_id text, token_hash text unique, expires_at timestamptz, revoked_at timestamptz null, created_at timestamptz default now())`.
+- `POST /v2/notifications/token` (normal access token) issues 32 random bytes as `ntk_<base64url>`, stores the SHA-256 hash, sets `expiresAt` to now + 7 days, and revokes the device's previous token. Bucket `write`, at most 10 a day per device.
+- `authMiddleware` gains a separate verifier `notifyTokenAuth` used only by BE7.9a.
+- Sign-out (this device) and delete-account revoke the device's tokens (BE0.4 / BE0.7 hooks, one line each).
+
+Tests:
+- `a new token revokes the device's previous one`
+- `an expired or revoked token is unauthenticated`
+- `sign-out revokes it`
+- `account deletion removes it`
+- `tokens are stored hashed`
+- fixture `notifications.token.json`
+
+Watch out: never accept a notify token in `authMiddleware`'s normal path.
 
 ---
 
@@ -451,7 +585,7 @@ Inputs: code anchors that touch `observations`, `insights`, `insight_units`, `id
 Spec:
 - Remove `writeLegacyOutputs` and its call (facts mode already writes nothing).
 - Remove the Cook 0 route and agent, and `search-insights`.
-- `POST /notifications/generate`: remove it if nothing calls it (BE4.3 must not depend on it; check its card at the time). Otherwise repoint it to facts (`assertions`) in this PR.
+- `POST /notifications/generate`: remove it. BE7.8a replaces it for every push, including BE4.3's check-ins.
 - Dashboards count only live tables.
 - **A grep test:** no file under `src/` references the five table names except `db/tables.ts`. Those entries are removed in X08c.
 

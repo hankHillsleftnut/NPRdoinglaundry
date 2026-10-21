@@ -10,19 +10,20 @@ Contract: [07-outside.md](../../contracts/07-outside.md). The app engineer build
   - the app group `group.com.retrospect.shared` on the widget and share targets (only the app and ScreenTimeReport have it today)
   - `keychain-access-groups` `$(AppIdentifierPrefix)com.retrospect.outside` on the app and the share extension
   - `PrivacyInfo.xcprivacy` for each new target (PL7.1's pattern)
+- **INT7.3 · the Notification Service Extension target:** `RetrospectNotify` (bundle `com.shauryanarang.Retrospect.notify`, iOS 18.1), a member of the `Outside/` folder, with the app group and the `keychain-access-groups` group `com.retrospect.outside`, and its own `PrivacyInfo.xcprivacy`. It comes from founder decision 21 Oct: every notification is written custom (contract 07 §5.1).
 - **INT7.2 · the bridge in `RetrospectApp.swift`:** start `Outside.InboxImporter` and `Push.Categories.register()` from `AppDelegate.didFinishLaunching`, and forward `didReceive` to `Push.Taps` (PL5.3).
 
 **The tree on this side:**
 - **base** › the Outside folder (PL7.2) · the token mirror (PL7.3)
 - **share** › the inbox (PL7.4) · the extension reading (PL7.5a) · the extension saving (PL7.5b)
 - **lock screen** › Now Playing (PL7.6) · the recording Live Activity (PL7.7)
-- **notifications** › categories and taps (PL5.3) · background refresh (PL7.9) · preferences and the lock-screen choice (PL7.10)
+- **notifications** › the service extension (PL7.11) · the notify token on the phone (PL7.12) · categories and taps (PL5.3) · background refresh (PL7.9) · preferences and the lock-screen choice (PL7.10)
 - **widgets** › the snapshot writer (PL7.8a) · the timeline and intents (PL7.8b)
 - **retiring** › the ledger (X01) · old services (X05a–c) · old local data (X06a–f) · the final sweep (X09)
 
 **Order:**
 1. INT7.1 → PL7.2 → PL7.3 → PL7.4
-2. PL5.3 (needs PL5.1 from first run) → PL7.10 → PL7.9
+2. PL7.12 → PL7.11 (needs INT7.3, BE7.9a) → PL5.3 (needs PL5.1 from first run) → PL7.10 → PL7.9
 3. PL7.8a → PL7.8b
 4. PL7.5a → PL7.5b
 5. PL7.6 → PL7.7
@@ -55,7 +56,8 @@ Spec:
   - `Outside.WidgetSnapshot` (+ `BriefState`, `EpisodeState`)
   - `Outside.InboxItem`
   - `Outside.SharesCreateRequest`, `SharesPreviewRequest`, `SharesPreviewResponse`, `SharedThing` (+ `Kind`, `LengthUnit`, `GoalChoice`, `Reading`)
-  - `Outside.PushPayload` (`r` only: `v`, `kind`, `id`, `link`, `scope`, `sentAt`; `Kind` closed with `unknown`)
+  - `Outside.PushPayload` (`r` only: `v`, `kind`, `id`, `refId`, `link`, `scope`, `sentAt`; `Kind` closed with `unknown`; `v` 2, while 1 is still decoded for tests)
+  - `Outside.NotificationContent` (`title`, `body`, `expiresAt`)
 - `Outside.Log`: a closed enum of events (`snapshotWritten(state:)`, `inboxWritten`, `inboxImported(count:)`, `inboxUnreadable`, `shareSent(status:)`, `previewShown(reading:)`) and a sink protocol. The app plugs `Platform.Log` in, and the extensions use an `os.Logger` sink with every field `.private` except the enum names.
 - `Outside.Clock` and `Outside.IDs` protocols, so tests inject time and UUIDs.
 
@@ -300,6 +302,73 @@ Proof: device recording.
 
 ## Notifications (EX-3)
 
+### PL7.12 · The notify token on the phone                                  size: S
+Place in the tree: outside › EX-3 notifications › notify token (phone)
+Repo · branch: NPRdoinglaundry · `pl/PL7.12-notify-token`
+Needs: PL7.2, PL7.3 (the shared Keychain helper), PL1.5, BE7.9b, INT7.3 (the extension shares the access group)      Unblocks: PL7.11
+
+Why: a notification can fetch its own custom words even if you haven't opened Retro for days, and the phone never shares anything that could sign you in.
+
+Spec:
+- `Outside.NotifyToken`, in the same shared access group as PL7.3's mirror (service `com.retrospect.outside`, account `notify`, `AfterFirstUnlockThisDeviceOnly`), holds JSON `{ token, expiresAt }`.
+- **The app** calls `POST /v2/notifications/token`:
+  - after sign-in
+  - after every session refresh
+  - on launch when the stored token is older than 24 hours
+  - on `.active` when it expires within 2 days
+- It's deleted at sign-out and delete-account, after the server revokes it.
+- **The service extension only reads it.** It's never sent anywhere except `GET /v2/notifications/:id/content`.
+
+Tests (fake Keychain, URLProtocol):
+- `sign-in fetches and stores a notify token`
+- `a refresh replaces it`
+- `a token older than a day is renewed on launch`
+- `sign-out deletes it`
+- `the stored item has exactly token and expiresAt`
+- `writes request after-first-unlock-this-device-only and the shared group`
+
+---
+
+### PL7.11 · The Notification Service Extension                              size: M
+Place in the tree: outside › EX-3 notifications › service extension
+Repo · branch: NPRdoinglaundry · `pl/PL7.11-notification-service`
+Needs: INT7.3, PL7.2, PL7.12, BE7.9a      Unblocks: PL5.3's custom display, P36, T05d
+
+Why: founder, 21 Oct: every notification is written custom. The words are fetched from Retro on the phone, so they never pass through Apple, and if anything goes wrong you still see a custom, non-sensitive line.
+
+Inputs: contract 07 §5.1, §5.2, §5.6, §5.7; fixtures `push.*.json`, `notification.content.json`, `error.notification.not_found.json`; Apple: `UNNotificationServiceExtension` (about 30 s to call the handler; about 24 MB of memory).
+
+Spec:
+- `NotificationService: UNNotificationServiceExtension`:
+  1. decode `r` (`Outside.PushPayload`); with no `r`, or `v` not 2, deliver the content unchanged
+  2. read `Outside.NotifyToken`; if it's missing or expired, deliver unchanged (the fallback)
+  3. `GET /v2/notifications/<r.id>/content` with a **5 s** timeout, through a tiny `URLSession` client using the contract 00 headers (with no `Authorization` other than the notify token)
+  4. on 200, set `title` and `body` from the response (the subtitle stays empty) and deliver
+  5. on any error, deliver unchanged
+  6. `serviceExtensionTimeWillExpire` delivers the best content so far (the fallback)
+- Text is set as plain strings, with no attributed text and no attachments.
+- Thread id and category are untouched, so the app's categories and actions (PL5.3) still apply.
+- Logs (an `os.Logger` sink through `Outside.Log`): `notifyFetched(status:)`, `notifyFallback(reason:)`. Never the text or ids.
+- Memory: the response is under 1 KB, and nothing is cached on disk.
+
+Tests (layer 5, a test target for the extension or the shared test plan, URLProtocol stubs):
+- `a successful fetch replaces the fallback with the custom text`
+- `a missing token shows the fallback`
+- `a timeout at five seconds shows the fallback`
+- `a not_found shows the fallback`
+- `time running out delivers the fallback`
+- `a v1 or unknown payload is delivered unchanged`
+- `category and thread are kept`
+- `no log line contains the text or the id`
+
+Proof: `xcrun simctl push` runs (fallback-only on the simulator, where the extension does run), plus a device recording of a staging push showing the custom text, with the founder's phone and a test account.
+
+Watch out:
+- The extension runs before first unlock only if the token's Keychain class allows it. `AfterFirstUnlock` means a phone restarted and not yet unlocked shows the fallback, which is correct.
+- Don't share `URLSession` configuration with the app (a separate process).
+
+---
+
 ### PL5.3 · Notification categories and taps                                 size: M
 Place in the tree: outside › EX-3 notifications › `Push.Categories`, `Push.Taps`
 Repo · branch: NPRdoinglaundry · `pl/PL5.3-push-taps`
@@ -315,7 +384,7 @@ Spec:
 - `Push.Categories.register()` sets `UNUserNotificationCenter.setNotificationCategories` once at launch:
   - `BRIEF_READY` and `EPISODE_READY`, each with action `PLAY` (title "play", options `.foreground`)
   - `QUESTION`, `CHECK_IN` and `EXPORT_READY` with no actions
-  - every category gets `hiddenPreviewsBodyPlaceholder` "retrospect" and no `.customDismissAction`
+  - every category gets `hiddenPreviewsBodyPlaceholder` "retrospect has something for you." (the only fixed string; shown when the person has set Show Previews to When Unlocked) and no `.customDismissAction`
 - `Push.Taps.handle(response:)`:
   1. decode `r` with `Outside.PushPayload`, then `Routing.Parser.parse(link)`; an unknown kind or an unparsable link opens the app with nothing routed
   2. `UNNotificationDefaultActionIdentifier` → `router.open(destination)`
@@ -334,7 +403,7 @@ Tests (layer 5):
 - `a brief-ready banner is hidden while that brief is on screen`
 - `categories register once`
 - `no log carries an id or a link`
-- every push fixture decodes
+- every push fixture (v2) decodes
 
 Proof: test output; `xcrun simctl push` runs with each fixture (screenshots of the result, test account).
 
@@ -375,8 +444,9 @@ Spec:
 - `Push.Preferences`: `load()` (`CachedRead` `notifications.preferences`) and `set(_ partial:)`, sent through the outbox (operation `notifications.preferences`, last write wins, so a PUT of values is idempotent).
 - `Outside.LockScreenDetail` is a device-local Bool in the app group `UserDefaults(suiteName:)`, key `outside.lockScreenDetail`, default `false`. Changing it rewrites the widget snapshot and republishes Now Playing.
 - The system permission state (`UNUserNotificationCenter.notificationSettings`) is surfaced as `Push.Permission` (`notDetermined`, `denied`, `authorized`, `provisional`, `unknown`) for the settings screen. Asking is first run's job (PL5.1).
+- **Hiding the custom words on the lock screen** (founder, 21 Oct: keep a setting for it) is surfaced as `Push.PreviewSetting` (`always`, `whenUnlocked`, `never`, `unknown`) from `notificationSettings.showPreviewsSetting`, with `openSystemSettings()` (`UIApplication.openNotificationSettingsURLString`). The settings row (contract 06) reads "keep notification words off my lock screen" and opens the system page. iOS enforces it, and we don't duplicate it.
 
-Tests: `defaults load with no network` (fixture cache) · `a change is queued and sent` · `turning lock-screen detail on rewrites the snapshot and now playing` · `the lock-screen choice is per device and never sent to the server`.
+Tests: `defaults load with no network` (fixture cache) · `a change is queued and sent` · `turning lock-screen detail on rewrites the snapshot and now playing` · `the lock-screen choice is per device and never sent to the server` · `the preview setting maps every system value, unknown included`.
 
 ---
 

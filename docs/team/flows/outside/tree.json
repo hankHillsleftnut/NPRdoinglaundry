@@ -32,7 +32,7 @@
    "id": "outside.notify",
    "parent": "outside",
    "title": "EX-3 notifications",
-   "plain": "at most one private notification a day, opening the right place",
+   "plain": "at most one notification a day, written for you, safe on a lock screen",
    "needs": []
   },
   {
@@ -316,15 +316,18 @@
    "id": "P36",
    "parent": "outside.notify",
    "title": "EX-3 notifications",
-   "plain": "the words and where each tap lands",
+   "plain": "custom words, safe on a lock screen, opening the right place",
    "size": "S",
    "side": "views",
    "needs": [
     "PL5.3",
+    "PL7.11",
+    "PL7.10",
     "P10",
     "P14",
     "P21",
-    "P17"
+    "P17",
+    "EX-3 redraw"
    ]
   },
   {
@@ -356,14 +359,15 @@
    "needs": [
     "BE2.6",
     "BE2.7",
-    "BE7.3"
+    "BE7.3",
+    "BE7.8a"
    ]
   },
   {
    "id": "BE7.5",
    "parent": "notify.doors",
-   "title": "brief is ready",
-   "plain": "told once when your brief is ready",
+   "title": "the brief's notification",
+   "plain": "told once when your brief is ready, in words written about your day",
    "size": "S",
    "side": "backend",
    "needs": [
@@ -1219,7 +1223,84 @@
     "P36",
     "P37",
     "PL7.4",
-    "PL7.9"
+    "PL7.9",
+    "PL7.11"
+   ]
+  },
+  {
+   "id": "BE7.8a",
+   "parent": "notify.doors",
+   "title": "agent: the notification writer",
+   "plain": "every notification written for you and that moment, safe for a lock screen",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BEA.4",
+    "BE7.8b"
+   ]
+  },
+  {
+   "id": "BE7.8b",
+   "parent": "notify.doors",
+   "title": "agent: deny list, checks, no-model fallback",
+   "plain": "a notification never says something sensitive or untrue",
+   "size": "S",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE7.9a",
+   "parent": "notify.doors",
+   "title": "door: notification text",
+   "plain": "the custom words reach your phone directly from Retro",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2",
+    "BE7.9b",
+    "BE7.4"
+   ]
+  },
+  {
+   "id": "BE7.9b",
+   "parent": "notify.doors",
+   "title": "the notify token",
+   "plain": "a notification can fetch its words without holding a sign-in",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.4"
+   ]
+  },
+  {
+   "id": "PL7.11",
+   "parent": "notify.plumbing",
+   "title": "notification service extension",
+   "plain": "the words are fetched on the phone, with a custom fallback",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "INT7.3",
+    "PL7.2",
+    "PL7.12",
+    "BE7.9a"
+   ]
+  },
+  {
+   "id": "PL7.12",
+   "parent": "notify.plumbing",
+   "title": "notify token on the phone",
+   "plain": "the phone keeps only a narrow token for notification text",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL7.2",
+    "PL7.3",
+    "PL1.5",
+    "BE7.9b",
+    "INT7.3"
    ]
   }
  ]

@@ -1,17 +1,20 @@
 {
   "aps": {
     "alert": {
-      "loc-key": "notify.question"
+      "title": "a question about your week",
+      "body": "one thing i'm not sure about yet."
     },
+    "mutable-content": 1,
     "category": "QUESTION",
     "thread-id": "question",
     "interruption-level": "passive"
   },
   "r": {
-    "v": 1,
+    "v": 2,
     "kind": "question",
-    "id": "c0ffee00-1111-4222-8333-444455556666",
+    "id": "9a1b2c3d-0001-4abc-8def-000000000003",
+    "refId": "c0ffee00-1111-4222-8333-444455556666",
     "link": "retrospect://guess/c0ffee00-1111-4222-8333-444455556666",
-    "sentAt": "2026-10-22T17:30:00.000Z"
+    "sentAt": "2026-10-22T18:00:00.000Z"
   }
 }

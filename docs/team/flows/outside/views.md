@@ -230,55 +230,55 @@ Proof in the PR: device screenshots (lock screen, Control Center, Dynamic Island
 
 ## EX-3 notifications
 
-### P36 · EX-3 notifications: copy and where taps land                      size: S
+### P36 · EX-3 notifications: how they look and where taps land          size: S
 Place in the tree: outside › EX-3 notifications
 Repo · branch: NPRdoinglaundry · `ui/P36-notifications`
-Needs: PL5.3, the landing pages (P10 JR-2, P14 PC-2, P21 YO-4, P17 GL-2)      Unblocks: T05d, BE7.4's kinds (the copy ships before the server sends)
+Needs: PL5.3, PL7.11, PL7.10, the landing pages (P10 JR-2, P14 PC-2, P21 YO-4, P17 GL-2), and EX-3 redrawn in Paper (below)      Unblocks: T05d
 
-Why: the few notifications Retro sends read like Retro, say nothing private, and open exactly the right thing.
+Why: the few notifications Retro sends are written for you about that moment, are safe for anyone to glance at, and open exactly the right thing.
 
 Inputs:
-- EX-3 `1H3E-0` (system UI only, read with `get_tree_summary`): three system banners, each with the app icon at 20, "retrospect", a time, and one line:
-  - "this week's episode is here." (now; the lock clock shows sunday 9:00)
-  - "your brief is ready · 4 min" (8:30)
-  - "one question for you, when you have a minute." (6:10 pm)
-  - an annotation reading "at most one a day…"
-  - this matches contract 07 §5.2 word for word: no title line and no body beyond the one line
-- Contract 07 §5.2 (keys and copy); reference §C40 (EX-3).
+- EX-3 `1H3E-0` (system UI only, read with `get_tree_summary`): three system banners, each with the app icon at 20, "retrospect", a time and **one fixed line** ("this week's episode is here." at sunday 9:00, "your brief is ready · 4 min" at 8:30, "one question for you, when you have a minute." at 6:10 pm), plus an annotation reading "at most one a day…".
+- **Founder decision 21 Oct (newer than Paper): every notification is written custom, title and body.** So EX-3's fixed lines are superseded.
+- **EX-3 needs a redraw.** The integrator draws a banner with a bold custom title, a one-line body, and the hidden-preview look ("retrospect has something for you."), with a red dot on the approvals page.
+- Contract 07 §5.1–§5.7.
 
 Spec:
-- The string catalog entries (`Localizable.xcstrings`, the app target, with a comment per key naming contract 07 §5.2):
-  - `notify.brief.ready` "your brief is ready · %@ min"
-  - `notify.brief.ready.noaudio` "your brief is ready."
-  - `notify.episode.ready` "this week's episode is here."
-  - `notify.question` "one question for you, when you have a minute."
-  - `notify.checkin`, `notify.export.ready` (founder copy; placeholders are rejected by a test until written)
+- **No fixed notification copy in the app.** The only strings are:
+  - `notify.hiddenPreview` "retrospect has something for you." (the categories' hidden-preview placeholder)
   - the action title `notify.action.play` "play"
-- Where taps land (PL5.3 routes them; this card proves the landings look right):
+  - the settings row's words (contract 06)
+- The banner is the system's: the bold title (≤ 40 characters) and the body (≤ 110) as written by the brain (BE7.8a) and set by the service extension (PL7.11), or the payload's custom fallback.
+- **Where taps land** (PL5.3 routes them; this card proves the landings look right):
   - brief → JR-2 sheet over the journal; with PLAY, it opens playing
-  - episode → PC-2; question → YO-4 with the guess
+  - episode → PC-2
+  - question → YO-4 with the guess
   - a gone item → the page's own gone state, plus the toast "that's not here any more." (C21)
-- No title line: the app name is the system's title, so there's one line of ours.
 
 Interaction sheet:
 
 | # | Moment | What happens | Motion | Haptic | Reduce Motion |
 |---|---|---|---|---|---|
-| 1 | tap brief ready | the app opens on the journal and the JR-2 sheet rises | the sheet's `sheet` spring | `sheetSnap` | fade |
-| 2 | long press → play | as 1, already playing | as 1, then `playMorph` | `sheetSnap` | fade |
-| 3 | tap a question | YO-4 sheet over the you map | `sheet` | `sheetSnap` | fade |
-| 4 | tap a notification for something deleted | the journal, with the toast | toast `popover` | none | fade |
+| 1 | a push arrives, unlocked | the custom title and body (or the custom fallback if the fetch failed) | system | system | system |
+| 2 | a push arrives, previews hidden (When Unlocked) | "retrospect has something for you."; the custom text on unlock | system | system | system |
+| 3 | tap brief | the app opens on the journal and the JR-2 sheet rises | the sheet's `sheet` spring | `sheetSnap` | fade |
+| 4 | long press → play | as 3, already playing | as 3, then `playMorph` | `sheetSnap` | fade |
+| 5 | tap a question | YO-4 sheet over the you map | `sheet` | `sheetSnap` | fade |
+| 6 | tap a notification for something deleted | the journal, with the toast | toast `popover` | none | fade |
 
-Acceptance: every key has its copy; every landing matches its page's Paper node; nothing on the lock screen names a person, a goal or a brief's words.
+Acceptance:
+- No fixed notification wording exists in the app beyond the two strings above.
+- Every landing matches its page's Paper node.
+- With previews set to When Unlocked, the locked banner shows only the placeholder.
 
 Tests:
-- `(unit) every loc-key in contract 07 exists in the catalog and has no placeholder text`
-- `(UI) a brief-ready push opens today's brief` (`simctl push` with the fixture)
+- `(unit) the app's string catalog contains no notification copy other than the hidden-preview line and play` (a scan for `notify.` keys)
+- `(UI) a brief push opens today's brief` (`simctl push` with the fixture)
 - `(UI) play from the notification opens the brief playing`
 - `(UI) a question push opens the guess`
 - `(UI) a push for a deleted brief shows the gone toast`
 
-Proof in the PR: lock-screen screenshots of each kind (test account, sandbox) and a recording of each landing.
+Proof in the PR: a device recording of a staging push showing the custom text (founder's phone, test account), the same push with previews hidden, and a recording of each landing.
 
 ---
 
@@ -925,7 +925,7 @@ Proof: the deleted line count; the flow's UI test output; the ledger diff.
 ### T05d · The outside flow test                                            size: M
 Place in the tree: outside › proof › T05d
 Repo · branch: NPRdoinglaundry · `ui/T05d-outside-flow` (with the integrator, who runs the device half)
-Needs: P34, P35, P36, P37, PL7.4, PL7.9      Unblocks: ship gate G7
+Needs: P34, P35, P36, P37, PL7.4, PL7.9, PL7.11      Unblocks: ship gate G7
 
 Why: one test proves Retro works outside the app: saving from another app exactly once, the widget, the lock screen and notification taps.
 
@@ -937,6 +937,7 @@ Spec, the scenarios (XCUITest on sample data first, then `-Environment local` on
 5. **Widget talk:** tap talk → JR-1 with the composer focused.
 6. **Lock screen:** play the brief → background → Now Playing shows "today's brief" with no words (detail off) → turn detail on in debug → the title becomes the part.
 7. **Notifications:** `simctl push` each push fixture → tap → the right page (brief → JR-2, play → JR-2 playing, question → YO-4, unknown kind → the app with nothing routed).
+7b. **Custom text:** with the content door stubbed, a pushed fixture shows the door's custom title and body. With the door down, it shows the payload's custom fallback (on a device; the simulator runs service extensions on iOS 18+, so check it there first).
 8. **One a day** (staging, backend): schedule a brief-ready and a question on the same local day → one alert arrives.
 
 Acceptance: all eight pass on sample data in CI (nightly) and once on staging before G7, with the device-only parts (4, 6) recorded on the founder's phone.
@@ -949,6 +950,7 @@ Tests: the eight above, named as sentences in the test file:
 - `talk from the widget opens the composer`
 - `the lock screen shows no words by default`
 - `each notification opens the right page`
+- `a notification shows its custom words, or its custom fallback when they can't be fetched`
 - `two notifications on one day deliver one`
 
 Proof: test output; recordings of 1, 2, 4, 6 and 7; the staging count for 2 and 8.

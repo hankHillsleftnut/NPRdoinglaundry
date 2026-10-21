@@ -1,14 +1,14 @@
 # Outside the app, the signature moments, and retiring the old app
 
 **Bottom line:**
-- **Retro outside the app:** a share sheet that never loses what you save, a lock screen that plays your brief without showing its words unless you allow it, at most one private notification a day, and two widgets.
+- **Retro outside the app:** a share sheet that never loses what you save, a lock screen that plays your brief without showing its words unless you allow it, at most one notification a day written custom for you and safe on a lock screen, and two widgets.
 - **The thirteen signature moments:** each a single PR after its page, with frames, springs, haptics, Reduce Motion and a hitch budget written down.
 - **Retiring the old app:** in an order where every step can be undone until the very last, which waits a release.
 
-The work is **83 PRs**: 22 backend, 23 Platform and 38 views. **8 founder questions** have leans, and work goes ahead on the leans.
+The work is **89 PRs**: 26 backend, 25 Platform and 38 views. **7 open founder questions** have leans, and work goes ahead on the leans; Q3 was decided by the founder on 21 Oct.
 
 Files:
-- the contract: [07-outside.md](../../contracts/07-outside.md), with [29 fixtures](../../contracts/fixtures/07/)
+- the contract: [07-outside.md](../../contracts/07-outside.md), with [33 fixtures](../../contracts/fixtures/07/)
 - the cards: [backend.md](./backend.md), [platform.md](./platform.md), [views.md](./views.md)
 - the board's tree: [tree.json](./tree.json)
 
@@ -21,13 +21,17 @@ Contract 07, area `outside`. Status: **draft for the founder's review**, 21 Oct.
 **What this area is for the person, in their words:**
 - "I'm reading something in Safari and want Retro to have it. Two taps, a reason if I feel like it, and I know it's in."
 - "My brief keeps playing when I lock the phone, and I can pause it from my AirPods. Nobody glancing at my lock screen can read what it's about."
-- "Retro tells me when my brief or my episode is ready, once, never at night, and never says what's in it on the lock screen."
+- "Retro tells me when my brief or my episode is ready, once, never at night, in words written about my day, and nothing sensitive on the lock screen."
 - "On my home screen, one tap plays today's brief, and one tap lets me talk to Retro."
 - "The app feels alive in a few places that matter, and it never makes me wait for an animation."
 - "When the new app replaces the old one, nothing I wrote disappears, and nothing breaks if I'm on an old version."
 
 **The product principles that apply:**
-- **Privacy first.** No personal content in logs, push payloads, widgets on a locked screen, or the lock screen's Now Playing, unless the person chooses (§8 Q1). Push payloads carry localisation keys and ids only, so nothing personal passes through Apple.
+- **Privacy first.** No personal content in logs, widgets on a locked screen, or the lock screen's Now Playing, unless the person chooses (§8 Q1).
+- **Every notification is written custom** (founder, 21 Oct):
+  - the brain writes each title and body under strict rules (short, house voice, never asserting a guess, no invented facts, lock-screen safe), checked against a deny list
+  - the words are fetched on the phone by a service extension, so they don't pass through Apple; only a non-sensitive custom fallback rides in the payload
+  - people who want even that off their lock screen use iOS's Show Previews setting, reached from our settings row
 - **Guesses are asked, never asserted.** The share sheet's "goes with" goal is a suggestion the person keeps or changes before saving, and it's stored as theirs only if they keep it. Retro's read of a link is about the link, never "you'll love this". The door drops any read that addresses the person.
 - **When uncertain, withhold.** An unreadable page gets no read and no goal; a page about nothing they care about gets no goal (the brain's relevance rule: "when unsure, leave it out").
 - **No invented data.** Widget previews and the gallery use obviously invented content, never the person's, and empty states say what's true ("being made", "a quiet day", "open retrospect to load today's brief").
@@ -80,23 +84,37 @@ Contract 07, area `outside`. Status: **draft for the founder's review**, 21 Oct.
 
 **Ways in:** push only.
 
-| Kind | When | The tap opens |
-|---|---|---|
-| your brief is ready · 4 min | once your brief is made, only if the brief is on | JR-2; "play" opens it playing |
-| this week's episode is here. | the weekly episode | PC-2 |
-| one question for you, when you have a minute. | at most weekly, 18:00 local | YO-4 |
-| check-in | contract 04 | GL-2 |
-| export ready | contract 06 | settings |
+**Founder decision, 21 Oct:** every notification is written custom, "even the notification for showing briefs". There is no fixed copy anywhere.
+
+**How a push works:**
+1. When a push is due, the brain writes a title and body for that person and that moment (BE7.8a), plus a custom fallback with nothing sensitive in it.
+2. The words are checked against the rules and a deny list (BE7.8b). If they fail, the fallback is used.
+3. The payload carries only ids, the fallback and `mutable-content`.
+4. On the phone, a Notification Service Extension (PL7.11) fetches the full words from `GET /v2/notifications/:id/content` with a narrow notify token (BE7.9a/b, PL7.12) and shows them.
+5. If the fetch fails within 5 s, the fallback shows.
+
+| Kind | When | What it's written about | The tap opens |
+|---|---|---|---|
+| brief | once your brief is made, only if the brief is on | the day it covers and its length | JR-2; "play" opens it playing |
+| episode | the weekly episode | a tease of its first chapter | PC-2 |
+| question | at most weekly, 18:00 local | that a question is waiting, never the guess itself | YO-4 |
+| check-in | contract 04 | the goal, if its title is lock-screen safe | GL-2 |
+| export ready | contract 06 | that the data is ready | settings |
 
 **The rules:**
 - at most one alert a day, priority episode › brief › question › check-in; the loser is dropped
-- quiet hours 21:00–08:00 local hold an alert until 08:00, and a stale one is dropped
+- quiet hours 21:00–08:00 local hold an alert until 08:00 and rewrite it when it's sent; a stale one is dropped
 - each kind can be switched off
+- the writing is counted against the spend cap; over the cap, a no-model custom fallback is used and the push still goes
 
 **Failures:**
+- the content fetch fails or times out → the custom fallback
+- the phone has just restarted and isn't unlocked yet → the fallback
 - a deleted item → its page's gone state plus a toast
-- an unknown kind (a newer server) → the app opens with nothing routed
-- notifications denied → nothing is sent and nothing breaks; the widget and app still work
+- an unknown kind (a newer server) → the system shows its fallback; the app opens with nothing routed
+- notifications denied → nothing is sent and nothing breaks
+
+**Keeping the words off the lock screen:** the settings row "keep notification words off my lock screen" opens iOS's Show Previews for Retrospect. With When Unlocked, the locked banner reads "retrospect has something for you." and the custom words appear on unlock.
 
 **First time:** permission is asked in first run (contract 01), not here.
 
@@ -166,14 +184,20 @@ outside
 │       ├── PL7.6  now playing + remote commands .............. M · platform · Media.Player (gap), PL7.10, C40.4
 │       └── PL7.7  recording live activity ..................... S · platform · #56, PL3.1a, INT7.1
 ├── EX-3 notifications
-│   ├── P36 copy and landings .................................. S · views · PL5.3, P10, P14, P21, P17
+│   ├── P36 how they look and where taps land .................. S · views · PL5.3, PL7.11, PL7.10, landings, EX-3 redraw
 │   ├── notification doors
 │   │   ├── BE7.3  preferences ................................. S · backend · BE0.1, BE0.2
-│   │   ├── BE7.4  one a day, never at night .................. M · backend · BE2.6, BE2.7, BE7.3
-│   │   ├── BE7.5  brief is ready .............................. S · backend · BE7.4, BE6.2, BE1.3b
+│   │   ├── BE7.8b deny list, checks, no-model fallback ........ S · backend · —
+│   │   ├── BE7.8a agent: the notification writer .............. M · backend · BEA.2, BEA.4, BE7.8b
+│   │   ├── BE7.9b the notify token ............................ S · backend · BE0.4
+│   │   ├── BE7.4  one a day, never at night (writes at send) .. M · backend · BE2.6, BE2.7, BE7.3, BE7.8a
+│   │   ├── BE7.9a door: GET /v2/notifications/:id/content ..... S · backend · BE0.1, BE0.2, BE7.9b, BE7.4
+│   │   ├── BE7.5  the brief's notification .................... S · backend · BE7.4, BE6.2, BE1.3b
 │   │   ├── BE7.6  one question for you ........................ S · backend · BE7.4, BE1.4, YO-4
 │   │   └── BE7.7  silent refresh .............................. S · backend · BE7.4
 │   └── notification plumbing
+│       ├── PL7.12 notify token on the phone ................... S · platform · PL7.2, PL7.3, PL1.5, BE7.9b, INT7.3
+│       ├── PL7.11 notification service extension .............. M · platform · INT7.3, PL7.2, PL7.12, BE7.9a
 │       ├── PL5.3  categories and taps ......................... M · platform · PL5.1, PL5.2, PL7.2, INT7.2
 │       ├── PL7.9  background refresh .......................... S · platform · PL5.1, PL5.3, PL7.8a, PL3.1b, BE7.7
 │       └── PL7.10 preferences + lock-screen choice ........... S · platform · PL1.1, PL2.4, BE7.3
@@ -215,7 +239,7 @@ outside
 **Counts:**
 - **Pages:** 5 (P34, P35, P36, P37, plus the force-update page X02b).
 - **Components:** 3 (C40, C41, C42), with 7 sub-component PRs.
-- **PRs:** **83**: 22 backend, 23 Platform, 38 views. The views count includes 13 moments, 13 retirement deletions and the flow test.
+- **PRs:** **89**: 26 backend, 25 Platform, 38 views. The views count includes 13 moments, 13 retirement deletions and the flow test.
 
 ## 4. The queue, in build order
 
@@ -224,9 +248,9 @@ Phase 7 starts after G6, apart from the items marked "early".
 | # | Backend | Platform | Views | Gate / note |
 |---|---|---|---|---|
 | 0 | — | X01 (early, any time) | — | inventory first |
-| 1 | BE7.3, BE7.2a | INT7.1 (integrator) → PL7.2 | C40.1 | |
-| 2 | BE7.2b, BE7.1a | PL7.3, PL7.10 | C40.2, C40.4 | |
-| 3 | BE7.1b, BE7.4 | PL7.4, PL7.8a | C40.3, C41.1 | BE7.4 needs BE2.6 and BE2.7 (first run) |
+| 1 | BE7.3, BE7.2a, BE7.8b | INT7.1, INT7.3 (integrator) → PL7.2 | C40.1 | |
+| 2 | BE7.2b, BE7.1a, BE7.8a, BE7.9b | PL7.3, PL7.10, PL7.12 | C40.2, C40.4 | |
+| 3 | BE7.1b, BE7.4, BE7.9a | PL7.4, PL7.8a, PL7.11 | C40.3, C41.1 | BE7.4 needs BE2.6 and BE2.7 (first run) |
 | 4 | BE7.7, BE7.5 | PL7.8b, PL5.3 | C41.2, C42, P37 | BE7.5 needs BE6.2 (settings) |
 | 5 | BE7.6 | PL7.5a, PL7.9 | P36 | BE7.6 needs YO-4 (you) |
 | 6 | — | PL7.5b, PL7.6 (or earlier, Q8) | P34, P35 | PL7.6 needs a `Media.Player` owner |
@@ -239,6 +263,7 @@ Phase 7 starts after G6, apart from the items marked "early".
 - BE7.1b → PL7.5a
 - BE7.3 → PL7.10
 - BE7.7 → PL7.9
+- BE7.9b → PL7.12; BE7.9a → PL7.11
 - PL7.8a → C40.2's real-data proof (P37)
 - PL7.6 → P35
 - X02b → X02a
@@ -250,7 +275,10 @@ Phase 7 starts after G6, apart from the items marked "early".
 |---|---|
 | A shared link is lost when the extension is killed | The inbox file is written before any network; the app's importer is idempotent with a commit ledger; the server is idempotent on `clientEntryId` (PL7.4, PL7.5b) |
 | Two processes refresh the same token and trigger reuse detection, signing the person out | Only the app refreshes. The extension gets a read-only mirror of the 15-minute access token, never the refresh token (PL7.3) |
-| Personal words on a locked screen or through Apple | loc-key payloads, `privacySensitive` widgets, and Now Playing titles private by default (contract 07 §5–§6) |
+| Sensitive words on a locked screen | the writer's rules plus a deny list that the fallback must pass with zero hits; iOS's Show Previews for people who want nothing shown; `privacySensitive` widgets; Now Playing private by default (contract 07 §5–§6) |
+| Personal words passing through Apple | only the non-sensitive custom fallback rides in the payload; the full words are fetched on the phone (PL7.11) |
+| Custom text rarely shows because the extension's token has expired | a dedicated 7-day notify token, renewed by the app daily, instead of the 15-minute access token (contract 07 §5.7) |
+| Writing every push costs money | counted against the spend cap, with a no-model custom fallback over the cap |
 | The widget installs only on iOS 26 (today's deployment target) | INT7.1 lowers it to 18.1 |
 | Old local reminders keep firing after their code is deleted | X10g removes the pending requests in the same version (views.md) |
 | Deleting the old store loses data on a phone whose import didn't confirm | X06a checks `LegacyImport.Report.confirmed` on that phone, quarantines rather than deletes, and X06f waits a version and 30 days |
@@ -268,7 +296,8 @@ Phase 7 starts after G6, apart from the items marked "early".
 4. **Contract 02 has no `headline` field** for the brief card, which the widget reuses (contract 07 §11.2).
 5. **Paper dark twins** for EX-1–EX-4 (dark file `2KTI-0`) weren't read. Each page PR checks them.
 6. The moment cards' host nodes belong to other areas and weren't re-read here. Each moment PR re-reads them first.
-7. **Paper vs the references** (Paper wins, each noted in its card):
+7. **The notify token's lifetime.** The founder's direction said "a short-lived token in the shared keychain". The app's access token lives 15 minutes, so for most pushes (the app hasn't run for hours) it would be expired and only the fallback would ever show. The plan uses a separate token that can only read notification text, lives 7 days and is renewed daily by the app (contract 07 §5.7). That's short-lived compared with a session, but not 15 minutes. If the founder wants it shorter, the custom words will show less often.
+8. **Paper vs the references** (Paper wins, each noted in its card):
    - the widget background is raised, and the small widget's "talk to retro" is a label, not a pill
    - the medium widget's label is all mono
    - the share card's title is one line, "40 min video", and the goal pill has no "x" or guess outline
@@ -277,16 +306,20 @@ Phase 7 starts after G6, apart from the items marked "early".
 
 ## 7. Changes needed in shared files (not made here)
 
-1. **Contract 00:** add `gone` (410) to the error list (X07.0).
+1. **Contract 00:** add `gone` (410) to the error list (X07.0), and note that the notify token (contract 07 §5.7) is a second, narrower credential.
+1b. **`backend/later-phases.md` BE2.7 and BE4.3:**
+   - BE2.7's rule "payloads are content-free" becomes "payloads carry only a non-sensitive custom fallback; the full text is fetched on the phone" (founder, 21 Oct)
+   - BE4.3 no longer uses `POST /notifications/generate`; its check-ins go through BE7.4 and the BE7.8a writer
+1c. **Paper EX-3** needs a redraw: a custom title and body, and the hidden-preview look (integrator).
 2. **Contract 02:** add `"shared"` to `Entry.kind`, and name the brief's `headline` field.
-3. **Contract 06:** host the four notification switches and the lock-screen detail choice (PL7.10 is the data).
+3. **Contract 06:** host the four notification switches, the lock-screen detail choice, and the row "keep notification words off my lock screen" that opens iOS's Show Previews (PL7.10 is the data).
 4. **PL5.2:** add `.compose` and `.goal(id:)` destinations and their parser rows.
 5. **PL1.3 / PL1.5:** call the token mirror on sign-in, refresh and sign-out (PL7.3).
 6. **`plumbing/outline.md`:** PL5.3 is now a full card here, and X06's outline is superseded by X06a–f.
 7. **`ui/later.md` phase 7:** C40 is now four sub-components, plus C41 and C42 (new), and the moment list's M07 should say 17% (D6, newest). Prices typed into Paper ("save 20%") are stale.
 8. **`backend/later-phases.md` "Phase 7 · Retire the old":** superseded by backend.md here (X02a, X07.0, X07a–h, X08a–c). README §5 calls retirement "Phase 8".
 9. **`first-ship.md`:** if the founder says yes to Q8, PL7.6 (Now Playing) moves into Beta 1.
-10. **The integrator's files:** INT7.1 (targets, entitlements, the 18.1 widget target, the Outside folder membership, the widget's fonts) and INT7.2 (launch and push bridges in `RetrospectApp.swift`); `RLabPage` cases for M01–M13.
+10. **The integrator's files:** INT7.3 (the Notification Service Extension target), INT7.1 (targets, entitlements, the 18.1 widget target, the Outside folder membership, the widget's fonts) and INT7.2 (launch and push bridges in `RetrospectApp.swift`); `RLabPage` cases for M01–M13.
 
 ## 8. Founder questions
 
@@ -303,9 +336,17 @@ Under B, PL7.10's setting and the widget's privacy marking go away. Under C, the
 - **A (lean):** Now Playing only.
 - **B:** also a Live Activity, which needs a Paper drawing, a widget view and a PL card (about 2 PRs).
 
-**Q3 · Can notifications ever say what's in them?**
-- **A (lean):** always private (one fixed line each).
-- **B:** an opt-in "show details", which needs a notification service extension that fetches the words on the phone (+2 PRs, and more battery).
+**Q3 · Notification words: decided by the founder on 21 Oct.** "Every notification needs to be written custom, even the notification for showing briefs."
+
+The plan now does this:
+- **the writer and checks:** BE7.8a and BE7.8b
+- **the text door and notify token:** BE7.9a and BE7.9b
+- **the service extension:** PL7.11, PL7.12 and INT7.3
+- **the settings row** that sends people to iOS's Show Previews to hide the words on the lock screen (PL7.10, contract 06)
+
+Two consequences, recorded as the founder's call:
+- **The fallback goes through Apple.** It rides in the APNs payload, so a short, non-sensitive custom line does pass through Apple; the full words don't.
+- **Each push is one small model call** against the spend cap. With the no-model fallback, the cost is bounded.
 
 **Q4 · The widget's "talk":**
 - **A (lean):** opens the journal composer ready to type, matching JR-1's "mic off until tapped" rule.
