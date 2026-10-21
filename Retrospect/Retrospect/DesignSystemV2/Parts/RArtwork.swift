@@ -9,22 +9,36 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import SwiftUI
 
-struct RArtworkRecipe {
-    struct Blob {
-        let color: Color
+public struct RArtworkRecipe {
+    public struct Blob {
+        public let color: Color
         /// Centre, as a share of the width and height.
-        let x: Double
-        let y: Double
+        public let x: Double
+        public let y: Double
         /// Radius, as a share of the longer side.
-        let radius: Double
+        public let radius: Double
         /// Opacity at the centre; it eases to 0 at the radius.
-        let alpha: Double
+        public let alpha: Double
+
+        public init(color: Color, x: Double, y: Double, radius: Double, alpha: Double) {
+            self.color = color
+            self.x = x
+            self.y = y
+            self.radius = radius
+            self.alpha = alpha
+        }
     }
 
-    let base: Color
-    let blobs: [Blob]
+    public let base: Color
+    public let blobs: [Blob]
     /// Grain opacity (0.05–0.06 for artwork).
-    let grain: Double
+    public let grain: Double
+
+    public init(base: Color, blobs: [Blob], grain: Double) {
+        self.base = base
+        self.blobs = blobs
+        self.grain = grain
+    }
 }
 
 /// Episode artwork at any size.
