@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "source": {
+      "id": "google_calendar",
+      "name": "calendar",
+      "where": "account",
+      "status": "syncing",
+      "purpose": "so your brief knows your day",
+      "problem": null,
+      "reads": "your events: when, how long, and who was there.",
+      "helpsMeSee": "what your weeks are really like, and what fills them.",
+      "lastReadAt": "2026-10-21T07:58:00.000Z",
+      "hasData": true,
+      "sharedGrant": "google"
+    }
+  }
+}

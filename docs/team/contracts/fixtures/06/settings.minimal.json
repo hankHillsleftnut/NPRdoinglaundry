@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "enabled": false,
+      "time": "08:00",
+      "length": "standard",
+      "nextAt": null
+    },
+    "ambient": {
+      "enabled": true,
+      "effective": true,
+      "pausedForEveryone": false
+    },
+    "straightness": {
+      "level": "justWhatHappened",
+      "source": "picked",
+      "why": null
+    },
+    "voice": {
+      "persona": "warm",
+      "speed": 1,
+      "personas": [
+        {
+          "id": "warm",
+          "name": "warm"
+        },
+        {
+          "id": "steady",
+          "name": "steady"
+        },
+        {
+          "id": "bright",
+          "name": "bright"
+        }
+      ]
+    },
+    "notifications": {
+      "brief": true,
+      "episode": true,
+      "questions": true,
+      "hideWordsOnLockScreen": false
+    }
+  }
+}

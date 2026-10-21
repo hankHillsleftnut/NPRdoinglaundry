@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "enabled": true,
+      "time": "08:30",
+      "length": "standard",
+      "nextAt": "2026-10-22T07:30:00.000Z"
+    },
+    "ambient": {
+      "enabled": true,
+      "effective": true,
+      "pausedForEveryone": false
+    },
+    "straightness": {
+      "level": "honestObservations",
+      "source": "picked",
+      "why": "you answer the hard questions, and say \"not quite\" when i'm wrong."
+    },
+    "voice": {
+      "persona": "warm",
+      "speed": 1,
+      "personas": [
+        {
+          "id": "warm",
+          "name": "warm"
+        },
+        {
+          "id": "steady",
+          "name": "steady"
+        },
+        {
+          "id": "bright",
+          "name": "bright"
+        }
+      ]
+    },
+    "notifications": {
+      "brief": true,
+      "episode": true,
+      "questions": true,
+      "hideWordsOnLockScreen": false
+    }
+  }
+}

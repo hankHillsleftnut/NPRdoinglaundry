@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "signedInWith": "google",
+    "plan": null,
+    "deletion": {
+      "needsAppleConfirmation": false
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": {
+    "sources": [
+      {
+        "id": "healthkit",
+        "name": "health",
+        "where": "onPhone",
+        "status": "notConnected",
+        "purpose": "how you slept, how you moved",
+        "problem": null,
+        "reads": null,
+        "helpsMeSee": null,
+        "lastReadAt": null,
+        "hasData": false,
+        "sharedGrant": null
+      }
+    ]
+  }
+}
