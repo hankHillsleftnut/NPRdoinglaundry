@@ -488,6 +488,8 @@ public enum RDimension {
     public static let sizeNavBar: CGFloat = 44
     /// The tab bar (without the home indicator).
     public static let sizeTabBar: CGFloat = 49
+    /// A well or button slot inside a 48 field: the search field's mic well and its clear slot.
+    public static let sizeFieldWell: CGFloat = 36
     /// The search field on You.
     public static let sizeSearchField: CGFloat = 36
     /// The handle at the top of a sheet.
