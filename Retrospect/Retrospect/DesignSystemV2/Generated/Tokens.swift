@@ -478,6 +478,8 @@ public enum RDimension {
     public static let sizeAvatarLarge: CGFloat = 72
     /// Height of a count or status badge.
     public static let sizeBadge: CGFloat = 20
+    /// Inline padding of a tag (Paper label · today: 20 tall, radius 10, padding 7). The guess dot side takes 6.
+    public static let sizeTagPadding: CGFloat = 7
     /// A list row with a title and a line under it.
     public static let sizeRowDefault: CGFloat = 56
     /// A single-line list row.

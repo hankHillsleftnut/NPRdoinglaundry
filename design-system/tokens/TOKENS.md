@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**531 tokens** · 455 semantic · 276 marked *to set*
+**532 tokens** · 456 semantic · 276 marked *to set*
 
 ## palette
 
@@ -404,6 +404,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.avatar.default` | A person in a row. | 40pt |  | to set: Lime coverage |
 | `size.avatar.large` | A person at the top of their page. | 72pt |  | to set: Lime coverage |
 | `size.badge` | Height of a count or status badge. | 20pt |  | to set: Lime coverage |
+| `size.tagPadding` | Inline padding of a tag (Paper label · today: 20 tall, radius 10, padding 7). The guess dot side takes 6. | 7pt |  | Paper c · player sheet, label · today (21 Oct) |
 | `size.row.default` | A list row with a title and a line under it. | 56pt |  | to set: Lime coverage |
 | `size.row.compact` | A single-line list row. | 44pt |  | to set: Lime coverage |
 | `size.illustration` | The drawing on an empty or error state. | 120pt |  | to set: Lime coverage |
