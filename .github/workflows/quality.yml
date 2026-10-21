@@ -7,7 +7,7 @@ on:
 
 jobs:
   api:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, retrospect]
     defaults:
       run:
         working-directory: backend
@@ -25,8 +25,29 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  ios:
-    runs-on: macos-latest
+  changes:
+    # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
+    # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained).
+    runs-on: [self-hosted, macOS, retrospect]
+    outputs:
+      app: ${{ steps.changed.outputs.app }}
     steps:
       - uses: actions/checkout@v4
-      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+        with:
+          fetch-depth: 0
+      - id: changed
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ] || git diff --name-only "$base" HEAD | grep -qE '^Retrospect/'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: [self-hosted, macOS, retrospect]
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build
