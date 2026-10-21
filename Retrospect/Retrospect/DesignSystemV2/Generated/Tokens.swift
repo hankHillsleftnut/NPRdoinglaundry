@@ -488,6 +488,8 @@ public enum RDimension {
     public static let sizeNavBar: CGFloat = 44
     /// The tab bar (without the home indicator).
     public static let sizeTabBar: CGFloat = 49
+    /// A well or button slot inside a 48 field: the search field's mic well and its clear slot.
+    public static let sizeFieldWell: CGFloat = 36
     /// The search field on You.
     public static let sizeSearchField: CGFloat = 36
     /// The handle at the top of a sheet.
@@ -526,6 +528,8 @@ public enum RDimension {
     public static let sizeComposerMaxHeight: CGFloat = 160
     /// The input card at rest: room for two lines of words above the well row.
     public static let sizeComposerCardMinHeight: CGFloat = 120
+    /// The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24).
+    public static let sizeComposerWell: CGFloat = 40
     /// The progress ring on a goal.
     public static let sizeGoalRing: CGFloat = 44
     /// The progress ring's thickness.

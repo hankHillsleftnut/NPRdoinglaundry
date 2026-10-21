@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**531 tokens** · 455 semantic · 276 marked *to set*
+**533 tokens** · 457 semantic · 276 marked *to set*
 
 ## palette
 
@@ -409,6 +409,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.illustration` | The drawing on an empty or error state. | 120pt |  | to set: Lime coverage |
 | `size.navBar` | The navigation bar (without the status bar). | 44pt |  | to set: app need |
 | `size.tabBar` | The tab bar (without the home indicator). | 49pt |  | to set: app need |
+| `size.fieldWell` | A well or button slot inside a 48 field: the search field's mic well and its clear slot. | 36pt |  | Paper approvals · part 23 c:search-field/rest, /typed (21 Oct) |
 | `size.searchField` | The search field on You. | 36pt |  | to set: app need |
 | `size.grabber.width` | The handle at the top of a sheet. | 36pt |  | to set: app need |
 | `size.grabber.height` | The handle at the top of a sheet. | 5pt |  | to set: app need |
@@ -428,6 +429,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.composer.minHeight` | The writing field, empty. | 44pt |  | to set: app need |
 | `size.composer.maxHeight` | The writing field before it scrolls. | 160pt |  | to set: app need |
 | `size.composer.cardMinHeight` | The input card at rest: room for two lines of words above the well row. | 120pt |  | current app input bar (MinimalJournalInput.swift), founder 20 Oct |
+| `size.composer.well` | The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24). | 40pt |  | Paper c:composer/compact (everything · latest, EX-1 share sheet; dark file), 21 Oct |
 | `size.goal.ring` | The progress ring on a goal. | 44pt |  | to set: app need |
 | `size.goal.ringStroke` | The progress ring's thickness. | 4pt |  | to set: app need |
 | `size.sourceIcon` | A source's app icon in a row. | 32pt |  | to set: app need |
