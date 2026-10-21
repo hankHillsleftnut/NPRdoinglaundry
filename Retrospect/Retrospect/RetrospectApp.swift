@@ -82,6 +82,15 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// Design lab (M14): the DesignSystemV2 gallery, motion lab and component catalogue.
+    private var isDesignLabMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-DesignLab")
+        #else
+        false
+        #endif
+    }
+
     private var isAnimationPreviewMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
@@ -136,7 +145,11 @@ struct RetrospectApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if isFirstPodcastFinaleMode {
+                if isDesignLabMode {
+                    #if DEBUG
+                    RFoundationGallery()
+                    #endif
+                } else if isFirstPodcastFinaleMode {
                     #if DEBUG
                     FirstPodcastFinaleDebugHost()
                     #endif
