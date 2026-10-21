@@ -17,6 +17,7 @@ struct RDesignLab: View {
             Picker("lab", selection: $page) {
                 Text("motion").tag(0)
                 Text("foundation").tag(1)
+                Text("parts").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, RDimension.spaceScreenMargin)
