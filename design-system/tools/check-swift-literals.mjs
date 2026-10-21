@@ -13,7 +13,9 @@ const exempt = [/\/Generated\//, /\/RType\.swift$/, /\/RDepth\.swift$/, /\/RMoti
 const rules = [
   [/\b(UI)?Color\(\s*(red|white|hue)\s*:/, 'raw colour: use RColor'],
   [/#colorLiteral|Color\(\s*"#|Color\(hex/, 'raw colour: use RColor'],
-  [/(?<![A-Za-z0-9_])\.(red|blue|green|black|white|gray|grey|orange|yellow|pink|purple|primary|secondary)\b(?!\s*[:(])/, 'system colour: use RColor'],
+  [/(?<![A-Za-z0-9_])\.(red|blue|green|black|white|gray|grey|orange|yellow|pink|purple)\b(?!\s*[:(])/, 'system colour: use RColor'],
+  // .primary / .secondary are also common enum cases, so only flag them where a colour goes.
+  [/(Color\s*\.|(foregroundStyle|foregroundColor|tint|fill|stroke|background)\(\s*\.)(primary|secondary|tertiary)\b/, 'system colour: use RColor'],
   [/\.font\(\s*\.system\(\s*size/, 'raw font: use .rText(...)'],
   [/\.(padding|frame|cornerRadius|spacing)\([^)]*\b\d+(\.\d+)?\b/, 'raw size: use RDimension'],
   [/spacing:\s*\d/, 'raw spacing: use RDimension'],
