@@ -1,0 +1,282 @@
+{
+ "boards": {
+  "LBO-0": {
+   "darkId": "1ULQ-0",
+   "hash": "ec71bbc817ec",
+   "name": "dark · YO-5 · what i know about you · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "GH8-0": {
+   "darkId": "20FX-0",
+   "hash": "74a38b513151",
+   "name": "dark · part 43 · splash + sign-in · approved · experiment · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "FII-0": {
+   "darkId": "1TCN-0",
+   "hash": "e215708f0be3",
+   "name": "dark · JR-2 · today's brief · hi-fi · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "HGX-0": {
+   "darkId": "176N-0",
+   "hash": "41411799d68f",
+   "name": "dark · PC-1 · podcasts · hi-fi · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "H1F-0": {
+   "darkId": "26PV-0",
+   "hash": "08cb48fda230",
+   "name": "dark · PC-2 · the player · hi-fi · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "J0U-0": {
+   "darkId": "1MJA-0",
+   "hash": "9886e2ea144a",
+   "name": "dark · GL-1 · goals · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "JPZ-0": {
+   "darkId": "1MY6-0",
+   "hash": "17611aa04f4e",
+   "name": "dark · GL-2 · one goal · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "K2D-0": {
+   "darkId": "1U78-0",
+   "hash": "620091dc8f8d",
+   "name": "dark · YO-1 · you · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "KGL-0": {
+   "darkId": "194Q-0",
+   "hash": "f545caf68377",
+   "name": "dark · YO-2 · search · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "KWP-0": {
+   "darkId": "1UGZ-0",
+   "hash": "d03879cedb1f",
+   "name": "dark · YO-4 · a node · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "L9D-0": {
+   "darkId": "19IT-0",
+   "hash": "9babcd8f2bd3",
+   "name": "dark · YO-3 · a source · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "ILW-0": {
+   "darkId": "1NKY-0",
+   "hash": "8e15c956d6c5",
+   "name": "dark · AC-1 · sign in, returning · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "M6H-0": {
+   "darkId": "1O58-0",
+   "hash": "4f9f367bb7b5",
+   "name": "dark · EX · outside the app · approve?",
+   "page": "00 · approvals · waiting on you",
+   "synced": "2026-10-20",
+   "keptRoots": [
+    "1O7J-0",
+    "1O88-0",
+    "1O6K-0",
+    "1O7D-0",
+    "1O6H-0",
+    "1O5J-0"
+   ]
+  },
+  "O1R-0": {
+   "darkId": "2AL6-0",
+   "hash": "574dea04935a",
+   "name": "dark · M6 end · ON-10 · ON-11 · ON-13 · AC-2 · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "OE0-0": {
+   "darkId": "2AUE-0",
+   "hash": "2ab5613992f3",
+   "name": "dark · M11 · journey map · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": [
+    "2CKN-0",
+    "2CLG-0",
+    "2C27-0",
+    "2C2W-0",
+    "2AVQ-0",
+    "2AUS-0"
+   ]
+  },
+  "V6L-0": {
+   "darkId": "234F-0",
+   "hash": "36b0e9575bb9",
+   "name": "dark · ON-6 connect · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "E6M-0": {
+   "darkId": "1D7A-0",
+   "hash": "949b67cdd550",
+   "name": "dark · JR-3 · journal drawer · hi-fi · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "E6N-0": {
+   "darkId": "1DLW-0",
+   "hash": "7c781dac3b5b",
+   "name": "dark · JR-4 · an entry · hi-fi · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "F5K-0": {
+   "darkId": "1DWE-0",
+   "hash": "d5a723af03de",
+   "name": "dark · JR-1 · journal · hi-fi · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "I0Q-0": {
+   "darkId": "1XKX-0",
+   "hash": "53a07ac0f378",
+   "name": "dark · PC-3 · why this is here · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "ITJ-0": {
+   "darkId": "1ENS-0",
+   "hash": "80776fc612b1",
+   "name": "dark · group · journal · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "ITK-0": {
+   "darkId": "1ENX-0",
+   "hash": "d88cf2d801b1",
+   "name": "dark · group · podcasts · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "ITL-0": {
+   "darkId": "1EO2-0",
+   "hash": "69cd15b7969b",
+   "name": "dark · group · account · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "JPS-0": {
+   "darkId": "1EO7-0",
+   "hash": "552d73b9696f",
+   "name": "dark · group · goals · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "K2E-0": {
+   "darkId": "1EOC-0",
+   "hash": "b3ed6946706a",
+   "name": "dark · group · you · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "LJJ-0": {
+   "darkId": "2A57-0",
+   "hash": "2d621f07a04b",
+   "name": "dark · ST · settings pages · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "LJK-0": {
+   "darkId": "1F4G-0",
+   "hash": "4518498e4c71",
+   "name": "dark · group · settings · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "M6I-0": {
+   "darkId": "1F4L-0",
+   "hash": "7bf70caa2c96",
+   "name": "dark · group · outside the app · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "MAR-0": {
+   "darkId": "2DOI-0",
+   "hash": "b69b7b9f2fb7",
+   "name": "dark · the app in order · approved screens · approve?",
+   "page": "05 · the app in order · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "233G-0": {
+   "darkId": "234A-0",
+   "hash": "97aac39029ee",
+   "name": "dark · group · onboarding · approve?",
+   "page": "04b · pages · hi-fi",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "FWU-0": {
+   "darkId": "262P-0",
+   "hash": "7986c77c1d59",
+   "name": "dark · part 40 · episode tiles · approve?",
+   "page": "02 · components (approved parts that have a dark twin)",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "G1E-0": {
+   "darkId": "267N-0",
+   "hash": "35f6853d5225",
+   "name": "dark · part 41 · why this is here · approve?",
+   "page": "02 · components (approved parts that have a dark twin)",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  },
+  "IFL-0": {
+   "darkId": "2F8Z-0",
+   "hash": "ac65ae89c224",
+   "name": "dark · decision 06 · paywall · choosing a plan · approved A · approve?",
+   "page": "02b · decisions made (decision cards that have a dark twin)",
+   "synced": "2026-10-20",
+   "keptRoots": []
+  }
+ }
+}

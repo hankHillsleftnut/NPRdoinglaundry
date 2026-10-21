@@ -29,6 +29,7 @@ Read in order. Each file assumes you read the one before it.
 | [06-implementation-plan.md](./06-implementation-plan.md) | Phases, effort, first tickets, definition of done. |
 | [07-sota-capability-map.md](./07-sota-capability-map.md) | Earlier 16-area research audit: scores, what we would implement, what later product locks overrode. |
 | [08-day-0-handoff.md](./08-day-0-handoff.md) | Clone, env, ports, which DB, first curl, who to ask. **Read this before you try to run anything.** |
+| [16-product-goals.md](./16-product-goals.md) | The founder’s original 16-step product checklist, plus old-vs-new progress. |
 
 Existing older docs (still useful for tables and HTTP routes, **out of date** on the agent path):
 

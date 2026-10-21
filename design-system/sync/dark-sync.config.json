@@ -1,0 +1,62 @@
+{
+  "fileId": "01M5D5J321P5X86ZT58002B7NT",
+  "darkPageId": "p-H-0",
+  "sources": [
+    {
+      "pageId": "p-G-0",
+      "name": "00 \u00b7 approvals \u00b7 waiting on you",
+      "dy": -30000
+    },
+    {
+      "pageId": "p-D-0",
+      "name": "04b \u00b7 pages \u00b7 hi-fi",
+      "dy": 0
+    },
+    {
+      "pageId": "p-F-0",
+      "name": "05 \u00b7 the app in order \u00b7 hi-fi",
+      "dy": 45000
+    },
+    {
+      "pageId": "p-3-0",
+      "name": "02 \u00b7 components (approved parts that have a dark twin)",
+      "include": "^part 4[01] ",
+      "dy": 85000
+    },
+    {
+      "pageId": "p-C-0",
+      "name": "02b \u00b7 decisions made (decision cards that have a dark twin)",
+      "include": "^decision 06 ",
+      "dy": 85000,
+      "dx": -8000
+    }
+  ],
+  "excludeBoards": "^(archived|M12|dark \u00b7|read me|review \u00b7 journal sub-components)",
+  "keepLight": [
+    {
+      "name": "lock screen",
+      "why": "iOS lock screen: the wallpaper and its white system type look the same in light and dark"
+    },
+    {
+      "name": "^EX-3 \u00b7 notif",
+      "why": "lock-screen notifications sit on the wallpaper, not on our canvas"
+    },
+    {
+      "name": "lock clock",
+      "why": "system clock on the wallpaper"
+    },
+    {
+      "name": "^status \\(light\\)",
+      "within": "^EX-4",
+      "why": "home-screen status bar over the wallpaper"
+    },
+    {
+      "name": "^home indicator",
+      "within": "^EX-4",
+      "why": "home-screen indicator over the wallpaper"
+    }
+  ],
+  "rawAsToken": {
+    "#5F5D5B": "text-secondary"
+  }
+}

@@ -1,0 +1,449 @@
+{
+ "dark · YO-5 · what i know about you · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · part 43 · splash + sign-in · approved · experiment · approve?": {
+  "leftovers": [],
+  "raw": [
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853"
+  ],
+  "fail": [],
+  "onArt": [
+   "20I1-0 \"maya\"",
+   "20I0-0 \"running\"",
+   "20HZ-0 \"the river\"",
+   "20HY-0 \"work\"",
+   "20HU-0 \"everything about you, finally connected.\"",
+   "20HT-0 \"retrospect gets to know you, and tells y\"",
+   "20HG-0 \"by continuing you agree to the terms · p\"",
+   "20HE-0 \"9:41\""
+  ],
+  "inverted": []
+ },
+ "dark · JR-2 · today's brief · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · PC-1 · podcasts · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "17LJ-0 \"this week · 12 min\"",
+   "17KJ-0 \"this week · 12 min\"",
+   "17IM-0 \"this week · 12 min\"",
+   "17HM-0 \"this week · 12 min\"",
+   "17FN-0 \"this week · 12 min\"",
+   "17EN-0 \"this week · 12 min\"",
+   "17CL-0 \"this week · 12 min\"",
+   "17BP-0 \"this week · 12 min\""
+  ],
+  "inverted": []
+ },
+ "dark · PC-2 · the player · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · GL-1 · goals · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · GL-2 · one goal · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · YO-1 · you · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · YO-2 · search · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · YO-4 · a node · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · YO-3 · a source · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · AC-1 · sign in, returning · approve?": {
+  "leftovers": [],
+  "raw": [
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853"
+  ],
+  "fail": [
+   {
+    "id": "1NQ0-0",
+    "text": "Sign in with Apple",
+    "ratio": 2.85,
+    "need": 4.5,
+    "color": "var(--color-dark-sign-in-apple-label)",
+    "size": 17,
+    "opacity": 0.4
+   },
+   {
+    "id": "1NPT-0",
+    "text": "Continue with Google",
+    "ratio": 3.25,
+    "need": 4.5,
+    "color": "var(--color-dark-sign-in-google-label)",
+    "size": 17,
+    "opacity": 0.4
+   }
+  ],
+  "onArt": [
+   "1O1X-0 \"welcome back.\"",
+   "1O1W-0 \"sign in to pick up where you left off.\"",
+   "1O1H-0 \"new here? get started\"",
+   "1O1E-0 \"9:41\"",
+   "1NY3-0 \"welcome back.\"",
+   "1NY2-0 \"sign in to pick up where you left off.\"",
+   "1NXN-0 \"new here? get started\"",
+   "1NXK-0 \"9:41\"",
+   "1NU8-0 \"welcome back.\"",
+   "1NU7-0 \"sign in to pick up where you left off.\"",
+   "1NTS-0 \"new here? get started\"",
+   "1NTP-0 \"9:41\"",
+   "1NQA-0 \"welcome back.\"",
+   "1NQ6-0 \"bringing back your entries and episodes…\"",
+   "1NPR-0 \"new here? get started\"",
+   "1NPO-0 \"9:41\"",
+   "1NM9-0 \"welcome back.\"",
+   "1NM8-0 \"sign in to pick up where you left off.\"",
+   "1NM2-0 \"that didn't work. nothing is lost; try a\"",
+   "1NLP-0 \"new here? get started\"",
+   "1NLM-0 \"9:41\""
+  ],
+  "inverted": []
+ },
+ "dark · EX · outside the app · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "1O8I-0 \"save\"",
+   "1O8D-0 \"9:41\"",
+   "1O8C-0 \"●●● ◔ ▭\"",
+   "1O8A-0 \"tuesday 21 october\"",
+   "1O89-0 \"8:42\"",
+   "1O84-0 \"the fundraise article you sent\"",
+   "1O83-0 \"retrospect · tuesday's brief · part 2 of\"",
+   "1O7Y-0 \"1:12\"",
+   "1O7X-0 \"−2:48\"",
+   "1O7I-0 \"9:41\"",
+   "1O7H-0 \"●●● ◔ ▭\"",
+   "1O7F-0 \"sunday 26 october\"",
+   "1O7E-0 \"9:00\"",
+   "1O7A-0 \"retrospect\"",
+   "1O79-0 \"now\"",
+   "1O77-0 \"this week's episode is here.\"",
+   "1O74-0 \"at most one a day. the other two kinds:\"",
+   "1O70-0 \"retrospect\"",
+   "1O6Z-0 \"8:30\"",
+   "1O6X-0 \"your brief is ready · 4 min\"",
+   "1O6S-0 \"retrospect\"",
+   "1O6R-0 \"6:10 pm\"",
+   "1O6P-0 \"one question for you, when you have a mi\"",
+   "1O6J-0 \"9:41\"",
+   "1O6I-0 \"●●● ◔ ▭\""
+  ],
+  "inverted": []
+ },
+ "dark · M6 end · ON-10 · ON-11 · ON-13 · AC-2 · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "2ALG-0 \"send, then sign out\""
+  ],
+  "inverted": []
+ },
+ "dark · M11 · journey map · approve?": {
+  "leftovers": [],
+  "raw": [
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853",
+   "#EA4335",
+   "#4285F4",
+   "#FBBC05",
+   "#34A853"
+  ],
+  "fail": [],
+  "onArt": [
+   "2DNF-0 \"maya\"",
+   "2DNE-0 \"running\"",
+   "2DND-0 \"the river\"",
+   "2DNC-0 \"work\"",
+   "2DN9-0 \"everything about you, finally connected.\"",
+   "2DN8-0 \"retrospect gets to know you, and tells y\"",
+   "2DMU-0 \"by continuing you agree to the terms · p\"",
+   "2DMS-0 \"9:41\"",
+   "2DFJ-0 \"continue\"",
+   "2CSW-0 \"$239.99\"",
+   "2CSV-0 \"/ year\"",
+   "2CLL-0 \"9:41\"",
+   "2CLK-0 \"●●● ◔ ▭\"",
+   "2CLI-0 \"sunday 26 october\"",
+   "2CLH-0 \"9:00\"",
+   "2CLD-0 \"retrospect\"",
+   "2CLC-0 \"now\"",
+   "2CLA-0 \"this week's episode is here.\"",
+   "2CL7-0 \"at most one a day. the other two kinds:\"",
+   "2CL3-0 \"retrospect\"",
+   "2CL2-0 \"8:30\"",
+   "2CL0-0 \"your brief is ready · 4 min\"",
+   "2CKV-0 \"retrospect\"",
+   "2CKU-0 \"6:10 pm\"",
+   "2CKS-0 \"one question for you, when you have a mi\"",
+   "2CHB-0 \"tue 21 oct · 2 min\"",
+   "2CDE-0 \"settings\"",
+   "2CDD-0 \"v1.0\"",
+   "2CAT-0 \"this week · 12 min\"",
+   "2C9T-0 \"this week · 12 min\"",
+   "2C31-0 \"9:41\"",
+   "2C30-0 \"●●● ◔ ▭\"",
+   "2C2Y-0 \"tuesday 21 october\"",
+   "2C2X-0 \"8:42\"",
+   "2C2S-0 \"the fundraise article you sent\"",
+   "2C2R-0 \"retrospect · tuesday's brief · part 2 of\"",
+   "2C2M-0 \"1:12\"",
+   "2C2L-0 \"−2:48\"",
+   "2AZO-0 \"send, then sign out\"",
+   "2AW8-0 \"save\"",
+   "2AVS-0 \"9:41\"",
+   "2AVR-0 \"●●● ◔ ▭\""
+  ],
+  "inverted": []
+ },
+ "dark · ON-6 connect · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "234N-0 \"continue\""
+  ],
+  "inverted": []
+ },
+ "dark · JR-3 · journal drawer · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "1DJJ-0 \"settings\"",
+   "1DJI-0 \"v1.0\"",
+   "1DH9-0 \"settings\"",
+   "1DH8-0 \"v1.0\"",
+   "1DEZ-0 \"settings\"",
+   "1DEY-0 \"v1.0\"",
+   "1DDN-0 \"settings\"",
+   "1DDM-0 \"v1.0\"",
+   "1DBW-0 \"settings\"",
+   "1DBV-0 \"v1.0\"",
+   "1DAD-0 \"settings\"",
+   "1DAC-0 \"v1.0\"",
+   "1D7W-0 \"settings\"",
+   "1D7V-0 \"v1.0\""
+  ],
+  "inverted": []
+ },
+ "dark · JR-4 · an entry · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "1DML-0 \"delete it\""
+  ],
+  "inverted": []
+ },
+ "dark · JR-1 · journal · hi-fi · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "1EDU-0 \"tue 21 oct · 2 min\"",
+   "1EBN-0 \"tue 21 oct · 2 min\"",
+   "1E9F-0 \"tue 21 oct · 2 min\"",
+   "1E74-0 \"tue 21 oct · 2 min\"",
+   "1E4R-0 \"tue 21 oct · 2 min\""
+  ],
+  "inverted": []
+ },
+ "dark · PC-3 · why this is here · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · journal · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · podcasts · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · account · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · goals · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · you · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · ST · settings pages · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · settings · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · group · outside the app · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · the app in order · approved screens · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "2F3U-0 \"tue 21 oct · 2 min\"",
+   "2F1P-0 \"tue 21 oct · 2 min\"",
+   "2EZF-0 \"tue 21 oct · 2 min\"",
+   "2EPD-0 \"settings\"",
+   "2EPC-0 \"v1.0\"",
+   "2EO7-0 \"settings\"",
+   "2EO6-0 \"v1.0\"",
+   "2EMJ-0 \"settings\"",
+   "2EMI-0 \"v1.0\"",
+   "2EL3-0 \"settings\"",
+   "2EL2-0 \"v1.0\"",
+   "2EIP-0 \"settings\"",
+   "2EIO-0 \"v1.0\"",
+   "2ECB-0 \"delete it\""
+  ],
+  "inverted": []
+ },
+ "dark · group · onboarding · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · part 40 · episode tiles · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "2673-0 \"this week · 12 min\"",
+   "265G-0 \"this week · 12 min\"",
+   "264G-0 \"this week · 12 min\""
+  ],
+  "inverted": []
+ },
+ "dark · part 41 · why this is here · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [],
+  "inverted": []
+ },
+ "dark · decision 06 · paywall · choosing a plan · approved A · approve?": {
+  "leftovers": [],
+  "raw": [],
+  "fail": [],
+  "onArt": [
+   "2F9R-0 \"$239.99\"",
+   "2F9Q-0 \"/ year\""
+  ],
+  "inverted": []
+ }
+}
