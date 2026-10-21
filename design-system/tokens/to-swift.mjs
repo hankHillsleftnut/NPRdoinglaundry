@@ -55,7 +55,7 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       const dark = rgba(resolve(dv ?? o.$value, true));
       if (light && dark) colors.push({ name: camel(path.startsWith('color.') ? path.slice(6) : path), light, dark, doc: o.$description });
       else skipped.push(path);
-    } else if (type === 'dimension' && /^(space|size|radius|layout|font\.size)\./.test(path)) {
+    } else if (type === 'dimension' && /^(space|size|radius|layout|font\.size|motion\.)/.test(path)) {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : dims.push({ name, n, doc: o.$description });
     } else if (type === 'spring' && /^motion\.spring\./.test(path)) {
@@ -65,7 +65,7 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       curves.push({ name: camel(path.slice('motion.curve.'.length)), p: o.$value, doc: o.$description });
     } else if (type === 'string' && /^haptic\./.test(path)) {
       haptics.push({ name: camel(path.slice('haptic.'.length)), v: String(o.$value), doc: o.$description });
-    } else if ((type === 'number' && /^(opacity|layer)\./.test(path)) || type === 'duration') {
+    } else if ((type === 'number' && /^(opacity|layer|motion\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });
     } else skipped.push(path);
