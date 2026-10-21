@@ -528,6 +528,8 @@ public enum RDimension {
     public static let sizeComposerMaxHeight: CGFloat = 160
     /// The input card at rest: room for two lines of words above the well row.
     public static let sizeComposerCardMinHeight: CGFloat = 120
+    /// The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24).
+    public static let sizeComposerWell: CGFloat = 40
     /// The progress ring on a goal.
     public static let sizeGoalRing: CGFloat = 44
     /// The progress ring's thickness.
