@@ -44,3 +44,7 @@ The integrator is the main Claude session: the principal engineer who owns the w
 7. Plain-words PR body with what's not done and what needs the founder.
 8. After merge: main builds; the board, progress map, chronicle and findings log updated.
 9. **The gardener's question:** for every finding, which layer stops it from happening again (code, lint/CI, rule, skill, style guide)? Use the strongest one that works, as a follow-up byte when it's bigger than the PR. Once a week, a gardening byte deletes debt the lint rules have frozen.
+
+## 5. The founder's build board
+
+A live page pinned in the founder's sidebar: https://claude.ai/artifact/Uzk22xF2tMPKzxSkGF8Lsy. It shows each engineer's Beta 1 work as a tree (area › page › component › PR), what each engineer is doing now, and a log of updates and of everything I catch in review, with the layer that fixes it. I update it through its database (`status/<eng>` items, `meta/now`, `log`), never by republishing: when a byte starts, opens a PR, merges or blocks; when an engineer reports; and for every review finding. A new byte or a split goes into `plan/<eng>` first, so the board always matches the plan.
