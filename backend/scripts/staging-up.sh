@@ -9,10 +9,7 @@
 set -euo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-AGENT_DIR="$(cd "${AGENT_DIR:-$BACKEND_DIR/../../retrospect-agent}" && pwd)"
 LOG_DIR="$BACKEND_DIR/logs/staging"
-BACKEND_ENV="$BACKEND_DIR/.env.staging"
-AGENT_ENV="$AGENT_DIR/.env.staging"
 
 # npm starts a shell that starts tsx that starts node, so the whole tree goes.
 kill_tree() {
@@ -33,6 +30,12 @@ stop() {
 }
 
 if [[ "${1:-}" == "stop" ]]; then stop; exit 0; fi
+
+AGENT_DIR="${AGENT_DIR:-$BACKEND_DIR/../../retrospect-agent}"
+[[ -d "$AGENT_DIR" ]] || { echo "agent repo not found at $AGENT_DIR (set AGENT_DIR)"; exit 1; }
+AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
+BACKEND_ENV="$BACKEND_DIR/.env.staging"
+AGENT_ENV="$AGENT_DIR/.env.staging"
 
 value_of() { grep -E "^$2=" "$1" | tail -1 | cut -d= -f2-; }
 
