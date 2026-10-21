@@ -42,9 +42,9 @@ app.use(express.json({ limit: '10mb' }));
 // Rate limiting by IP, except /health and /v2 (doors limit per user)
 app.use(globalLimiter({ windowMs: config.rateLimit.windowMs, max: config.rateLimit.maxRequests }));
 
-// Serve dashboard static files (public/ is copied alongside dist/ during build)
+// The admin dashboard's files (public/ is copied alongside dist/ during build);
+// served only when admin is mounted, below.
 const publicDir = path.join(__dirname, 'public');
-app.use('/public', express.static(publicDir));
 
 // Health check endpoint (no auth)
 app.get('/health', (_req, res) => {

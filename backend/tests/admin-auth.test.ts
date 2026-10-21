@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
 import test from 'node:test';
 import express from 'express';
 import { adminSecretMatches, makeAdminAuth } from '../src/middleware/admin-auth.js';
@@ -19,6 +20,7 @@ async function serve(app: express.Express): Promise<{ url: string; close: () => 
 }
 
 const SECRET = 'admin-secret-for-tests';
+const PUBLIC_DIR = join(__dirname, '..', 'src', 'public');
 
 function guarded(): express.Express {
   const app = express();
@@ -55,7 +57,7 @@ test('admin routes are absent without a secret', async () => {
   const warn = console.warn;
   console.warn = () => undefined;
   try {
-    assert.equal(mountAdmin(app, { secret: null, publicDir: '/nonexistent' }), false);
+    assert.equal(mountAdmin(app, { secret: null, publicDir: PUBLIC_DIR }), false);
   } finally {
     console.warn = warn;
   }
@@ -63,6 +65,7 @@ test('admin routes are absent without a secret', async () => {
   try {
     assert.equal((await fetch(`${url}/admin/users`, { headers: { 'x-admin-secret': 'retrospect-admin-local' } })).status, 404);
     assert.equal((await fetch(`${url}/dashboard`)).status, 404);
+    assert.equal((await fetch(`${url}/public/dashboard.html`)).status, 404, 'the dashboard file is not served either');
   } finally {
     await close();
   }
@@ -71,11 +74,12 @@ test('admin routes are absent without a secret', async () => {
 test('with a secret, admin routes are mounted behind it', async () => {
   const { mountAdmin } = await import('../src/routes/admin-mount.js');
   const app = express();
-  assert.equal(mountAdmin(app, { secret: SECRET, publicDir: '/nonexistent' }), true);
+  assert.equal(mountAdmin(app, { secret: SECRET, publicDir: PUBLIC_DIR }), true);
   const { url, close } = await serve(app);
   try {
     assert.equal((await fetch(`${url}/admin/users`)).status, 403);
     assert.equal((await fetch(`${url}/admin/users?secret=${SECRET}`)).status, 403);
+    assert.equal((await fetch(`${url}/public/dashboard.html`)).status, 200, 'the dashboard file is served');
   } finally {
     await close();
   }

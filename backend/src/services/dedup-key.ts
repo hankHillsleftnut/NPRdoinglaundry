@@ -186,6 +186,18 @@ function stringField(metadata: Record<string, unknown> | null | undefined, field
 }
 
 /**
+ * The client's own key for an upload, if it sent one: the Idempotency-Key
+ * header, else metadata.client_event_id, trimmed. The one definition both the
+ * dedup key and the route's length check use.
+ */
+export function explicitKeyOf(
+  idempotencyKey: string | null | undefined,
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  return (idempotencyKey && idempotencyKey.trim()) || stringField(metadata, 'client_event_id');
+}
+
+/**
  * Work out the deduplication key for an upload.
  *
  * Order of precedence:
@@ -205,7 +217,7 @@ export function deriveDedupKey(input: DedupInput): DedupResult {
   const { userId, contentType, content, metadata } = input;
   const dedupClass = classOf(contentType);
 
-  const explicit = (input.idempotencyKey && input.idempotencyKey.trim()) || stringField(metadata, 'client_event_id');
+  const explicit = explicitKeyOf(input.idempotencyKey, metadata);
   if (explicit) {
     return { key: keyOf(userId, contentType, `explicit:${explicit}`), strategy: 'explicit_key', dedupClass };
   }

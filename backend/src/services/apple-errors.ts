@@ -14,6 +14,8 @@ const REJECTED_TOKEN_CODES: ReadonlySet<string> = new Set([
   // Malformed tokens: not a JWT at all, or a JWS that doesn't parse.
   'ERR_JWT_INVALID',
   'ERR_JWS_INVALID',
+  // An algorithm Apple never uses (alg "none", HS256): a forged or foreign token.
+  'ERR_JOSE_NOT_SUPPORTED',
 ]);
 
 export function isRejectedAppleToken(err: unknown): boolean {

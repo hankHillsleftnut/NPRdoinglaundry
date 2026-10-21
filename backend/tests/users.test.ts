@@ -9,7 +9,7 @@ type Row = { id: string; apple_user_id: string; email: string | null };
  * to the event loop first, so two callers interleave the way two requests do:
  * both look, both find nothing, both insert, and the index lets one win.
  */
-function fakeUsers(opts: { failLookup?: boolean } = {}) {
+function fakeUsers(opts: { failLookup?: boolean; insertError?: { code?: string; message: string } } = {}) {
   const rows: Row[] = [];
   const updates: Record<string, unknown>[] = [];
   let next = 1;
@@ -37,6 +37,7 @@ function fakeUsers(opts: { failLookup?: boolean } = {}) {
               return {
                 async single() {
                   await tick();
+                  if (opts.insertError) return { data: null, error: opts.insertError };
                   if (rows.some((r) => r.apple_user_id === row.apple_user_id)) {
                     return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
                   }
@@ -108,4 +109,15 @@ test('a failed lookup is an error, never a new account', async () => {
   const db = fakeUsers({ failLookup: true });
   await assert.rejects(getOrCreateUserWith(db.client, 'users', 'apple-1'), /Failed to look up user/);
   assert.equal(db.rows.length, 0);
+});
+
+test('an insert that fails for another reason is an error, not a retry', async () => {
+  const db = fakeUsers({ insertError: { code: '42501', message: 'permission denied' } });
+  await assert.rejects(getOrCreateUserWith(db.client, 'users', 'apple-1'), /Failed to create user/);
+});
+
+test('a unique violation whose winner can no longer be found is an error', async () => {
+  // The other sign-in's row vanished between its insert and our read (deleted in the gap).
+  const db = fakeUsers({ insertError: { code: '23505', message: 'duplicate key value' } });
+  await assert.rejects(getOrCreateUserWith(db.client, 'users', 'apple-1'), /Failed to create user/);
 });
