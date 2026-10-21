@@ -26,10 +26,14 @@ struct RSymbol: View {
     let name: String
     var size: RIconSize = .regular
     var tint: Color = RColor.iconDefault
+    var weight: Font.Weight = .regular
+    /// Glyph point size as a share of the frame. Some symbols draw larger than Paper's inked
+    /// set at the same frame (↗ needs 0.66 to match its 8.5pt mark), so they set their own.
+    var glyphScale: CGFloat = 0.82 // literal-ok: SF Symbol point size maps to its frame
 
     var body: some View {
         Image(systemName: name)
-            .font(.system(size: size.points * 0.82, weight: .regular)) // literal-ok: SF Symbol point size maps to its frame
+            .font(.system(size: size.points * glyphScale, weight: weight)) // literal-ok: an SF Symbol sized to its frame, not text
             .foregroundStyle(tint)
             .frame(width: size.points, height: size.points)
             .accessibilityHidden(true)
@@ -42,11 +46,13 @@ struct RSymbol: View {
 struct RIconWell: View {
     let symbol: String
     var tint: Color = RColor.iconDefault
+    /// surface.wash, or status.dangerSubtle for a danger row (part 26).
+    var fill: Color = RColor.surfaceWash
 
     var body: some View {
         RSymbol(name: symbol, tint: tint)
             .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
-            .background(RColor.surfaceWash, in: RoundedRectangle(cornerRadius: RDimension.radiusDefault, style: .continuous))
+            .background(fill, in: RoundedRectangle(cornerRadius: RDimension.radiusDefault, style: .continuous))
     }
 }
 
@@ -56,10 +62,12 @@ struct RIconWell: View {
 struct RHairline: View {
     enum Inset { case full, afterIcon }
     var inset: Inset = .full
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        RColor.borderStrong
-            .frame(height: RDimension.sizeBorderHairline)
+        // Increase Contrast: a 1pt border.control line (part 22)
+        (contrast == .increased ? RColor.borderControl : RColor.borderStrong)
+            .frame(height: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.sizeBorderHairline)
             .padding(.leading, inset == .afterIcon ? RDimension.sizeSourceIcon + RDimension.space3 : .zero)
             .accessibilityHidden(true)
     }
