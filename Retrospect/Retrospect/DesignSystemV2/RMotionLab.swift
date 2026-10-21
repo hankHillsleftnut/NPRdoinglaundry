@@ -152,7 +152,7 @@ struct RMotionLab: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(RColor.surfaceTrack).frame(height: 2)
+                    RShape.pill.fill(RColor.surfaceTrack).frame(height: 2)
                     Circle()
                         .fill(RColor.glowPrimaryGradientBottom)
                         .frame(width: 16, height: 16)

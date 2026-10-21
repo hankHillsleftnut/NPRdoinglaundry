@@ -125,7 +125,7 @@ private struct PrimaryBody: ViewModifier {
         if enabled {
             content.rLit(pressed: pressed)
         } else {
-            content.background(RColor.surfaceControl, in: Capsule())
+            content.background(RColor.surfaceControl, in: RShape.pill)
         }
     }
 }
