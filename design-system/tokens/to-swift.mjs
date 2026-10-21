@@ -1,7 +1,7 @@
 // node design-system/tokens/to-swift.mjs [tokens.json] [out.swift]
 // M14 step 1 (process.md Part 3: "Tokens first: generated Swift from tokens.json"). One source for values:
 // this file is generated, never edited. Colours resolve light and dark from tokens.json (the
-// $extensions.retrospect.dark value; color.*, glow.* and depth.*) into dynamic UIColors; dimensions, radii, opacity, durations and type
+// $extensions.retrospect.dark value; color.*, glow.*, depth.* and each elevation.* shadow layer) into dynamic UIColors; dimensions, radii, opacity, durations and type
 // sizes become CGFloat / Double constants. Names follow the token path in lowerCamelCase.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -69,6 +69,14 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       curves.push({ name: camel(path.slice('motion.curve.'.length)), p: o.$value, doc: o.$description });
     } else if (type === 'string' && /^haptic\./.test(path)) {
       haptics.push({ name: camel(path.slice('haptic.'.length)), v: String(o.$value), doc: o.$description });
+    } else if (type === 'shadow' && /^elevation\./.test(path) && Array.isArray(o.$value)) {
+      // each layer's colour becomes RColor.shadow<Name><n>, the same names Paper uses (--color-shadow-thumb-1)
+      const dv = o.$extensions?.retrospect?.dark;
+      o.$value.forEach((layer, i) => {
+        const light = rgba(resolve(layer.color, false));
+        const dark = rgba(resolve((Array.isArray(dv) && dv[i] ? dv[i] : layer).color, true));
+        if (light && dark) colors.push({ name: camel('shadow.' + path.slice('elevation.'.length) + '.' + (i + 1)), light, dark, doc: i === 0 ? o.$description : undefined });
+      });
     } else if ((type === 'number' && /^(opacity|layer|motion\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });

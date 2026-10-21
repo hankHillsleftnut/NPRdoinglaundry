@@ -342,6 +342,36 @@ public enum RColor {
     public static let glowSuccessEdgeLit = dynamic(UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.4), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6))
     /// The inner light while focused (inset 0 0 14pt).
     public static let glowSuccessBloomLit = dynamic(UIColor(red: 0.7843, green: 0.9255, blue: 0.8078, alpha: 0.45), UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35))
+    /// Grouped content that sits just above the page.
+    public static let shadowCard1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
+    public static let shadowCard2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.04), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.04))
+    /// Floating pills and the mini-player.
+    public static let shadowRaised1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.12), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    /// Menus and popovers.
+    public static let shadowMenu1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.16), UIColor(red: 0, green: 0, blue: 0, alpha: 0.6))
+    public static let shadowMenu2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06))
+    /// Sheets and dialogs.
+    public static let shadowOverlay1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.24), UIColor(red: 0, green: 0, blue: 0, alpha: 0.7))
+    public static let shadowOverlay2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08))
+    /// The primary glow: halo plus two drops.
+    public static let shadowPrimaryAction1 = dynamic(UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.46), UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.3))
+    public static let shadowPrimaryAction2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.15), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
+    public static let shadowPrimaryAction3 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.25), UIColor(red: 0, green: 0, blue: 0, alpha: 0.25))
+    /// The secondary action.
+    public static let shadowSecondaryAction1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.15), UIColor(red: 0, green: 0, blue: 0, alpha: 0.45))
+    /// The Retrospect mark disc.
+    public static let shadowMark1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.24), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    public static let shadowMark2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.12), UIColor(red: 0, green: 0, blue: 0, alpha: 0.12))
+    /// Switch and slider knobs.
+    public static let shadowThumb1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.1), UIColor(red: 0, green: 0, blue: 0, alpha: 0.22))
+    public static let shadowThumb2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.07), UIColor(red: 0, green: 0, blue: 0, alpha: 0.07))
+    /// The faint shadow under text on the glow.
+    public static let shadowOnAccentText1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.2), UIColor(red: 0, green: 0, blue: 0, alpha: 0.2))
+    /// A solid ink action lifting off the page.
+    public static let shadowInkAction1 = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.2), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    /// A menu floating over the page: a wide soft cast and a tight contact.
+    public static let shadowPopover1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.22), UIColor(red: 0, green: 0, blue: 0, alpha: 0.6))
+    public static let shadowPopover2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08))
     /// Inner stroke, 1pt inset all round: the lit edge of paper. Paired with the outer stroke, always.
     public static let depthStrokeInner = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.85), UIColor(red: 1, green: 1, blue: 1, alpha: 0.08))
     /// The top of the inner stroke, 1pt brighter: light from above.
@@ -538,6 +568,14 @@ public enum RDimension {
     public static let sizeStepDotActive: CGFloat = 18
     /// A menu row.
     public static let sizePopoverRow: CGFloat = 50
+    /// The switch track's width.
+    public static let sizeSwitchWidth: CGFloat = 51
+    /// The switch track's height.
+    public static let sizeSwitchHeight: CGFloat = 31
+    /// The switch thumb (track height − 2 × size.border.ring).
+    public static let sizeSwitchThumb: CGFloat = 27
+    /// The thumb's width while held: it stretches toward its travel.
+    public static let sizeSwitchThumbHeld: CGFloat = 33
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
