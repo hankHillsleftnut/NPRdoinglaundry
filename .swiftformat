@@ -9,3 +9,4 @@
 --disable redundantReturn,wrapMultilineStatementBraces,blankLinesAtStartOfScope,wrapFunctionBodies
 --ifdef no-indent
 --minversion 0.64.0
+--exclude Retrospect/Retrospect/DesignSystemV2/Generated
