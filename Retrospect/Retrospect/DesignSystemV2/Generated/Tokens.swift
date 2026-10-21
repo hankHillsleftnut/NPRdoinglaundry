@@ -9,15 +9,31 @@ private func dynamic(_ light: UIColor, _ dark: UIColor) -> Color {
 /// Semantic colours. Each resolves to its light or dark value from tokens.json.
 public enum RColor {
     /// The page behind everything.
-    public static let backgroundCanvas = dynamic(UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1), UIColor(red: 0.0824, green: 0.0784, blue: 0.0706, alpha: 1))
+    public static let backgroundCanvas = dynamic(
+        UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1),
+        UIColor(red: 0.0824, green: 0.0784, blue: 0.0706, alpha: 1)
+    )
     /// Anything that floats above the page: mini-player, sheets, floating pills.
-    public static let backgroundRaised = dynamic(UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1), UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1))
+    public static let backgroundRaised = dynamic(
+        UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1),
+        UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1)
+    )
     /// Wells you type or search into.
-    public static let backgroundSunken = dynamic(UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1), UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1))
-    /// What sits behind something lifted over it: the page behind a sheet, the journal drawer behind its sliding page, a segmented track behind its thumb. The same as surface.control in light; below the canvas in dark, so the thing on top reads as raised.
-    public static let backgroundUnderlay = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1))
+    public static let backgroundSunken = dynamic(
+        UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1),
+        UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1)
+    )
+    /// What sits behind something lifted over it: the page behind a sheet, the journal drawer behind its sliding page, a segmented track behind its thumb. The
+    /// same as surface.control in light; below the canvas in dark, so the thing on top reads as raised.
+    public static let backgroundUnderlay = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1)
+    )
     /// The rare block that flips light and dark.
-    public static let backgroundInverse = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1))
+    public static let backgroundInverse = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1)
+    )
     /// Dims the page behind a sheet or dialog.
     public static let backgroundScrim = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.4), UIColor(red: 0, green: 0, blue: 0, alpha: 0.6))
     /// The fill of a text field or composer.
@@ -25,43 +41,95 @@ public enum RColor {
     /// The lightest dim behind a menu: enough to separate, not enough to feel modal.
     public static let backgroundVeil = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.06), UIColor(red: 0, green: 0, blue: 0, alpha: 0.3))
     /// Quiet grouping of related content, one step off the canvas.
-    public static let surfaceSubtle = dynamic(UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1), UIColor(red: 0.1098, green: 0.1059, blue: 0.0941, alpha: 1))
+    public static let surfaceSubtle = dynamic(
+        UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1),
+        UIColor(red: 0.1098, green: 0.1059, blue: 0.0941, alpha: 1)
+    )
     /// Ordinary buttons, pills and round controls.
-    public static let surfaceControl = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let surfaceControl = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// An ordinary control while pressed.
-    public static let surfaceControlPressed = dynamic(UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1), UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1))
+    public static let surfaceControlPressed = dynamic(
+        UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1),
+        UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1)
+    )
     /// The strongest neutral fill: selected segment, active chip.
-    public static let surfaceStrong = dynamic(UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1), UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1))
+    public static let surfaceStrong = dynamic(
+        UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1),
+        UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1)
+    )
     /// The second-most-important action (the cream button).
-    public static let surfaceSecondaryAction = dynamic(UIColor(red: 0.9686, green: 0.9529, blue: 0.9333, alpha: 1), UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1))
+    public static let surfaceSecondaryAction = dynamic(
+        UIColor(red: 0.9686, green: 0.9529, blue: 0.9333, alpha: 1),
+        UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1)
+    )
     /// The empty part of any progress, scrubber or slider.
-    public static let surfaceTrack = dynamic(UIColor(red: 0.9137, green: 0.9059, blue: 0.8863, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let surfaceTrack = dynamic(
+        UIColor(red: 0.9137, green: 0.9059, blue: 0.8863, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// The filled part of a neutral progress or scrubber.
-    public static let surfaceTrackFill = dynamic(UIColor(red: 0.6196, green: 0.6078, blue: 0.5922, alpha: 1), UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1))
+    public static let surfaceTrackFill = dynamic(
+        UIColor(red: 0.6196, green: 0.6078, blue: 0.5922, alpha: 1),
+        UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1)
+    )
     /// The knob of a switch or slider.
     public static let surfaceThumb = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 1))
     /// Placeholder blocks while content loads.
-    public static let surfaceSkeleton = dynamic(UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1), UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1))
+    public static let surfaceSkeleton = dynamic(
+        UIColor(red: 0.9373, green: 0.9255, blue: 0.9059, alpha: 1),
+        UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1)
+    )
     /// The moving highlight across a placeholder.
-    public static let surfaceSkeletonShine = dynamic(UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let surfaceSkeletonShine = dynamic(
+        UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// A translucent flat tint for wash-level components: it lets the page show through, so it reads as part of the page, not on it.
     public static let surfaceWash = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06), UIColor(red: 1, green: 1, blue: 1, alpha: 0.08))
     /// A wash-level component while pressed, and sunken fills (search, recesses): a shade over the parent, darker than it in both modes.
-    public static let surfaceWashPressed = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.11), UIColor(red: 0, green: 0, blue: 0, alpha: 0.3))
-    /// A paper surface lifted off a tinted or raised parent: the pills and cards inside a wash card, a sheet or a control. The canvas colour in light; one step up the ladder in dark, so it never reads as a hole.
-    public static let surfaceLifted = dynamic(UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let surfaceWashPressed = dynamic(
+        UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.11),
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.3)
+    )
+    /// A paper surface lifted off a tinted or raised parent: the pills and cards inside a wash card, a sheet or a control. The canvas colour in light; one step
+    /// up the ladder in dark, so it never reads as a hole.
+    public static let surfaceLifted = dynamic(
+        UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// Headlines and the words people read.
-    public static let textPrimary = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let textPrimary = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// Supporting sentences under a headline. (AA: 5.8:1 light, 7.5:1 dark.)
-    public static let textSecondary = dynamic(UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let textSecondary = dynamic(
+        UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.)
-    public static let textLabel = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let textLabel = dynamic(
+        UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// Hints and the least important metadata. (AA: 4.6:1; never on a control fill.)
-    public static let textTertiary = dynamic(UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
+    public static let textTertiary = dynamic(
+        UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1),
+        UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1)
+    )
     /// Anything that cannot be used right now.
-    public static let textDisabled = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let textDisabled = dynamic(
+        UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// Text on background.inverse.
-    public static let textInverse = dynamic(UIColor(red: 0.9843, green: 0.9804, blue: 0.9725, alpha: 1), UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1))
+    public static let textInverse = dynamic(
+        UIColor(red: 0.9843, green: 0.9804, blue: 0.9725, alpha: 1),
+        UIColor(red: 0.0588, green: 0.0549, blue: 0.051, alpha: 1)
+    )
     /// Text and icons on the primary (sky) action.
     public static let textOnAccent = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 1))
     /// Text on a destructive action.
@@ -69,181 +137,415 @@ public enum RColor {
     /// Inline links; the accent, made readable as text. (AA: 6.2:1.)
     public static let textLink = dynamic(UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// Icons that carry meaning.
-    public static let iconDefault = dynamic(UIColor(red: 0.1176, green: 0.1176, blue: 0.1176, alpha: 1), UIColor(red: 0.7961, green: 0.7804, blue: 0.749, alpha: 1))
+    public static let iconDefault = dynamic(
+        UIColor(red: 0.1176, green: 0.1176, blue: 0.1176, alpha: 1),
+        UIColor(red: 0.7961, green: 0.7804, blue: 0.749, alpha: 1)
+    )
     /// Icons that only decorate or sit at rest (the paywall play glyph). (3:1 for icons that mean something; purely decorative ones may use border.strong.)
-    public static let iconMuted = dynamic(UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1), UIColor(red: 0.4706, green: 0.4588, blue: 0.4353, alpha: 1))
+    public static let iconMuted = dynamic(
+        UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1),
+        UIColor(red: 0.4706, green: 0.4588, blue: 0.4353, alpha: 1)
+    )
     /// The Retrospect mark when lifted on a surface.
-    public static let iconMark = dynamic(UIColor(red: 0.7294, green: 0.7216, blue: 0.7098, alpha: 1), UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1))
+    public static let iconMark = dynamic(
+        UIColor(red: 0.7294, green: 0.7216, blue: 0.7098, alpha: 1),
+        UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1)
+    )
     /// The rare divider between groups.
-    public static let borderSubtle = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let borderSubtle = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// Outlines of fields and cards that need an edge.
-    public static let borderStrong = dynamic(UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let borderStrong = dynamic(
+        UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// The outline of an unchecked checkbox, radio or off switch. (3.3:1 control edge.)
-    public static let borderControl = dynamic(UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1), UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1))
+    public static let borderControl = dynamic(
+        UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1),
+        UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1)
+    )
     /// The keyboard and accessibility focus ring. (4:1 focus indicator.)
     public static let borderFocus = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// The white top-lit edge on raised paper objects.
     public static let borderHighlight = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.9), UIColor(red: 1, green: 1, blue: 1, alpha: 0.12))
     /// The warm outer ring around the secondary action.
-    public static let borderSecondaryRing = dynamic(UIColor(red: 0.8941, green: 0.8588, blue: 0.8078, alpha: 1), UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1))
+    public static let borderSecondaryRing = dynamic(
+        UIColor(red: 0.8941, green: 0.8588, blue: 0.8078, alpha: 1),
+        UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1)
+    )
     /// A text field while you are typing in it.
-    public static let borderFieldFocus = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let borderFieldFocus = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// Solid dark actions, when one must read as ink rather than sky.
-    public static let inkDefault = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let inkDefault = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// Ink action while pressed.
-    public static let inkPressed = dynamic(UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 1), UIColor(red: 0.7961, green: 0.7804, blue: 0.749, alpha: 1))
+    public static let inkPressed = dynamic(
+        UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 1),
+        UIColor(red: 0.7961, green: 0.7804, blue: 0.749, alpha: 1)
+    )
     /// The one accent: the single most important thing on a screen.
-    public static let accentDefault = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let accentDefault = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// The accent while pressed.
     public static let accentPressed = dynamic(UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// A quiet accent wash: selected, highlighted, now playing.
-    public static let accentSubtle = dynamic(UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16))
+    public static let accentSubtle = dynamic(
+        UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16)
+    )
     /// The accent used as text, with readable contrast. (AA: 6.5:1 on accent.subtle.)
     public static let accentText = dynamic(UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// The outline of a selected card, plan or option. (4:1: a selection must be visible without colour vision.)
     public static let accentBorder = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// Something worked.
-    public static let statusSuccess = dynamic(UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1), UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1))
+    public static let statusSuccess = dynamic(
+        UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1),
+        UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1)
+    )
     /// Background for a success message.
-    public static let statusSuccessSubtle = dynamic(UIColor(red: 0.9137, green: 0.949, blue: 0.902, alpha: 1), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 1))
+    public static let statusSuccessSubtle = dynamic(
+        UIColor(red: 0.9137, green: 0.949, blue: 0.902, alpha: 1),
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 1)
+    )
     /// Success words.
-    public static let statusSuccessText = dynamic(UIColor(red: 0.2078, green: 0.3529, blue: 0.1843, alpha: 1), UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 1))
+    public static let statusSuccessText = dynamic(
+        UIColor(red: 0.2078, green: 0.3529, blue: 0.1843, alpha: 1),
+        UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 1)
+    )
     /// Needs attention soon.
-    public static let statusWarning = dynamic(UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 1), UIColor(red: 0.949, green: 0.7216, blue: 0.2941, alpha: 1))
+    public static let statusWarning = dynamic(
+        UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 1),
+        UIColor(red: 0.949, green: 0.7216, blue: 0.2941, alpha: 1)
+    )
     /// Background for a warning.
-    public static let statusWarningSubtle = dynamic(UIColor(red: 0.9843, green: 0.9412, blue: 0.8549, alpha: 1), UIColor(red: 0.1804, green: 0.1333, blue: 0.0353, alpha: 1))
+    public static let statusWarningSubtle = dynamic(
+        UIColor(red: 0.9843, green: 0.9412, blue: 0.8549, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1333, blue: 0.0353, alpha: 1)
+    )
     /// Warning words.
-    public static let statusWarningText = dynamic(UIColor(red: 0.5412, green: 0.3529, blue: 0.0706, alpha: 1), UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1))
+    public static let statusWarningText = dynamic(
+        UIColor(red: 0.5412, green: 0.3529, blue: 0.0706, alpha: 1),
+        UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1)
+    )
     /// Something failed, or will be destroyed.
-    public static let statusDanger = dynamic(UIColor(red: 0.651, green: 0.0902, blue: 0.0706, alpha: 1), UIColor(red: 0.9412, green: 0.3922, blue: 0.3686, alpha: 1))
+    public static let statusDanger = dynamic(
+        UIColor(red: 0.651, green: 0.0902, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9412, green: 0.3922, blue: 0.3686, alpha: 1)
+    )
     /// A destructive action while pressed.
-    public static let statusDangerPressed = dynamic(UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 1), UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 1))
+    public static let statusDangerPressed = dynamic(
+        UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 1),
+        UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 1)
+    )
     /// Background for an error.
-    public static let statusDangerSubtle = dynamic(UIColor(red: 0.9765, green: 0.902, blue: 0.8941, alpha: 1), UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 1))
+    public static let statusDangerSubtle = dynamic(
+        UIColor(red: 0.9765, green: 0.902, blue: 0.8941, alpha: 1),
+        UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 1)
+    )
     /// Error words.
-    public static let statusDangerText = dynamic(UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 1), UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 1))
+    public static let statusDangerText = dynamic(
+        UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 1),
+        UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 1)
+    )
     /// Neutral information: syncing, updated, tip.
     public static let statusInfo = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
     /// Background for an information message.
-    public static let statusInfoSubtle = dynamic(UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16))
+    public static let statusInfoSubtle = dynamic(
+        UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16)
+    )
     /// Where an episode, show or source has no image of its own.
-    public static let contentArtworkFallback = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let contentArtworkFallback = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// A soft tint behind a person's initials (1 of 4).
-    public static let contentPersonTint1 = dynamic(UIColor(red: 0.9098, green: 0.8627, blue: 0.7961, alpha: 1), UIColor(red: 0.2275, green: 0.1922, blue: 0.1569, alpha: 1))
+    public static let contentPersonTint1 = dynamic(
+        UIColor(red: 0.9098, green: 0.8627, blue: 0.7961, alpha: 1),
+        UIColor(red: 0.2275, green: 0.1922, blue: 0.1569, alpha: 1)
+    )
     /// A soft tint behind a person's initials (2 of 4).
-    public static let contentPersonTint2 = dynamic(UIColor(red: 0.851, green: 0.8941, blue: 0.8549, alpha: 1), UIColor(red: 0.1647, green: 0.2, blue: 0.1686, alpha: 1))
+    public static let contentPersonTint2 = dynamic(
+        UIColor(red: 0.851, green: 0.8941, blue: 0.8549, alpha: 1),
+        UIColor(red: 0.1647, green: 0.2, blue: 0.1686, alpha: 1)
+    )
     /// A soft tint behind a person's initials (3 of 4).
-    public static let contentPersonTint3 = dynamic(UIColor(red: 0.8902, green: 0.8549, blue: 0.902, alpha: 1), UIColor(red: 0.1961, green: 0.1686, blue: 0.2078, alpha: 1))
+    public static let contentPersonTint3 = dynamic(
+        UIColor(red: 0.8902, green: 0.8549, blue: 0.902, alpha: 1),
+        UIColor(red: 0.1961, green: 0.1686, blue: 0.2078, alpha: 1)
+    )
     /// A soft tint behind a person's initials (4 of 4).
-    public static let contentPersonTint4 = dynamic(UIColor(red: 0.8627, green: 0.8902, blue: 0.9176, alpha: 1), UIColor(red: 0.1608, green: 0.1882, blue: 0.2275, alpha: 1))
+    public static let contentPersonTint4 = dynamic(
+        UIColor(red: 0.8627, green: 0.8902, blue: 0.9176, alpha: 1),
+        UIColor(red: 0.1608, green: 0.1882, blue: 0.2275, alpha: 1)
+    )
     /// A switch that is on.
-    public static let controlSwitchOn = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let controlSwitchOn = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// The knob of a switch that is on.
     public static let controlSwitchOnThumb = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 1))
     /// The scroll indicator where we draw our own.
-    public static let controlScrollIndicator = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.4), UIColor(red: 1, green: 1, blue: 1, alpha: 0.5))
+    public static let controlScrollIndicator = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.4),
+        UIColor(red: 1, green: 1, blue: 1, alpha: 0.5)
+    )
     /// What blurred surfaces become when Reduce Transparency is on.
-    public static let materialReducedTransparency = dynamic(UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1), UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1))
+    public static let materialReducedTransparency = dynamic(
+        UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1),
+        UIColor(red: 0.1412, green: 0.1333, blue: 0.1216, alpha: 1)
+    )
     /// Selected text highlight.
-    public static let selection = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16))
+    public static let selection = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16)
+    )
     /// The mark beside something Retrospect guessed (not said by you).
-    public static let inferenceMarker = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let inferenceMarker = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// The card a guess sits on.
-    public static let inferenceSurface = dynamic(UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1), UIColor(red: 0.1098, green: 0.1059, blue: 0.0941, alpha: 1))
+    public static let inferenceSurface = dynamic(
+        UIColor(red: 0.9765, green: 0.9686, blue: 0.9608, alpha: 1),
+        UIColor(red: 0.1098, green: 0.1059, blue: 0.0941, alpha: 1)
+    )
     /// The dashed edge of a guess.
-    public static let inferenceBorder = dynamic(UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1), UIColor(red: 0.4706, green: 0.4588, blue: 0.4353, alpha: 1))
+    public static let inferenceBorder = dynamic(
+        UIColor(red: 0.5294, green: 0.5176, blue: 0.5059, alpha: 1),
+        UIColor(red: 0.4706, green: 0.4588, blue: 0.4353, alpha: 1)
+    )
     /// A guess it is fairly sure of.
-    public static let confidenceHigh = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let confidenceHigh = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// A guess it is unsure of.
-    public static let confidenceMedium = dynamic(UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let confidenceMedium = dynamic(
+        UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// A long shot, shown only when asked.
-    public static let confidenceLow = dynamic(UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
+    public static let confidenceLow = dynamic(
+        UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1),
+        UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1)
+    )
     /// You, at the centre of the map.
-    public static let mapNodeSelf = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1))
+    public static let mapNodeSelf = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1)
+    )
     /// A person.
     public static let mapNodePerson = dynamic(UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 1), UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 1))
     /// A goal.
-    public static let mapNodeGoal = dynamic(UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 1), UIColor(red: 0.1647, green: 0.2902, blue: 0.1451, alpha: 1))
+    public static let mapNodeGoal = dynamic(
+        UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 1),
+        UIColor(red: 0.1647, green: 0.2902, blue: 0.1451, alpha: 1)
+    )
     /// A theme or recurring topic.
-    public static let mapNodeTheme = dynamic(UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1), UIColor(red: 0.1804, green: 0.1333, blue: 0.0353, alpha: 1))
+    public static let mapNodeTheme = dynamic(
+        UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1333, blue: 0.0353, alpha: 1)
+    )
     /// A place.
-    public static let mapNodePlace = dynamic(UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let mapNodePlace = dynamic(
+        UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// A source (an app or document).
-    public static let mapNodeSource = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1))
+    public static let mapNodeSource = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1)
+    )
     /// The name on a node.
-    public static let mapNodeLabel = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let mapNodeLabel = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// A link between two things.
-    public static let mapEdge = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let mapEdge = dynamic(
+        UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// A link that shows up often.
-    public static let mapEdgeStrong = dynamic(UIColor(red: 0.4863, green: 0.4745, blue: 0.4588, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let mapEdgeStrong = dynamic(
+        UIColor(red: 0.4863, green: 0.4745, blue: 0.4588, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// The ring around the thing you tapped.
-    public static let mapSelectedRing = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let mapSelectedRing = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// You: the brightest star, at the centre.
-    public static let mapStarSelfCore = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let mapStarSelfCore = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// The light around you.
-    public static let mapStarSelfHalo = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.3), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 0.5))
+    public static let mapStarSelfHalo = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.3),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 0.5)
+    )
     /// A person.
-    public static let mapStarPersonCore = dynamic(UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let mapStarPersonCore = dynamic(
+        UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// The light around a person.
-    public static let mapStarPersonHalo = dynamic(UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 0.26), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.42))
+    public static let mapStarPersonHalo = dynamic(
+        UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 0.26),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.42)
+    )
     /// A place.
-    public static let mapStarPlaceCore = dynamic(UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1), UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1))
+    public static let mapStarPlaceCore = dynamic(
+        UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1),
+        UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1)
+    )
     /// The light around a place.
-    public static let mapStarPlaceHalo = dynamic(UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 0.22), UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 0.4))
+    public static let mapStarPlaceHalo = dynamic(
+        UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 0.22),
+        UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 0.4)
+    )
     /// A goal.
-    public static let mapStarGoalCore = dynamic(UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 1), UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1))
+    public static let mapStarGoalCore = dynamic(
+        UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 1),
+        UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1)
+    )
     /// The light around a goal.
-    public static let mapStarGoalHalo = dynamic(UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 0.24), UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 0.4))
+    public static let mapStarGoalHalo = dynamic(
+        UIColor(red: 0.7176, green: 0.4745, blue: 0.1216, alpha: 0.24),
+        UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 0.4)
+    )
     /// Something you wrote or saved.
-    public static let mapStarWritingCore = dynamic(UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let mapStarWritingCore = dynamic(
+        UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// The light around something you wrote.
-    public static let mapStarWritingHalo = dynamic(UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 0.14), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 0.32))
+    public static let mapStarWritingHalo = dynamic(
+        UIColor(red: 0.298, green: 0.2902, blue: 0.2745, alpha: 0.14),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 0.32)
+    )
     /// Background stars: things not yet connected. Always with an opacity token.
-    public static let mapStarField = dynamic(UIColor(red: 0.6275, green: 0.6078, blue: 0.5922, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let mapStarField = dynamic(
+        UIColor(red: 0.6275, green: 0.6078, blue: 0.5922, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// The app is listening to you.
-    public static let voiceListening = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let voiceListening = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// The app is talking.
-    public static let voiceSpeaking = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let voiceSpeaking = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// Waveform bars at rest.
-    public static let voiceWaveIdle = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let voiceWaveIdle = dynamic(
+        UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.)
-    public static let playerProgress = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let playerProgress = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// How much has loaded ahead.
-    public static let playerBuffered = dynamic(UIColor(red: 0.6196, green: 0.6078, blue: 0.5922, alpha: 1), UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1))
+    public static let playerBuffered = dynamic(
+        UIColor(red: 0.6196, green: 0.6078, blue: 0.5922, alpha: 1),
+        UIColor(red: 0.5412, green: 0.5255, blue: 0.498, alpha: 1)
+    )
     /// A chapter tick on the progress bar.
     public static let playerChapterMark = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 0.0824, green: 0.0784, blue: 0.0706, alpha: 1))
     /// What you wrote or said.
-    public static let messageMine = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    public static let messageMine = dynamic(
+        UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1),
+        UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1)
+    )
     /// What Retrospect wrote (no bubble).
-    public static let messageTheirs = dynamic(UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1), UIColor(red: 0.0824, green: 0.0784, blue: 0.0706, alpha: 1))
+    public static let messageTheirs = dynamic(
+        UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1),
+        UIColor(red: 0.0824, green: 0.0784, blue: 0.0706, alpha: 1)
+    )
     /// The date above an entry or a day in the list.
-    public static let entryDate = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let entryDate = dynamic(
+        UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// Something Retrospect suggests doing, waiting for your yes.
-    public static let proposalSurface = dynamic(UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16))
+    public static let proposalSurface = dynamic(
+        UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16)
+    )
     /// The edge of a suggestion awaiting you.
-    public static let proposalBorder = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let proposalBorder = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// A record that something was done.
-    public static let receiptSurface = dynamic(UIColor(red: 0.9137, green: 0.949, blue: 0.902, alpha: 1), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 1))
+    public static let receiptSurface = dynamic(
+        UIColor(red: 0.9137, green: 0.949, blue: 0.902, alpha: 1),
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 1)
+    )
     /// What you said you would do.
-    public static let goalSaid = dynamic(UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    public static let goalSaid = dynamic(
+        UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1),
+        UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1)
+    )
     /// What you actually did.
     public static let goalDid = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// A source that is connected and up to date.
-    public static let sourceConnected = dynamic(UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1), UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1))
+    public static let sourceConnected = dynamic(
+        UIColor(red: 0.2745, green: 0.4549, blue: 0.2431, alpha: 1),
+        UIColor(red: 0.498, green: 0.7608, blue: 0.5412, alpha: 1)
+    )
     /// A source that is reading now. (3.6:1; always with the word in its accessibility label.)
-    public static let sourceSyncing = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
+    public static let sourceSyncing = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1)
+    )
     /// A source that needs you (expired, failed).
-    public static let sourceProblem = dynamic(UIColor(red: 0.651, green: 0.0902, blue: 0.0706, alpha: 1), UIColor(red: 0.9412, green: 0.3922, blue: 0.3686, alpha: 1))
+    public static let sourceProblem = dynamic(
+        UIColor(red: 0.651, green: 0.0902, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9412, green: 0.3922, blue: 0.3686, alpha: 1)
+    )
     /// A source that is coming soon.
-    public static let sourceUnavailable = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    public static let sourceUnavailable = dynamic(
+        UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1),
+        UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1)
+    )
     /// The plan you have chosen.
-    public static let planSelectedBorder = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1))
+    public static let planSelectedBorder = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1)
+    )
     /// The "best value" tag.
-    public static let planHighlight = dynamic(UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16))
+    public static let planHighlight = dynamic(
+        UIColor(red: 0.9333, green: 0.9725, blue: 1, alpha: 1),
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.16)
+    )
     /// The step you are on.
-    public static let stepActive = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
+    public static let stepActive = dynamic(
+        UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1),
+        UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1)
+    )
     /// Steps before and after.
-    public static let stepInactive = dynamic(UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1), UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1))
+    public static let stepInactive = dynamic(
+        UIColor(red: 0.8549, green: 0.8392, blue: 0.8157, alpha: 1),
+        UIColor(red: 0.2275, green: 0.2196, blue: 0.2039, alpha: 1)
+    )
     /// Sign in with Apple, filled (Apple's standard black).
     public static let signInAppleFill = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 1))
     /// Label and logo on the Apple button.
@@ -251,97 +553,208 @@ public enum RColor {
     /// Continue with Google: white and raised (founder: no dark border).
     public static let signInGoogleFill = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 0.0745, green: 0.0745, blue: 0.0784, alpha: 1))
     /// Label on the Google button.
-    public static let signInGoogleLabel = dynamic(UIColor(red: 0.1216, green: 0.1216, blue: 0.1216, alpha: 1), UIColor(red: 0.8902, green: 0.8902, blue: 0.8902, alpha: 1))
+    public static let signInGoogleLabel = dynamic(
+        UIColor(red: 0.1216, green: 0.1216, blue: 0.1216, alpha: 1),
+        UIColor(red: 0.8902, green: 0.8902, blue: 0.8902, alpha: 1)
+    )
     /// Top of the lit gradient.
-    public static let glowPrimaryGradientTop = dynamic(UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1), UIColor(red: 0.2275, green: 0.6627, blue: 0.9333, alpha: 1))
+    public static let glowPrimaryGradientTop = dynamic(
+        UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1),
+        UIColor(red: 0.2275, green: 0.6627, blue: 0.9333, alpha: 1)
+    )
     /// Bottom of the lit gradient.
-    public static let glowPrimaryGradientBottom = dynamic(UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 1), UIColor(red: 0.1333, green: 0.5294, blue: 0.7804, alpha: 1))
+    public static let glowPrimaryGradientBottom = dynamic(
+        UIColor(red: 0.1569, green: 0.6, blue: 0.8745, alpha: 1),
+        UIColor(red: 0.1333, green: 0.5294, blue: 0.7804, alpha: 1)
+    )
     /// The thin outer ring that separates it from the page.
-    public static let glowPrimaryRing = dynamic(UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.4), UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.3))
+    public static let glowPrimaryRing = dynamic(
+        UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.4),
+        UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.3)
+    )
     /// The white edge lit from above, fading downward.
     public static let glowPrimaryRim = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.5), UIColor(red: 1, green: 1, blue: 1, alpha: 0.3))
     /// The coloured bloom around it.
-    public static let glowPrimaryHalo = dynamic(UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.46), UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.3))
+    public static let glowPrimaryHalo = dynamic(
+        UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.46),
+        UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.3)
+    )
     /// Top of the gradient on focus or hover.
-    public static let glowPrimaryGradientTopLit = dynamic(UIColor(red: 0.3608, green: 0.7608, blue: 1, alpha: 1), UIColor(red: 0.302, green: 0.7098, blue: 0.9608, alpha: 1))
+    public static let glowPrimaryGradientTopLit = dynamic(
+        UIColor(red: 0.3608, green: 0.7608, blue: 1, alpha: 1),
+        UIColor(red: 0.302, green: 0.7098, blue: 0.9608, alpha: 1)
+    )
     /// Bottom of the gradient on focus or hover.
-    public static let glowPrimaryGradientBottomLit = dynamic(UIColor(red: 0.2, green: 0.6392, blue: 0.9098, alpha: 1), UIColor(red: 0.1647, green: 0.5765, blue: 0.8314, alpha: 1))
+    public static let glowPrimaryGradientBottomLit = dynamic(
+        UIColor(red: 0.2, green: 0.6392, blue: 0.9098, alpha: 1),
+        UIColor(red: 0.1647, green: 0.5765, blue: 0.8314, alpha: 1)
+    )
     /// Top of the gradient while pressed.
-    public static let glowPrimaryGradientTopPressed = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.1647, green: 0.6039, blue: 0.851, alpha: 1))
+    public static let glowPrimaryGradientTopPressed = dynamic(
+        UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1),
+        UIColor(red: 0.1647, green: 0.6039, blue: 0.851, alpha: 1)
+    )
     /// Bottom of the gradient while pressed.
-    public static let glowPrimaryGradientBottomPressed = dynamic(UIColor(red: 0.1216, green: 0.5451, blue: 0.8, alpha: 1), UIColor(red: 0.1098, green: 0.4706, blue: 0.6902, alpha: 1))
+    public static let glowPrimaryGradientBottomPressed = dynamic(
+        UIColor(red: 0.1216, green: 0.5451, blue: 0.8, alpha: 1),
+        UIColor(red: 0.1098, green: 0.4706, blue: 0.6902, alpha: 1)
+    )
     /// Label and icon on the glow.
     public static let glowPrimaryForeground = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 1))
     /// The soft shadow the lit action casts on the page below it.
     public static let glowPrimaryCast = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.18), UIColor(red: 0, green: 0, blue: 0, alpha: 0.45))
     /// The darker lower inner edge that makes the body read as a lit, rounded object (three insets: -0.5/-1/-1.5).
-    public static let glowPrimaryEdge = dynamic(UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 0.55), UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6))
+    public static let glowPrimaryEdge = dynamic(
+        UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 0.55),
+        UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6)
+    )
     /// The soft light inside the body (inset 0 0 12pt).
-    public static let glowPrimaryBloom = dynamic(UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.45), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.25))
+    public static let glowPrimaryBloom = dynamic(
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.45),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.25)
+    )
     /// The lower edge while focused (the lit layer).
-    public static let glowPrimaryEdgeLit = dynamic(UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 0.45), UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6))
+    public static let glowPrimaryEdgeLit = dynamic(
+        UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 0.45),
+        UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6)
+    )
     /// The inner light while focused (inset 0 0 14pt).
-    public static let glowPrimaryBloomLit = dynamic(UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 0.55), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.45))
+    public static let glowPrimaryBloomLit = dynamic(
+        UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 0.55),
+        UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.45)
+    )
     /// Top of the lit gradient.
-    public static let glowDangerGradientTop = dynamic(UIColor(red: 0.7686, green: 0.1686, blue: 0.1686, alpha: 1), UIColor(red: 0.9529, green: 0.4157, blue: 0.4353, alpha: 1))
+    public static let glowDangerGradientTop = dynamic(
+        UIColor(red: 0.7686, green: 0.1686, blue: 0.1686, alpha: 1),
+        UIColor(red: 0.9529, green: 0.4157, blue: 0.4353, alpha: 1)
+    )
     /// Bottom of the lit gradient.
-    public static let glowDangerGradientBottom = dynamic(UIColor(red: 0.6392, green: 0.1216, blue: 0.1216, alpha: 1), UIColor(red: 0.8549, green: 0.2784, blue: 0.298, alpha: 1))
+    public static let glowDangerGradientBottom = dynamic(
+        UIColor(red: 0.6392, green: 0.1216, blue: 0.1216, alpha: 1),
+        UIColor(red: 0.8549, green: 0.2784, blue: 0.298, alpha: 1)
+    )
     /// The thin outer ring that separates it from the page.
-    public static let glowDangerRing = dynamic(UIColor(red: 0.6392, green: 0.1216, blue: 0.1216, alpha: 0.4), UIColor(red: 0.8549, green: 0.2784, blue: 0.298, alpha: 0.3))
+    public static let glowDangerRing = dynamic(
+        UIColor(red: 0.6392, green: 0.1216, blue: 0.1216, alpha: 0.4),
+        UIColor(red: 0.8549, green: 0.2784, blue: 0.298, alpha: 0.3)
+    )
     /// The white edge lit from above, fading downward.
     public static let glowDangerRim = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.4), UIColor(red: 1, green: 1, blue: 1, alpha: 0.5))
     /// The coloured bloom around it.
-    public static let glowDangerHalo = dynamic(UIColor(red: 0.7686, green: 0.1686, blue: 0.1686, alpha: 0.36), UIColor(red: 0.9529, green: 0.4157, blue: 0.4353, alpha: 0.25))
+    public static let glowDangerHalo = dynamic(
+        UIColor(red: 0.7686, green: 0.1686, blue: 0.1686, alpha: 0.36),
+        UIColor(red: 0.9529, green: 0.4157, blue: 0.4353, alpha: 0.25)
+    )
     /// Top of the gradient on focus or hover.
-    public static let glowDangerGradientTopLit = dynamic(UIColor(red: 0.8157, green: 0.2, blue: 0.2, alpha: 1), UIColor(red: 0.9765, green: 0.5098, blue: 0.5216, alpha: 1))
+    public static let glowDangerGradientTopLit = dynamic(
+        UIColor(red: 0.8157, green: 0.2, blue: 0.2, alpha: 1),
+        UIColor(red: 0.9765, green: 0.5098, blue: 0.5216, alpha: 1)
+    )
     /// Bottom of the gradient on focus or hover.
-    public static let glowDangerGradientBottomLit = dynamic(UIColor(red: 0.6902, green: 0.1412, blue: 0.1412, alpha: 1), UIColor(red: 0.8941, green: 0.3529, blue: 0.3725, alpha: 1))
+    public static let glowDangerGradientBottomLit = dynamic(
+        UIColor(red: 0.6902, green: 0.1412, blue: 0.1412, alpha: 1),
+        UIColor(red: 0.8941, green: 0.3529, blue: 0.3725, alpha: 1)
+    )
     /// Top of the gradient while pressed.
-    public static let glowDangerGradientTopPressed = dynamic(UIColor(red: 0.6588, green: 0.1294, blue: 0.1294, alpha: 1), UIColor(red: 0.9255, green: 0.3882, blue: 0.4078, alpha: 1))
+    public static let glowDangerGradientTopPressed = dynamic(
+        UIColor(red: 0.6588, green: 0.1294, blue: 0.1294, alpha: 1),
+        UIColor(red: 0.9255, green: 0.3882, blue: 0.4078, alpha: 1)
+    )
     /// Bottom of the gradient while pressed.
-    public static let glowDangerGradientBottomPressed = dynamic(UIColor(red: 0.5412, green: 0.0941, blue: 0.0941, alpha: 1), UIColor(red: 0.8235, green: 0.2667, blue: 0.2863, alpha: 1))
+    public static let glowDangerGradientBottomPressed = dynamic(
+        UIColor(red: 0.5412, green: 0.0941, blue: 0.0941, alpha: 1),
+        UIColor(red: 0.8235, green: 0.2667, blue: 0.2863, alpha: 1)
+    )
     /// Label and icon on the glow.
     public static let glowDangerForeground = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1))
     /// The soft shadow the lit action casts on the page below it.
     public static let glowDangerCast = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.18), UIColor(red: 0, green: 0, blue: 0, alpha: 0.45))
     /// The darker lower inner edge that makes the body read as a lit, rounded object (three insets: -0.5/-1/-1.5).
-    public static let glowDangerEdge = dynamic(UIColor(red: 0.4549, green: 0.0588, blue: 0.0431, alpha: 0.55), UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6))
+    public static let glowDangerEdge = dynamic(
+        UIColor(red: 0.4549, green: 0.0588, blue: 0.0431, alpha: 0.55),
+        UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6)
+    )
     /// The soft light inside the body (inset 0 0 12pt).
-    public static let glowDangerBloom = dynamic(UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.35), UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.2))
+    public static let glowDangerBloom = dynamic(
+        UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.35),
+        UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.2)
+    )
     /// The lower edge while focused (the lit layer).
-    public static let glowDangerEdgeLit = dynamic(UIColor(red: 0.4549, green: 0.0588, blue: 0.0431, alpha: 0.45), UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6))
+    public static let glowDangerEdgeLit = dynamic(
+        UIColor(red: 0.4549, green: 0.0588, blue: 0.0431, alpha: 0.45),
+        UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6)
+    )
     /// The inner light while focused (inset 0 0 14pt).
-    public static let glowDangerBloomLit = dynamic(UIColor(red: 1, green: 0.6667, blue: 0.651, alpha: 0.45), UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.35))
+    public static let glowDangerBloomLit = dynamic(
+        UIColor(red: 1, green: 0.6667, blue: 0.651, alpha: 0.45),
+        UIColor(red: 1, green: 0.5412, blue: 0.5176, alpha: 0.35)
+    )
     /// Top of the lit gradient.
-    public static let glowSuccessGradientTop = dynamic(UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 1), UIColor(red: 0.3333, green: 0.8471, blue: 0.5412, alpha: 1))
+    public static let glowSuccessGradientTop = dynamic(
+        UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 1),
+        UIColor(red: 0.3333, green: 0.8471, blue: 0.5412, alpha: 1)
+    )
     /// Bottom of the lit gradient.
-    public static let glowSuccessGradientBottom = dynamic(UIColor(red: 0.0745, green: 0.4196, blue: 0.2078, alpha: 1), UIColor(red: 0.1529, green: 0.6549, blue: 0.3647, alpha: 1))
+    public static let glowSuccessGradientBottom = dynamic(
+        UIColor(red: 0.0745, green: 0.4196, blue: 0.2078, alpha: 1),
+        UIColor(red: 0.1529, green: 0.6549, blue: 0.3647, alpha: 1)
+    )
     /// The thin outer ring that separates it from the page.
-    public static let glowSuccessRing = dynamic(UIColor(red: 0.0745, green: 0.4196, blue: 0.2078, alpha: 0.4), UIColor(red: 0.1529, green: 0.6549, blue: 0.3647, alpha: 0.3))
+    public static let glowSuccessRing = dynamic(
+        UIColor(red: 0.0745, green: 0.4196, blue: 0.2078, alpha: 0.4),
+        UIColor(red: 0.1529, green: 0.6549, blue: 0.3647, alpha: 0.3)
+    )
     /// The white edge lit from above, fading downward.
     public static let glowSuccessRim = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.4), UIColor(red: 1, green: 1, blue: 1, alpha: 0.5))
     /// The coloured bloom around it.
-    public static let glowSuccessHalo = dynamic(UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 0.34), UIColor(red: 0.3333, green: 0.8471, blue: 0.5412, alpha: 0.25))
+    public static let glowSuccessHalo = dynamic(
+        UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 0.34),
+        UIColor(red: 0.3333, green: 0.8471, blue: 0.5412, alpha: 0.25)
+    )
     /// Top of the gradient on focus or hover.
-    public static let glowSuccessGradientTopLit = dynamic(UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 1), UIColor(red: 0.4078, green: 0.8941, blue: 0.6078, alpha: 1))
+    public static let glowSuccessGradientTopLit = dynamic(
+        UIColor(red: 0.102, green: 0.5176, blue: 0.2706, alpha: 1),
+        UIColor(red: 0.4078, green: 0.8941, blue: 0.6078, alpha: 1)
+    )
     /// Bottom of the gradient on focus or hover.
-    public static let glowSuccessGradientBottomLit = dynamic(UIColor(red: 0.0706, green: 0.4353, blue: 0.2235, alpha: 1), UIColor(red: 0.1961, green: 0.7255, blue: 0.4196, alpha: 1))
+    public static let glowSuccessGradientBottomLit = dynamic(
+        UIColor(red: 0.0706, green: 0.4353, blue: 0.2235, alpha: 1),
+        UIColor(red: 0.1961, green: 0.7255, blue: 0.4196, alpha: 1)
+    )
     /// Top of the gradient while pressed.
-    public static let glowSuccessGradientTopPressed = dynamic(UIColor(red: 0.0824, green: 0.4392, blue: 0.2196, alpha: 1), UIColor(red: 0.2627, green: 0.749, blue: 0.4549, alpha: 1))
+    public static let glowSuccessGradientTopPressed = dynamic(
+        UIColor(red: 0.0824, green: 0.4392, blue: 0.2196, alpha: 1),
+        UIColor(red: 0.2627, green: 0.749, blue: 0.4549, alpha: 1)
+    )
     /// Bottom of the gradient while pressed.
-    public static let glowSuccessGradientBottomPressed = dynamic(UIColor(red: 0.0588, green: 0.3529, blue: 0.1686, alpha: 1), UIColor(red: 0.1216, green: 0.5608, blue: 0.302, alpha: 1))
+    public static let glowSuccessGradientBottomPressed = dynamic(
+        UIColor(red: 0.0588, green: 0.3529, blue: 0.1686, alpha: 1),
+        UIColor(red: 0.1216, green: 0.5608, blue: 0.302, alpha: 1)
+    )
     /// Label and icon on the glow.
     public static let glowSuccessForeground = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1))
     /// The soft shadow the lit action casts on the page below it.
     public static let glowSuccessCast = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.18), UIColor(red: 0, green: 0, blue: 0, alpha: 0.45))
     /// The darker lower inner edge that makes the body read as a lit, rounded object (three insets: -0.5/-1/-1.5).
-    public static let glowSuccessEdge = dynamic(UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.5), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6))
+    public static let glowSuccessEdge = dynamic(
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.5),
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6)
+    )
     /// The soft light inside the body (inset 0 0 12pt).
-    public static let glowSuccessBloom = dynamic(UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35), UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.2))
+    public static let glowSuccessBloom = dynamic(
+        UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35),
+        UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.2)
+    )
     /// The lower edge while focused (the lit layer).
-    public static let glowSuccessEdgeLit = dynamic(UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.4), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6))
+    public static let glowSuccessEdgeLit = dynamic(
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.4),
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6)
+    )
     /// The inner light while focused (inset 0 0 14pt).
-    public static let glowSuccessBloomLit = dynamic(UIColor(red: 0.7843, green: 0.9255, blue: 0.8078, alpha: 0.45), UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35))
+    public static let glowSuccessBloomLit = dynamic(
+        UIColor(red: 0.7843, green: 0.9255, blue: 0.8078, alpha: 0.45),
+        UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35)
+    )
     /// Inner stroke, 1pt inset all round: the lit edge of paper. Paired with the outer stroke, always.
     public static let depthStrokeInner = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.85), UIColor(red: 1, green: 1, blue: 1, alpha: 0.08))
     /// The top of the inner stroke, 1pt brighter: light from above.
@@ -349,21 +762,42 @@ public enum RColor {
     /// Outer stroke, 0.5pt outside: the warm hairline that defines the edge on paper.
     public static let depthStrokeOuter = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.07))
     /// The shallow shadow: 0 1 1.5. Seats the object on the page. Warm, never grey.
-    public static let depthShadowContact = dynamic(UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.1), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
+    public static let depthShadowContact = dynamic(
+        UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.1),
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.4)
+    )
     /// The warm soft shadow: y and blur grow with height, negative spread keeps it under the object.
     public static let depthShadowCast = dynamic(UIColor(red: 0.2745, green: 0.2039, blue: 0.1176, alpha: 0.16), UIColor(red: 0, green: 0, blue: 0, alpha: 0.55))
     /// A very wide, faint layer for floating things (mini-player, menus, sheets).
-    public static let depthShadowAmbient = dynamic(UIColor(red: 0.2745, green: 0.2039, blue: 0.1176, alpha: 0.05), UIColor(red: 0, green: 0, blue: 0, alpha: 0.25))
+    public static let depthShadowAmbient = dynamic(
+        UIColor(red: 0.2745, green: 0.2039, blue: 0.1176, alpha: 0.05),
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.25)
+    )
     /// The inner shade of a sunken surface: inset 0 1 2, darkest at the top edge, as if light falls into it.
-    public static let depthShadowSunken = dynamic(UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.08), UIColor(red: 0, green: 0, blue: 0, alpha: 0.35))
+    public static let depthShadowSunken = dynamic(
+        UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.08),
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.35)
+    )
     /// A lit primary action casts sky, not grey: a blurred, offset copy of its own gradient.
-    public static let depthTintPrimary = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.38), UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6))
+    public static let depthTintPrimary = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.38),
+        UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.6)
+    )
     /// The destructive action casts its own red.
-    public static let depthTintDanger = dynamic(UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 0.34), UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6))
+    public static let depthTintDanger = dynamic(
+        UIColor(red: 0.5569, green: 0.0706, blue: 0.0549, alpha: 0.34),
+        UIColor(red: 0.1765, green: 0.0824, blue: 0.0784, alpha: 0.6)
+    )
     /// The success action casts its own green.
-    public static let depthTintSuccess = dynamic(UIColor(red: 0.1647, green: 0.2902, blue: 0.1451, alpha: 0.32), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6))
+    public static let depthTintSuccess = dynamic(
+        UIColor(red: 0.1647, green: 0.2902, blue: 0.1451, alpha: 0.32),
+        UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6)
+    )
     /// Artwork casts its dominant colour (computed per image; this is the default for the sky art).
-    public static let depthTintArtwork = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.3), UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.5))
+    public static let depthTintArtwork = dynamic(
+        UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 0.3),
+        UIColor(red: 0.0431, green: 0.149, blue: 0.2196, alpha: 0.5)
+    )
 }
 
 /// Spacing, sizes, radii, layout and type sizes, in points.
@@ -632,16 +1066,55 @@ public enum RMotion {
     public static func move(_ duration: Double) -> Animation { .timingCurve(0.65, 0, 0.35, 1, duration: duration) }
 }
 
-/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: blobs fading in alpha over a base, plus grain).
+/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: points blended in OKLab over a base, plus grain).
 public enum RArtworkRecipes {
     /// Episode artwork: morning. Sky with a warm paper glow rising in one corner, never a ramp from sky to beige.
-    public static let morning = RArtworkRecipe(base: Color(red: 0.1843, green: 0.6588, blue: 0.9412), blobs: [.init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.18, y: 0, radius: 0.7, alpha: 1), .init(color: Color(red: 0.1216, green: 0.4902, blue: 0.7294), x: 1, y: 1, radius: 0.8, alpha: 1), .init(color: Color(red: 0.9686, green: 0.9529, blue: 0.9333), x: 0, y: 1, radius: 0.55, alpha: 0.55)], grain: 0.06)
+    public static let morning = RArtworkRecipe(
+        base: Color(red: 0.1843, green: 0.6588, blue: 0.9412),
+        blobs: [
+            .init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.18, y: 0, radius: 0.7, weight: 1),
+            .init(color: Color(red: 0.1216, green: 0.4902, blue: 0.7294), x: 1, y: 1, radius: 0.8, weight: 1),
+            .init(color: Color(red: 0.9686, green: 0.9529, blue: 0.9333), x: 0, y: 1, radius: 0.55, weight: 0.55),
+        ],
+        softness: 0.7,
+        grain: .init(mode: .multi, opacity: 0.12, size: 1.5)
+    )
     /// Episode artwork: evening. Deep sky with low amber light.
-    public static let evening = RArtworkRecipe(base: Color(red: 0.1216, green: 0.4902, blue: 0.7294), blobs: [.init(color: Color(red: 0.949, green: 0.7216, blue: 0.2941), x: 0.85, y: 0.15, radius: 0.55, alpha: 0.7), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.8, alpha: 1), .init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.3, y: 0.2, radius: 0.4, alpha: 0.5)], grain: 0.06)
+    public static let evening = RArtworkRecipe(
+        base: Color(red: 0.1216, green: 0.4902, blue: 0.7294),
+        blobs: [
+            .init(color: Color(red: 0.949, green: 0.7216, blue: 0.2941), x: 0.9, y: 0.1, radius: 0.45, weight: 0.8),
+            .init(color: Color(red: 0.9137, green: 0.5647, blue: 0.4157), x: 0.7, y: 0.3, radius: 0.3, weight: 0.45),
+            .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.8, weight: 1),
+            .init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.12, y: 0.3, radius: 0.35, weight: 0.5),
+        ],
+        softness: 0.7,
+        grain: .init(mode: .multi, opacity: 0.12, size: 1.5)
+    )
     /// Episode artwork: a quiet week. Paper with a breath of sky.
-    public static let quiet = RArtworkRecipe(base: Color(red: 0.9373, green: 0.9255, blue: 0.9059), blobs: [.init(color: Color(red: 0.702, green: 0.8824, blue: 1), x: 0.8, y: 0.1, radius: 0.6, alpha: 0.8), .init(color: Color(red: 0.8941, green: 0.8588, blue: 0.8078), x: 0.1, y: 0.9, radius: 0.7, alpha: 1), .init(color: Color(red: 1, green: 1, blue: 1), x: 0.3, y: 0.2, radius: 0.35, alpha: 0.7)], grain: 0.05)
+    public static let quiet = RArtworkRecipe(
+        base: Color(red: 0.9373, green: 0.9255, blue: 0.9059),
+        blobs: [
+            .init(color: Color(red: 0.702, green: 0.8824, blue: 1), x: 0.8, y: 0.1, radius: 0.6, weight: 0.8),
+            .init(color: Color(red: 0.8941, green: 0.8588, blue: 0.8078), x: 0.1, y: 0.9, radius: 0.7, weight: 1),
+            .init(color: Color(red: 1, green: 1, blue: 1), x: 0.3, y: 0.2, radius: 0.35, weight: 0.7),
+        ],
+        softness: 0.7,
+        grain: .init(mode: .multi, opacity: 0.12, size: 1.5)
+    )
     /// Episode artwork: the weekly episode. Night with low amber and a red ember, as drawn on the approved mini-player (ON-11, PC-1).
-    public static let weekly = RArtworkRecipe(base: Color(red: 0.2275, green: 0.2196, blue: 0.2039), blobs: [.init(color: Color(red: 1, green: 0.7843, blue: 0.3608), x: 0.88, y: 0.08, radius: 0.9, alpha: 1), .init(color: Color(red: 0.9412, green: 0.3922, blue: 0.3686), x: 0.3, y: 0.3, radius: 0.75, alpha: 0.55), .init(color: Color(red: 0.7176, green: 0.4745, blue: 0.1216), x: 0.7, y: 0.8, radius: 0.9, alpha: 0.75), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.85, alpha: 1), .init(color: Color(red: 0.9843, green: 0.9412, blue: 0.8549), x: 0.78, y: 0.16, radius: 0.33, alpha: 0.75)], grain: 0.06)
+    public static let weekly = RArtworkRecipe(
+        base: Color(red: 0.2275, green: 0.2196, blue: 0.2039),
+        blobs: [
+            .init(color: Color(red: 1, green: 0.7843, blue: 0.3608), x: 0.88, y: 0.08, radius: 0.9, weight: 1),
+            .init(color: Color(red: 0.9412, green: 0.3922, blue: 0.3686), x: 0.3, y: 0.3, radius: 0.75, weight: 0.55),
+            .init(color: Color(red: 0.7176, green: 0.4745, blue: 0.1216), x: 0.7, y: 0.8, radius: 0.9, weight: 0.75),
+            .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.85, weight: 1),
+            .init(color: Color(red: 0.9843, green: 0.9412, blue: 0.8549), x: 0.78, y: 0.16, radius: 0.33, weight: 0.75),
+        ],
+        softness: 0.7,
+        grain: .init(mode: .multi, opacity: 0.12, size: 1.5)
+    )
 }
 
 /// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.
@@ -680,7 +1153,8 @@ public enum RHaptic {
     public static let sheetSnap: SensoryFeedback = .impact(flexibility: .soft)
     /// Skip back 15 or forward 30.
     public static let skip: SensoryFeedback = .impact(weight: .light)
-    /// Retro typing out an onboarding question: one faint tick per word (not per letter), at most ~10 a second, silent on spaces and punctuation; stops when the person starts talking. Founder, 21 Oct.
+    /// Retro typing out an onboarding question: one faint tick per word (not per letter), at most ~10 a second, silent on spaces and punctuation; stops when
+    /// the person starts talking. Founder, 21 Oct.
     public static let typeOn: SensoryFeedback = .impact(flexibility: .soft, intensity: 0.35)
 }
 

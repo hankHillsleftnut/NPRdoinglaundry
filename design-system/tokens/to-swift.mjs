@@ -64,15 +64,17 @@ let cornerStyle = null;
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n, doc: o.$description });
     } else if (type === 'gradient' && /^gradient\.mesh/.test(path) && typeof o.$value === 'string' && o.$value.startsWith('base ')) {
-      // "base #hex; blob #hex at X% Y% r R% (alpha A→0); …; grain N%"
+      // "base #hex; blob #hex at X% Y% r R% (alpha A→0); …; softness S; grain [mono|multi] N% [size Z]"
       const v = o.$value;
       const base = v.match(/base (#[0-9a-f]{6})/i)?.[1];
       const blobs = [...v.matchAll(/blob (#[0-9a-f]{6}) at (\d+)% (\d+)% r (\d+)%(?:[^;]*?alpha \.?(\d*\.?\d+)→0)?/gi)].map((m) => ({
         hex: m[1], x: +m[2] / 100, y: +m[3] / 100, r: +m[4] / 100,
         a: m[5] === undefined ? 1 : (m[5].startsWith('.') ? +('0' + m[5]) : (+m[5] > 1 ? +('0.' + m[5]) : +m[5])),
       }));
-      const grain = +(v.match(/grain (\d+(?:\.\d+)?)%/)?.[1] ?? 0) / 100;
-      if (base && blobs.length) artwork.push({ name: camel(path.slice('gradient.mesh'.length).replace(/^./, (c) => c.toLowerCase())), base, blobs, grain, doc: o.$description });
+      const g = v.match(/grain (?:(mono|multi) )?(\d+(?:\.\d+)?)%(?: size (\d*\.?\d+))?/i);
+      const grain = { mode: (g?.[1] ?? 'mono').toLowerCase(), opacity: +(g?.[2] ?? 0) / 100, size: +(g?.[3] ?? 1) };
+      const softness = +(v.match(/softness (\d*\.?\d+)/)?.[1] ?? 0.6);
+      if (base && blobs.length) artwork.push({ name: camel(path.slice('gradient.mesh'.length).replace(/^./, (c) => c.toLowerCase())), base, blobs, softness, grain, doc: o.$description });
       else skipped.push(path);
     } else if (type === 'spring' && /^motion\.spring\./.test(path)) {
       const v = o.$value;
@@ -147,9 +149,9 @@ const lines = [
   ...curves.map((c) => `${doc(c.doc)}    public static func ${c.name}(_ duration: Double) -> Animation { .timingCurve(${c.p.map(f).join(', ')}, duration: duration) }`),
   '}',
   '',
-  '/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: blobs fading in alpha over a base, plus grain).',
+  '/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: points blended in OKLab over a base, plus grain).',
   'public enum RArtworkRecipes {',
-  ...artwork.map((a) => `${doc(a.doc)}    public static let ${a.name} = RArtworkRecipe(base: ${hexColor(a.base)}, blobs: [${a.blobs.map((b) => `.init(color: ${hexColor(b.hex)}, x: ${f(b.x)}, y: ${f(b.y)}, radius: ${f(b.r)}, alpha: ${f(b.a)})`).join(', ')}], grain: ${f(a.grain)})`),
+  ...artwork.map((a) => `${doc(a.doc)}    public static let ${a.name} = RArtworkRecipe(base: ${hexColor(a.base)}, blobs: [${a.blobs.map((b) => `.init(color: ${hexColor(b.hex)}, x: ${f(b.x)}, y: ${f(b.y)}, radius: ${f(b.r)}, weight: ${f(b.a)})`).join(', ')}], softness: ${f(a.softness)}, grain: .init(mode: .${a.grain.mode}, opacity: ${f(a.grain.opacity)}, size: ${f(a.grain.size)}))`),
   '}',
   '',
   '/// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.',

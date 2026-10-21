@@ -11,7 +11,7 @@ import SwiftUI
 // swiftlint:disable large_tuple
 /// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
 enum RLabPage: String, CaseIterable, Identifiable {
-    case motion, foundation, parts
+    case motion, foundation, parts, artwork
 
     var id: String {
         rawValue
@@ -43,6 +43,7 @@ struct RDesignLab: View {
                         RParts2Gallery()
                     }
                 }
+            case .artwork: RArtworkLab()
             }
         }
         .background(RColor.backgroundCanvas)
