@@ -28,7 +28,6 @@ struct DarkSettingsView: View {
     @AppStorage("healthKitEnabled") private var healthKitEnabled: Bool = false
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
     @AppStorage("devMode") private var devMode: Bool = false
-    @AppStorage("devAuthBypassEnabled") private var devAuthBypassEnabled: Bool = false
     @State private var showDevWipeConfirmation = false
 
     var body: some View {
@@ -273,14 +272,14 @@ struct DarkSettingsView: View {
 
     private func disconnectGoogle() { googleDocsService.signOut() }
 
-    /// Full sign-out that actually gates the app back to sign-in. The old bug: logout only
-    /// cleared the token, but in DEBUG `hasUsableBackendAuth` also checks `devAuthBypassEnabled`,
-    /// which stayed true — so logout did nothing. Here we clear both.
+    /// Full sign-out that actually gates the app back to sign-in. Clearing the token
+    /// alone is not enough: `OnboardingState.restoreFromDisk` reads its own signed-in
+    /// flag and would skip the welcome page.
     private func fullSignOut(wipeOnboarding: Bool) {
         if wipeOnboarding {
             OnboardingContextManager.shared.resetForFreshOnboarding()
         }
-        devAuthBypassEnabled = false
+        OnboardingState.clearSignInGate()
         apiClient.signOut()
     }
 
@@ -501,43 +500,48 @@ struct DarkProfilePersonalizationView: View {
     @AppStorage("podcastCadence") private var podcastCadence: String = PodcastCadence.weekly.rawValue
     
     var body: some View {
-        darkSettingsSheet(title: "Profile & Personalization") {
+        lightSettingsSheet(title: "Profile & Personalization") {
             VStack(spacing: 16) {
                 // Name input
-                DarkSettingsInputRow(
+                LightSettingsInputRow(
                     title: "Your Name",
                     placeholder: "Enter your name",
                     text: $userName
                 )
                 
                 // Podcast Cadence
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Podcast Cadence")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
-                    
+                VStack(alignment: .leading, spacing: 10) {
+                    FigmaLightSectionLabel(text: "Podcast Cadence")
+
                     Text("How often do you want to receive podcasts?")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                    
-                    VStack(spacing: 8) {
-                        ForEach(PodcastCadence.allCases, id: \.self) { cadence in
-                            DarkCadenceOption(
-                                cadence: cadence,
-                                isSelected: podcastCadence == cadence.rawValue,
-                                onSelect: {
-                                    HapticManager.shared.playSelectionChanged()
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        podcastCadence = cadence.rawValue
+                        .font(FigmaLightTheme.mono(12))
+                        .foregroundColor(FigmaLightTheme.mutedText.opacity(0.85))
+                        .padding(.bottom, 2)
+
+                    FigmaLightRowCard {
+                        VStack(spacing: 0) {
+                            ForEach(PodcastCadence.allCases, id: \.self) { cadence in
+                                LightCadenceOption(
+                                    cadence: cadence,
+                                    isSelected: podcastCadence == cadence.rawValue,
+                                    onSelect: {
+                                        HapticManager.shared.playSelectionChanged()
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            podcastCadence = cadence.rawValue
+                                        }
                                     }
+                                )
+
+                                if cadence != PodcastCadence.allCases.last {
+                                    FigmaLightDivider(leadingInset: 44)
                                 }
-                            )
+                            }
                         }
                     }
                 }
                 
                 // Deep Research Toggle
-                DarkSettingsToggleRow(
+                LightSettingsToggleRow(
                     title: "Deep Research Mode",
                     subtitle: "More thorough analysis of your entries",
                     isOn: $deepResearchMode
@@ -548,55 +552,48 @@ struct DarkProfilePersonalizationView: View {
 }
 
 // MARK: - Cadence Option Row
-struct DarkCadenceOption: View {
+/// One cadence choice. Deliberately carries no card of its own — the five
+/// options stack inside a single `FigmaLightRowCard` separated by dividers, the
+/// same grouped-list shape the Settings and Integrations pages use. Five
+/// individually bordered cards read as five unrelated objects.
+struct LightCadenceOption: View {
     let cadence: PodcastCadence
     let isSelected: Bool
     let onSelect: () -> Void
-    
+
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 14) {
-                // Radio button
                 ZStack {
                     Circle()
                         .strokeBorder(
-                            isSelected ? LinearColors.Minimal.accent : LinearColors.Minimal.border,
+                            isSelected ? FigmaLightTheme.mutedText : FigmaLightTheme.faintText,
                             lineWidth: isSelected ? 2 : 1.5
                         )
-                        .frame(width: 22, height: 22)
-                    
+                        .frame(width: 20, height: 20)
+
                     if isSelected {
                         Circle()
-                            .fill(LinearColors.Minimal.accent)
-                            .frame(width: 12, height: 12)
+                            .fill(FigmaLightTheme.primaryText.opacity(0.72))
+                            .frame(width: 10, height: 10)
                     }
                 }
-                
-                // Text
+                .frame(width: 30)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(cadence.rawValue)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                    
+                        .font(FigmaLightTheme.body(15, weight: isSelected ? .semibold : .medium))
+                        .foregroundColor(FigmaLightTheme.primaryText)
+
                     Text(cadence.description)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                        .font(FigmaLightTheme.mono(12))
+                        .foregroundColor(FigmaLightTheme.mutedText)
                 }
-                
-                Spacer()
+
+                Spacer(minLength: 0)
             }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? LinearColors.Minimal.accentSubtle : LinearColors.Minimal.backgroundCard)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(
-                                isSelected ? LinearColors.Minimal.accent.opacity(0.5) : LinearColors.Minimal.border,
-                                lineWidth: 1
-                            )
-                    )
-            )
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -606,14 +603,14 @@ struct DarkAppearanceSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        darkSettingsSheet(title: "Appearance") {
+        lightSettingsSheet(title: "Appearance") {
             VStack(spacing: 16) {
-                DarkSettingsInfoRow(
+                LightSettingsInfoRow(
                     title: "Theme",
                     value: "Dark (Always)"
                 )
                 
-                DarkSettingsInfoRow(
+                LightSettingsInfoRow(
                     title: "Accent Color",
                     value: "Terra Cotta"
                 )
@@ -627,9 +624,9 @@ struct DarkAudioSettingsView: View {
     @AppStorage("audioTestMode") private var audioTestMode: Bool = false
     
     var body: some View {
-        darkSettingsSheet(title: "Audio & Playback") {
+        lightSettingsSheet(title: "Audio & Playback") {
             VStack(spacing: 16) {
-                DarkSettingsToggleRow(
+                LightSettingsToggleRow(
                     title: "Audio Test Mode",
                     subtitle: "Truncate audio for testing",
                     isOn: $audioTestMode
@@ -645,11 +642,11 @@ struct DarkPrivacyAndSecurityView: View {
     @State private var showBiometricUnavailableAlert = false
     
     var body: some View {
-        darkSettingsSheet(title: "Privacy & Security") {
+        lightSettingsSheet(title: "Privacy & Security") {
             VStack(spacing: 16) {
                 // Face ID Toggle
                 VStack(spacing: 0) {
-                    DarkSettingsToggleRow(
+                    LightSettingsToggleRow(
                         title: "Face ID",
                         subtitle: "Require Face ID to access app",
                         isOn: $faceIDEnabled
@@ -761,7 +758,7 @@ struct DarkIntegrationsDataView: View {
     @State private var healthErrorMessage = ""
     
     var body: some View {
-        darkSettingsSheet(title: "Integrations & Data") {
+        lightSettingsSheet(title: "Integrations & Data") {
             VStack(spacing: 20) {
                 // Google Docs Section
                 VStack(alignment: .leading, spacing: 12) {
@@ -1752,40 +1749,9 @@ struct DarkAdvancedSettingsView: View {
 
 // MARK: - Settings Sheet Template
 @ViewBuilder
-func darkSettingsSheet(title: String, @ViewBuilder content: () -> some View) -> some View {
-    ZStack {
-        LinearColors.Minimal.sheetBackground
-            .ignoresSafeArea()
-        
-        VStack(spacing: 0) {
-            // Handle
-            RoundedRectangle(cornerRadius: 2)
-                .fill(LinearColors.Minimal.textTertiary)
-                .frame(width: 36, height: 4)
-                .padding(.top, 12)
-            
-            // Header
-            Text(title)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
-                .padding(.top, 20)
-                .padding(.bottom, 24)
-            
-            // Content
-            ScrollView {
-                VStack(spacing: 16) {
-                    content()
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-    .preferredColorScheme(.dark)
-}
-
-/// Light variant of `darkSettingsSheet` — used only by the Advanced screen so it matches the
-/// rest of the (light) app. Same structure as the dark sheet, light colors.
+/// Shared chrome for every settings sub-sheet. Previously only the Advanced
+/// screen used it while the other five sheets rendered dark, which is why a
+/// sheet pushed from the (light) Settings page looked like a different app.
 func lightSettingsSheet(title: String, @ViewBuilder content: () -> some View) -> some View {
     ZStack {
         FigmaLightTheme.cardSurface
@@ -1849,96 +1815,67 @@ struct LightSettingsToggleRow: View {
 }
 
 // MARK: - Settings Row Components
-struct DarkSettingsToggleRow: View {
-    let title: String
-    let subtitle: String
-    @Binding var isOn: Bool
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(LinearColors.Minimal.textPrimary)
-                
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(LinearColors.Minimal.textSecondary)
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: $isOn)
-                .tint(LinearColors.Minimal.accent)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(LinearColors.Minimal.backgroundCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                )
-        )
-    }
-}
-
-struct DarkSettingsInfoRow: View {
+struct LightSettingsInfoRow: View {
     let title: String
     let value: String
-    
+
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
-            
-            Spacer()
-            
+                .font(FigmaLightTheme.body(15, weight: .semibold))
+                .foregroundColor(FigmaLightTheme.primaryText)
+
+            Spacer(minLength: 0)
+
             Text(value)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(LinearColors.Minimal.textSecondary)
+                .font(FigmaLightTheme.mono(12))
+                .foregroundColor(FigmaLightTheme.mutedText)
+                .multilineTextAlignment(.trailing)
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(LinearColors.Minimal.backgroundCard)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(FigmaLightTheme.rowSurface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(FigmaLightTheme.border.opacity(0.75), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
         )
     }
 }
 
-struct DarkSettingsInputRow: View {
+struct LightSettingsInputRow: View {
     let title: String
     let placeholder: String
     @Binding var text: String
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(LinearColors.Minimal.textSecondary)
-            
+        VStack(alignment: .leading, spacing: 10) {
+            FigmaLightSectionLabel(text: title)
+
             TextField(placeholder, text: $text)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundColor(LinearColors.Minimal.textPrimary)
+                .font(FigmaLightTheme.body(16))
+                .foregroundColor(FigmaLightTheme.primaryText)
+                .tint(FigmaLightTheme.mutedText)
                 .focused($isFocused)
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(LinearColors.Minimal.inputBackground)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(FigmaLightTheme.controlSurface)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .strokeBorder(
-                                    isFocused ? LinearColors.Minimal.borderFocus : LinearColors.Minimal.border,
-                                    lineWidth: isFocused ? 2 : 1
+                                    isFocused
+                                        ? FigmaLightTheme.mutedText.opacity(0.55)
+                                        : FigmaLightTheme.border.opacity(0.75),
+                                    lineWidth: 1
                                 )
                         )
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                 )
+                .animation(.easeOut(duration: 0.18), value: isFocused)
         }
     }
 }

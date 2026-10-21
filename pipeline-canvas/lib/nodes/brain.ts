@@ -1,0 +1,132 @@
+import type { NodeSpec } from '../types';
+
+// ---------------------------------------------------------------------------
+// BRAIN -- facts become patterns, and patterns earn the right to be explained.
+//
+// The bar is deliberately hard to clear: three instances, spread over time or
+// across sources, before a repeated behaviour is called a pattern at all, and
+// only a live pattern may be given a "why".
+// ---------------------------------------------------------------------------
+
+export const brainNodes: NodeSpec[] = [
+  {
+    id: 'brn.promoter',
+    isNew: true,
+    title: 'Pattern promoter',
+    purpose: 'Groups related facts and asks whether they have happened often enough to count.',
+    region: 'brain',
+    column: 0,
+    order: 0,
+    source: 'retrospect-agent/src/brain/promoter.ts',
+    probe: { kind: 'rollup', source: 'behavior_patterns' },
+  },
+  {
+    id: 'brn.candidate',
+    isNew: true,
+    title: 'Candidate patterns',
+    purpose: 'Repetitions that are real but have not yet met the bar.',
+    region: 'brain',
+    column: 0,
+    order: 1,
+    source: 'retrospect-agent/src/brain/promoter.ts',
+    probe: {
+      kind: 'rollup',
+      source: 'behavior_patterns',
+      bucket: 'candidate',
+      failStatuses: [],
+      warnStatuses: [],
+    },
+  },
+  {
+    id: 'brn.live',
+    isNew: true,
+    title: 'Live patterns',
+    purpose: 'Patterns the system is currently willing to assert about someone.',
+    region: 'brain',
+    column: 0,
+    order: 2,
+    source: 'retrospect-agent/src/brain/promoter.ts',
+    probe: {
+      kind: 'rollup',
+      source: 'behavior_patterns',
+      bucket: 'live',
+      failStatuses: [],
+      warnStatuses: [],
+    },
+  },
+  {
+    id: 'brn.decay',
+    isNew: true,
+    title: 'Confidence decay',
+    purpose: 'Lets a pattern fade when it stops recurring, so the past cannot rule forever.',
+    region: 'brain',
+    column: 1,
+    order: 0,
+    source: 'retrospect-agent/src/brain/promoter.ts',
+    probe: {
+      kind: 'notInstrumented',
+      reason: 'Decay is recomputed on read and never written down as an event.',
+      wouldNeed: 'Record each decay pass, so a pattern dying is something you can watch.',
+    },
+  },
+  {
+    id: 'brn.why',
+    isNew: true,
+    title: 'Why gate',
+    purpose: 'Allows an explanation only where the evidence genuinely supports one.',
+    region: 'brain',
+    column: 1,
+    order: 1,
+    source: 'retrospect-agent/src/brain/why.ts',
+    probe: {
+      kind: 'notInstrumented',
+      reason: 'Refusals are not logged, so the gate doing its job looks like nothing happening.',
+      wouldNeed: 'Log each refusal with its reason — the refusals are the interesting part.',
+    },
+  },
+  {
+    id: 'brn.portrait',
+    isNew: true,
+    title: 'Portrait',
+    purpose: 'The readable document describing the person, rebuilt as understanding changes.',
+    region: 'brain',
+    column: 1,
+    order: 2,
+    source: 'retrospect-agent/src/brain/portrait.ts',
+    probe: { kind: 'rollup', source: 'user_understanding' },
+  },
+  {
+    id: 'brn.lint',
+    isNew: true,
+    title: 'Lint',
+    purpose: 'Twenty-six checks looking for the ways this system can quietly go wrong.',
+    region: 'brain',
+    column: 2,
+    order: 0,
+    source: 'retrospect-agent/src/brain/lint.ts',
+    probe: { kind: 'rollup', source: 'lint_findings' },
+    caveat: 'Built and tested, but has never been run against production.',
+  },
+  {
+    id: 'brn.remediation',
+    isNew: true,
+    title: 'Remediation',
+    purpose: 'The only sanctioned way to repair the bank, and it leaves a record.',
+    region: 'brain',
+    column: 2,
+    order: 1,
+    source: 'retrospect-agent/src/brain/remediation.ts',
+    probe: { kind: 'rollup', source: 'remediation_log' },
+  },
+  {
+    id: 'brn.insights',
+    isLegacy: true,
+    title: 'Insights',
+    purpose: 'The older synthesis layer, still feeding existing product surfaces.',
+    region: 'brain',
+    column: 2,
+    order: 2,
+    source: 'retrospect-agent/src/pipelines/graph-v2.ts',
+    probe: { kind: 'rollup', source: 'insights' },
+  },
+];

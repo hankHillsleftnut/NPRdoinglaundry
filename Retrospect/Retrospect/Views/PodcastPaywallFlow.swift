@@ -157,6 +157,16 @@ struct PodcastPaywallFlow: View {
         .onChange(of: playback.didFinish) { finished in
             if finished { onFinished?() }
         }
+        .alert("Subscription Unavailable", isPresented: Binding(
+            get: { subs.lastError != nil },
+            set: { if !$0 { subs.lastError = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                subs.lastError = nil
+            }
+        } message: {
+            Text(subs.lastError ?? "Something went wrong.")
+        }
         .statusBarHidden(true)
     }
 

@@ -1,98 +1,52 @@
 import Foundation
 import SwiftUI
-#if canImport(RevenueCat)
-import RevenueCat
-#endif
 
 // SubscriptionPlan (.monthly / .yearly) is defined in PaywallView.swift.
 
-/// Subscription backend. Uses RevenueCat when the SDK is present (add the
-/// `purchases-ios` Swift Package), and falls back to a local mock so the paywall
-/// flow is fully testable before the SDK/products exist.
+/// Subscription entitlement.
 ///
-/// SETUP when ready:
-///  1. Xcode > Add Packages > https://github.com/RevenueCat/purchases-ios
-///  2. Set `revenueCatAPIKey` below (RevenueCat dashboard > API keys, the public `appl_…`).
-///  3. In App Store Connect create two auto-renewable subs in one group; map both
-///     to a single entitlement named `pro` in RevenueCat (or change `entitlementID`).
+/// INVARIANT: `isSubscribed` may only become true from a StoreKit transaction that
+/// the backend has validated. No purchase path exists yet, so `purchase` and
+/// `restore` fail closed with a visible error rather than granting Pro. The only
+/// other writer is a `#if DEBUG` launch-argument override, which cannot compile
+/// into Release.
+///
+/// A previous version wrapped a RevenueCat implementation in `#if canImport(RevenueCat)`
+/// with a mock `#else` branch. The SDK was never added to the package graph, so the
+/// mock was the branch that compiled in every configuration — including Release —
+/// and it granted the entitlement unconditionally. Do not reintroduce a
+/// compile-time guard that can silently select an entitlement-granting branch.
 @MainActor
 final class SubscriptionManager: ObservableObject {
     static let shared = SubscriptionManager()
 
-    @Published var isSubscribed = false
+    @Published private(set) var isSubscribed = false
     @Published var monthlyPriceString = "$19.99/m"
     @Published var yearlyPriceString = "$239.99/y"
-    @Published var isPurchasing = false
+    @Published private(set) var isPurchasing = false
     @Published var lastError: String?
 
-    private let revenueCatAPIKey = "appl_AqlNMVteceKaIgyLEbhurRugtDY"
-    private let entitlementID = "pro"
+    private static let unavailableMessage =
+        "Subscriptions aren't available in this build yet. You have not been charged."
+
+    #if DEBUG
+    /// Launch argument that unlocks the subscribed UI state for development only.
+    static let mockEntitlementArgument = "-MockProEntitlement"
+    #endif
 
     func configure() {
-        #if canImport(RevenueCat)
-        Purchases.logLevel = .warn
-        Purchases.configure(withAPIKey: revenueCatAPIKey)
-        // Tie RevenueCat's identity to our backend user so a subscription follows
-        // the person across devices/reinstalls (not just the anonymous install ID).
-        if let uid = RetrospectAPIClient.shared.currentUserId {
-            identify(userId: uid)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains(Self.mockEntitlementArgument) {
+            isSubscribed = true
         }
-        Task { await refresh() }
-        #endif
-    }
-
-    /// Alias RevenueCat to our backend user id. Safe to call again after sign-in.
-    func identify(userId: String) {
-        #if canImport(RevenueCat)
-        Purchases.shared.logIn(userId) { info, _, _ in
-            if let info {
-                self.isSubscribed = info.entitlements[self.entitlementID]?.isActive == true
-            }
-        }
-        #endif
-    }
-
-    func refresh() async {
-        #if canImport(RevenueCat)
-        do {
-            let info = try await Purchases.shared.customerInfo()
-            isSubscribed = info.entitlements[entitlementID]?.isActive == true
-            if let offering = try await Purchases.shared.offerings().current {
-                if let m = offering.monthly { monthlyPriceString = m.storeProduct.localizedPriceString + "/m" }
-                if let y = offering.annual { yearlyPriceString = y.storeProduct.localizedPriceString + "/y" }
-            }
-        } catch { lastError = error.localizedDescription }
         #endif
     }
 
     func purchase(_ plan: SubscriptionPlan) async {
-        isPurchasing = true
-        defer { isPurchasing = false }
-        #if canImport(RevenueCat)
-        do {
-            guard let offering = try await Purchases.shared.offerings().current else {
-                lastError = "No offering configured"; return
-            }
-            let pkg = (plan == .monthly) ? offering.monthly : offering.annual
-            guard let package = pkg else { lastError = "Plan unavailable"; return }
-            let result = try await Purchases.shared.purchase(package: package)
-            isSubscribed = result.customerInfo.entitlements[entitlementID]?.isActive == true
-        } catch { lastError = error.localizedDescription }
-        #else
-        // Mock until RevenueCat is added.
-        try? await Task.sleep(nanoseconds: 600_000_000)
-        isSubscribed = true
-        #endif
+        lastError = Self.unavailableMessage
     }
 
     func restore() async {
-        #if canImport(RevenueCat)
-        do {
-            let info = try await Purchases.shared.restorePurchases()
-            isSubscribed = info.entitlements[entitlementID]?.isActive == true
-        } catch { lastError = error.localizedDescription }
-        #else
-        isSubscribed = true
-        #endif
+        lastError = Self.unavailableMessage
     }
 }

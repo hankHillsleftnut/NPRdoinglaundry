@@ -1,121 +1,119 @@
 import Foundation
-import Combine
+import Security
 
+/// Speech synthesis for podcast audio. The provider key lives only on the backend,
+/// which proxies `POST /speech/synthesize`, so no credential ships in the binary.
 class ElevenLabsService {
     static let shared = ElevenLabsService()
-    
-    private var apiKey: String
-    private var voiceID: String
-    private let baseURL = "https://api.elevenlabs.io/v1"
-    private var cancellables = Set<AnyCancellable>()
-    
+
+    private let session: URLSession
+
     private init() {
-        self.apiKey = "sk_eda3b7a4ce22b483c115da0551a09f4a3978da568cf094f4"
-        self.voiceID = "21m00Tcm4TlvDq8ikWAM" // Default voice (Rachel)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300 // v3 TTS on a full transcript takes minutes
+        config.timeoutIntervalForResource = 600
+        self.session = URLSession(configuration: config)
     }
-    
+
     func generateSpeech(from text: String, completion: @escaping (Result<URL, Error>) -> Void) {
-        print("🔊 DEBUG: Starting ElevenLabs speech generation")
-        print("🔊 DEBUG: Text length: \(text.count) characters")
-        print("🔊 DEBUG: API Key exists: \(!apiKey.isEmpty)")
-        print("🔊 DEBUG: Voice ID: \(voiceID)")
-        
-        guard let url = URL(string: "\(baseURL)/text-to-speech/\(voiceID)") else {
-            print("❌ DEBUG: Invalid URL construction")
-            completion(.failure(NSError(domain: "ElevenLabsService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])))
-            return
+        Task {
+            do {
+                let audio = try await synthesize(text: text)
+                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let fileURL = documentsDirectory.appendingPathComponent("reflection_\(Date().timeIntervalSince1970).mp3")
+                try audio.write(to: fileURL)
+                await MainActor.run { completion(.success(fileURL)) }
+            } catch {
+                print("❌ Speech synthesis failed: \(error.localizedDescription)")
+                await MainActor.run { completion(.failure(error)) }
+            }
         }
-        
-        print("🔊 DEBUG: Request URL: \(url)")
-        
+    }
+
+    private func synthesize(text: String) async throws -> Data {
+        guard let url = URL(string: Self.baseURL + "/speech/synthesize") else {
+            throw ElevenLabsError.invalidURL
+        }
+
+        guard let token = Self.authToken() else {
+            throw ElevenLabsError.notAuthenticated
+        }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        
-        // Add timeout configuration to fix timeout errors
-        request.timeoutInterval = 60.0 // Increase timeout to 60 seconds
-        
-        let parameters: [String: Any] = [
-            "text": text,
-            "model_id": "eleven_v3",  // Updated to Eleven v3 (alpha) - most emotionally rich, expressive model with 5,000 character limit
-            "voice_settings": [
-                "stability": 0.5,
-                "similarity_boost": 0.75
-            ]
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-        } catch {
-            completion(.failure(error))
-            return
+        request.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["text": text])
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
         }
-        
-        // Create URLSession with custom configuration for better timeout handling
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60.0
-        config.timeoutIntervalForResource = 120.0
-        let session = URLSession(configuration: config)
-        
-        session.dataTaskPublisher(for: request)
-            .tryMap { data, response -> Data in
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw URLError(.badServerResponse)
-                }
-                
-                // Log detailed response information
-                print("🌐 Response Status Code: \(httpResponse.statusCode)")
-                print("🌐 Response Headers: \(httpResponse.allHeaderFields)")
-                
-                // Check for specific error status codes
-                if !(200...299).contains(httpResponse.statusCode) {
-                    // Try to parse error response
-                    if let errorString = String(data: data, encoding: .utf8) {
-                        print("❌ Error Response: \(errorString)")
-                        throw NSError(domain: "ElevenLabsService",
-                                      code: httpResponse.statusCode,
-                                      userInfo: [NSLocalizedDescriptionKey: errorString])
-                    }
-                    throw URLError(.badServerResponse)
-                }
-                
-                return data
-            }
-            .tryMap { audioData -> URL in
-                let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let fileURL = documentsDirectory.appendingPathComponent("reflection_\(Date().timeIntervalSince1970).mp3")
-                try audioData.write(to: fileURL)
-                return fileURL
-            }
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { completionResult in
-                switch completionResult {
-                case .failure(let error):
-                    print("❌ Eleven Labs API Error: \(error)")
-                    completion(.failure(error))
-                case .finished:
-                    break
-                }
-            }, receiveValue: { fileURL in
-                completion(.success(fileURL))
-            })
-            .store(in: &cancellables)
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "ElevenLabsService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Speech synthesis failed (HTTP \(httpResponse.statusCode)): \(body.prefix(300))"]
+            )
+        }
+
+        guard !data.isEmpty else {
+            throw ElevenLabsError.audioGenerationFailed
+        }
+
+        return data
     }
-    
-    // Optional: Method to set custom voice and API key
-    func configure(apiKey: String, voiceID: String? = nil) {
-        // Now can modify properties
-        self.apiKey = apiKey
-        if let voiceID = voiceID {
-            self.voiceID = voiceID
+
+    private static var baseURL: String {
+        #if DEBUG
+        let override = UserDefaults.standard.string(forKey: RetrospectAPIClient.devBaseURLKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return override.isEmpty ? RetrospectAPIClient.productionBaseURL : override
+        #else
+        return RetrospectAPIClient.productionBaseURL
+        #endif
+    }
+
+    /// These must stay identical to the Keychain identifiers `RetrospectAPIClient`
+    /// stores the backend JWT under; its own copies are private.
+    private static let keychainService = "com.retrospect.api"
+    private static let keychainTokenKey = "jwt_token"
+
+    private static func authToken() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainTokenKey,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else {
+            return nil
         }
+        return String(data: data, encoding: .utf8)
     }
 }
 
-// Error type for more specific error handling
-enum ElevenLabsError: Error {
-    case invalidAPIKey
-    case networkError
+enum ElevenLabsError: LocalizedError {
+    case invalidURL
+    case notAuthenticated
     case audioGenerationFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Could not build the speech synthesis request."
+        case .notAuthenticated:
+            return "Sign in to generate podcast audio."
+        case .audioGenerationFailed:
+            return "The server returned no audio."
+        }
+    }
 }

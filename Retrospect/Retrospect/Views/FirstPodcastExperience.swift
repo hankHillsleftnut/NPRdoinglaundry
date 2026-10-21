@@ -30,6 +30,13 @@ struct FirstPodcastExperience: View {
 
     private let cream = Color(red: 0.929, green: 0.918, blue: 0.886)
 
+    /// Generation can come back with nothing to read or play (the agent pipeline
+    /// failed, or returned an empty episode). The player has no exit of its own in
+    /// release builds, so entering it empty would strand the user.
+    private var hasEpisode: Bool {
+        audioURL != nil || !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         ZStack {
             cream.ignoresSafeArea()
@@ -37,7 +44,11 @@ struct FirstPodcastExperience: View {
             switch stage {
             case .learning:
                 LearningAboutYouView(podcastReady: podcastReady) {
-                    advance(to: .podcast)
+                    if hasEpisode {
+                        advance(to: .podcast)
+                    } else {
+                        onComplete()
+                    }
                 }
                 .transition(.opacity)
 

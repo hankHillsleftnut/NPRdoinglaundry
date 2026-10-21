@@ -1,0 +1,423 @@
+:root {
+  /* Neutral greys throughout -- no hue at all. Every value below has equal
+     R, G and B, so nothing on this board can read as tinted. */
+  --bg: #0d0d0d;
+  --bg-elev: #161616;
+  --bg-card: #1a1a1a;
+  --line: #2c2c2c;
+  --line-soft: #212121;
+  --text: #ededed;
+  --text-dim: #9a9a9a;
+  --text-faint: #6b6b6b;
+
+  /* Health, as a single grey ramp. Lightness is the ranking: the states that
+     want your attention sit brightest against the dark ground, and the states
+     that mean "nothing here" recede into it. Because lightness alone cannot
+     carry seven values, the dot's SHAPE disambiguates -- see .card-dot below. */
+  --failed: #f2f2f2;
+  --degraded: #c9c9c9;
+  --unknown: #ababab;
+  --ok: #858585;
+  --idle: #6e6e6e;
+  --blind: #575757;
+  --never: #3d3d3d;
+
+  /* Regions lighten left to right, so the ramp itself reads as flow direction. */
+  --region-capture: #4d4d4d;
+  --region-api: #595959;
+  --region-integrations: #656565;
+  --region-ingest: #717171;
+  --region-brain: #7d7d7d;
+  --region-podcast: #898989;
+  --region-sinks: #5e5e5e;
+
+  --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ login */
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px;
+}
+.login-card h1 { margin: 0 0 6px; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.login-card p { margin: 0 0 20px; font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+.login-card input {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font);
+}
+.login-card input:focus { outline: none; border-color: #6e6e6e; }
+.login-card button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px;
+  border-radius: 9px;
+  border: 1px solid #3d3d3d;
+  background: #2e2e2e;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.login-card button:disabled { opacity: 0.5; cursor: default; }
+.login-err { margin-top: 12px; font-size: 13px; color: var(--failed); }
+
+/* ------------------------------------------------------------------- chrome */
+
+.shell { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+  flex: 0 0 auto;
+  z-index: 10;
+}
+.topbar h1 { font-size: 14px; font-weight: 650; margin: 0; letter-spacing: -0.01em; white-space: nowrap; }
+.topbar .sub { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+.spacer { flex: 1; }
+
+.search {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  width: 220px;
+  font-family: var(--font);
+}
+.search:focus { outline: none; border-color: #6e6e6e; }
+
+.btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.btn:hover { color: var(--text); border-color: var(--text-faint); }
+
+.stale { color: var(--degraded); }
+
+/* -------------------------------------------------------------------- legend */
+
+.legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+  overflow-x: auto;
+}
+.legend .item { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.legend .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box; }
+.legend .dot.h-failed { box-shadow: 0 0 0 3px rgba(242, 242, 242, 0.16); }
+.legend .dot.h-unknown { border: 2px dotted var(--unknown); background: transparent !important; }
+.legend .dot.h-idle { border: 2px solid var(--idle); background: transparent !important; }
+.legend .dot.h-blind { border: 1.5px dashed var(--blind); background: transparent !important; }
+.legend .dot.h-never { width: 6px; height: 6px; margin: 0 1.5px; }
+
+/* --------------------------------------------------------------------- canvas */
+
+.canvas-wrap { flex: 1; position: relative; min-height: 0; }
+
+.region-box {
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.014);
+  pointer-events: none;
+}
+.region-label {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.region-blurb {
+  position: absolute;
+  top: 38px;
+  left: 24px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ----------------------------------------------------------------------- card */
+
+.card {
+  width: 300px;
+  height: 172px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 17px 19px 15px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  cursor: pointer;
+  transition: opacity 120ms ease, border-color 120ms ease;
+  overflow: hidden;
+}
+.card:hover { border-color: var(--text-faint); }
+.card.dim { opacity: 0.12; }
+
+/* path highlighting -- greys only, so it never competes with the health dot */
+.card.off-path { opacity: 0.1; }
+.card.on-path { box-shadow: 0 0 0 1px rgba(237, 237, 237, 0.07); }
+.card.selected {
+  border-color: #ededed;
+  background: #2e2e2e;
+  box-shadow: 0 0 0 2px rgba(237, 237, 237, 0.5), 0 6px 22px rgba(0, 0, 0, 0.55);
+}
+
+.card-head { display: flex; align-items: center; gap: 8px; }
+.card-name {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "new" -- the second-brain machinery, told apart from the pipeline that was
+   already running around it. Outlined rather than filled so it never competes
+   with the status badge sitting next to it. */
+.chip-new {
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  width: 15px;
+  height: 15px;
+  display: block;
+  color: #1a1a1a;
+  background: #c9c9c9;
+  border-radius: 3px;
+  line-height: 1;
+  padding: 0;
+}
+/* superseded -- the removal list. Yellow so it reads as "attention, decide about
+   this" rather than as a failure, which the red badge already means. */
+.chip-old {
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  width: 15px;
+  height: 15px;
+  display: block;
+  color: #1a1a1a;
+  background: #e3b341;
+  border-radius: 3px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* keep the caption clear of the corner mark */
+.card.is-new .card-head { padding-right: 20px; }
+.card-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+/* Shape carries what hue used to. Filled-with-halo is the loudest; a hollow
+   ring reads as "quiet"; a dashed ring reads as "no signal here at all". */
+.card-dot.h-failed { box-shadow: 0 0 0 3px rgba(242, 242, 242, 0.16); }
+.card-dot.h-unknown { border: 2px dotted var(--unknown); background: transparent !important; }
+.card-dot.h-idle { border: 2px solid var(--idle); background: transparent !important; }
+.card-dot.h-blind { border: 1.5px dashed var(--blind); background: transparent !important; }
+.card-dot.h-never { width: 6px; height: 6px; margin: 0 1.5px; }
+
+.card-purpose {
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 1.42;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-detail {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-faint);
+  margin-top: auto;
+  padding-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-caveat {
+  font-size: 11px;
+  line-height: 1.42;
+  color: var(--degraded);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* zoomed-out tiers */
+.card.lod-mid { justify-content: center; gap: 12px; }
+.card.lod-mid .card-purpose { font-size: 17px; line-height: 1.38; -webkit-line-clamp: 4; }
+.card.lod-mid .card-name { font-size: 12px; }
+.card.lod-mid .chip-new,
+.card.lod-mid .chip-old { font-size: 13px; width: 20px; height: 20px; top: 13px; right: 14px; border-radius: 4px; }
+.card.lod-mid.is-new .card-head { padding-right: 26px; }
+.card.lod-far { justify-content: center; align-items: center; }
+.card.lod-far .card-glyph {
+  font-size: 40px; font-weight: 700; font-family: var(--mono); opacity: 0.85;
+  position: relative;
+}
+.glyph-new, .glyph-old {
+  position: absolute;
+  top: -6px; right: -14px;
+  width: 9px; height: 9px;
+  border-radius: 2px;
+}
+.glyph-new { background: #c9c9c9; }
+.glyph-old { background: #e3b341; }
+
+/* --------------------------------------------------------------------- drawer */
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 390px;
+  background: var(--bg-elev);
+  border-left: 1px solid var(--line);
+  padding: 20px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.drawer h2 { font-size: 16px; margin: 0 0 3px; letter-spacing: -0.01em; }
+.drawer .close {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: none; color: var(--text-faint);
+  font-size: 19px; cursor: pointer; line-height: 1; padding: 4px;
+}
+.drawer .status-line { display: flex; align-items: center; gap: 7px; margin: 12px 0 16px; font-size: 13px; }
+.drawer section { margin-bottom: 16px; }
+.drawer h3 {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--text-faint); margin: 0 0 6px; font-weight: 650;
+}
+.drawer p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+.drawer code {
+  font-family: var(--mono); font-size: 11.5px; color: var(--text-dim);
+  background: var(--bg); padding: 2px 6px; border-radius: 5px;
+  word-break: break-all; display: inline-block;
+}
+.drawer .warn {
+  border-left: 2px solid var(--degraded);
+  padding-left: 10px; color: var(--degraded); font-size: 12.5px; line-height: 1.45;
+}
+.kv { display: flex; justify-content: space-between; font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+.kv span:first-child { color: var(--text-faint); }
+.kv span:last-child { font-family: var(--mono); }
+
+.banner {
+  padding: 9px 16px;
+  background: rgba(242, 242, 242, 0.07);
+  border-bottom: 1px solid var(--failed);
+  color: var(--failed);
+  font-size: 12.5px;
+  flex: 0 0 auto;
+}
+
+.react-flow__attribution { display: none; }
+
+/* React Flow ships a tinted default for handles and controls. Neutralise them
+   so nothing in the rendered page carries a hue. */
+.react-flow__handle { background: transparent !important; border: none !important; }
+.react-flow__controls-button {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--line);
+  fill: var(--text-dim);
+}
+.react-flow__controls-button:hover { background: #242424; fill: var(--text); }
+
+/* ---------------------------------------------------------------- badge */
+
+.badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+  font-family: var(--font);
+  user-select: none;
+}
+.badge.dashed { border: 1.5px dashed currentColor; }
+.badge svg { display: block; padding: 1px; }
+.badge.dashed svg { padding: 0; }
+.card.lod-mid .badge { width: 20px; height: 20px; font-size: 13px; }
+.legend .badge { width: 15px; height: 15px; font-size: 10px; }
+.drawer .badge { width: 19px; height: 19px; font-size: 12px; }
+
+.chip-new svg, .chip-old svg { display: block; }
