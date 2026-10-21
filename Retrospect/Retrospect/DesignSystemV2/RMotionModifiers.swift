@@ -6,6 +6,7 @@
 //  never branch on it.
 //
 import SwiftUI
+import UIKit
 
 // MARK: - Press
 
@@ -148,12 +149,57 @@ extension EnvironmentValues {
     }
 }
 
+/// Notes every touch on the window without taking part in gesture recognition, so
+/// buttons, pickers and scroll views keep working (a full-screen DragGesture did not).
+private final class TouchObserver: UIGestureRecognizer {
+    var onTouch: (() -> Void)?
+
+    override func touchesBegan(_: Set<UITouch>, with _: UIEvent) {
+        onTouch?()
+        state = .failed
+    }
+}
+
+private struct TouchObserverInstaller: UIViewRepresentable {
+    let onTouch: () -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            let observer = TouchObserver()
+            observer.cancelsTouchesInView = false
+            observer.delaysTouchesBegan = false
+            observer.delaysTouchesEnded = false
+            observer.onTouch = onTouch
+            window.addGestureRecognizer(observer)
+            context.coordinator.observer = observer
+        }
+        return view
+    }
+
+    func updateUIView(_: UIView, context _: Context) {}
+
+    static func dismantleUIView(_: UIView, coordinator: Coordinator) {
+        if let observer = coordinator.observer {
+            observer.view?.removeGestureRecognizer(observer)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var observer: UIGestureRecognizer?
+    }
+}
+
 private struct RLifeHost: ViewModifier {
     @State private var lastTouch: Date = .distantPast
     func body(content: Content) -> some View {
         content
             .environment(\.rLastTouch, lastTouch)
-            .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in lastTouch = Date() })
+            .background(TouchObserverInstaller { lastTouch = Date() })
     }
 }
 
