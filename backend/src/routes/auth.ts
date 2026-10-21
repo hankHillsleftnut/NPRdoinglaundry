@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { generateToken, getOrCreateUser } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
+import { INVALID_APPLE_TOKEN, isRejectedAppleToken } from '../services/apple-errors.js';
 import { config } from '../utils/config.js';
 
 export const authRouter = Router();
@@ -49,6 +50,10 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    if (isRejectedAppleToken(error)) {
+      res.status(401).json(INVALID_APPLE_TOKEN);
+      return;
+    }
     console.error('Sign in error:', error);
     res.status(500).json({
       success: false,
@@ -121,6 +126,10 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
       data: { token },
     });
   } catch (error) {
+    if (isRejectedAppleToken(error)) {
+      res.status(401).json(INVALID_APPLE_TOKEN);
+      return;
+    }
     console.error('Token refresh error:', error);
     res.status(500).json({
       success: false,

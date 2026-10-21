@@ -8,6 +8,9 @@ import { handOffToAgent } from '../services/agent-handoff.js';
 
 export const contentRouter = Router();
 
+/** Clients send a UUID (36 characters); anything far longer is refused, not stored. */
+export const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
+
 /**
  * THE AGENT OWNS A ROW'S STATUS -- why this route never writes
  * `processing_status` once a row is handed off.
@@ -59,6 +62,12 @@ contentRouter.post('/', async (req: Request, res: Response) => {
 
     const { contentType, content, contentDate, metadata } = validationResult.data;
 
+    const idempotencyKey = req.header('Idempotency-Key') ?? null;
+    if (idempotencyKey && idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+      res.status(400).json({ success: false, error: 'Idempotency-Key too long' });
+      return;
+    }
+
     // Get data source ID if exists
     const { data: dataSource } = await supabaseAdmin
       .from(Tables.DATA_SOURCES)
@@ -70,7 +79,6 @@ contentRouter.post('/', async (req: Request, res: Response) => {
     // recognised and answered with the original row, without a second copy and
     // without a second ingest run. See services/content-insert.ts.
     const effectiveDate = contentDate || new Date().toISOString();
-    const idempotencyKey = req.header('Idempotency-Key') ?? null;
 
     let outcome: InsertOutcome;
     try {
@@ -103,6 +111,12 @@ contentRouter.post('/', async (req: Request, res: Response) => {
         success: false,
         error: 'Failed to store content',
       });
+      return;
+    }
+
+    if (outcome.kind === 'key_reused') {
+      // Same key, different body: a client bug. Nothing stored, no ingest.
+      res.status(409).json({ success: false, error: 'Idempotency-Key reused with a different body' });
       return;
     }
 

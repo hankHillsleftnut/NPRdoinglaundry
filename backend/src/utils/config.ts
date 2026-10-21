@@ -64,7 +64,8 @@ export const config = {
 
   // Admin
   admin: {
-    secret: optionalEnv('ADMIN_SECRET', 'retrospect-admin-local'),
+    // No default: without ADMIN_SECRET the admin routes are not mounted.
+    secret: process.env.ADMIN_SECRET || null,
   },
 
   // Agent service — the only execution path for ingestion and podcast generation.
