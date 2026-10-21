@@ -1,0 +1,34 @@
+name: swift quality
+# New-design Swift only (DesignSystemV2, Features); old screens are retired, not linted.
+on:
+  pull_request:
+    paths:
+      - 'Retrospect/**/*.swift'
+      - '.swiftlint.yml'
+      - '.swiftformat'
+      - '.github/workflows/swift-quality.yml'
+jobs:
+  lint-and-format:
+    runs-on: macos-latest
+    env:
+      SWIFTLINT_VERSION: 0.65.1
+      SWIFTLINT_SHA256: c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
+      SWIFTFORMAT_VERSION: 0.64.0
+      SWIFTFORMAT_SHA256: 95ea62625d0b898a7af870293311ae6f09e4a3147ecd900593687e4b9ab2fd98
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned, checksum-verified tools
+        run: |
+          curl -sSfL -o sl.zip "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          echo "${SWIFTLINT_SHA256}  sl.zip" | shasum -a 256 -c -
+          curl -sSfL -o sf.zip "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat.zip"
+          echo "${SWIFTFORMAT_SHA256}  sf.zip" | shasum -a 256 -c -
+          mkdir -p tools && unzip -q -o sl.zip swiftlint -d tools && unzip -q -o sf.zip swiftformat -d tools && chmod +x tools/*
+      - name: SwiftLint (strict)
+        run: tools/swiftlint lint --strict --reporter github-actions-logging
+      - name: SwiftFormat (lint only)
+        run: |
+          paths=()
+          for p in Retrospect/Retrospect/DesignSystemV2 Retrospect/Retrospect/Features; do [ -d "$p" ] && paths+=("$p"); done
+          if [ ${#paths[@]} -eq 0 ]; then echo "no new-design Swift yet"; exit 0; fi
+          tools/swiftformat --lint "${paths[@]}" --exclude Retrospect/Retrospect/DesignSystemV2/Generated
