@@ -208,6 +208,14 @@ Each byte needs only merged work. Two in review at once per side.
 
 **Q10 · The label on a check-in card.** The grey card's label reads "a guess", but "still working toward this?" isn't a guess. A. Label it "a question" for check-ins, "a guess" for "is that a goal?" and GL-2's guess. *(lean)* B. "a guess" on all three, as drawn. C. No label on check-ins.
 
+**Q11 · What unit is "did" counted in?** (found when checking Paper, 21 Oct) Paper's card says "did 4 hours" and "did 1 night"; the contract counts things done ("did 2").
+- A. Count things ("2 times"), the same unit as "said", so the bars compare like with like; GL-2's label keeps "did this week · 4 hours" from calendar time. *(lean: the brain can count things today; a per-goal unit like "nights" would need a model to choose it)*
+- B. Hours when every counted item is a calendar event, else things. Mixed units on one bar pair.
+- C. A unit per goal ("nights", "runs", "hours"), chosen by the brain when the goal is created. Most like Paper; needs a brain byte and a guard.
+- Changes: B adds `did.hours` to the card; C adds `did.unit` and a brain byte.
+
+**Q3, after checking Paper:** the drawn question card shows no quote; the paraphrase sits in the question. The plan follows Paper and keeps the quote in the data (VoiceOver reads it).
+
 **Also waiting on the founder, owned elsewhere:** the toast look (#48), whether grey becomes the guess look everywhere (design-reference #28), the D11 `speak` dial for GL-2's guess, and approving the dark boards `2JCP-0` / `2JRP-0`.
 
 ## 8. Risks

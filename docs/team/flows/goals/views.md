@@ -2,7 +2,7 @@
 
 The tree on this side: **goals** › sample data (UIG.0) › GL-1 (C29.1 meter, C29.2 card, C29.4 ended row, P16.1, P16.2, M11) › questions (C29.3) › GL-2 (C29.5 header, P17.1, UIG.3, P17.2) › add and rename (UIG.1, UIG.2) › turn off and ended (C21-i, P16b) › the flow test (T05b). Contract: [04-goals.md](../../contracts/04-goals.md). Seam: `Platform/Flows/Goals.swift` ([platform.md](./platform.md) seam table).
 
-**Paper was closed when this was planned.** Node ids are from `reference/paper-inventory.md`; values are from `reference/design-reference.md` §C28, §C29, §C32, §E P16/P17 and `design-system/components/goal.md`. Every card's first step is: open the named nodes with `get_jsx` (includeNodeIds false) and `get_computed_styles`, write each value's token into the PR body, and stop and ask if Paper disagrees with this card (the newest Paper wins; tell the integrator).
+**Verified against Paper, 21 Oct** (light file `01M5D5J321P5X86ZT58002B7NT`, tokens hash `e8f98ba6`): GL-1 `1FZO-0` and GL-2 `1G3Z-0` were read with `get_jsx` / `get_computed_styles` / `get_tokens`, and every value below for C29.1–C29.5, P16.1, P17.1 and P17.2 is Paper's, with its token. The list of what changed from the first draft is at the end of this file. The part-48 masters (`ITY-0`) and the approvals boards weren't re-read; the GL-1/GL-2 instances are the approved screens. Every card's first step is still: open the named nodes with `get_jsx` (includeNodeIds false) and `get_computed_styles`, write each value's token into the PR body, and stop and ask if Paper disagrees with this card (the newest Paper wins; tell the integrator).
 
 Rules that apply to every card here: tokens only (the literal check); squircles (`RShape`); one lit object per screen (none on GL-1/GL-2); lowercase labels, the person's words keep their case; Geist for labels and mono only for figures (screen rule 4: where Paper draws "said"/"did" in mono, follow Paper per element and note it in the PR; design-reference finding 31); 44pt hit areas; Reduce Motion = opacity-only 140ms; no verdict words ever (contract 04 §0.3).
 
@@ -45,9 +45,13 @@ Inputs:
 - Code anchors: `RTextStyle`, `RProgressHairline` (#38, for the track's corner and fill behaviour to match), tokens `goal.said`, `goal.did`, `surface.track`
 
 Spec:
-- `RGoalMeter(label: String, count: Int?, countText: String, fill: Double, tint: .said | .did, replacement: String?)`, one row: label (28 wide, leading; Geist or mono per Paper) · 4pt track (`surface.track`, true pill) with its fill (`goal.said` / `goal.did`) · the count in words (64 wide, trailing, mono figure: "6 times", "2").
+- `RGoalMeter(label: String, countText: String, fill: Double, tint: .said | .did, replacement: String?)`, one `HStack(spacing: space.3 = 12)`, centred vertically:
+  - label "said" / "did": **mono** (`font.mono`) `text.xs` 11, `tracking.label`, `leading.snug`, `text.label`, fixed width 28 (Paper keeps mono here, against screen rule 4; follow Paper and note it in the PR);
+  - track: 4 high, `surface.track`, `radius.control` (a true pill), clips its fill; fill `goal.said` / `goal.did`, same radius, full height;
+  - the count in words: **Geist** (`font.label`) `text.sm` 12, `text.secondary`, `leading.snug`, trailing-aligned in a fixed 64 width, wraps rather than truncates ("6 times", "4 hours", "1 night").
+- The two rows stack with `space.2` = 8 between them.
 - `fill` is a 0…1 value the card passes; a count above 0 always shows at least a 4pt fill (a pill end), a count of 0 shows the bare track.
-- `replacement`: when set (too early), the track and count are replaced by that text ("too early to tell", `text.label`), same row height.
+- `replacement`: when set (too early), the track **and** the count are replaced by one text filling the rest of the row: "too early to tell", Geist `text.sm` 12, `text.label` (Paper `1G25-0`).
 - Increase Contrast: the track gets a 1pt ring (`border.control`); the did fill is the 4 : 1 value (`goal.did` already raised, design-reference).
 - AX3: label above, bar full width, count trailing under it.
 
@@ -85,7 +89,7 @@ Inputs:
 - Code anchors: `rRaised`/card tier in `RDepth.swift`, `.rPress`
 
 Spec:
-- `RGoalCard(goal: Goal)`: raised card (card tier), radius 20 (`radius.card`), padding 18; title = the goal's words, SF Pro 17 semibold `text.primary`, wraps to 3 lines then ellipsis; 12 (Paper value) then the two meter rows; 12 then the line (SF Pro 15, `text.secondary`) when `card.line` exists.
+- `RGoalCard(goal: Goal)`: `background.raised`, `radius.card` 20, the full card depth stack (inner-top 1pt, inner 1pt, outer 0.5pt hairline, contact 0/1/2, cast 0/12/28/−12, ambient 0/24/60/−20: `RDepth.card`); padding **top 16 (`space.4`), sides and bottom 20 (`space.5`)**; a `VStack(spacing: space.3 = 12)`: title = the goal's words, SF Pro (`font.text`) `text.body` 17 semibold, `tracking.card`, `leading.snug`, balanced wrap, 3 lines then ellipsis; the two meter rows (C29.1); the line when `card.line` exists: SF Pro `text.md` **14**, `text.secondary`, `leading.snug`, balanced wrap. Width = the column (354 on a 402 phone).
 - **Shared scale:** `scale = max(said.count, did.count, 1)`; `fill = count / scale` for each row. That's presentation of the server's two numbers, not a judgement; it's written once here and unit-tested.
 - **States from `card.state`** (the view never decides them):
   - `compared`: both bars, counts in words ("6 times" / "2").
@@ -140,7 +144,12 @@ Inputs:
 
 Spec:
 - `RGoalQuestionCard(kind: .isThisAGoal(question, quote) | .stillOnIt(question, goalTitle) | .guess(Guess), state:)`.
-- Anatomy: `surface.wash` card, radius 20, padding (Paper); top row: 32 well (`surface.lifted`, raised paper) holding the 18pt `guess` glyph in `accent.text`, then the label "a guess" (Geist label, `text.label`) — the label reads "a question" for `stillOnIt` (founder to confirm; lean: the same "a guess" label is wrong for a check-in, because it isn't one); the question SF Pro 17/24 `text.primary`; for `isThisAGoal`, the quote under it ("you wrote, 17 oct: “i really want to call home more often”", `text.secondary`); for `.guess`, the why line ("from 9 entries · steps") as C28; then two equal-width raised-paper buttons 44 high, 12 apart: "yes" · "not quite" (GL-2's guess: "that's right" · "not quite", per C28's copy unless Paper's `1G49-0` says otherwise).
+- Anatomy (Paper `1G35-0`, `1G45-0`): `surface.wash` card, `radius.card` 20, no shadow, no stroke; a `VStack(spacing: space.3 = 12)`.
+  - Padding: on GL-1 **top 16, sides and bottom 20** (same as the goal card beside it); on GL-2 **16 all round**. The view takes the padding from its page (`.list` / `.page`).
+  - Label row (`HStack(spacing: space.2 = 8)`): a 32 well, **`background.canvas`** (in light; `surface.lifted` per the dark recalibration), `radius.control` (round), 0.5pt `depth.stroke.outer` hairline, holding the `guess` glyph at 18 in `accent.text`; then the label, Geist `text.sm` 12 **medium**, `text.label`, `leading.snug`. The label names the kind: **"a guess · a goal?"** on is-that-a-goal, **"a guess · a pattern"** on GL-2's guess (lean for check-ins, Q10: "a question · still on it?").
+  - The question in the **inky display face** (`font.displayInky`) `text.xl` 22, weight `ink.card`, `tracking.card`, `leading.tight`, balanced wrap, `text.primary`.
+  - Paper draws **no quote line and no why line**: the paraphrase is in the question itself. The contract's `quote` and the guess's `restsOn` stay in the data for VoiceOver and a later "where from" tap; don't draw them (newest Paper wins; noted in README Q3).
+  - Buttons: an `HStack(spacing: space.2 = 8)` with `space.1` = 4 extra above it; two equal-width (flex 1) **true pills** (`radius.control`), 44 high (`size.navBar`), `background.canvas` with a 0.5pt `depth.stroke.outer` and a contact shadow 0/1/1.5 (`depth.shadow.contact`), label SF Pro `text.md` 14 semibold `text.primary`. Copy **"yes" · "not quite" on every kind**, including GL-2's guess (not C28's "that's right").
 - Never dashed: grey is the goals look (build notes); C28's dashed look stays for the journal until the founder decides "grey everywhere" (design-reference finding 28).
 
 State table:
@@ -163,7 +172,7 @@ Interaction table:
 |---|---|---|---|---|---|
 | yes | 0.94 | `confirm` on success | M11 fold | goal created / kept / guess confirmed | fade 140 |
 | not quite | 0.94 | `select` | M11 fold | declined / turned off (P16.2's toast) / guess declined | fade 140 |
-| the quote | — | — | — | none in v1 (lean: the quote opens its entry later, when JR-4 links exist) | — |
+| (the quote isn't drawn) | — | — | — | VoiceOver reads it; a visible "where from" waits for a drawing | — |
 
 Accessibility: one container: "a guess: you keep saying you want to call home more. is that a goal? you wrote on 17 october: i really want to call home more often." with two buttons "yes" and "not quite"; AX3: buttons stack, full width; Increase Contrast: the card gets a 1pt `border.control`; contrast of `accent.text` on the lifted well checked by script.
 
@@ -184,7 +193,7 @@ Why: goals you've ended aren't gone or hidden; they're one quiet line away.
 
 Inputs: Paper part 48 `c:goal-row/faded` `IYZ-0`, GL-1 `1G1X-0` with `c:icon/chevron-right` `1G1Y-0`; design-reference §C29 ("ended: one quiet row 'turned off 2 · merged 1 ›' at the bottom").
 
-Spec: `RGoalsEndedRow(counts: EndedCounts)`: one line, `text.secondary`, the non-zero counts in order turned off · faded · merged · done ("turned off 2 · merged 1"), chevron trailing (`icon.muted`), the row's divider as Paper draws it; 44 high minimum; all zero → the view is `EmptyView` (P16.1 doesn't draw it). Press: wash 80/240.
+Spec: `RGoalsEndedRow(counts: EndedCounts)`: a **`surface.wash` panel**, `radius.panel` 16, min height 56 (`size.rowDefault`), padding 12 vertical (`space.3`) and 16 horizontal (`space.4`), `HStack(spacing: 12)`; the text SF Pro `text.md` 14, `text.secondary`, the non-zero counts in order turned off · faded · merged · done ("turned off 2 · merged 1"); the chevron at 14, `icon.muted`. No divider (Paper draws none). All zero → `EmptyView` (P16.1 doesn't draw it). Press: the panel darkens to `surface.washPressed`, 80/240.
 
 States: rest · pressed (wash) · dark · AX3 (wraps, chevron stays centred on the first line) · count changed (`.numericText` roll, `confirm` is the page's).
 
@@ -203,7 +212,7 @@ Why: one goal's page opens on the goal itself, in your words, big, with how ofte
 
 Inputs: Paper GL-2 `1G3Z-0` (the title block and the said line; no separate master); design-reference §C29 "GL-2 page variant: goal inky 3xl, 'said 6 times · first on … · last on …'"; screen rule 5 (content inky and big).
 
-Spec: `RGoalHeader(title:, said:, ended:)`: the title in the inky display face at `type.3xl` (Exposure per `RType`), tight tracking, `text.primary`, wraps (never truncates); 8 below (`space.stackTight`), the said line SF Pro 15 `text.secondary`: "said 14 times · first on 30 sep · last on sunday" (dates: "today", "yesterday", weekday within 6 days, else "d mmm"; `firstOn`/`lastOn` from the contract as days); said 0 → "not said yet"; ended → the dated line replaces it ("turned off on 12 oct", "faded on 1 aug: not mentioned for 90 days", "merged into learn the cello on 4 sep").
+Spec: `RGoalHeader(title:, said:, ended:)`: the title in the inky display face (`font.displayInky`) `text.3xl` 30, weight `ink.title`, `tracking.title`, `leading.tight`, balanced wrap, `text.primary`, never truncated; 8 below (`space.2`), the said line **Geist `text.sm` 12, `text.label`**, `leading.snug`: "said 14 times · first on 30 sep · last on sunday" (dates: "today", "yesterday", weekday within 6 days, else "d mmm"; `firstOn`/`lastOn` from the contract as days); said 0 → "not said yet"; ended → the dated line replaces it ("turned off on 12 oct", "faded on 1 aug: not mentioned for 90 days", "merged into learn the cello on 4 sep").
 
 States: rest · long title (3+ lines wraps fully) · ended · dark · AX3 · renaming (UIG.2 swaps the title for a field).
 
@@ -291,8 +300,9 @@ Inputs:
 - Reference: §E P16 ("full-width cards, 12 gaps, blur starts higher" on SE; empty copy); `ios-handoff.md` §3 GL-1
 
 Spec (layout):
-- `GoalsPage`: one `ScrollView` with a `LazyVStack(spacing: 12)` (`space.inline`); margins 24 (20 on SE); the top bar (C17-t: "goals" inky large title leading, the wash + trailing); the progressive blur at the tab edge (`.tabEdge`).
-- Order: the question slot (P16.2), then the goal cards in the server's order, then 24 above the ended row (C29.4) when any count is above 0.
+- `GoalsPage`: one `ScrollView` with a `LazyVStack(spacing: space.4 = 16)`, 12 above the first item (`space.3`), margins 24 (`space.screenMargin`; 20 on SE); the top bar (C17-t, 44 high: "goals" leading at the screen margin, the wash + as a 36 well in a 44 hit area, 16 from the trailing edge); the progressive blur at the tab edge (`.tabEdge`): Paper draws the scroll masked from solid at 620pt to 50% at 655 to clear at 690, over a blurred copy, under a light tint behind the tab labels (150 high).
+- SE: Paper's handoff note says "12 gaps" on SE: use 12 there, 16 on every other phone.
+- Order: the question slot (P16.2), then the goal cards in the server's order, then the ended row (C29.4) when any count is above 0, at the same 16 gap (Paper draws no extra space before it).
 - **No lit object** on this page. The + is a quiet wash icon button (UIG.1 opens from it).
 - The mini-player floats above the tab bar when something is loaded; the list's bottom inset grows with it.
 
@@ -384,8 +394,10 @@ Inputs:
 - Reference: §E P17 ("sections 24 apart (32 → 24 on SE), foot 16 off the bottom; three evidence rows fit"); design-reference §C32 (grouped rows: 32 kind well, date/kind label, one line `text.md` with `.lineLimit(1)`, chevron, 1pt `border.subtle` separators); top bar rule (single-item screens get no title)
 
 Spec (layout):
-- `GoalPage(goalId:, titleHint:)`: top bar back · edit (no title); `ScrollView`: C29.5 header; 32 (24 on SE) then the section label "did this week" (+ " · 4.5 hours" when `didThisWeek.hours` is present: figures in mono) and the grouped C32 rows; 32 then the guess (P17.2); the foot "turn off" pill pinned 16 above the bottom safe area (P17.2).
-- Did rows: well glyph by `kind` (`calendar`, `journal` for entries, `play` for watched (asset request if missing), `journal` for unknown); label "tue 14 oct · calendar"; the one line (`text`); chevron and tap only when `opens` is present (Q7's lean): entry → JR-4.
+- `GoalPage(goalId:, titleHint:)`: top bar (44, 16 side padding): back as a 36 `surface.wash` round well in a 44 hit area (chevron-left 20, `icon.default`), "edit" trailing as a text button (Geist `text.md` 14 medium, `tracking.label`, `text.primary`, 44 high, 8 side padding); no title. Content: margins 24, **16 below the top bar**, sections `VStack(spacing: space.8 = 32)` (24 on SE): C29.5 header; the did section; the guess (P17.2). The foot sits outside the scroll (P17.2).
+- The did section: `VStack(spacing: 8)`: the label "did this week · 4 hours" in **Geist `text.sm` 12 medium, `tracking.label`, `text.label`** (no mono: the hours are part of the label line); then one grouped panel: `background.canvas`, `radius.panel` 16, a 0.5pt `depth.stroke.outer` hairline, rows inside.
+- Did rows (C32 as Paper draws it here): min height 56, padding 12 / 16, `HStack(spacing: 12)`; a 32 well, `surface.wash`, `radius.default` 10, glyph 18 `icon.default` by `kind` (`calendar`; `journal` for entries; `play` for watched, an asset request; `journal` for unknown); a `VStack(spacing: 2)` of the label (Geist `text.sm` 12, `text.label`: "tue 14 oct · calendar", **"fri 17 oct · your words"** for entries) and the one line (SF Pro `text.md` 14, `tracking.card`, `text.primary`, one line, tail truncation; entries in quotes: "\"finally fixed the sync bug\""); the chevron 14 `icon.muted`. Separators: a 1pt `border.subtle` line on the bottom of every row but the last.
+- Paper draws the chevron on **every** row, calendar ones included. Q7's lean (chevron and tap only when `opens` is present; entry → JR-4) differs from the drawing: build the lean, and the PR shows both for the founder.
 - No rows this week: one line in the rows' place, "nothing this week yet." (`text.secondary`). During `tooEarly`, rows still list (they're facts).
 - `titleHint` (from the list) shows at once while the detail loads; the rest is skeleton after 400ms.
 
@@ -458,7 +470,7 @@ Inputs: contract 04 §3 (`guess`), §4 (`active`); contract 02 §4 (answering a 
 
 Spec:
 - Guess: C29.3 `.guess(guess)` 32 under the rows when `guess` is present; answering goes through the journal's `answer(_:verdict:)`; answered → the card folds (M11's fold) and doesn't return.
-- Foot: one quiet neutral pill (`RPill` neutral, `1G42-0`) centred, 16 above the bottom safe area: "turn off" on an active goal; "turn back on" on an ended one. No dialog (sheet rule: never a dialog for an undoable choice).
+- Foot (Paper `1G40-0`, outside the scroll): centred, margins 24, **32 above the bottom** (`space.8`; 16 on SE per the handoff); one pill 32 high (`surface.wash`, `radius.control`, 16 side padding, SF Pro `text.md` 14 medium `text.primary`) in a 44 hit area: "turn off" on an active goal; "turn back on" on an ended one. No dialog (sheet rule: never a dialog for an undoable choice).
 - "turn off": `setActive(false)` → pop to GL-1 → the card folds there → C21-i "turned off · undo".
 - "turn back on": `setActive(true)` → the header's dated line cross-fades (`.rBlurReplace`) to "said … · not said yet", the foot becomes "turn off", the page reloads too early; `confirm`.
 
@@ -555,3 +567,35 @@ Spec: one XCUITest class `GoalsFlowTests` on `-Data sample` (and `-Data live -En
 Acceptance: green on sample data in CI (nightly and on page PRs); green on local staging before the wiring PR merges; no assertion depends on copy.
 
 Proof: the test run; the integrator's staging recording (test account, counts only).
+
+---
+
+## Verified against Paper (21 Oct): what changed from the first draft
+
+| Where | First draft (from the reference docs) | Paper (GL-1 `1FZO-0`, GL-2 `1G3Z-0`) |
+|---|---|---|
+| C29.2 card padding | 18 all round | top 16 (`space.4`), sides and bottom 20 (`space.5`) |
+| C29.2 card line | SF Pro 15 | SF Pro `text.md` 14, balanced wrap |
+| C29.2 depth | "card tier" | the full stack: inner-top, inner, outer 0.5, contact, cast, ambient |
+| C29.1 count | mono figure | Geist `text.sm` 12 `text.secondary`, 64 wide, wraps |
+| C29.1 label | Geist or mono | mono `text.xs` 11 `tracking.label` (Paper keeps mono) |
+| C29.1 did count | a number ("2") | words with a unit: "4 hours", "1 night" (contract question Q11, README) |
+| C29.1 row gap | — | 8 between said and did; 12 inside a row |
+| C29.1 too early | replaces the bar | replaces the bar **and** the count, Geist 12 `text.label` |
+| C29.3 well | `surface.lifted` | `background.canvas` (lifted in dark), round, 0.5 hairline |
+| C29.3 label | "a guess" | "a guess · a goal?" / "a guess · a pattern" (Geist 12 medium) |
+| C29.3 question | SF Pro 17/24 | inky display `text.xl` 22, `ink.card`, `leading.tight` |
+| C29.3 quote and why lines | drawn under the question | not drawn; kept in data only |
+| C29.3 buttons | raised-paper, 12 apart | true pills, `background.canvas`, hairline + contact, 44 high, 8 apart, 4 extra above; SF Pro 14 semibold |
+| C29.3 GL-2 copy | "that's right" · "not quite" | "yes" · "not quite" |
+| C29.3 padding | — | GL-1: 16 / 20 / 20; GL-2: 16 all round |
+| C29.4 ended row | a line with a divider, 44 min | a `surface.wash` panel, `radius.panel` 16, 56 min, 12/16 padding, SF Pro 14, chevron 14 |
+| C29.5 said line | SF Pro 15 `text.secondary` | Geist `text.sm` 12 `text.label` |
+| C29.5 title | `type.3xl` | `text.3xl` 30, `ink.title`, `tracking.title`, `leading.tight` |
+| P16.1 list gap | 12 | 16 (`space.4`); 12 above the first card; 12 on SE per the handoff |
+| P16.1 ended row spacing | 24 above | the list's 16 |
+| P17.1 top of content | — | 16 below the top bar; sections 32 apart |
+| P17.1 section label | "did this week" + mono hours | "did this week · 4 hours", all Geist 12 medium |
+| P17.1 rows | C32 defaults | 56 min, 32 well radius 10, label Geist 12, text SF Pro 14, entries labelled "your words" and quoted, 1pt `border.subtle` separators, a grouped `background.canvas` panel radius 16 |
+| P17.1 chevrons | only on rows that open | Paper draws one on every row (Q7 lean kept; shown in the PR) |
+| P17.2 foot | 16 above the bottom | 32 (`space.8`); a 32-high wash pill in a 44 hit area |

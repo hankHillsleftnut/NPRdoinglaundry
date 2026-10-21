@@ -200,6 +200,7 @@ Each has a lean; work goes ahead on the lean. Full options and what changes unde
 7. **Did rows.** Lean: a row opens its source when the app has a page for it (entries → JR-4); "not for this goal" is in the long-press menu, with undo.
 8. **Done.** Lean: no "done" in v1; "turn off" only, as drawn.
 9. **Delete a goal.** Lean: no; rename and turn off cover it.
+11. **The unit for "did".** Paper draws "4 hours" and "1 night"; this contract counts things. Lean: count things ("2 times") so the bars compare like with like; hours stay on GL-2's label.
 10. **A check-in's label.** Lean: "a question" on check-ins; "a guess" stays on is-that-a-goal and GL-2's guess.
 
 ## 10. Fixtures
