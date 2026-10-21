@@ -3,7 +3,7 @@
 //  M14 C12: the search field (Paper approvals · part 23 c:search-field/rest and /typed;
 //  ios-handoff "50 · search"). Built on RSunkenField, the shared sunken pill a plain field
 //  will reuse once Paper draws one. Rest: a 36 mic well first, the placeholder in
-//  text.tertiary. Typed: your words in text.primary and a 36 clear slot with a 16 ×.
+//  text.placeholder. Typed: your words in text.primary and a 36 clear slot with a 16 ×.
 //  Focus follows iOS (the caret); Paper draws no focus ring, so there is none.
 //
 import SwiftUI
