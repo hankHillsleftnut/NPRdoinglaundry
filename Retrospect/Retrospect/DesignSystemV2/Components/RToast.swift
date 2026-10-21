@@ -61,7 +61,12 @@ struct RToast: View {
             .environment(\.colorScheme, look == .darkGlass ? .dark : colorScheme)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(message)
-            .accessibilityAction(named: Text("undo")) { undo?() }
+            // offered only when there is something to undo
+            .accessibilityActions {
+                if let undo {
+                    Button("undo", action: undo)
+                }
+            }
     }
 
     @Environment(\.colorScheme) private var colorScheme
@@ -203,6 +208,7 @@ private struct RToastHost: ViewModifier {
     @Binding var item: RToastItem?
     let bottomInset: CGFloat
     @State private var touching = false
+    @AccessibilityFocusState private var voiceOverOnIt: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
@@ -216,7 +222,9 @@ private struct RToastHost: ViewModifier {
                     .id(item.id)
                     .transition(transition)
                     .gesture(swipeDown)
-                    .onLongPressGesture(minimumDuration: .infinity, pressing: { touching = $0 }, perform: {})
+                    // alongside, never instead of, undo's tap and the swipe
+                    .simultaneousGesture(holding)
+                    .accessibilityFocused($voiceOverOnIt)
                     .task(id: item.id) { await autoDismiss() }
                     .padding(.horizontal, RDimension.spaceScreenMargin)
                 }
@@ -253,17 +261,32 @@ private struct RToastHost: ViewModifier {
         }
     }
 
-    /// Leaves after toastVisible; waits while it's touched or VoiceOver is on it.
+    /// A finger on the toast holds it; lifting lets it go on counting.
+    private var holding: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in touching = true }
+            .onEnded { _ in touching = false }
+    }
+
+    /// Leaves after toastVisible (twice that with VoiceOver on, so it can be read out). The clock
+    /// pauses while a finger or VoiceOver's focus is on it, but never past four times the visible
+    /// time, so it can't stay up for good.
     private func autoDismiss() async {
-        var elapsed: Double = 0
+        let visible = RNumber.motionDurationToastVisible * (voiceOver ? 2 : 1)
+        let ceiling = RNumber.motionDurationToastVisible * 4
         let step = RNumber.motionDurationFast
-        while elapsed < RNumber.motionDurationToastVisible {
+        // a swipe that removed the last toast can end without onEnded; start each toast untouched
+        touching = false
+        var counted: Double = 0
+        var waited: Double = 0
+        while counted < visible, waited < ceiling {
             try? await Task.sleep(for: .seconds(step))
             if Task.isCancelled {
                 return
             }
-            if !touching, !voiceOver {
-                elapsed += step
+            waited += step
+            if !touching, !voiceOverOnIt {
+                counted += step
             }
         }
         dismiss()

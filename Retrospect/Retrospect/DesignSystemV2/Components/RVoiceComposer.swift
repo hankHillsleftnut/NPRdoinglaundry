@@ -89,7 +89,10 @@ struct RVoiceComposer: View {
             }
         }
         .onChange(of: mode) { _, new in
-            focused = new == .muted
+            // leaving muted drops the keyboard; coming back never raises it unasked
+            if new != .muted {
+                focused = false
+            }
             if let word = stateWord(new) {
                 AccessibilityNotification.Announcement(word).post()
             }

@@ -15,7 +15,8 @@ struct RSwitch: View {
     @Binding var isOn: Bool
     var isDisabled = false
 
-    @State private var held = false
+    /// Resets on its own if the touch is cancelled (a scroll takes it), so the thumb never stays stretched.
+    @GestureState private var held = false
     /// The value your last touch chose. If the parent later sets anything else, saving failed.
     @State private var chosen: Bool?
     @State private var selectTick = 0
@@ -42,7 +43,7 @@ struct RSwitch: View {
         // at least 44 tall around the 31 track, padding the frame, never the visual (craft 1.7)
         .frame(minHeight: hitHeight)
         .contentShape(Rectangle())
-        .gesture(isDisabled ? nil : press)
+        .simultaneousGesture(isDisabled ? nil : press) // alongside, so a scroll that starts here still scrolls
         .onChange(of: isOn) { _, now in
             if let chosen, now != chosen {
                 errorTick += 1
@@ -60,24 +61,34 @@ struct RSwitch: View {
         }
         .sensoryFeedback(RHaptic.select, trigger: selectTick)
         .sensoryFeedback(RHaptic.error, trigger: errorTick)
+        // VoiceOver goes through the same path as a touch: the select haptic, and the error if saving fails
         .accessibilityRepresentation {
-            Toggle(label, isOn: $isOn).disabled(isDisabled)
+            Toggle(label, isOn: Binding(get: { isOn }, set: { choose($0) })).disabled(isDisabled)
         }
     }
 
     /// Down: the thumb stretches. Up: a tap toggles; a sideways drag past half the travel sets the side it ends on.
     private var press: some Gesture {
         DragGesture(minimumDistance: 0)
-            .onChanged { _ in held = true }
+            .updating($held) { _, state, _ in state = true }
             .onEnded { value in
-                held = false
+                let width = value.translation.width
+                let height = value.translation.height
+                // a mostly-vertical drag is a scroll of the page, never a toggle
+                if abs(height) > abs(width), abs(height) > RDimension.space2 {
+                    return
+                }
                 let travel = RDimension.sizeSwitchWidth - RDimension.sizeSwitchThumb - 2 * RDimension.sizeBorderRing
-                let next = abs(value.translation.width) > travel / 2 ? value.translation.width > 0 : !isOn
-                guard next != isOn else { return }
-                chosen = next
-                isOn = next
-                selectTick += 1
+                choose(abs(width) > travel / 2 ? width > 0 : !isOn)
             }
+    }
+
+    /// One way to change the value, for touch and VoiceOver alike.
+    private func choose(_ next: Bool) {
+        guard next != isOn else { return }
+        chosen = next
+        isOn = next
+        selectTick += 1
     }
 }
 

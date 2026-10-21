@@ -74,7 +74,8 @@ struct RSourceRow: View {
         // the words and the connect button stay two, so connect can be reached on its own
         .accessibilityElement(children: state == .notConnected ? .contain : .combine)
         .accessibilityAddTraits(open == nil || state == .notConnected ? [] : .isButton)
-        .accessibilityAction { open?() }
+        // a default action only where the row opens something (onboarding rows only connect)
+        .modifier(RSourceRowOpenAction(open: open))
     }
 
     @ViewBuilder private var trailing: some View {
@@ -95,6 +96,19 @@ struct RSourceRow: View {
 }
 
 /// Pressed: surface.subtle at once, back over 240ms; Reduce Motion: no fade (part 22's row).
+/// VoiceOver's double-tap opens the row, and only when there is somewhere to go.
+private struct RSourceRowOpenAction: ViewModifier {
+    let open: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let open {
+            content.accessibilityAction { open() }
+        } else {
+            content
+        }
+    }
+}
+
 private struct RSourceRowPressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
