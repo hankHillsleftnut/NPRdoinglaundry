@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**532 tokens** · 456 semantic · 276 marked *to set*
+**540 tokens** · 464 semantic · 276 marked *to set*
 
 ## palette
 
@@ -437,6 +437,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.stepDotActive` | The current step (a short pill). | 18pt |  | to set: app need |
 | `size.popoverRow` | A menu row. | 50pt |  | to set: from the title-menu recording (20 Oct) |
 | `size.meter` | Height of the knows-you meter track (ON-6). | 4pt |  | ON-6 c:knows-you-meter, 21 Oct |
+| `size.switch.width` | The switch track's width. | 51pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.height` | The switch track's height. | 31pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.thumb` | The switch thumb (track height − 2 × size.border.ring). | 27pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.thumbHeld` | The thumb's width while held: it stretches toward its travel. | 33pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
 
 ## radius
 
