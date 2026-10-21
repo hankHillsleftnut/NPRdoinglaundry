@@ -32,6 +32,12 @@ struct RTextStyle {
     let relativeTo: Font.TextStyle
 
     var font: Font {
+        font(scaledSize: size)
+    }
+
+    /// The font at a size already scaled for Dynamic Type. Custom families scale themselves through
+    /// `relativeTo`; the system families take the scaled size directly, since `.system(size:)` is fixed.
+    func font(scaledSize: CGFloat) -> Font {
         switch family {
         case let .inky(axis):
             // --font-weight-ink-title / -ink-card select an Exposure axis, not a weight
@@ -41,9 +47,33 @@ struct RTextStyle {
         case .label:
             return .custom(RFamily.label(weight), size: size, relativeTo: relativeTo)
         case .text:
-            return .system(size: size, weight: weight)
+            return .system(size: scaledSize, weight: weight)
         case .mono:
-            return .system(size: size, weight: weight, design: .monospaced).monospacedDigit()
+            return .system(size: scaledSize, weight: weight, design: .monospaced).monospacedDigit()
+        }
+    }
+
+    /// `size` scaled the way iOS scales `relativeTo` at this Dynamic Type size.
+    func scaledSize(at dynamicTypeSize: DynamicTypeSize) -> CGFloat {
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicTypeSize))
+        return UIFontMetrics(forTextStyle: relativeTo.uiTextStyle).scaledValue(for: size, compatibleWith: traits)
+    }
+}
+
+private extension Font.TextStyle {
+    var uiTextStyle: UIFont.TextStyle {
+        switch self {
+        case .largeTitle: .largeTitle
+        case .title: .title1
+        case .title2: .title2
+        case .title3: .title3
+        case .headline: .headline
+        case .subheadline: .subheadline
+        case .callout: .callout
+        case .footnote: .footnote
+        case .caption: .caption1
+        case .caption2: .caption2
+        default: .body
         }
     }
 }
@@ -194,12 +224,16 @@ extension RTextStyle {
 
 private struct RTextModifier: ViewModifier {
     let style: RTextStyle
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     func body(content: Content) -> some View {
+        // tracking and leading are proportions of the size, so they follow the scaled size too
+        let size = style.scaledSize(at: dynamicTypeSize)
         content
-            .font(style.font)
-            .tracking(style.tracking * style.size)
+            .font(style.font(scaledSize: size))
+            .tracking(style.tracking * size)
             // SwiftUI's default line height is about 1.2× the size; add the rest as spacing
-            .lineSpacing(max(0, (style.leading - 1.2) * style.size))
+            .lineSpacing(max(0, (style.leading - 1.2) * size))
     }
 }
 
