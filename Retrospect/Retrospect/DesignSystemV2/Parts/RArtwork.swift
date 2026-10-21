@@ -106,7 +106,7 @@ struct RArtwork: View {
                 .float(recipe.grain.mode == .mono ? 0 : 1),
                 .float(recipe.grain.size / displayScale)
             ))
-            .clipShape(RoundedRectangle(cornerRadius: size * RNumber.radiusArtworkRatio, style: .continuous))
+            .clipShape(RShape.rect(size * RNumber.radiusArtworkRatio))
             .accessibilityHidden(true)
     }
 }

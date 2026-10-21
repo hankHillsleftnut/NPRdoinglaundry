@@ -90,7 +90,7 @@ private struct RSwitchTrack: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let shape = Capsule(style: .continuous)
+        let shape = RShape.pill
         ZStack {
             shape.fill(RColor.surfaceTrack)
                 // inset 0 1 2 depth.shadow.sunken
@@ -112,7 +112,7 @@ private struct RSwitchTrack: View {
         let open = RDimension.sizeSwitchWidth - RDimension.sizeSwitchThumb - 2 * RDimension.sizeBorderRing
         return Group {
             if isOn {
-                Capsule(style: .continuous).fill(RColor.surfaceThumb)
+                RShape.pill.fill(RColor.surfaceThumb)
                     .frame(width: RDimension.sizeBorderDefault, height: RDimension.space2 + RDimension.sizeBorderRing)
             } else {
                 Circle().strokeBorder(RColor.textLabel, lineWidth: RDimension.sizeBorderDefault)
@@ -129,7 +129,7 @@ private struct RSwitchTrack: View {
 /// surface.thumb, raised: 0 2 5 + 0 1 1 shadows and a darker underside (inset 0 −1 0).
 private struct RSwitchThumb: View {
     var body: some View {
-        let shape = Capsule(style: .continuous)
+        let shape = RShape.pill
         shape.fill(RColor.surfaceThumb)
             .overlay(alignment: .bottom) {
                 shape.strokeBorder(RColor.depthStrokeOuter, lineWidth: RDimension.sizeBorderDefault)

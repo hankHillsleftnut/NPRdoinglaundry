@@ -123,7 +123,7 @@ struct RMotionLab: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: RDimension.space3) {
                             ForEach(0 ..< 8, id: \.self) { i in
-                                RoundedRectangle(cornerRadius: RDimension.radiusPanel, style: .continuous)
+                                RShape.rect(RDimension.radiusPanel)
                                     .fill(RColor.surfaceWash)
                                     .frame(width: 96, height: 96)
                                     .overlay(Text("\(i + 1)").rText(.label))

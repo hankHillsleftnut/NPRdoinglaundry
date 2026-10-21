@@ -42,11 +42,13 @@ const stripComment = (line) => {
 };
 
 // Every corner is a squircle (radius.style): this applies to every file, the hand-built
-// token files included, since a circular corner is never right.
+// token files included. Corners are drawn only through RShape (RDepth.swift), whose two
+// shapes are the only Capsule / RoundedRectangle allowed, so a change to radius.style
+// reaches every corner.
 const shapeRules = [
-  [/\bCapsule\(\s*\)|\bCapsule\(\s*style:\s*\.circular/, 'circular pill: use RShape.pill (radius.style)'],
-  [/\bRoundedRectangle\(\s*cornerRadius:(?![^)]*\bstyle:)/, 'corner without a style: use RShape.rect(...) (radius.style)'],
-  [/style:\s*\.circular\b/, 'circular corner: use RShape (radius.style)'],
+  [/\bCapsule\(/, 'raw pill: use RShape.pill (radius.style)'],
+  [/\bRoundedRectangle\(/, 'raw corner: use RShape.rect(...) (radius.style)'],
+  [/style:\s*\.(circular|continuous)\b/, 'hard-coded corner style: use RShape (radius.style)'],
   [/\.cornerRadius\(|\.rect\(\s*cornerRadius:(?![^)]*\bstyle:)/, 'circular corner: clip with RShape.rect(...) (radius.style)'],
 ];
 const shapeFiles = [];
@@ -62,6 +64,8 @@ for (const f of shapeFiles) {
   readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
     const code = stripComment(line);
     if (/^\s*(\/\/\/|\/\/|\*)/.test(line)) return;
+    // RShape's own two shapes, the one place the token style is applied
+    if (/\/RDepth\.swift$/.test(f) && /style:\s*RCorner\.style\b/.test(code)) return;
     for (const [re, msg] of shapeRules) {
       if (re.test(code)) {
         problems++;

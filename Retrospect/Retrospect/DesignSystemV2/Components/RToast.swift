@@ -144,7 +144,7 @@ private struct RToastSurface: View {
     let radius: CGFloat
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let shape = RShape.rect(radius)
         shape.fill(.ultraThinMaterial)
             .overlay(shape.fill(tint))
             .overlay(alignment: .top) {

@@ -52,7 +52,7 @@ struct RIconWell: View {
     var body: some View {
         RSymbol(name: symbol, tint: tint)
             .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
-            .background(fill, in: RoundedRectangle(cornerRadius: RDimension.radiusDefault, style: .continuous))
+            .background(fill, in: RShape.rect(RDimension.radiusDefault))
     }
 }
 
