@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**533 tokens** · 457 semantic · 276 marked *to set*
+**535 tokens** · 459 semantic · 276 marked *to set*
 
 ## palette
 
@@ -442,6 +442,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
 | Token | Purpose | Light | Dark | Source |
 |---|---|---|---|---|
+| `radius.style` | Every corner is a squircle: continuous curvature, pills and wells included, never a circular arc meeting a straight edge. | continuous |  | founder 21 Oct: every rounded corner is a squircle |
 | `radius.small` | Small marks and tags. | 6pt |  | lime |
 | `radius.default` | Small cards and thumbnails. | 10pt |  | lime |
 | `radius.field` | Text fields. | 12pt |  | lime |

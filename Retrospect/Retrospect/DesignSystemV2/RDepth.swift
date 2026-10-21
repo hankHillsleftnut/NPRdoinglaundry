@@ -7,6 +7,19 @@
 //
 import SwiftUI
 
+/// Every corner is a squircle (radius.style, founder 21 Oct): continuous curvature for
+/// rectangles and pills alike. Draw corners through these, never a bare Capsule() or
+/// RoundedRectangle (design-system/tools/check-swift-literals.mjs fails them).
+enum RShape {
+    static func rect(_ radius: CGFloat) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: RCorner.style)
+    }
+
+    static var pill: Capsule {
+        Capsule(style: RCorner.style)
+    }
+}
+
 extension View {
     /// z 0.5 · a translucent tint that reads as part of the page (pills, wells, bubbles).
     func rWash(_ radius: CGFloat = RDimension.radiusControl) -> some View {

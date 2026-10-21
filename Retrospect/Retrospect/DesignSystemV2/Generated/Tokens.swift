@@ -602,6 +602,12 @@ public enum RDimension {
     public static let layoutWidgetPadding: CGFloat = 16
 }
 
+/// Corner shape from radius.style. Views draw corners through RShape, never a bare Capsule() or RoundedRectangle.
+public enum RCorner {
+    /// Every corner is a squircle: continuous curvature, pills and wells included, never a circular arc meeting a straight edge.
+    public static let style: RoundedCornerStyle = .continuous
+}
+
 /// Springs and curves from motion.* (design-system/principles/motion-system.md). Views use these, never a raw .spring(...).
 public enum RMotion {
     /// Nodes settling after a drag or a zoom.

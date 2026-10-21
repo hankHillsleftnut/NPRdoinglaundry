@@ -45,6 +45,7 @@ const num = (v) => {
 const f = (x) => (+x.toFixed(4)).toString();
 
 const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], skipped = [];
+let cornerStyle = null;
 (function walk(o, path) {
   if (!o || typeof o !== 'object') return;
   if ('$value' in o) {
@@ -67,6 +68,8 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       springs.push({ name: camel(path.slice('motion.spring.'.length)), r: v.response, d: v.dampingFraction, doc: o.$description });
     } else if (type === 'cubicBezier' && /^motion\.curve\./.test(path) && Array.isArray(o.$value)) {
       curves.push({ name: camel(path.slice('motion.curve.'.length)), p: o.$value, doc: o.$description });
+    } else if (type === 'string' && path === 'radius.style') {
+      cornerStyle = { v: String(o.$value), doc: o.$description };
     } else if (type === 'string' && /^haptic\./.test(path)) {
       haptics.push({ name: camel(path.slice('haptic.'.length)), v: String(o.$value), doc: o.$description });
     } else if ((type === 'number' && /^(opacity|layer|motion\.)/.test(path)) || type === 'duration') {
@@ -117,6 +120,15 @@ const lines = [
   ...dims.map((d) => `${doc(d.doc)}    public static let ${d.name}: CGFloat = ${f(d.n)}`),
   '}',
   '',
+  ...(cornerStyle
+    ? [
+        '/// Corner shape from radius.style. Views draw corners through RShape, never a bare Capsule() or RoundedRectangle.',
+        'public enum RCorner {',
+        `${doc(cornerStyle.doc)}    public static let style: RoundedCornerStyle = .${cornerStyle.v}`,
+        '}',
+        '',
+      ]
+    : []),
   '/// Springs and curves from motion.* (design-system/principles/motion-system.md). Views use these, never a raw .spring(...).',
   'public enum RMotion {',
   ...springs.map((m) => `${doc(m.doc)}    public static let ${m.name}: Animation = .spring(response: ${f(m.r)}, dampingFraction: ${f(m.d)})`),
