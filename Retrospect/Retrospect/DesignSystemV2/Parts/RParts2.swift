@@ -49,8 +49,8 @@ struct RKnowsYouTrack: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(RColor.surfaceTrack)
-                Capsule()
+                RShape.pill.fill(RColor.surfaceTrack)
+                RShape.pill
                     .fill(LinearGradient(
                         colors: [RColor.glowPrimaryGradientTop, RColor.glowPrimaryGradientBottom],
                         startPoint: .leading,
