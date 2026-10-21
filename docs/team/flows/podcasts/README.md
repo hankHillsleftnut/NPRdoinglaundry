@@ -49,7 +49,7 @@ podcasts
 │   │   ├── UI5.4 episode feedback (S; waits for a Paper drawing)
 │   │   ├── M09 play morph, rolling time, chapter ticks (M)
 │   │   └── M06 player → mini-player (L; first run owns it, PC-2 exposes its ids)
-│   ├── playback (platform) ── PLP.1a live engine (L) · PLP.1b one audio owner (S) · PLP.2 lock screen (M) · PLP.3 positions (S)
+│   ├── playback (platform) ── PLP.1a live engine, extracted from today's player (L) · PLP.1b old screens on the one engine (M) · PLP.2 lock screen (M) · PLP.3 positions (S)
 │   ├── the library (server + platform) ── BE3.4a agent route (S) · BE3.4b door (M) · BE3.6 a brief by id (S) · PL3.4a live (M)
 │   ├── one episode (server + platform) ── BE3.0a sections + chapter titles (M) · BE3.0b audio per chapter (M) · BE3.0c line times (S)
 │   │                                       · BE3.5 door (M) · PL3.4b live + cache (M) · PL3.4c1 audio links (M) · PL3.4f guess in episode (S)
@@ -76,7 +76,7 @@ Each needs only merged work. Cross-side needs are in bold.
 | # | PR | Side | Size | Needs |
 |---|---|---|---|---|
 | 0 | **PLP.1a live player engine** | platform | L | PL0.3, Playback.swift, PL3.1b — **a Beta 1 gap: the journal's brief can't play live without it** |
-| 0 | **PLP.1b one audio owner** | platform | S | PLP.1a — **Beta 1 (new journal + old podcasts tab in one build)** |
+| 0 | **PLP.1b old screens on the one engine** | platform | M | PLP.1a — **Beta 1 (new journal + old podcasts tab in one build)** |
 | 1 | BE3.0a sections and chapter titles | backend | M | BEA.8 |
 | 2 | BE3.4a library route | backend | S | BEA.2 |
 | 3 | BE3.4b `GET /v2/podcasts` | backend | M | BE3.4a, BE1.3, **BE2.5a** |
@@ -136,7 +136,9 @@ The current app has **no offline downloads**: server episodes play from their re
 
 ## 6. Live data and Beta 1 (podcasts is mostly after it)
 
-Beta 1 keeps the old podcasts tab. Two things in this plan are needed **before** Beta 1 and have no other card: **PLP.1a** (the live player: the journal's brief audio can't play on real data without it; P10 and the journal wiring PR assume "plumbing's live playback") and **PLP.1b** (with the new journal and the old podcasts tab in one build, the two players must never talk over each other). BEA.7 (signed audio) is already in Beta 1; BE3.8 keeps the old tab playing once the bucket goes private.
+Beta 1 keeps the old podcasts tab. Two things in this plan are needed **before** Beta 1 and have no other card: **PLP.1a** (the live player: the journal's brief audio can't play on real data without it; P10 and the journal wiring PR assume "plumbing's live playback") and **PLP.1b** (with the new journal and the old podcasts tab in one build, the old screens move onto the same engine, so only one ever runs).
+
+**Reuse, not a rewrite (founder note, 21 Oct).** The app already has a player worth keeping: `StreamingPodcastPlayback` in `Views/Components/PodcastPlayer.swift` (AVPlayer, `.playback` + `.spokenAudio` set at play time, time and end observers, async duration, the paywall fade, a silent clock for the tease). PLP.1a moves those parts behind `Media.Player` and adds what nothing in the app does today: interruptions, route changes, media resets, buffering and failure states, rate, and (PLP.2) Now Playing and remote commands. The old live engine `DarkAudioManager` (local-files-only `AVAudioPlayer`, session grabbed at launch, `.mixWithOthers`, which is why there are no lock-screen controls today) becomes an adapter in PLP.1b; five other player views and session helpers have no live callers and are deleted in X3.2a. The file-by-file audit is in PLP.1a. BEA.7 (signed audio) is already in Beta 1; BE3.8 keeps the old tab playing once the bucket goes private.
 
 ## 7. Risks
 
@@ -149,6 +151,7 @@ Beta 1 keeps the old podcasts tab. Two things in this plan are needed **before**
 | Feedback that changes nothing | BE3.2a makes the v2 writer read it; UI5.4's copy waits until it's true |
 | `podcasts.json` lost or doubled during the switch | two-launch checksum import; old file untouched until X06 and the founder's go; eleven writers removed in three steps |
 | Old app silenced when audio goes private | BE3.8 signs links in the old routes first |
+| Two engines (old and new) fight over the audio session | PLP.1b makes the old engines adapters over one `Media.Player`; a source-scan test keeps `AVPlayer(` and the playback category inside `Platform/Media` |
 | Legacy (non-v2) episodes look broken | mapped to plain words, no chapters or claims; founder Q-16 turns v2 on for everyone at G3 |
 | Paper and docs disagree | Paper wins (integrator rule, 21 Oct); every disagreement listed in §9 |
 | Cost: per-chapter synthesis | the same characters as one call; measured on staging in BE3.0b |

@@ -398,7 +398,7 @@
   {
    "id": "PLP.1a",
    "parent": "PLP.1",
-   "title": "live player engine",
+   "title": "live player engine, extracted from today's StreamingPodcastPlayback",
    "plain": "audio plays, survives the lock screen, pauses for calls",
    "size": "L",
    "side": "platform",
@@ -411,9 +411,9 @@
   {
    "id": "PLP.1b",
    "parent": "PLP.1",
-   "title": "one owner of the audio session",
-   "plain": "old and new players never talk over each other",
-   "size": "S",
+   "title": "old screens play through the one engine",
+   "plain": "one player behind everything you play, old screens included",
+   "size": "M",
    "side": "platform",
    "needs": [
     "PLP.1a"

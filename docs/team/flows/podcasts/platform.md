@@ -2,7 +2,7 @@
 
 The app engineer's Platform cards for the podcasts area, in full byte-card form. Contract: [../../contracts/03-podcasts.md](../../contracts/03-podcasts.md). Rules from [app-plumbing-engineer.md](../../app-plumbing-engineer.md): `Platform/` only, actors for state that crosses threads, `@MainActor @Observable` for what views read, nothing throws to a view, no content in logs, every network path tested offline.
 
-**Tree:** podcasts › playback (PLP.1a the engine · PLP.1b one owner of the audio session · PLP.2 lock screen and Control Center · PLP.3 back where you were) › live data (PL3.4a library · PL3.4b one episode · PL3.4c1 episode audio · PL3.4c2 offline copies · PL3.4d why this is here · PL3.4e feedback · PL3.4f a guess inside an episode) › ways in (PL3.4g links and the episode-ready tap) › retiring the old (X3.1 old podcasts on the phone · X3.2 old podcasts tab and its writers removed).
+**Tree:** podcasts › playback (PLP.1a the engine, extracted from today's `StreamingPodcastPlayback` · PLP.1b the old screens play through it · PLP.2 lock screen and Control Center · PLP.3 back where you were) › live data (PL3.4a library · PL3.4b one episode · PL3.4c1 episode audio · PL3.4c2 offline copies · PL3.4d why this is here · PL3.4e feedback · PL3.4f a guess inside an episode) › ways in (PL3.4g links and the episode-ready tap) › retiring the old (X3.1 old podcasts on the phone · X3.2 old podcasts tab and its writers removed).
 
 ## 0. The seam: what the views call
 
@@ -26,80 +26,117 @@ The integrator writes `Platform/Flows/Podcasts.swift` from contract 03, and exte
 
 ---
 
-### PLP.1a · The live player engine                                          size: L (split if it runs over: engine + state · interruptions + routes)
-Place in the tree: product › platform › playback › `Media.Player` (shared by the brief, episodes, ON-11)
+### PLP.1a · The live player engine, extracted from the player the app already has   size: L (split if it runs over: engine + state · session, interruptions + routes)
+Place in the tree: product › platform › playback › `Media.Player` (shared by the brief, episodes, ON-11, and through PLP.1b the old screens)
 Repo · branch: NPRdoinglaundry · `pl/PLP.1a-live-player`
 Needs: PL0.3, `Platform/Flows/Playback.swift` (integrator), PL3.1b (`Media.Source` for briefs)      Unblocks: **the journal wiring PR (the brief plays for real: Beta 1)**, PLP.1b, PLP.2, PLP.3, PL3.4c1
 
-Why: when you press play, the audio really plays, keeps playing with the screen off, pauses for a phone call, and stops when you pull your headphones out, like every good podcast app.
+Why: when you press play, the audio really plays, keeps playing with the screen off, pauses for a phone call, and stops when you pull your headphones out, like every good podcast app. There is exactly one engine in the app doing it.
 
-**This card is a Beta 1 gap.** P10 and the journal wiring PR say "plumbing's live playback", but no Platform card builds it. The brief can't play on live data without it. It's written here because the episode player shares it; the integrator should add it to Beta 1 (see the README report).
+**This card is a Beta 1 gap.** P10 and the journal wiring PR say "plumbing's live playback", but no Platform card builds it. The brief can't play on live data without it. It's written here because the episode player shares it; the integrator should add it to Beta 1 (see the README §6).
+
+**What the app already has (read on `origin/main` `d87e3d3`, founder's note 21 Oct: reuse what's sound, don't build from scratch).** Nine places touch playback or the audio session. None of them handles interruptions, route changes, Now Playing or remote commands; two are real engines; the rest are views polling an `AVAudioPlayer` or one-off session setups.
+
+| File | What it does well (extract) | What's missing or unsafe | Fate |
+|---|---|---|---|
+| `Views/Components/PodcastPlayer.swift` · `StreamingPodcastPlayback` (`:78-262`), `protocol PodcastPlayback` (`:63-73`) | **The soundest code here.** `AVPlayer` over a URL (streams remote and file URLs alike); session `.playback` + **`.spokenAudio`**, activated at play time, not at launch (`:119-120`); a 0.2 s periodic time observer on main (`:124-127`); an end-of-item observer tied to its item (`:128-133`); duration loaded async from the asset (`:134-139`); a cancellable volume fade (`fadeOutForPaywall`, `:170-197`: ON-12/M06 needs it); a silent "visual clock" when there's no audio yet (the onboarding tease, `:199-211`); clamped seek and skip; `@MainActor`. Its header already states the goal: "the single, shared podcast player" | no buffering or failed state (`isPlaying = true` the moment `play()` is called, `:141-142`); no interruption, route-change or media-reset handling; no Now Playing, no remote commands; no rate; never deactivates the session; `deinit` removes the time observer but **not the end observer** (`:254-256`); the duration `Task` captures `self` strongly; `try?` swallows session errors silently | **extracted into `Media.Player`** (item setup, observers, duration load, the fade, the visual clock); becomes a thin adapter in PLP.1b |
+| `Views/DarkAppContainer.swift` · `DarkAudioManager` (`:14-140`) | the old app's live engine (podcasts tab, `DarkMiniPlayer`, `DarkAudioPlayerView`, teleprompter, featured card); a simple published state shape the old screens bind to (`currentTranscript`, `isPlaying`, `showMiniPlayer`, `showFullPlayer`, `lastError`); conforms to `PodcastPlayback` (`PodcastPlayer.swift:264-276`) | **`AVAudioPlayer`: local files only**, which is why the old code downloads every episode to `tmp/` first; session set in `private init` (the singleton is built at launch by `RetrospectApp`), so it grabs the session before anything plays; **`.mixWithOthers`** (`:33`): plays over the person's music, and an app that mixes **never becomes the Now Playing app**, so there are no lock-screen controls at all; never deactivates; no interruption handling, so after a phone call `isPlaying` stays `true` while the audio is stopped; `print`s file paths and transcript ids | **adapter over `Media.Player`** in PLP.1b (public API kept so old screens compile unchanged); deleted with the old tab in X3.2b |
+| `Views/AudioPlayerView.swift` · `AudioSessionManager` (`:108-130`), view timer (`:849`) | deactivates the session when its screen closes (`:399`), the only code that ever does; `.notifyOthersOnDeactivation` | `.mixWithOthers` again; only reached through `AudioPlayerContainer`, which only `OptimizedHomeScreen` uses (no callers) | dead code: deleted in X3.2a |
+| `Views/Components/AudioPlayerContainer.swift` · `AudioPlayerState` (`:5-44`) | — | `AVAudioPlayer`; configures the session **after** `play()` (`:16-20`); `.allowAirPlay` with `.playback` (that option only applies to `.playAndRecord`; a no-op here); `print`s errors | dead (only `OptimizedHomeScreen`): deleted in X3.2a |
+| `Views/Components/OptimizedAudioPlayer.swift`, `Views/MiniPlayerView.swift` | — (views over a bound `AVAudioPlayer?`, polling it with 0.1 s `Timer`s, plus a 0.05 s gradient timer) | polling timers that keep running when off screen; no session; no callers | dead: deleted in X3.2a |
+| `Views/Components/BottomMiniPlayer.swift` | — (a view over a bound `AVAudioPlayer?` with a 0.1 s timer) | only used by `HomeScreen` (dev settings) | deleted with `HomeScreen` in X3.2a |
+| `Views/HomeScreen.swift` (`:296-308`, `:1715-1727`) | — | two different session setups on appear: `.playback` + `.allowAirPlay`, and `.playAndRecord` + `.defaultToSpeaker`; whichever screen appears last wins | dev-only: deleted in X3.2a |
+| `Services/TTS.swift` · `TextToSpeechService` (`:4-30`) | on-device speech to a file (not a player; out of scope) | sets `.playback`/`.default` and **activates the session in `private init`**, i.e. at launch (every `TranscriptViewModel` init takes `.shared`), overriding whatever the player set | its session lines removed in PLP.1b (the synthesizer stays until first run retires it) |
+| `Info.plist` `UIBackgroundModes` | `audio` is already on | — | kept |
+
+Also touching the session, out of this card's scope but it must coexist with them: the voice recorders (`AudioRecordingManager.swift:112`, `BackgroundAudioRecordingManager.swift:56,107`: `.playAndRecord`) and `SpeechRecognizerManager.swift:47` (`.playAndRecord`, `.measurement`, `.duckOthers`). The journal's composer (#56) records while a brief might be playing.
 
 Inputs:
 - The protocol: `Platform/Flows/Playback.swift`; UI3.0's `SamplePlayback` (the behaviour to match on the same scenarios)
-- Reference: app-reference §1 (background modes: audio already on), §15 (`AudioPlayer`, `PodcastPlayback` names taken at module top level), `DarkAudioManager` (`Views/DarkAppContainer.swift:14`, `AVAudioPlayer`, owns the session today)
+- The table above (extract from `PodcastPlayer.swift`; take nothing from the others)
 - Design: player.md "Leaving the app", design-reference §C23 edge cases (phone call pauses and resumes only on tap; headphones removed pause)
 
 Spec:
-- `Platform/Media/Player.swift`: `@MainActor @Observable final class LivePlayback: Playback` over one `AVPlayer` (`automaticallyWaitsToMinimizeStalling = true`, `audiovisualBackgroundPlaybackPolicy = .continuesIfPossible`). One instance for the app, built by `Platform.Environment`.
-- **Loading:** `play(_ item:, at:)` asks `Media.Source` for a playable URL (local file first, else a signed link valid for the remaining time; PL3.4c1), creates an `AVPlayerItem`, seeks to `at` (or the remembered position, PLP.3) before playing. `state` maps from `timeControlStatus` and `status`: `.waitingToPlayAtSpecifiedRate` → `.buffering`; failed item → `.failed(.network | .unplayable)`; no network and no local file → `.offline`.
-- **Position:** a periodic time observer at 0.25 s drives `position`; `currentLineIndex` and `currentChapterIndex` derive from line/chapter starts (binary search, unit-tested), never from wall time.
-- **Commands:** `play`, `pause`, `seek(to:)` (tolerance zero only on release from the scrubber; ±0.5 s for skips), `skip(by:)` (+30 / −15; +15 when duration < 60 s), `setRate(_:)` (`AVPlayer.rate` while playing, `defaultRate` while paused; `audioTimePitchAlgorithm = .timeDomain` for speech).
-- **Audio session:** category `.playback`, mode `.spokenAudio`, activated on first play, never at launch.
-- **Interruptions:** `.began` → pause, remember "was playing"; `.ended` → **don't resume on its own** (founder rule: resume only on tap), even with `.shouldResume`.
-- **Route change:** `.oldDeviceUnavailable` (headphones out) → pause.
-- **Media services reset:** rebuild the player and restore the item at its position.
-- **End:** `AVPlayerItemDidPlayToEndTime` → `.ended`; the item stays loaded (replay from the start).
-- Threading: AVFoundation callbacks hop to the main actor; no blocking work on main.
+- `Platform/Media/Player.swift`: `@MainActor @Observable final class LivePlayback: Playback` over one `AVPlayer`, one instance for the app, built by `Platform.Environment`. Everything else in the app plays through it (PLP.1b).
+- **Extracted from `StreamingPodcastPlayback`** (moved, not copied; its file keeps only the adapter after PLP.1b): item creation, the periodic observer (0.25 s), the per-item end observer, the async duration load (with `[weak self]`), the cancellable volume fade (exposed as `fadeOut(over:)` for M06), and the silent visual clock (exposed as `PlayableItem.silent(duration:)` for the tease before its audio exists). Each moved piece keeps a test.
+- **Added (none of the existing code does these):**
+  - **State:** `.waitingToPlayAtSpecifiedRate` → `.buffering`; a failed item → `.failed(.network | .unplayable)`; no network and no local file → `.offline`; `isPlaying` only from `timeControlStatus == .playing`, never set optimistically.
+  - **Session:** category `.playback`, mode `.spokenAudio`, `routeSharingPolicy: .longFormAudio` (AirPlay 2 and the long-form audio route), **no `.mixWithOthers`** (so the app becomes the Now Playing app and pauses other audio, like a podcast app); set before **every** `play()` (a recorder may have switched to `.playAndRecord` in between), activated on first play, never at launch, deactivated with `.notifyOthersOnDeactivation` after pause has lasted 5 minutes or on stop. Session errors are logged as counts, never swallowed.
+  - **Interruptions:** `.began` → pause, remember "was playing"; `.ended` → **don't resume on its own** (founder rule: resume only on tap), even with `.shouldResume`.
+  - **Route change:** `.oldDeviceUnavailable` (headphones out) → pause.
+  - **Media services reset:** rebuild the player and restore the item at its position.
+  - **Recording:** when the composer starts recording (the journal's recorder posts its existing start), the player pauses first; it never resumes on its own.
+  - **Rate:** `setRate(_:)` (`AVPlayer.rate` while playing, `defaultRate` while paused; `audioTimePitchAlgorithm = .timeDomain` for speech).
+  - **End:** `.ended`; the item stays loaded (replay from the start).
+  - **Teardown:** both observers removed whenever the item changes and in `deinit`.
+- **Loading:** `play(_ item:, at:)` asks `Media.Source` for a playable URL (local file first, else a signed link valid for the remaining time; PL3.4c1), creates the `AVPlayerItem`, seeks to `at` (or the remembered position, PLP.3) before playing. Local files (including the old app's `Documents/reflection_*.mp3`) and remote links go through the same path, so nothing has to be downloaded before playing.
+- **Position:** `position`; `currentLineIndex` and `currentChapterIndex` derive from line/chapter starts (binary search, unit-tested), never from wall time.
+- **Commands:** `play`, `pause`, `seek(to:)` (tolerance zero only on release from the scrubber; ±0.5 s for skips), `skip(by:)` (+30 / −15; +15 when duration < 60 s).
+- Naming: the module already has `AudioPlayer`, `PodcastPlayback` and `AudioSessionManager` at top level (app-reference §15); the new types live under `Media` and don't reuse those names.
+- Threading: AVFoundation callbacks hop to the main actor; no blocking work on main. Logs carry no URL, path or title.
 
-Steps: engine + state mapping → commands → session → interruptions and routes → reset → tests.
+Steps: move the `StreamingPodcastPlayback` internals behind `Media.Player` (with their tests) → state mapping → session rules → interruptions, routes, reset, recording → rate and teardown → tests.
 
 Acceptance:
 - The brief and an episode play from a local file and from a signed link; the screen locking doesn't stop them.
 - A simulated phone call pauses; ending it doesn't resume until play is tapped.
 - Unplugging headphones pauses.
+- Another app's music stops when ours starts (no mixing).
 - Each of UI3.0's scenarios has the same visible state sequence on `LivePlayback` (driven by a fake `AVPlayer` seam).
+- The fade and the silent clock behave exactly as they did in `StreamingPodcastPlayback` (the paywall flow is unchanged).
 
 Tests (layer 5, a protocol seam over `AVPlayer` and `AVAudioSession` with fakes):
-- "waiting to play maps to buffering, then playing"
+- "waiting to play maps to buffering, then playing" (never playing before the player says so)
 - "an interruption pauses and its end never resumes on its own"
 - "losing the headphone route pauses"
+- "the session is playback, spoken audio, long-form, never mixing, and set before every play"
+- "the session is activated on first play, not at launch"
+- "starting a recording pauses playback"
 - "skip forward under one minute moves fifteen seconds"
 - "seeking past the end ends playback"
 - "the current line follows the position across chapter gaps" (binary search over starts)
 - "rate changes keep the pitch and survive pause and play"
 - "a failed item reports failed, never playing"
 - "with no network and no file, the state is offline"
-- "the session is activated on first play, not at launch"
+- "changing items removes both observers" (the old engine leaked the end observer)
+- "the fade lowers the volume to zero over its duration, then pauses" (moved test)
+- "a silent item advances on the injected clock" (moved test)
 
-Proof in the PR: test output; a recording on the integrator's simulator (headless, `simctl io`) of a brief playing on local staging, then a simulated interruption.
+Proof in the PR: test output; the moved-lines map (old file:line → new file); a recording on the integrator's simulator (headless, `simctl io`) of a brief playing on local staging, then a simulated interruption.
 
-Watch out: never keep two `AVPlayer`s; never touch the session from a view. The module already has types named `AudioPlayer` and `PodcastPlayback`: keep these under `Media`. The old `DarkAudioManager` sets the session too; PLP.1b makes one owner.
+Watch out: never keep two `AVPlayer`s; never touch the session from a view. Don't copy the old `try?` and `print` habits. `.mixWithOthers` is the reason today's app has no lock-screen controls: don't carry it over.
 
 ---
 
-### PLP.1b · One owner of the audio session (old and new screens)          size: S
-Place in the tree: product › platform › playback › bridge to the old player
-Repo · branch: NPRdoinglaundry · `pl/PLP.1b-audio-owner`
-Needs: PLP.1a      Unblocks: Beta 1 (new journal brief + old podcasts tab in one build), X3.2
+### PLP.1b · The old screens play through the one engine                       size: M
+Place in the tree: product › platform › playback › old engines become adapters
+Repo · branch: NPRdoinglaundry · `pl/PLP.1b-one-engine`
+Needs: PLP.1a      Unblocks: Beta 1 (new journal + old podcasts tab in one build), PLP.2 for the old screens too, X3.2
 
-Why: if you play the brief in the new journal and then an episode in the old podcasts tab, one stops when the other starts, instead of both talking at once.
+Why: whatever you play, in the new journal or the old podcasts tab, there's one player behind it: starting one stops the other, the lock screen works for both, and a phone call pauses both the same way.
 
-Inputs: `Views/DarkAppContainer.swift:14-40` (`DarkAudioManager.shared`, `configureAudioSession()` in `init`, `AVAudioPlayer`); the frozen-old-code rule (bridges only, listed in the PR)
+Inputs: PLP.1a's table; `Views/DarkAppContainer.swift:14-140` (`DarkAudioManager`), `Views/Components/PodcastPlayer.swift:78-276` (`StreamingPodcastPlayback`, `DarkAudioManager: PodcastPlayback`), `Services/TTS.swift:11-30`; callers of `DarkAudioManager.shared` (`RetrospectApp.swift`, `DarkMiniPlayer`, `DarkAudioPlayerView`, `DarkPodcastsView`, `DarkFeaturedPodcastCard`, `DarkTeleprompterView`) and of `StreamingPodcastPlayback` (`PodcastPaywallFlow`, the onboarding finale); the frozen-old-code rule (bridges only, every touched line listed in the PR and the findings log)
 
 Spec:
-- `Media.AudioOwner` (an `enum` with a main-actor `current: Owner` of `.new` or `.legacy`) and a `Notification.Name("Media.AudioOwner.changed")`.
-- `LivePlayback.play` claims `.new` and posts; a ten-line bridge in `DarkAudioManager` observes it and pauses its `AVAudioPlayer`, and claims `.legacy` (posting) when it plays, which `LivePlayback` observes and pauses.
-- `DarkAudioManager.init` stops activating the session at launch (it activates on its first play), so the new engine's session settings aren't overwritten at start-up.
-- The bridge lines are listed in the PR and the findings log (old code touched as a bridge).
+- **`DarkAudioManager` becomes an adapter** over `Media.Player`, keeping its public surface (`currentTranscript`, `isPlaying`, `showMiniPlayer`, `showFullPlayer`, `lastError`, `showTranscript`, `playPodcast`, `togglePlayback`, `stopPlayback`, `seekTo`, and the `audioPlayer`-based `PodcastPlayback` conformance rewritten to read `Media.Player`'s position and duration). Its `AVAudioPlayer`, `configureAudioSession()` and the `init`-time session setup are removed. `isPlaying` mirrors the engine, so it's correct after a phone call. A `TranscriptModel` with a remote `audioFileURL` now plays directly (no `tmp` download needed); with a local file, the same.
+- **`StreamingPodcastPlayback` becomes an adapter**: same initializer and API (`start`, `stop`, `pauseForPaywall`, `fadeOutForPaywall`, `didFinish`, the `PodcastPlayback` members) forwarding to `Media.Player` (`fadeOut(over:)`, `.silent(duration:)`). The paywall flow and the onboarding finale don't change.
+- **`TextToSpeechService`** stops setting and activating the session in `init`; it sets `.playback` only around its own synthesis and leaves the session to the engine otherwise.
+- `AudioPlayerState`, `AudioSessionManager`, the unused views and `HomeScreen`'s setups aren't touched here (no live callers): X3.2a deletes them.
+- Result: a grep of the app target finds `AVPlayer(` and `setCategory(.playback` only in `Platform/Media/` (recorders and the speech recognizer keep `.playAndRecord`, which the engine already copes with).
 
-Acceptance: new then old, old then new: exactly one is ever audible; the mini-players of both reflect paused.
+Acceptance: new then old, old then new: exactly one is ever audible; both mini-players reflect paused; a phone call during the old tab's playback leaves its play button showing play; the onboarding paywall tease and its fade behave as before; the old tab plays a server episode without downloading it first.
 
-Tests: "the new player pauses when the old one claims the session" · "the old player pauses when the new one claims it" (a fake observer for the old side) · "no session is activated at launch".
+Tests:
+- "the old manager's play goes through the one engine and stops the new player's item"
+- "the new player's play stops what the old manager was playing"
+- "after an interruption the old manager reports not playing"
+- "the old streaming player's fade still ends paused at full volume" (the paywall)
+- "no session is configured at launch" (fake session, app start path)
+- "only Platform/Media creates an AVPlayer or sets the playback category" (a source-scan test)
 
-Proof in the PR: test output; a headless recording on local staging of both sequences.
+Proof in the PR: test output; the list of old-code lines changed; a headless recording on local staging of both sequences and of the paywall tease.
 
-Watch out: X3.2 deletes the bridge with `DarkAudioManager`; don't build anything else on it.
+Watch out: X3.2b deletes `DarkAudioManager` with the old tab; don't build anything new on the adapters. The old screens bind to `@Published` properties on an `ObservableObject`: the adapter republishes from the `@Observable` engine on the main actor; test that the old mini-player updates.
 
 ---
 
@@ -336,8 +373,8 @@ Why: one podcasts tab, one copy of every episode, one Sunday notification.
 | `Views/Components/TransformingLoadingPill.swift:204`, `Views/Components/DarkLoadingPill.swift:100` | previews only (still construct the model and touch disk in preview) | X3.2a |
 
 Spec:
-- **(a) Dead and dev-only writers** (no user-facing change; founder go): delete `OptimizedHomeScreen`, the Polaroid home and controls, `LegacyHomeScreen`/`MinimalHomeScreen` and the dev settings rows that open them, and the two previews' model construction. Five of the eleven writers gone.
-- **(b) The old podcasts tab:** after G3, delete `DarkPodcastsView`, `DarkPodcastCard`, `DarkFeaturedPodcastCard`, `FullscreenPodcastCard`, `NewPodcastArrivalView`, the `ShowPodcastFromNotification`/`PlayPodcast` routing (`RetrospectApp.swift:292-338`) and `TranscriptViewModel`'s podcast persistence (`savePodcast`, `deletePodcast`, `savePodcastsToDisk`, `loadSavedPodcasts`, `fetchBackendPodcasts`); `DarkAudioManager` and PLP.1b's bridge go with the last old player screen. What remains of `TranscriptViewModel` (on-device generation used by the old first run) stays until first run retires it.
+- **(a) Dead and dev-only writers** (no user-facing change; founder go): delete `OptimizedHomeScreen`, the Polaroid home and controls, `LegacyHomeScreen`/`MinimalHomeScreen` and the dev settings rows that open them, and the two previews' model construction. Five of the eleven writers gone. With them go the dead players PLP.1a's table lists: `AudioPlayerContainer` + `AudioPlayerState`, `AudioPlayerView` + `AudioSessionManager`, `OptimizedAudioPlayerView`, `MiniPlayerView` and `BottomMiniPlayer` (no live callers; each one's last caller is in this deletion).
+- **(b) The old podcasts tab:** after G3, delete `DarkPodcastsView`, `DarkPodcastCard`, `DarkFeaturedPodcastCard`, `FullscreenPodcastCard`, `NewPodcastArrivalView`, the `ShowPodcastFromNotification`/`PlayPodcast` routing (`RetrospectApp.swift:292-338`) and `TranscriptViewModel`'s podcast persistence (`savePodcast`, `deletePodcast`, `savePodcastsToDisk`, `loadSavedPodcasts`, `fetchBackendPodcasts`); `DarkAudioManager` (by then PLP.1b's adapter) goes with the last old player screen. What remains of `TranscriptViewModel` (on-device generation used by the old first run) stays until first run retires it.
 - **(c) Old reminders:** stop scheduling `weekly-reflection-reminder` (Sunday 10:00) and `midweek-checkin` (`PodcastNotificationService.swift:218-283`), and remove pending ones once, on the first launch of the build that has the new push (so nobody gets two Sunday notifications).
 - `podcasts.json` itself is deleted by X06 after `LegacyImport.Report.confirmed` and the founder's go.
 
