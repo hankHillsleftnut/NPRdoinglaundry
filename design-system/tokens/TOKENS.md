@@ -385,6 +385,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.control.default` | Ordinary buttons (Apple minimum touch target). | 44pt |  | to set |
 | `size.control.large` | Prominent buttons. | 48pt |  | lime |
 | `size.control.hero` | The paywall-scale primary and secondary. | 60pt |  | paywall |
+| `size.control.icon` | Top-bar icon buttons (back, close, more): the visible wash circle; the hit area stays 44. | 36pt |  | 151 approved top-bar icon buttons, 21 Oct |
 | `size.touchTarget` | Nothing tappable is smaller than this. | 44pt |  | to set |
 | `size.icon.small` | Inline icons. | 16pt |  | to set |
 | `size.icon.default` | Standard icons. | 20pt |  | to set |
