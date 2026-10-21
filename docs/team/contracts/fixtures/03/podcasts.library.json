@@ -1,0 +1,59 @@
+{
+  "success": true,
+  "data": {
+    "hero": {
+      "id": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01",
+      "kind": "weekly",
+      "number": 6,
+      "title": "the week the plan met the calendar",
+      "about": "the standup, sunday walks, one question",
+      "durationSeconds": 612.4,
+      "timing": "measured",
+      "createdAt": "2026-10-18T16:00:02.114Z",
+      "coversFrom": "2026-09-20",
+      "coversTo": "2026-10-18",
+      "hasAudio": true
+    },
+    "upcoming": {
+      "state": "none"
+    },
+    "items": [
+      {
+        "kind": "brief",
+        "brief": {
+          "id": "9e4d7a20-1b3c-4e5f-8a6d-2c0b1f3e5d74",
+          "date": "2026-10-20",
+          "title": "a quieter monday than usual",
+          "durationSeconds": 248.0,
+          "hasAudio": true
+        }
+      },
+      {
+        "kind": "brief",
+        "brief": {
+          "id": "c1f0e2d3-4b5a-4c6d-9e8f-7a6b5c4d3e25",
+          "date": "2026-10-19",
+          "title": "two things from the weekend",
+          "hasAudio": false
+        }
+      },
+      {
+        "kind": "episode",
+        "episode": {
+          "id": "3d9c1f84-2a77-4b1e-8c55-71a0e2b6c3d2",
+          "kind": "weekly",
+          "number": 5,
+          "title": "tuesdays, mostly",
+          "about": "writing mornings, the gym",
+          "durationSeconds": 540.0,
+          "timing": "measured",
+          "createdAt": "2026-10-11T16:00:01.020Z",
+          "coversFrom": "2026-09-13",
+          "coversTo": "2026-10-11",
+          "hasAudio": true
+        }
+      }
+    ],
+    "nextCursor": "MjAyNi0xMC0xMVQxNjowMDowMS4wMjBafGVwaXNvZGV8M2Q5YzFmODQ"
+  }
+}

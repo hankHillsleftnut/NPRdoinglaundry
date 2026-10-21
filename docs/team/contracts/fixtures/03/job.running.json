@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "job": {
+      "id": "f3a5c7e9-1b2d-4f6a-8c0e-3b5d7f9a1c13",
+      "kind": "weekly",
+      "state": "running",
+      "stage": "writing",
+      "readyAt": "2026-10-25T16:00:00.000Z",
+      "createdAt": "2026-10-25T13:00:00.000Z"
+    }
+  }
+}

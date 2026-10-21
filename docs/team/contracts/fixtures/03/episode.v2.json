@@ -1,0 +1,125 @@
+{
+  "success": true,
+  "data": {
+    "episode": {
+      "id": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01",
+      "kind": "weekly",
+      "number": 6,
+      "title": "the week the plan met the calendar",
+      "about": "the standup, sunday walks, one question",
+      "durationSeconds": 612.4,
+      "timing": "measured",
+      "createdAt": "2026-10-18T16:00:02.114Z",
+      "coversFrom": "2026-09-20",
+      "coversTo": "2026-10-18",
+      "hasAudio": true,
+      "madeFrom": [
+        {
+          "kind": "entries",
+          "count": 6
+        },
+        {
+          "kind": "calendar",
+          "count": 4
+        },
+        {
+          "kind": "steps",
+          "count": 2
+        }
+      ],
+      "chapters": [
+        {
+          "index": 0,
+          "title": "the standup",
+          "startSeconds": 0.0,
+          "claimId": "5f1c9b2e-8d3a-5e47-b0c6-4a2d1e9f8b36"
+        },
+        {
+          "index": 1,
+          "title": "sunday walks",
+          "startSeconds": 204.8,
+          "claimId": "7a3e5d1c-2b4f-5a68-9c0d-6e1f2a3b4c47"
+        },
+        {
+          "index": 2,
+          "title": "one question",
+          "startSeconds": 488.1,
+          "claimId": "8b4f6e2d-3c5a-5b79-8d1e-7f2a3b4c5d58"
+        }
+      ],
+      "lines": [
+        {
+          "index": 0,
+          "text": "Three mornings this week started with the standup, and each one ran long.",
+          "chapterIndex": 0,
+          "startSeconds": 0.0,
+          "register": "stated",
+          "claimId": "5f1c9b2e-8d3a-5e47-b0c6-4a2d1e9f8b36"
+        },
+        {
+          "index": 1,
+          "text": "You booked forty minutes for it on Tuesday and it took seventy.",
+          "chapterIndex": 0,
+          "startSeconds": 5.6,
+          "register": "stated",
+          "claimId": "5f1c9b2e-8d3a-5e47-b0c6-4a2d1e9f8b36"
+        },
+        {
+          "index": 2,
+          "text": "Let's stay there for a moment.",
+          "chapterIndex": 0,
+          "startSeconds": 11.9,
+          "register": "craft"
+        },
+        {
+          "index": 3,
+          "text": "You walked on Sunday again, the fourth Sunday in a row.",
+          "chapterIndex": 1,
+          "startSeconds": 204.8,
+          "register": "stated",
+          "claimId": "7a3e5d1c-2b4f-5a68-9c0d-6e1f2a3b4c47"
+        },
+        {
+          "index": 4,
+          "text": "I wonder whether the long standups leave less room for the writing you said mattered.",
+          "chapterIndex": 2,
+          "startSeconds": 488.1,
+          "register": "asked",
+          "claimId": "8b4f6e2d-3c5a-5b79-8d1e-7f2a3b4c5d58"
+        }
+      ],
+      "claims": [
+        {
+          "id": "5f1c9b2e-8d3a-5e47-b0c6-4a2d1e9f8b36",
+          "kind": "pattern",
+          "register": "stated",
+          "chapterIndex": 0
+        },
+        {
+          "id": "7a3e5d1c-2b4f-5a68-9c0d-6e1f2a3b4c47",
+          "kind": "shift",
+          "register": "stated",
+          "chapterIndex": 1
+        },
+        {
+          "id": "8b4f6e2d-3c5a-5b79-8d1e-7f2a3b4c5d58",
+          "kind": "hypothesis",
+          "register": "asked",
+          "chapterIndex": 2,
+          "guessId": "2e7d9c4b-6a1f-4e3d-b8c2-1a0f9e8d7c69"
+        }
+      ],
+      "audio": {
+        "url": "https://example.supabase.co/storage/v1/object/sign/podcast-audio/podcasts/u/e.mp3?token=invented",
+        "expiresAt": "2026-10-21T09:00:04.200Z",
+        "durationSeconds": 612.4,
+        "bytes": 4899200,
+        "mimeType": "audio/mpeg"
+      },
+      "feedback": {
+        "verdict": "more",
+        "at": "2026-10-19T08:30:00.000Z"
+      }
+    }
+  }
+}

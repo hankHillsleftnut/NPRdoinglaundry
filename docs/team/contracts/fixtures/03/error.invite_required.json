@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "invite_required",
+    "message": "you need an invite to get in."
+  }
+}

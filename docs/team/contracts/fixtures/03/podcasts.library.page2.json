@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "data": {
+    "hero": null,
+    "items": [
+      {
+        "kind": "episode",
+        "episode": {
+          "id": "6a2e0c17-94b3-4f8d-a1c6-0d5b8e3f7a13",
+          "kind": "first",
+          "number": 1,
+          "title": "the week you started",
+          "durationSeconds": 131.0,
+          "timing": "estimated",
+          "createdAt": "2026-09-20T18:12:40.500Z",
+          "coversFrom": "2026-08-23",
+          "coversTo": "2026-09-20",
+          "hasAudio": true
+        }
+      },
+      {
+        "kind": "unknown"
+      }
+    ],
+    "nextCursor": null
+  }
+}
