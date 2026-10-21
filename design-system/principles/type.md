@@ -15,7 +15,7 @@ The bigger the type, the tighter it sits, so a title reads as one dark shape.
 ## The inky display face (your call)
 **Exposure** (205TF), already in the app, has an *exposure* axis from −100 to +100. Checked by rendering, 20 Oct: **negative spreads the ink** (heavier, printed on soft paper); **positive thins it** (overexposed, hairline). The comment in `ExposureFont.swift` had this backwards and has been corrected.
 - Recommended: −20 for titles and the hero; −10 for card headlines. −30 and beyond reads as poster-bold and is for one hero word at most.
-- The app ships a **trial** licence of Exposure; a paid licence is needed before release.
+- Exposure is licensed (founder, 21 Oct).
 - Hedvig Letters Serif stays the fallback, tracked in the same way (−0.03em at 40).
 - A faux "ink bleed" made with a text shadow reads as bold: don't use it. The ink comes from the font, not an effect.
 
