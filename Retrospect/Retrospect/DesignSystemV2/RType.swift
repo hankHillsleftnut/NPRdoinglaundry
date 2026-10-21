@@ -155,13 +155,23 @@ extension RTextStyle {
         leading: 1.3,
         relativeTo: .caption
     )
+    /// Pill labels (Paper c:pill: --font-label, --text-md, medium, --tracking-label, --leading-tight).
     static let pill = RTextStyle(
         family: .label,
         size: RDimension.fontSizeMd,
         weight: .medium,
+        tracking: RNumber.fontTrackingLabel,
+        leading: 1.1,
+        relativeTo: .subheadline
+    )
+    /// Row-action pills: connect, play, export (Paper c:pill/raised/action: --text-sm, medium, --leading-snug).
+    static let pillAction = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeSm,
+        weight: .medium,
         tracking: RNumber.fontTrackingNone,
         leading: 1.3,
-        relativeTo: .subheadline
+        relativeTo: .footnote
     )
     /// Tab bar labels (--text-xs, --tracking-label).
     static let tab = RTextStyle(
