@@ -208,6 +208,14 @@ public enum RColor {
     public static let voiceSpeaking = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
     /// Waveform bars at rest.
     public static let voiceWaveIdle = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    /// Listening glow, the deeper sky pooling left of the bar (sky.400 at 45%; offset −64 10, blur 34, spread −16).
+    public static let voiceGlowPool = dynamic(UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 0.45), UIColor(red: 0.1373, green: 0.6039, blue: 0.8706, alpha: 0.45))
+    /// Listening glow, the pale sky lifting right (sky.200 at 60%; offset 72 −6, blur 30, spread −14).
+    public static let voiceGlowLift = dynamic(UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 0.6), UIColor(red: 0.5333, green: 0.702, blue: 0.8118, alpha: 0.6))
+    /// Listening glow, the sky shadow under the right side (sky.500 at 38%; offset 18 20, blur 36, spread −18).
+    public static let voiceGlowUnder = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.38), UIColor(red: 0.0078, green: 0.5529, blue: 0.8196, alpha: 0.38))
+    /// Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16).
+    public static let voiceGlowTop = dynamic(UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 0.26), UIColor(red: 0.8157, green: 0.6118, blue: 0.1804, alpha: 0.26))
     /// How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.)
     public static let playerProgress = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// How much has loaded ahead.
@@ -516,6 +524,8 @@ public enum RDimension {
     public static let sizeVoiceBarGap: CGFloat = 2
     /// Tallest waveform bar.
     public static let sizeVoiceBarMax: CGFloat = 32
+    /// One of the three dots the level bars settle into while Retro is thinking.
+    public static let sizeVoiceThinkingDot: CGFloat = 5
     /// The player's progress bar.
     public static let sizePlayerScrubber: CGFloat = 4
     /// The knob you drag on the progress bar.

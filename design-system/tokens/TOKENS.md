@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**535 tokens** · 459 semantic · 276 marked *to set*
+**540 tokens** · 464 semantic · 276 marked *to set*
 
 ## palette
 
@@ -189,6 +189,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.voice.listening` | The app is listening to you. | {color.accent.default} | {color.accent.default} | to set: app need |
 | `color.voice.speaking` | The app is talking. | {color.ink.default} | {color.ink.default} | to set: app need |
 | `color.voice.waveIdle` | Waveform bars at rest. | {palette.paper.400} | {palette.night.600} | to set: app need |
+| `color.voice.glowPool` | Listening glow, the deeper sky pooling left of the bar (sky.400 at 45%; offset −64 10, blur 34, spread −16). | rgba(67,183,255,0.45) | rgba(35,154,222,0.45) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowLift` | Listening glow, the pale sky lifting right (sky.200 at 60%; offset 72 −6, blur 30, spread −14). | rgba(179,225,255,0.60) | rgba(136,179,207,0.60) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowUnder` | Listening glow, the sky shadow under the right side (sky.500 at 38%; offset 18 20, blur 36, spread −18). | rgba(47,168,240,0.38) | rgba(2,141,209,0.38) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowTop` | Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16). | rgba(255,200,92,0.26) | rgba(208,156,46,0.26) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
 | `color.player.progress` | How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.) | {palette.sky.700} | {palette.sky.300} | to set: app need |
 | `color.player.buffered` | How much has loaded ahead. | {color.surface.trackFill} | {color.surface.trackFill} | to set: app need |
 | `color.player.chapterMark` | A chapter tick on the progress bar. | {palette.paper.0} | {palette.night.900} | to set: app need |
@@ -423,6 +427,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.voice.barWidth` | One waveform bar. | 3pt |  | to set: app need |
 | `size.voice.barGap` | Gap between waveform bars. | 2pt |  | to set: app need |
 | `size.voice.barMax` | Tallest waveform bar. | 32pt |  | to set: app need |
+| `size.voice.thinkingDot` | One of the three dots the level bars settle into while Retro is thinking. | 5pt |  | Paper c:voice-composer/thinking (approvals part 07), 20 Oct |
 | `size.player.scrubber` | The player's progress bar. | 4pt |  | to set: app need |
 | `size.player.thumb` | The knob you drag on the progress bar. | 12pt |  | to set: app need |
 | `size.player.button` | Play / pause in the full player. | 64pt |  | to set: app need |
