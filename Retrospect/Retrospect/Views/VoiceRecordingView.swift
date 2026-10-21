@@ -354,22 +354,9 @@ struct VoiceRecordingView: View {
                     EntryManager.shared.addEntry(voiceEntry)
                     print("✅ Saved voice entry: \(metadata.title ?? "Untitled")")
 
-                    // Upload to backend so the agent builds memory from voice sessions
-                    if !transcription.isEmpty {
-                        Task {
-                            do {
-                                try await RetrospectAPIClient.shared.uploadContent(
-                                    contentType: "voice_journal",
-                                    content: transcription,
-                                    contentDate: entryDate,
-                                    metadata: ["source": "ios_voice_recording"]
-                                )
-                            } catch {
-                                print("⚠️ Voice entry upload failed: \(error)")
-                            }
-                        }
-                    }
-                    
+                    // addEntry uploads it (as voice_recording, keyed by the entry id). A second
+                    // upload here as voice_journal used to write every voice note twice.
+
                 case .failure(let error):
                     print("⚠️ Failed to generate metadata: \(error), using fallback")
                     let voiceEntry = Entry(

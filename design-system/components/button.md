@@ -27,7 +27,7 @@ Starts an action: subscribe, continue, send, delete.
 | secondary | 345 × 60, cream | the real alternative (yearly plan, not now) |
 | destructive | 345 × 60 | only on the confirming button inside a dialog |
 | bubble | 44 round (`size.control.default`) | an icon action: share, like, more |
-| link | text only, mono 12 | restore, privacy, terms, not now |
+| link | text only, SF Pro body medium, `text.link`, 44pt hit area | restore, privacy, terms, not now, later |
 
 ## Anatomy: primary (bottom to top)
 1. **cast**: `0 10 18 −6` in `depth.tint.primary` (its own sky, not grey). Lifts it off the page.
@@ -40,10 +40,10 @@ Starts an action: subscribe, continue, send, delete.
 8. **inner hairline**: inset 1pt white 10%.
 9. **top rim**: inset `0 1 0` white 50%, masked to fade downward.
 10. **grain**: noise, seed 19, size 0.5, intensity `material.grain.primary` (20%), soft light. Invisible alone, but it stops the gradient banding.
-11. **label**: mono 14, `glow.primary.foreground`, text shadow `0 1 1` black 20%.
+11. **label**: SF Pro body semibold (`RType.buttonLabel`), `glow.primary.foreground`, text shadow `0 1 1` black 20%. (Was mono 14; changed to match the approved boards and the founder's rule that mono is only for figures, 20 Oct.)
 12. **lit layer** (hidden at rest): highlight gradients (top 38% white to 0 by 48%; a radial at 22% 0; a radial from below), the lit gradient, and lit edges and bloom. Fades in over `motion.duration.litFade` when focused.
 
-Secondary: cream body (`surface.secondaryAction`), 1pt white inner border with a brighter top, 2pt `border.secondaryRing` outside plus a 0.5pt warm hairline, warm contact `0 1 1.5` and warm cast `0 4 6 −2`, grain seed 239 at 4.5%, mono label in `text.label`. Destructive: the primary stack in the danger glow set, casting its own red (`depth.tint.danger`).
+Secondary: cream body (`surface.secondaryAction`), 1pt white inner border with a brighter top, 2pt `border.secondaryRing` outside plus a 0.5pt warm hairline, warm contact `0 1 1.5` and warm cast `0 4 6 −2`, grain seed 239 at 4.5%, SF Pro body medium label in `text.primary` (approved ON-12 plan buttons). Destructive: the primary stack in the danger glow set, casting its own red (`depth.tint.danger`).
 
 ## Rules
 1. **MUST** use one primary per screen. *Because* two lit buttons leave the person guessing which one is the next step.
