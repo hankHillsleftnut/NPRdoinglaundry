@@ -500,7 +500,7 @@ class RetrospectAPIClient: ObservableObject {
 
     /// Fetch insights for the current user.
     func fetchInsights(goalId: String? = nil, limit: Int = 50) async throws -> [BackendInsight] {
-        var path = "/insights?limit=\(limit)"
+        var path = "/pipeline/insights?limit=\(limit)"
         if let goalId = goalId { path += "&goalId=\(goalId)" }
         let response: InsightsListResponse = try await get(path: path)
         return response.data ?? []
