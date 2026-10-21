@@ -1,0 +1,39 @@
+{
+  "success": true,
+  "data": {
+    "sources": [
+      {
+        "id": "apple_calendar",
+        "name": "calendar",
+        "purpose": "so i know what your days hold",
+        "kind": "onDevice",
+        "state": "connected",
+        "group": "onThisIphone"
+      },
+      {
+        "id": "apple_health",
+        "name": "health",
+        "purpose": "how you sleep and move",
+        "kind": "onDevice",
+        "state": "available",
+        "group": "onThisIphone"
+      },
+      {
+        "id": "google",
+        "name": "google",
+        "purpose": "mail and docs you choose",
+        "kind": "account",
+        "state": "available",
+        "group": "yourOtherApps"
+      },
+      {
+        "id": "spotify",
+        "name": "music",
+        "purpose": "what you listen to, and when",
+        "kind": "account",
+        "state": "problem",
+        "group": "seeAll"
+      }
+    ]
+  }
+}

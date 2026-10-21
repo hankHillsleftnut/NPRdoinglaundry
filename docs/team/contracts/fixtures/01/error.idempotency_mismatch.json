@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "idempotency_mismatch",
+    "message": "that request wasn't right."
+  }
+}

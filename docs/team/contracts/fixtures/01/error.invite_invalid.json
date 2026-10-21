@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "invite_invalid",
+    "message": "that code didn't work. check it, or ask for a new one."
+  }
+}

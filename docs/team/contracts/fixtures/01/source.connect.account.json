@@ -1,0 +1,6 @@
+{
+  "success": true,
+  "data": {
+    "authUrl": "https://accounts.example.com/oauth/authorize?state=fixture-state"
+  }
+}

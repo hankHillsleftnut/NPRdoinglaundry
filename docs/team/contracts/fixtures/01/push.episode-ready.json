@@ -1,0 +1,14 @@
+{
+  "aps": {
+    "alert": {
+      "title": "retrospect",
+      "body": "something's ready for you."
+    },
+    "mutable-content": 1,
+    "sound": "default"
+  },
+  "kind": "episode_ready",
+  "id": "00000000-0000-4000-8000-000000000201",
+  "noteId": "00000000-0000-4000-8000-000000000301",
+  "path": "retrospect://episode/00000000-0000-4000-8000-000000000201"
+}

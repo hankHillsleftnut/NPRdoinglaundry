@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "goals": [
+      {
+        "title": "raise the seed",
+        "description": "closing the round before the new year.",
+        "because": "you said it's what you think about at night.",
+        "quote": "raising the seed. slower than i hoped."
+      },
+      {
+        "title": "sleep before midnight",
+        "description": "phones out of bed.",
+        "because": "you said it's the change you keep meaning to make.",
+        "quote": "sleep before midnight. phones in bed."
+      }
+    ]
+  }
+}

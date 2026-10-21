@@ -1,0 +1,71 @@
+{
+  "success": true,
+  "data": {
+    "answers": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "questionKey": "name.place",
+        "text": "sam, in london.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:02:11.410Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "questionKey": "year.from.now",
+        "text": "the studio is open and people actually come back.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:03:40.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "questionKey": "care.most",
+        "text": "my sister, and making things with my hands.",
+        "given": "typed",
+        "createdAt": "2026-10-21T13:05:02.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "questionKey": "on.your.mind",
+        "text": "the investor call on thursday.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:06:18.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000005",
+        "questionKey": "working.on",
+        "text": "raising the seed. slower than i hoped.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:07:30.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "questionKey": "keep.meaning",
+        "text": "sleep before midnight. phones in bed.",
+        "given": "typed",
+        "createdAt": "2026-10-21T13:08:44.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000007",
+        "questionKey": "people",
+        "text": "my sister. i wish i saw alex more.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:10:05.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000008",
+        "questionKey": "how.straight",
+        "text": "straight. push me.",
+        "given": "typed",
+        "createdAt": "2026-10-21T13:11:00.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000009",
+        "questionKey": "this.week",
+        "text": "that the call goes well.",
+        "given": "voice",
+        "createdAt": "2026-10-21T13:14:20.000Z"
+      }
+    ],
+    "count": 9
+  }
+}
