@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "briefReady": true,
+    "episodeReady": true,
+    "questions": false,
+    "checkIns": true,
+    "quietHours": {
+      "start": "21:00",
+      "end": "08:00"
+    }
+  }
+}

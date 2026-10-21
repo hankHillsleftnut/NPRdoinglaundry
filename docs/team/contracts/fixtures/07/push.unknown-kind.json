@@ -1,0 +1,18 @@
+{
+  "aps": {
+    "alert": {
+      "loc-key": "notify.something.new"
+    },
+    "category": "SOMETHING_NEW"
+  },
+  "r": {
+    "v": 2,
+    "kind": "somethingNew",
+    "id": "c0ffee00-1111-4222-8333-444455556666",
+    "link": "retrospect://somewhere-new",
+    "sentAt": "2026-12-01T09:00:00.000Z",
+    "extra": {
+      "x": 1
+    }
+  }
+}

@@ -1,0 +1,1226 @@
+{
+ "nodes": [
+  {
+   "id": "outside",
+   "parent": null,
+   "title": "outside the app, signature moments, retiring the old",
+   "plain": "Retro on your lock screen, home screen, notifications and share sheet; the moments that make it feel alive; and clearing out the old app",
+   "needs": []
+  },
+  {
+   "id": "outside.base",
+   "parent": "outside",
+   "title": "shared plumbing for extensions",
+   "plain": "the plumbing the share sheet, widgets and app share",
+   "needs": []
+  },
+  {
+   "id": "outside.share",
+   "parent": "outside",
+   "title": "EX-1 share",
+   "plain": "save anything from any app into Retro",
+   "needs": []
+  },
+  {
+   "id": "outside.lock",
+   "parent": "outside",
+   "title": "EX-2 lock screen",
+   "plain": "control your brief from the lock screen",
+   "needs": []
+  },
+  {
+   "id": "outside.notify",
+   "parent": "outside",
+   "title": "EX-3 notifications",
+   "plain": "at most one private notification a day, opening the right place",
+   "needs": []
+  },
+  {
+   "id": "outside.widgets",
+   "parent": "outside",
+   "title": "EX-4 widgets",
+   "plain": "today's brief and a way to talk on your home screen",
+   "needs": []
+  },
+  {
+   "id": "outside.moments",
+   "parent": "outside",
+   "title": "signature moments M01\u2013M13",
+   "plain": "the thirteen moments that make the app feel alive",
+   "needs": []
+  },
+  {
+   "id": "outside.retire",
+   "parent": "outside",
+   "title": "retiring the old app",
+   "plain": "the old screens, data and routes removed safely, step by step",
+   "needs": []
+  },
+  {
+   "id": "outside.proof",
+   "parent": "outside",
+   "title": "proof",
+   "plain": "one test proving everything outside the app works",
+   "needs": []
+  },
+  {
+   "id": "PL7.2",
+   "parent": "outside.base",
+   "title": "the Outside folder",
+   "plain": "the app, widget and share sheet agree on the same shapes",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "INT7.1",
+    "PL0.2"
+   ]
+  },
+  {
+   "id": "PL7.3",
+   "parent": "outside.base",
+   "title": "access-token mirror",
+   "plain": "the share sheet can save without opening the app, holding nothing long-lived",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL7.2",
+    "PL1.3",
+    "PL1.5"
+   ]
+  },
+  {
+   "id": "P34",
+   "parent": "outside.share",
+   "title": "EX-1 share to retrospect",
+   "plain": "save a link with a reason in two taps",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41.1",
+    "C41.2",
+    "C42",
+    "PL7.5a",
+    "PL7.5b"
+   ]
+  },
+  {
+   "id": "C41",
+   "parent": "P34",
+   "title": "share item card",
+   "plain": "see what you're saving and what Retro makes of it",
+   "needs": []
+  },
+  {
+   "id": "C41.1",
+   "parent": "C41",
+   "title": "item card face",
+   "plain": "the thing you're saving, shown at once",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01",
+    "#42"
+   ]
+  },
+  {
+   "id": "C41.2",
+   "parent": "C41",
+   "title": "retro's read and goes-with",
+   "plain": "one line about it, and a goal it might go with",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41.1",
+    "#45"
+   ]
+  },
+  {
+   "id": "C42",
+   "parent": "P34",
+   "title": "compact composer",
+   "plain": "add a quick why by voice or typing",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#54",
+    "#56"
+   ]
+  },
+  {
+   "id": "share.doors",
+   "parent": "outside.share",
+   "title": "share doors",
+   "plain": "the server reads and saves what you share",
+   "needs": []
+  },
+  {
+   "id": "BE7.1a",
+   "parent": "share.doors",
+   "title": "agent: read one link",
+   "plain": "Retro reads a link without saving it",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "BE7.1b",
+   "parent": "share.doors",
+   "title": "door: shares preview",
+   "plain": "the share sheet gets Retro's read safely",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2",
+    "BE0.12",
+    "BE7.1a"
+   ]
+  },
+  {
+   "id": "BE7.2a",
+   "parent": "share.doors",
+   "title": "agent: keep the person's goal",
+   "plain": "your goal choice for a link is kept",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE7.2b",
+   "parent": "share.doors",
+   "title": "door: save a share",
+   "plain": "a saved link lands exactly once",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.0",
+    "BE0.1",
+    "BE0.2",
+    "BE0.12",
+    "BE1.1",
+    "BE7.2a"
+   ]
+  },
+  {
+   "id": "share.plumbing",
+   "parent": "outside.share",
+   "title": "share plumbing",
+   "plain": "nothing you save is ever lost",
+   "needs": []
+  },
+  {
+   "id": "PL7.4",
+   "parent": "share.plumbing",
+   "title": "share inbox and importer",
+   "plain": "saved offline, sent once later",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL7.2",
+    "PL2.2",
+    "PL2.1",
+    "BE7.2b",
+    "INT7.2"
+   ]
+  },
+  {
+   "id": "PL7.5a",
+   "parent": "share.plumbing",
+   "title": "share extension: reading",
+   "plain": "see what you shared and Retro's read",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "INT7.1",
+    "PL7.2",
+    "PL7.3",
+    "BE7.1b"
+   ]
+  },
+  {
+   "id": "PL7.5b",
+   "parent": "share.plumbing",
+   "title": "share extension: saving",
+   "plain": "tapping save is always safe",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL7.5a",
+    "PL7.4",
+    "BE7.2b"
+   ]
+  },
+  {
+   "id": "P35",
+   "parent": "outside.lock",
+   "title": "EX-2 lock screen, now playing",
+   "plain": "see and control your brief while locked",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C40.4",
+    "PL7.6"
+   ]
+  },
+  {
+   "id": "C40.4",
+   "parent": "P35",
+   "title": "now playing artwork",
+   "plain": "the brief's artwork on the lock screen",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01",
+    "#42"
+   ]
+  },
+  {
+   "id": "lock.plumbing",
+   "parent": "outside.lock",
+   "title": "now playing plumbing",
+   "plain": "lock screen, headphones and car controls",
+   "needs": []
+  },
+  {
+   "id": "PL7.6",
+   "parent": "lock.plumbing",
+   "title": "now playing and remote commands",
+   "plain": "pause, skip and scrub from anywhere",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "Media.Player",
+    "PL7.10",
+    "C40.4"
+   ]
+  },
+  {
+   "id": "PL7.7",
+   "parent": "lock.plumbing",
+   "title": "recording live activity",
+   "plain": "the lock screen shows you're recording",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "#56",
+    "PL3.1a",
+    "INT7.1"
+   ]
+  },
+  {
+   "id": "P36",
+   "parent": "outside.notify",
+   "title": "EX-3 notifications",
+   "plain": "the words and where each tap lands",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "PL5.3",
+    "P10",
+    "P14",
+    "P21",
+    "P17"
+   ]
+  },
+  {
+   "id": "notify.doors",
+   "parent": "outside.notify",
+   "title": "notification doors",
+   "plain": "the server decides when, and never more than once a day",
+   "needs": []
+  },
+  {
+   "id": "BE7.3",
+   "parent": "notify.doors",
+   "title": "notification preferences",
+   "plain": "you choose which notifications Retro sends",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE7.4",
+   "parent": "notify.doors",
+   "title": "one a day, never at night",
+   "plain": "never two in a day, never at night",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.6",
+    "BE2.7",
+    "BE7.3"
+   ]
+  },
+  {
+   "id": "BE7.5",
+   "parent": "notify.doors",
+   "title": "brief is ready",
+   "plain": "told once when your brief is ready",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE7.4",
+    "BE6.2",
+    "BE1.3b"
+   ]
+  },
+  {
+   "id": "BE7.6",
+   "parent": "notify.doors",
+   "title": "one question for you",
+   "plain": "at most one question a week",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE7.4",
+    "BE1.4",
+    "P21"
+   ]
+  },
+  {
+   "id": "BE7.7",
+   "parent": "notify.doors",
+   "title": "silent refresh",
+   "plain": "your widget is current without opening the app",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE7.4"
+   ]
+  },
+  {
+   "id": "notify.plumbing",
+   "parent": "outside.notify",
+   "title": "notification plumbing",
+   "plain": "taps open the right place",
+   "needs": []
+  },
+  {
+   "id": "PL5.3",
+   "parent": "notify.plumbing",
+   "title": "categories and taps",
+   "plain": "a tap opens exactly what it's about",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL5.1",
+    "PL5.2",
+    "PL7.2",
+    "INT7.2"
+   ]
+  },
+  {
+   "id": "PL7.9",
+   "parent": "notify.plumbing",
+   "title": "background refresh",
+   "plain": "brief ready before you open the app",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL5.1",
+    "PL5.3",
+    "PL7.8a",
+    "PL3.1b",
+    "BE7.7"
+   ]
+  },
+  {
+   "id": "PL7.10",
+   "parent": "notify.plumbing",
+   "title": "preferences and lock-screen choice",
+   "plain": "your notification choices are what happens",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL1.1",
+    "PL2.4",
+    "BE7.3"
+   ]
+  },
+  {
+   "id": "P37",
+   "parent": "outside.widgets",
+   "title": "EX-4 widgets",
+   "plain": "brief and talk on your home screen",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C40.1",
+    "C40.2",
+    "C40.3",
+    "PL7.8b"
+   ]
+  },
+  {
+   "id": "C40",
+   "parent": "P37",
+   "title": "widget views",
+   "plain": "the widgets' look in every state",
+   "needs": []
+  },
+  {
+   "id": "C40.1",
+   "parent": "C40",
+   "title": "small talk widget",
+   "plain": "a quiet way to talk to Retro",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01",
+    "S10",
+    "INT7.1"
+   ]
+  },
+  {
+   "id": "C40.2",
+   "parent": "C40",
+   "title": "medium brief widget",
+   "plain": "today's brief with play and talk",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C40.1",
+    "#45",
+    "PL7.2"
+   ]
+  },
+  {
+   "id": "C40.3",
+   "parent": "C40",
+   "title": "brief widget states",
+   "plain": "played, quiet, being made, off and more",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C40.2"
+   ]
+  },
+  {
+   "id": "widgets.plumbing",
+   "parent": "outside.widgets",
+   "title": "widget data",
+   "plain": "the widget always matches the app",
+   "needs": []
+  },
+  {
+   "id": "PL7.8a",
+   "parent": "widgets.plumbing",
+   "title": "widget snapshot writer",
+   "plain": "one place decides what the widget shows",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL7.2",
+    "PL3.1b",
+    "PL7.10"
+   ]
+  },
+  {
+   "id": "PL7.8b",
+   "parent": "widgets.plumbing",
+   "title": "widget timeline and intents",
+   "plain": "right without the app open, private when locked, plays in one tap",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL7.8a",
+    "INT7.1",
+    "Media.Player"
+   ]
+  },
+  {
+   "id": "M01",
+   "parent": "outside.moments",
+   "title": "the splash breathes",
+   "plain": "the first screen feels alive and never makes you wait",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P01",
+    "UI4.4",
+    "C38",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M02",
+   "parent": "outside.moments",
+   "title": "listening glow follows your voice",
+   "plain": "you see Retro listening to your voice",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P02",
+    "#56",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M03",
+   "parent": "outside.moments",
+   "title": "the understood word ink-sharpens",
+   "plain": "you see Retro understood your key word",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P02",
+    "C34",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M04",
+   "parent": "outside.moments",
+   "title": "connect, the meter fills",
+   "plain": "every app you connect visibly helps Retro know you",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P04",
+    "C36",
+    "#52",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M05",
+   "parent": "outside.moments",
+   "title": "getting ready in honest steps",
+   "plain": "real progress while your first episode is made",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P05",
+    "UI4.1",
+    "PL3.3",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M06",
+   "parent": "outside.moments",
+   "title": "the player tucks away, the paywall rises",
+   "plain": "your first episode tucks away as the offer rises",
+   "size": "L",
+   "side": "views",
+   "needs": [
+    "P06",
+    "P07",
+    "C22-p",
+    "C23e",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M07",
+   "parent": "outside.moments",
+   "title": "the save tag rolls in",
+   "plain": "the yearly saving lands with a small flourish",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P07",
+    "C37",
+    "PL6.1",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M08",
+   "parent": "outside.moments",
+   "title": "your bubble lifts",
+   "plain": "sending feels like letting go into a safe place",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P09",
+    "C30.1",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M09",
+   "parent": "outside.moments",
+   "title": "play morph, rolling time, chapter ticks",
+   "plain": "the player feels physical",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P10",
+    "C24",
+    "C25",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M10",
+   "parent": "outside.moments",
+   "title": "tiles lag the scroll",
+   "plain": "episodes feel like objects as you scroll",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P13",
+    "C27",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M11",
+   "parent": "outside.moments",
+   "title": "the goal card folds",
+   "plain": "answering a goal question visibly does something",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P16",
+    "C29",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M12",
+   "parent": "outside.moments",
+   "title": "a new fact blooms into the map",
+   "plain": "something new Retro learns arrives quietly",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P18",
+    "C38",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "M13",
+   "parent": "outside.moments",
+   "title": "questions type out with a soft tick",
+   "plain": "Retro asks each question as if writing it to you",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P02",
+    "C34",
+    "storyboard approved"
+   ]
+  },
+  {
+   "id": "retire.floor",
+   "parent": "outside.retire",
+   "title": "version floor",
+   "plain": "old versions are told to update instead of breaking",
+   "needs": []
+  },
+  {
+   "id": "X02a",
+   "parent": "retire.floor",
+   "title": "version report and switch",
+   "plain": "the floor rises only when it's safe",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.10",
+    "PL1.6",
+    "X02b"
+   ]
+  },
+  {
+   "id": "X02b",
+   "parent": "retire.floor",
+   "title": "force-update page",
+   "plain": "a plain page sends old versions to the update",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "PL1.6",
+    "Paper drawing"
+   ]
+  },
+  {
+   "id": "X01",
+   "parent": "outside.retire",
+   "title": "retirement ledger",
+   "plain": "we know exactly what's old and what replaces it",
+   "size": "S",
+   "side": "platform",
+   "needs": []
+  },
+  {
+   "id": "retire.screens",
+   "parent": "outside.retire",
+   "title": "old screens",
+   "plain": "old screens deleted only after their flow ships",
+   "needs": []
+  },
+  {
+   "id": "X03a",
+   "parent": "retire.screens",
+   "title": "remove the video journal",
+   "plain": "an unused experiment is gone",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "G1",
+    "X01"
+   ]
+  },
+  {
+   "id": "X03b",
+   "parent": "retire.screens",
+   "title": "remove Polaroid",
+   "plain": "an unused experiment is gone",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "G1",
+    "X01"
+   ]
+  },
+  {
+   "id": "X03c",
+   "parent": "retire.screens",
+   "title": "remove iMessage onboarding",
+   "plain": "an unused experiment is gone",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "G1",
+    "X01"
+   ]
+  },
+  {
+   "id": "X03d",
+   "parent": "retire.screens",
+   "title": "remove extra home variants",
+   "plain": "unused screens are gone",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "G1",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10a",
+   "parent": "retire.screens",
+   "title": "delete old journal screens",
+   "plain": "the old journal screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G2",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10b",
+   "parent": "retire.screens",
+   "title": "delete old first run screens",
+   "plain": "the old first run screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G1",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10c",
+   "parent": "retire.screens",
+   "title": "delete old podcasts screens",
+   "plain": "the old podcasts screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G3",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10d",
+   "parent": "retire.screens",
+   "title": "delete old goals screens",
+   "plain": "the old goals screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G4",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10e",
+   "parent": "retire.screens",
+   "title": "delete old you screens",
+   "plain": "the old you screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G5",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10f",
+   "parent": "retire.screens",
+   "title": "delete old settings and the old shell screens",
+   "plain": "the old settings and the old shell screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G6",
+    "X01"
+   ]
+  },
+  {
+   "id": "X10g",
+   "parent": "retire.screens",
+   "title": "delete old outside (old widget, old reminders) screens",
+   "plain": "the old outside (old widget, old reminders) screens are gone after the new ones ship",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "G7",
+    "X01",
+    "PL7.7"
+   ]
+  },
+  {
+   "id": "X04",
+   "parent": "retire.screens",
+   "title": "remove the old design system",
+   "plain": "one design system in the app",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "X10f"
+   ]
+  },
+  {
+   "id": "retire.services",
+   "parent": "outside.retire",
+   "title": "old services",
+   "plain": "code that called old routes is gone",
+   "needs": []
+  },
+  {
+   "id": "X05a",
+   "parent": "retire.services",
+   "title": "remove Claude/OpenAI services",
+   "plain": "the app never calls a model directly",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "X10a",
+    "X10c",
+    "X10e"
+   ]
+  },
+  {
+   "id": "X05b",
+   "parent": "retire.services",
+   "title": "remove TTS fallbacks",
+   "plain": "one voice path",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "X10c"
+   ]
+  },
+  {
+   "id": "X05c",
+   "parent": "retire.services",
+   "title": "remove Google Docs service",
+   "plain": "an unused integration path is gone",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "X10b",
+    "X10f"
+   ]
+  },
+  {
+   "id": "retire.data",
+   "parent": "outside.retire",
+   "title": "old data on the phone",
+   "plain": "one copy of your data, the old one kept aside first",
+   "needs": []
+  },
+  {
+   "id": "X06a",
+   "parent": "retire.data",
+   "title": "quarantine old entry files",
+   "plain": "old entries set aside once safely imported",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL2.6",
+    "G2",
+    "X10a"
+   ]
+  },
+  {
+   "id": "X06b",
+   "parent": "retire.data",
+   "title": "podcasts.json into the store",
+   "plain": "old episode list folded in once",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.4",
+    "G3",
+    "X10c"
+   ]
+  },
+  {
+   "id": "X06c",
+   "parent": "retire.data",
+   "title": "old UserDefaults keys",
+   "plain": "old settings leftovers cleared",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "G1",
+    "G4",
+    "X10b",
+    "X10d"
+   ]
+  },
+  {
+   "id": "X06d",
+   "parent": "retire.data",
+   "title": "old Keychain items",
+   "plain": "old sign-in leftovers cleared",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL1.3",
+    "X05b",
+    "X02a"
+   ]
+  },
+  {
+   "id": "X06e",
+   "parent": "retire.data",
+   "title": "old video files",
+   "plain": "save your old videos to Photos, then clear them",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "X03a"
+   ]
+  },
+  {
+   "id": "X06f",
+   "parent": "retire.data",
+   "title": "empty the quarantine",
+   "plain": "old copies deleted after a safe wait",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "X06a",
+    "X06b",
+    "X06e"
+   ]
+  },
+  {
+   "id": "retire.backend",
+   "parent": "outside.retire",
+   "title": "old backend",
+   "plain": "old routes and tables removed after nobody uses them",
+   "needs": []
+  },
+  {
+   "id": "X07.0",
+   "parent": "retire.backend",
+   "title": "route tombstones",
+   "plain": "old routes switched off first, reversible",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.1"
+   ]
+  },
+  {
+   "id": "X07a",
+   "parent": "retire.backend",
+   "title": "remove /claude/generate",
+   "plain": "the old /claude/generate route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a",
+    "X05a"
+   ]
+  },
+  {
+   "id": "X07b",
+   "parent": "retire.backend",
+   "title": "remove /pipeline/*",
+   "plain": "the old /pipeline/* route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a",
+    "X05a"
+   ]
+  },
+  {
+   "id": "X07c",
+   "parent": "retire.backend",
+   "title": "remove /goals/extract*",
+   "plain": "the old /goals/extract* route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a",
+    "X10d"
+   ]
+  },
+  {
+   "id": "X07d",
+   "parent": "retire.backend",
+   "title": "remove old /podcasts",
+   "plain": "the old old /podcasts route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a",
+    "X10c",
+    "BE2.5b"
+   ]
+  },
+  {
+   "id": "X07e",
+   "parent": "retire.backend",
+   "title": "remove old /auth",
+   "plain": "the old old /auth route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a"
+   ]
+  },
+  {
+   "id": "X07f",
+   "parent": "retire.backend",
+   "title": "remove /graph feedback",
+   "plain": "the old /graph feedback route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a",
+    "X10e",
+    "BE1.7"
+   ]
+  },
+  {
+   "id": "X07g",
+   "parent": "retire.backend",
+   "title": "remove old /content, /goals, /profile",
+   "plain": "the old old /content, /goals, /profile route is gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07.0",
+    "X02a"
+   ]
+  },
+  {
+   "id": "X07h",
+   "parent": "retire.backend",
+   "title": "episode audio private",
+   "plain": "nobody can play your episode from a leaked link",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X07d",
+    "BEA.7"
+   ]
+  },
+  {
+   "id": "X08a",
+   "parent": "retire.backend",
+   "title": "brain: disconnect legacy tables",
+   "plain": "the brain stops using old tables",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "X07b"
+   ]
+  },
+  {
+   "id": "X08b",
+   "parent": "retire.backend",
+   "title": "brain: set legacy tables aside",
+   "plain": "old tables renamed after a backup",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X08a"
+   ]
+  },
+  {
+   "id": "X08c",
+   "parent": "retire.backend",
+   "title": "brain: drop legacy tables",
+   "plain": "old tables gone",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "X08b"
+   ]
+  },
+  {
+   "id": "X09",
+   "parent": "outside.retire",
+   "title": "final sweep",
+   "plain": "the app is only the new code",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "X03a",
+    "X03b",
+    "X03c",
+    "X03d",
+    "X04",
+    "X05a",
+    "X05b",
+    "X05c",
+    "X06f",
+    "X07h",
+    "X10g"
+   ]
+  },
+  {
+   "id": "T05d",
+   "parent": "outside.proof",
+   "title": "outside flow test",
+   "plain": "one test proves share, widgets, lock screen and notifications",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P34",
+    "P35",
+    "P36",
+    "P37",
+    "PL7.4",
+    "PL7.9"
+   ]
+  }
+ ]
+}

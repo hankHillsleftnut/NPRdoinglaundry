@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "writtenAt": "2026-10-21T08:01:00.000Z",
+  "signedIn": true,
+  "brief": {
+    "state": "ready",
+    "id": "b7e1f2a3-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "date": "2026-10-21",
+    "headline": "a test day with two meetings and a long walk",
+    "minutes": 4,
+    "hasAudio": true
+  },
+  "briefOffNoticeShown": false,
+  "lockScreenDetail": false
+}

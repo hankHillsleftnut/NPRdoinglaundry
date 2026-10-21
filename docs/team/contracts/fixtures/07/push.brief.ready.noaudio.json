@@ -1,0 +1,18 @@
+{
+  "aps": {
+    "alert": {
+      "loc-key": "notify.brief.ready.noaudio"
+    },
+    "sound": "default",
+    "category": "BRIEF_READY",
+    "thread-id": "brief",
+    "interruption-level": "active"
+  },
+  "r": {
+    "v": 1,
+    "kind": "briefReady",
+    "id": "b7e1f2a3-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "link": "retrospect://brief/b7e1f2a3-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "sentAt": "2026-10-21T08:00:04.200Z"
+  }
+}

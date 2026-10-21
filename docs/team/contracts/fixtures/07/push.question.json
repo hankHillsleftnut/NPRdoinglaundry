@@ -1,0 +1,17 @@
+{
+  "aps": {
+    "alert": {
+      "loc-key": "notify.question"
+    },
+    "category": "QUESTION",
+    "thread-id": "question",
+    "interruption-level": "passive"
+  },
+  "r": {
+    "v": 1,
+    "kind": "question",
+    "id": "c0ffee00-1111-4222-8333-444455556666",
+    "link": "retrospect://guess/c0ffee00-1111-4222-8333-444455556666",
+    "sentAt": "2026-10-22T17:30:00.000Z"
+  }
+}
