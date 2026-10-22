@@ -78,6 +78,18 @@ export function classifyTokenError(error: unknown, provider: ProviderName = 'App
   return authFailureFor('server_error', provider);
 }
 
+/** Keep jose diagnostics, excluding the parsed payload and arbitrary error details. */
+export function tokenErrorSummary(error: unknown): Record<string, string> {
+  const summary: Record<string, string> = {};
+  if (error && typeof error === 'object') {
+    for (const field of ['code', 'claim', 'reason'] as const) {
+      const value = (error as Record<string, unknown>)[field];
+      if (typeof value === 'string') summary[field] = value;
+    }
+  }
+  return summary;
+}
+
 /** The JSON body for a failure: `error` stays human-readable for older app builds. */
 export function failureBody(f: AuthFailure) {
   return { success: false, error: f.message, code: f.code };

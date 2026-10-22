@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyTokenError, authFailureFor, failureBody } from '../src/services/auth-errors.js';
+import { classifyTokenError, authFailureFor, failureBody, tokenErrorSummary } from '../src/services/auth-errors.js';
+import { errors } from 'jose';
 
 /**
  * Every sign-in failure is said in plain words. The 19 October case: an old
@@ -51,5 +52,18 @@ test('no message contains an em dash or raw JSON', () => {
     const m = authFailureFor(code).message;
     assert.equal(m.includes('—'), false, code);
     assert.equal(m.includes('{'), false, code);
+  }
+});
+
+test('token diagnostics omit the jose payload and arbitrary error details', () => {
+  const error = new errors.JWTClaimValidationFailed('unexpected audience', {
+    sub: 'private-subject', email: 'private@example.com',
+  }, 'aud', 'check_failed');
+  assert.deepEqual(tokenErrorSummary(error), {
+    code: 'ERR_JWT_CLAIM_VALIDATION_FAILED', claim: 'aud', reason: 'check_failed',
+  });
+  assert.deepEqual(tokenErrorSummary({ code: { payload: 'private' }, claim: ['private'], reason: new Error('private') }), {});
+  for (const value of [null, undefined, 'private', new Error('private')]) {
+    assert.deepEqual(tokenErrorSummary(value), {});
   }
 });

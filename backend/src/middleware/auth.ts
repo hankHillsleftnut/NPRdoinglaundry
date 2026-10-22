@@ -98,7 +98,8 @@ export function sessionStillValid(payload: { se?: number }, user: { session_epoc
 
 /** Issue a session token stamped with the account's current session_epoch. */
 export async function issueToken(user: AuthUser): Promise<string> {
-  const { data } = await supabaseAdmin.from(Tables.USERS).select('session_epoch').eq('id', user.id).single();
+  const { data, error } = await supabaseAdmin.from(Tables.USERS).select('session_epoch').eq('id', user.id).single();
+  if (error) throw new Error(`Could not read session epoch: ${error.message}`);
   const se = Number((data as { session_epoch?: number } | null)?.session_epoch ?? 0);
   return jwt.sign({ userId: user.id, appleUserId: user.appleUserId, se }, config.jwt.secret, {
     expiresIn: config.jwt.expiresIn,

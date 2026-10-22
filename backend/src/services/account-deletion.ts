@@ -55,12 +55,8 @@ export async function deleteAccount(
     }
   }
 
-  let filesRemoved = 0;
-  try {
-    filesRemoved = await deps.removeStoredFiles(userId);
-  } catch (err) {
-    notes.push(`Stored files not removed: ${(err as Error).message}`);
-  }
+  // Keep the account available for a retry if storage cleanup fails.
+  const filesRemoved = await deps.removeStoredFiles(userId);
 
   // Last, and not optional: if this fails, the whole request fails.
   await deps.deleteUserRow(userId);
@@ -95,7 +91,7 @@ export async function appleClientSecret(now = new Date()): Promise<string> {
 export async function revokeAppleAuthorization(code: string, fetchImpl: typeof fetch = fetch): Promise<boolean> {
   const clientSecret = await appleClientSecret();
   const form = (fields: Record<string, string>) =>
-    ({ method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fields) });
+    ({ method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fields), signal: AbortSignal.timeout(10_000) });
   const tokenRes = await fetchImpl('https://appleid.apple.com/auth/token', form({
     client_id: config.apple.clientId, client_secret: clientSecret, code, grant_type: 'authorization_code',
   }));

@@ -11,7 +11,7 @@ import {
 } from '../middleware/auth.js';
 import type { AuthIdentityInput } from '../middleware/auth.js';
 import { verifyAppleIdentityToken } from '../services/apple-auth.js';
-import { authFailureFor, classifyTokenError, failureBody } from '../services/auth-errors.js';
+import { authFailureFor, classifyTokenError, failureBody, tokenErrorSummary } from '../services/auth-errors.js';
 import { verifyGoogleIdToken, exchangeGoogleServerAuthCode } from '../services/google-auth.js';
 import { GOOGLE_COMBINED_MEMBERS, getOAuthProvider } from '../services/oauth-providers.js';
 import { storeAgentIntegrationCredentials, requestAgentIntegrationSync, revokeAgentIntegrations } from '../services/agent-client.js';
@@ -71,7 +71,7 @@ authRouter.post('/signin', async (req: Request, res: Response) => {
       verified = await verifyAppleIdentityToken(identityToken);
     } catch (verifyError) {
       const f = classifyTokenError(verifyError, 'Apple');
-      console.error(`Sign in error (${f.code}):`, verifyError);
+      console.error(`Sign in error (${f.code}):`, tokenErrorSummary(verifyError));
       res.status(f.status).json(failureBody(f));
       return;
     }
@@ -110,7 +110,7 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
       verified = await verifyAppleIdentityToken(parsed.data.identityToken);
     } catch (verifyError) {
       const f = classifyTokenError(verifyError, 'Apple');
-      console.error(`Token refresh error (${f.code}):`, verifyError);
+      console.error(`Token refresh error (${f.code}):`, tokenErrorSummary(verifyError));
       res.status(f.status).json(failureBody(f));
       return;
     }
@@ -153,7 +153,7 @@ authRouter.post('/google', async (req: Request, res: Response) => {
     identity = await verifyGoogleIdToken(parsed.data.idToken);
   } catch (verifyError) {
     const f = classifyTokenError(verifyError, 'Google');
-    console.error(`Google sign in error (${f.code}):`, verifyError);
+    console.error(`Google sign in error (${f.code}):`, tokenErrorSummary(verifyError));
     res.status(f.status).json(failureBody(f));
     return;
   }
@@ -186,7 +186,7 @@ authRouter.post('/google', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: { ...(await authPayload(user, token)), googleConnected } });
   } catch (error) {
-    const f = classifyTokenError(error, 'Google');
+    const f = authFailureFor(error instanceof IdentityLinkConflictError ? 'account_in_use' : 'server_error', 'Google');
     console.error('Google sign in error:', error);
     res.status(f.status).json(failureBody(f));
   }
@@ -226,7 +226,8 @@ authRouter.delete('/account', authMiddleware, async (req: Request, res: Response
       },
     });
     console.log(`[auth] account ${userId} deleted`, result);
-    res.json({ success: true, data: { ...result, message: 'Your account and everything in it has been deleted.' } });
+    const { notes, ...publicResult } = result;
+    res.json({ success: true, data: { ...publicResult, message: 'Your account and everything in it has been deleted.' } });
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ success: false, code: 'server_error', error: "We couldn't finish deleting your account. Please try again; your data stays until it succeeds." });
