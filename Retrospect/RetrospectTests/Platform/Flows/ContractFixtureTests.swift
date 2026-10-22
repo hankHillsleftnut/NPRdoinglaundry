@@ -34,6 +34,7 @@ struct ContractFixtureTests {
         "entries.list.last": decodes(EntryPage.self),
         "entries.search": decodes(EntryPage.self),
         "entries.search.empty": decodes(EntryPage.self),
+        "entries.search.astral": decodes(EntryPage.self),
         "brief.latest.v1": decodes(LatestBrief.self),
         "brief.latest.v2": decodes(LatestBrief.self),
         "brief.latest.quiet": decodes(LatestBrief.self),
@@ -162,6 +163,13 @@ struct ContractFixtureTests {
         let match = try #require(entry.matches?.first)
         let utf16 = Array(entry.text.utf16)
         #expect(String(decoding: utf16[match.start ..< match.start + match.length], as: UTF16.self) == "canal", "ranges are UTF-16 code units")
+        // A surrogate pair before the match: the UTF-16 offset differs from the scalar offset, so this fails if ranges were scalars.
+        let astral = try envelope(EntryPage.self, "02", "entries.search.astral")
+        let astralEntry = try #require(astral.entries.first)
+        let astralMatch = try #require(astralEntry.matches?.first)
+        let astralUTF16 = Array(astralEntry.text.utf16)
+        #expect(String(decoding: astralUTF16[astralMatch.start ..< astralMatch.start + astralMatch.length], as: UTF16.self) == "canal")
+        #expect(astralMatch.start != Array(astralEntry.text.unicodeScalars).firstIndex(of: "c"), "the scalar offset would be one less")
 
         let took = try envelope(Journal.Took.self, "02", "took")
         #expect(took.items.map(\.sureness) == [.fairlySure, .verySure, .justAHunch])
