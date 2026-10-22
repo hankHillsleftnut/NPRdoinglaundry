@@ -70,8 +70,12 @@ jobs:
       # the runner's own simulator, `ci` (the engineers keep agent-a and agent-b; CI doesn't create
       # simulators). Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so
       # each run is an incremental build. Delete the folder by hand if a build ever goes stale.
-      - run: >-
-          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect
-          -testPlan Platform -destination 'platform=iOS Simulator,name=ci'
-          -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution
-          COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+      # The `ci` simulator is found by name and addressed by id: a bare `name=` would also pin
+      # the newest installed iOS, and the device may run an older one.
+      - run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.name=="ci") | .udid' | head -1)
+          test -n "$udid" || { echo "no simulator named ci on this runner (xcrun simctl create ci \"iPhone 17 Pro\")"; exit 1; }
+          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect \
+            -testPlan Platform -destination "platform=iOS Simulator,id=$udid" \
+            -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution \
+            COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
