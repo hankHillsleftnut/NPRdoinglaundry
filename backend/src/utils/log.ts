@@ -5,27 +5,48 @@
  * only, never a person's words). The line has a fixed set of fields, none of
  * which is free text:
  *   - numbers are numbers (non-finite becomes null);
- *   - every string must match a narrow pattern (an id, a door name, an error
- *     code, an app version), or it is written as "invalid";
+ *   - `code` must be one of the contract's error codes (a closed list);
+ *   - `userId` must be a UUID, or null on public doors (sign-in, waitlist);
+ *   - `appVersion` must be digits and dots, like `1.0 (42)`;
+ *   - anything that fails its check is written as "invalid";
  *   - anything else passed in, even through a cast, is dropped.
+ * `door` is the one string that is only shape-checked (a short lowercase
+ * slug): door names are constants in the code, never request data, so that
+ * check guards against a mistake, not against content.
  * So a caller can't leak an entry, a message or an agent error through this
  * log even by mistake. tests/door-log.test.ts holds the field list fixed.
+ *
+ * Writing never throws: a logging failure must never affect a request.
  */
 
+/**
+ * The error codes a door can answer with: contract 00 §2's closed list plus
+ * §4's invite codes. Kept here until the door kit's errors.ts (BE0.1a) owns the
+ * list; then this imports it.
+ */
+export const DOOR_ERROR_CODES = [
+  'invalid_request', 'invalid_credentials', 'unauthenticated', 'session_revoked', 'invite_required', 'suspended',
+  'not_found', 'idempotency_mismatch', 'update_required', 'rate_limited', 'spend_limited', 'upstream_timeout',
+  'upstream_unavailable', 'internal', 'invite_invalid', 'invite_used', 'invite_expired',
+] as const;
+export type DoorErrorCode = (typeof DOOR_ERROR_CODES)[number];
+const KNOWN_CODES: ReadonlySet<string> = new Set(DOOR_ERROR_CODES);
+
 export interface DoorLogLine {
-  /** The door's name, e.g. `entries.create`. */
+  /** The door's name, a constant in the code, e.g. `entries.create`. */
   door: string;
-  userId: string;
+  /** null on public doors, where there is no signed-in user. */
+  userId: string | null;
   status: number;
   /** The contract's error code on failure, e.g. `rate_limited`. */
-  code?: string;
+  code?: DoorErrorCode;
   /** Total time in the door, milliseconds. */
   ms: number;
   /** Time waiting on the agent, milliseconds. */
   agentMs?: number;
   /** Model spend the agent reported for this request, dollars. */
   costUsd?: number;
-  /** The X-App-Version header, e.g. `1.0 (42)`. */
+  /** The X-App-Version header, e.g. `1.0 (42)`. Optional until BE0.10 requires it. */
   appVersion?: string;
 }
 
@@ -37,11 +58,10 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const fieldsMatchType: Same<(typeof DOOR_LOG_FIELDS)[number], keyof DoorLogLine> = true;
 void fieldsMatchType;
 
-const PATTERNS: Record<'door' | 'userId' | 'code' | 'appVersion', RegExp> = {
+const PATTERNS: Record<'door' | 'userId' | 'appVersion', RegExp> = {
   door: /^[a-z][a-z0-9._-]{0,63}$/,
   userId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-  code: /^[a-z][a-z_]{0,39}$/,
-  appVersion: /^[0-9][0-9A-Za-z.]{0,15}( \([0-9]{1,8}\))?$/,
+  appVersion: /^\d{1,4}(\.\d{1,4}){0,2}( \(\d{1,8}(\.\d{1,8}){0,2}\))?$/,
 };
 
 const INVALID = 'invalid';
@@ -58,10 +78,12 @@ function safeNumber(value: unknown): number | null {
 export function doorLogLine(entry: DoorLogLine): Record<string, string | number | null> {
   const line: Record<string, string | number | null> = {
     door: safeString('door', entry.door),
-    userId: safeString('userId', entry.userId),
+    userId: entry.userId === null ? null : safeString('userId', entry.userId),
     status: safeNumber(entry.status),
   };
-  if (entry.code !== undefined) line.code = safeString('code', entry.code);
+  if (entry.code !== undefined) {
+    line.code = typeof entry.code === 'string' && KNOWN_CODES.has(entry.code) ? entry.code : INVALID;
+  }
   line.ms = safeNumber(entry.ms);
   if (entry.agentMs !== undefined) line.agentMs = safeNumber(entry.agentMs);
   if (entry.costUsd !== undefined) line.costUsd = safeNumber(entry.costUsd);
@@ -72,7 +94,11 @@ export function doorLogLine(entry: DoorLogLine): Record<string, string | number 
 export function createLog(write: (line: string) => void = (line) => { process.stdout.write(line); }) {
   return {
     door(entry: DoorLogLine): void {
-      write(`${JSON.stringify(doorLogLine(entry))}\n`);
+      try {
+        write(`${JSON.stringify(doorLogLine(entry))}\n`);
+      } catch {
+        // Nowhere safe to report it; dropping one log line beats failing a request.
+      }
     },
   };
 }
