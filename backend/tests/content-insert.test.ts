@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   insertRawContent,
+  REQUEST_HASH_FIELD,
   resetMissingMigrationWarningForTests,
   type InsertClient,
 } from '../src/services/content-insert.js';
@@ -55,7 +56,7 @@ function fakeClient(opts: { hasDedupColumns: boolean }) {
             },
             async maybeSingle() {
               const hit = rows.find((r) => filters.every(([c, v]) => r[c] === v));
-              return { data: hit ? { id: hit.id as string } : null, error: null };
+              return { data: hit ? { id: hit.id as string, metadata: hit.metadata as Record<string, unknown> | undefined } : null, error: null };
             },
           };
           return chain as any;
@@ -148,7 +149,7 @@ test('if migration 117 has not been applied, uploads still work exactly as befor
   assert.equal(db.rows[0]!.dedup_key, undefined, 'the fallback write carries no dedup columns');
 });
 
-test('onboarding is not keyed yet, so repeat profiles behave exactly as before', async () => {
+test('onboarding without an explicit key is not keyed, so repeat profiles behave exactly as before', async () => {
   // Deliberately deferred: replacing a profile in place keeps its id, and
   // extraction skips ids it has already processed, so a new profile would never
   // be read. Until that is solved, onboarding is untouched by this change.
@@ -177,5 +178,70 @@ test('two users uploading identical content are never merged', async () => {
     );
   }
 
+  assert.equal(db.rows.length, 2);
+});
+
+// BE0.0 (backend-reference §0 finding 7): an explicit key on onboarding_profile
+// was ignored, so a retried upload stored a second profile and ran ingest twice.
+test('an explicit key is enforced for singleton content', async () => {
+  const db = fakeClient({ hasDedupColumns: true });
+  const profile = { user_id: USER, content_type: 'onboarding_profile', content: 'v1', metadata: {} };
+  const input = { userId: USER, contentType: 'onboarding_profile', content: 'v1', idempotencyKey: 'key-1' };
+
+  const first = await insertRawContent(db.client, 'raw_content', profile, input);
+  const retry = await insertRawContent(db.client, 'raw_content', profile, input);
+
+  assert.equal(first.kind, 'inserted');
+  assert.equal(retry.kind, 'duplicate', 'the retry is recognised');
+  assert.equal(retry.id, first.id);
+  assert.equal(db.rows.length, 1, 'one profile, so one ingest run');
+});
+
+test('a reused key with a different body is a key reuse, not a replay', async () => {
+  const db = fakeClient({ hasDedupColumns: true });
+  const input = (content: string) => ({ userId: USER, contentType: 'journal_entry', content, idempotencyKey: 'key-1' });
+
+  await insertRawContent(db.client, 'raw_content', { ...row('first'), metadata: {} }, input('first'));
+  const reused = await insertRawContent(db.client, 'raw_content', { ...row('second'), metadata: {} }, input('second'));
+
+  assert.equal(reused.kind, 'key_reused');
+  assert.equal(db.rows.length, 1, 'the second body is not stored');
+});
+
+test('a replay with the same key and body is still a duplicate, keeping the client metadata', async () => {
+  const db = fakeClient({ hasDedupColumns: true });
+  const input = { userId: USER, contentType: 'journal_entry', content: 'same', idempotencyKey: 'key-1' };
+  const original = { ...row('same'), metadata: { source: 'app' } };
+
+  await insertRawContent(db.client, 'raw_content', original, input);
+  const replay = await insertRawContent(db.client, 'raw_content', original, input);
+
+  assert.equal(replay.kind, 'duplicate');
+  const stored = db.rows[0]!.metadata as Record<string, unknown>;
+  assert.equal(stored.source, 'app', 'the client metadata is kept');
+  assert.equal(typeof stored[REQUEST_HASH_FIELD], 'string', 'and the fingerprint is added');
+});
+
+test('a row stored before fingerprints existed is treated as a replay', async () => {
+  const db = fakeClient({ hasDedupColumns: true });
+  const input = (content: string) => ({ userId: USER, contentType: 'journal_entry', content, idempotencyKey: 'key-1' });
+  await insertRawContent(db.client, 'raw_content', { ...row('old'), metadata: {} }, input('old'));
+  delete (db.rows[0]!.metadata as Record<string, unknown>)[REQUEST_HASH_FIELD];
+
+  const later = await insertRawContent(db.client, 'raw_content', { ...row('new'), metadata: {} }, input('new'));
+  assert.equal(later.kind, 'duplicate', 'no fingerprint to compare, so the old behaviour holds');
+});
+
+test('the same explicit key from two users never collides', async () => {
+  const db = fakeClient({ hasDedupColumns: true });
+  for (const userId of ['user-a', 'user-b']) {
+    const outcome = await insertRawContent(
+      db.client,
+      'raw_content',
+      { user_id: userId, content_type: 'journal_entry', content: 'same', metadata: {} },
+      { userId, contentType: 'journal_entry', content: 'same', idempotencyKey: 'key-1' },
+    );
+    assert.equal(outcome.kind, 'inserted');
+  }
   assert.equal(db.rows.length, 2);
 });
