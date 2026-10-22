@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6A0D0B032E9A000100C0FFEE /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0D0B022E9A000100C0FFEE /* GRDB */; };
 		751253BA2DF21E67000A527F /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 751253B92DF21E67000A527F /* GoogleSignIn */; };
 		751253BC2DF21E6B000A527F /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 751253BB2DF21E6B000A527F /* GoogleSignInSwift */; };
 		751253BF2DF21EE7000A527F /* GoogleAPIClientForRESTCore in Frameworks */ = {isa = PBXBuildFile; productRef = 751253BE2DF21EE7000A527F /* GoogleAPIClientForRESTCore */; };
@@ -166,6 +167,7 @@
 				751253BF2DF21EE7000A527F /* GoogleAPIClientForRESTCore in Frameworks */,
 				751253C32DF21EE7000A527F /* GoogleAPIClientForREST_Document in Frameworks */,
 				751253BA2DF21E67000A527F /* GoogleSignIn in Frameworks */,
+				6A0D0B032E9A000100C0FFEE /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,6 +269,7 @@
 				751253C02DF21EE7000A527F /* GoogleAPIClientForREST_Docs */,
 				751253C22DF21EE7000A527F /* GoogleAPIClientForREST_Document */,
 				751253C42DF21EE7000A527F /* GoogleAPIClientForREST_Drive */,
+				6A0D0B022E9A000100C0FFEE /* GRDB */,
 			);
 			productName = Retrospect;
 			productReference = 751252902DF20D0C000A527F /* Retrospect.app */;
@@ -403,6 +406,7 @@
 			packageReferences = (
 				751253B82DF21E57000A527F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */,
+				6A0D0B012E9A000100C0FFEE /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 751252912DF20D0C000A527F /* Products */;
@@ -997,6 +1001,14 @@
 				version = 5.5.0;
 			};
 		};
+		6A0D0B012E9A000100C0FFEE /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = exactVersion;
+				version = 7.11.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1029,6 +1041,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 751253BD2DF21EE7000A527F /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
 			productName = GoogleAPIClientForREST_Drive;
+		};
+		6A0D0B022E9A000100C0FFEE /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6A0D0B012E9A000100C0FFEE /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
