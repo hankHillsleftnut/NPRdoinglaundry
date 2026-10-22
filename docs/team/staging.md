@@ -19,7 +19,7 @@ The backend and the brain running on this Mac against a second, free Supabase pr
 1. **Env files.** In each repo, copy `.env.staging.example` to `.env.staging` and fill in the blanks:
    - the staging project's `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY` and `DATABASE_URL` (Supabase dashboard → Project Settings), the same in both files;
    - `JWT_SECRET`, `ADMIN_SECRET` and `INTERNAL_API_SECRET` from `openssl rand -hex 32`; `INTERNAL_API_SECRET` must be **the same value in both files**;
-   - backend only: `DATABASE_CA_CERT`, the path to Supabase's CA certificate (dashboard → Database settings → SSL configuration → download certificate). Supabase signs database certificates with its own root, so `staging:migrate` verifies the connection against this file and refuses to run without it.
+   - in both files: `DATABASE_CA_CERT`, the path to Supabase's CA certificate (dashboard → Database settings → SSL configuration → download certificate). Supabase signs database certificates with its own root, so `staging:migrate` and `db:migrate:staging` verify the connection against this file and refuse to run without it.
    `DOTENV_CONFIG_PATH=.env.staging` (already in the examples) makes each service read only its staging file, over the shell, so a missing value is never filled in from the `.env` beside it.
 2. **Install:** `npm ci` in `backend/` and in the agent repo.
 3. **Database, backend first, then the agent:**
