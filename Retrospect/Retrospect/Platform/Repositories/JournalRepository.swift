@@ -116,6 +116,38 @@ extension Platform.Repositories {
             return answers
         }
 
+        /// One page of the drawer, from the server.
+        func listEntries(cursor: String?, search: String?) async throws -> Backend.Endpoints.EntriesList.Listed {
+            try await client.send(Backend.Endpoints.EntriesList(cursor: cursor, search: search))
+        }
+
+        func fetchEntry(id: String) async throws -> Flows.Journal.Entry {
+            try await client.send(Backend.Endpoints.EntryByID(id: id)).entry
+        }
+
+        /// What this phone holds that the server may not: entries written here and not yet sent, or refused,
+        /// from every day, newest first.
+        func phoneOnlyRows() -> [Store.EntryRow] {
+            (try? database.writer.read { db in
+                try Store.EntryRow.fetchAll(
+                    db,
+                    sql: "SELECT * FROM entries WHERE origin = ? AND sync_state IN (?, ?, ?) ORDER BY created_at DESC, rowid DESC",
+                    arguments: [Store.Origin.new.rawValue, Store.SyncState.local.rawValue, Store.SyncState.sending.rawValue, Store.SyncState.failed.rawValue]
+                )
+            }) ?? []
+        }
+
+        /// The row written here for `id` (its own id, or the server's), if any.
+        func row(id: String) -> Store.EntryRow? {
+            try? database.writer.read { db in
+                try Store.EntryRow.fetchOne(
+                    db,
+                    sql: "SELECT * FROM entries WHERE origin = ? AND (local_id = ? OR server_id = ?)",
+                    arguments: [Store.Origin.new.rawValue, id, id]
+                )
+            }
+        }
+
         /// The entries written in this app for `day`, now and after every change, oldest first.
         nonisolated func rows(day: String) -> AsyncStream<[Store.EntryRow]> {
             let observation = ValueObservation.tracking { db in
