@@ -21,6 +21,10 @@ extension Platform {
         let configuration: Backend.Configuration
         let log: any Platform.LogSink
 
+        /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
+        /// nil before. The scene-phase and background-task bridges drain it.
+        var outbox: Store.Outbox?
+
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
 

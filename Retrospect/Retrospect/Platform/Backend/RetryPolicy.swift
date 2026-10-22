@@ -24,11 +24,14 @@ extension Backend {
             method != .get && !hasIdempotencyKey ? .never : requested
         }
 
-        /// How many sends in all.
+        /// The most sends any policy allows: a client never hammers a door.
+        static let mostAttempts = 5
+
+        /// How many sends in all, 1...`mostAttempts`.
         var attempts: Int {
             switch self {
             case .never: 1
-            case let .read(attempts), let .keyedWrite(attempts): max(1, attempts)
+            case let .read(attempts), let .keyedWrite(attempts): min(Self.mostAttempts, max(1, attempts))
             }
         }
 

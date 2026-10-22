@@ -18,16 +18,14 @@ extension Platform.Log {
     enum Event: Equatable, Sendable {
         /// The session was refreshed.
         case refreshed
-        /// One outbox drain finished.
-        case outboxDrained(sent: Int, failed: Int)
+        /// The outbox (PL2.2): what was queued, sent, retried, refused or paused. No text, no ids.
+        case outbox(Outbox)
         /// One request finished: its door, the HTTP status (0 when nothing came
         /// back) and how long it took.
         case requestSent(path: Backend.PathTemplate, status: Int, ms: Int)
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
-        /// Something was queued in the outbox (PL2.2). No text, no ids.
-        case outboxEnqueued(operation: Store.OutboxOperation)
         /// The launch install check ran (PL1.3): what it found.
         case installChecked(Session.InstallCheck)
         /// The launch install check failed with this Keychain status; the next
@@ -35,6 +33,19 @@ extension Platform.Log {
         case installCheckFailed(status: OSStatus)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
+    }
+
+    enum Outbox: Equatable, Sendable {
+        case enqueued(operation: Store.OutboxOperation)
+        /// One drain finished: how many items landed, how many were refused for good.
+        case drained(sent: Int, failed: Int)
+        case sent(operation: Store.OutboxOperation, attempts: Int, ms: Int)
+        /// A retryable failure: the item waits for its next attempt.
+        case retry(operation: Store.OutboxOperation, code: Store.FailureCode)
+        /// Refused for good (or out of attempts): the item is dead, its entity failed.
+        case dead(operation: Store.OutboxOperation, code: Store.FailureCode)
+        /// The pass stopped early: offline, or the session needs attention.
+        case paused(code: Store.FailureCode)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -48,14 +59,12 @@ extension Platform.Log {
             switch event {
             case .refreshed:
                 logger.info("session refreshed")
-            case let .outboxDrained(sent, failed):
-                logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .outbox(event):
+                record(event)
             case let .requestSent(path, status, ms):
                 recordRequest(path, status: status, ms: ms)
             case let .unknownErrorCode(path):
                 recordUnknownErrorCode(path)
-            case let .outboxEnqueued(operation):
-                record(operation)
             case let .launchOptionIgnored(problem):
                 record(problem)
             case let .installChecked(check):
@@ -80,11 +89,34 @@ extension Platform.Log {
             }
         }
 
-        private func record(_ operation: Store.OutboxOperation) {
-            switch operation {
-            case .entryCreate: logger.info("outbox: entry.create queued")
-            case .unknown: logger.info("outbox: unknown operation queued")
+        private func record(_ event: Outbox) {
+            switch event {
+            case let .enqueued(operation):
+                logger.info("outbox: \(Self.name(operation)) queued")
+            case let .drained(sent, failed):
+                logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .sent(operation, attempts, ms):
+                logger.info("outbox: \(Self.name(operation)) sent on attempt \(attempts), \(ms) ms")
+            case let .retry(operation, code):
+                logger.info("outbox: \(Self.name(operation)) will retry after \(Self.name(code))")
+            case let .dead(operation, code):
+                logger.error("outbox: \(Self.name(operation)) refused: \(Self.name(code))")
+            case let .paused(code):
+                logger.info("outbox: pass paused: \(Self.name(code))")
             }
+        }
+
+        /// The fixed name of an operation: a closed list, never a value from the server.
+        private static func name(_ operation: Store.OutboxOperation) -> StaticString {
+            switch operation {
+            case .entryCreate: "entry.create"
+            case .unknown: "unknown operation"
+            }
+        }
+
+        /// The fixed name of a failure code: a closed list, never the server's message.
+        private static func name(_ code: Store.FailureCode) -> String {
+            code.rawValue
         }
 
         private func record(_ check: Session.InstallCheck) {
