@@ -20,9 +20,9 @@ struct RProgressHairline: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: RDimension.radiusSmall, style: .continuous)
+                RShape.rect(RDimension.radiusSmall)
                     .fill(RColor.surfaceTrack)
-                RoundedRectangle(cornerRadius: RDimension.radiusSmall, style: .continuous)
+                RShape.rect(RDimension.radiusSmall)
                     .fill(RColor.inkDefault)
                     .frame(width: geo.size.width * clamped)
             }
@@ -49,8 +49,8 @@ struct RKnowsYouTrack: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(RColor.surfaceTrack)
-                Capsule()
+                RShape.pill.fill(RColor.surfaceTrack)
+                RShape.pill
                     .fill(LinearGradient(
                         colors: [RColor.glowPrimaryGradientTop, RColor.glowPrimaryGradientBottom],
                         startPoint: .leading,

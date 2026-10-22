@@ -7,15 +7,28 @@
 //
 import SwiftUI
 
+/// Every corner is a squircle (radius.style, founder 21 Oct): continuous curvature for
+/// rectangles and pills alike. Draw corners through these, never a bare Capsule() or
+/// RoundedRectangle (design-system/tools/check-swift-literals.mjs fails them).
+enum RShape {
+    static func rect(_ radius: CGFloat) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: RCorner.style)
+    }
+
+    static var pill: Capsule {
+        Capsule(style: RCorner.style)
+    }
+}
+
 extension View {
     /// z 0.5 · a translucent tint that reads as part of the page (pills, wells, bubbles).
     func rWash(_ radius: CGFloat = RDimension.radiusControl) -> some View {
-        background(RColor.surfaceWash, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        background(RColor.surfaceWash, in: RShape.rect(radius))
     }
 
     /// z −1 · a field you type or search into.
     func rSunken(_ radius: CGFloat = RDimension.radiusControl) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let shape = RShape.rect(radius)
         return background(RColor.surfaceControl, in: shape)
             .overlay(shape.strokeBorder(RColor.depthStrokeOuter, lineWidth: 0.5))
             .overlay(alignment: .top) {
@@ -26,7 +39,7 @@ extension View {
 
     /// z 1 · floats above the page: cards, the composer, the mini-player.
     func rRaised(_ radius: CGFloat = RDimension.radiusCard) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let shape = RShape.rect(radius)
         return background(RColor.backgroundRaised, in: shape)
             .overlay(shape.strokeBorder(RColor.depthStrokeInner, lineWidth: 1))
             .overlay(alignment: .top) { shape.strokeBorder(RColor.depthStrokeInnerTop, lineWidth: 1).mask(alignment: .top) { Rectangle().frame(height: 1) } }
@@ -36,19 +49,21 @@ extension View {
             .shadow(color: RColor.depthShadowAmbient, radius: 30, y: 24)
     }
 
-    /// The cream secondary control (raised pills, plan buttons, the mark's disc).
-    func rSecondary(_ radius: CGFloat = RDimension.radiusControl) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+    /// The cream secondary control (raised pills, plan buttons, the mark's disc). Pressed, the
+    /// shadow collapses toward the page (Paper c:pill/raised/pressed: 0 .5 1 contact, 0 1 2 −1 cast).
+    func rSecondary(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false) -> some View {
+        let shape = RShape.rect(radius)
         return background(RColor.surfaceSecondaryAction, in: shape)
             .overlay(shape.strokeBorder(RColor.depthStrokeInner, lineWidth: 1))
+            .overlay(alignment: .top) { shape.strokeBorder(RColor.depthStrokeInnerTop, lineWidth: 1).mask(alignment: .top) { Rectangle().frame(height: 1) } }
             .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
-            .shadow(color: RColor.depthShadowContact, radius: 0.75, y: 1)
-            .shadow(color: RColor.depthShadowCast, radius: 3, y: 4)
+            .shadow(color: RColor.depthShadowContact, radius: pressed ? 0.5 : 0.75, y: pressed ? 0.5 : 1)
+            .shadow(color: RColor.depthShadowCast, radius: pressed ? 1 : 3, y: pressed ? 1 : 4)
     }
 
     /// The one lit object on a screen (primary buttons, plan "yearly", the play well).
     func rLit(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let shape = RShape.rect(radius)
         let top = pressed ? RColor.glowPrimaryGradientTopPressed : RColor.glowPrimaryGradientTop
         let bottom = pressed ? RColor.glowPrimaryGradientBottomPressed : RColor.glowPrimaryGradientBottom
         return background(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom), in: shape)

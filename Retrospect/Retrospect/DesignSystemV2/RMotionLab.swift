@@ -11,14 +11,18 @@ import SwiftUI
 // swiftlint:disable large_tuple
 /// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
 enum RLabPage: String, CaseIterable, Identifiable {
-    case motion, foundation, parts
+    case motion, foundation, parts, artwork, toast
 
     var id: String {
         rawValue
     }
 
+    /// `-DesignLabToast` still opens straight on the toast page (for testing on a phone).
     static var launch: RLabPage {
-        UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
+        if ProcessInfo.processInfo.arguments.contains("-DesignLabToast") {
+            return .toast
+        }
+        return UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
     }
 }
 
@@ -43,6 +47,8 @@ struct RDesignLab: View {
                         RParts2Gallery()
                     }
                 }
+            case .artwork: RArtworkLab()
+            case .toast: RToastGallery()
             }
         }
         .background(RColor.backgroundCanvas)
@@ -119,7 +125,7 @@ struct RMotionLab: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: RDimension.space3) {
                             ForEach(0 ..< 8, id: \.self) { i in
-                                RoundedRectangle(cornerRadius: RDimension.radiusPanel, style: .continuous)
+                                RShape.rect(RDimension.radiusPanel)
                                     .fill(RColor.surfaceWash)
                                     .frame(width: 96, height: 96)
                                     .overlay(Text("\(i + 1)").rText(.label))
@@ -152,7 +158,7 @@ struct RMotionLab: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(RColor.surfaceTrack).frame(height: 2)
+                    RShape.pill.fill(RColor.surfaceTrack).frame(height: 2)
                     Circle()
                         .fill(RColor.glowPrimaryGradientBottom)
                         .frame(width: 16, height: 16)

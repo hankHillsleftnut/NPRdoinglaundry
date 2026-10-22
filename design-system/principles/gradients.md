@@ -2,11 +2,13 @@
 
 1. **Mix in OKLCH,** never sRGB. sRGB mixes go grey between hues.
 2. **Ease the stops:** smoothstep, five or more stops. Two-stop gradients have a visible "line" where the ramp starts and ends.
-3. **Never ramp between distant hues.** Sky to beige goes grey in sRGB and green in OKLCH. Use **mesh** instead: soft blobs that fade in *alpha* over a base colour, so no hue ever travels through another.
-4. **Grain on anything larger than 44pt:** fractal noise, soft light, 3–6% (20% on the lit button, as built). It stops banding on OLED screens and gives surfaces a material.
+3. **Never ramp between distant hues.** Sky to beige goes grey in sRGB and green in OKLCH. Use **mesh** instead: soft points over a base colour. Points blend with each other in OKLab and cover the base like layered alpha, so the base shows wherever they fade. Place a bridging colour between distant hues (evening's peach between sky and amber) instead of letting them meet.
+4. **Grain on anything larger than 44pt:** per-pixel noise in soft light, 3–6% on surfaces, 12% multi (coloured) on artwork, the mmeshy look the founder chose on 21 Oct (20% on the lit button, as built). It stops banding on OLED screens and gives surfaces a material.
 5. **Fades are eased:** 13 stops on a smoothstep curve (`gradient.fadeToCanvas`); used for content dissolving under floating controls and into the transport.
 6. **Glow bodies** use five OKLCH-eased stops (`gradient.glowPrimary`, `…Lit`, `…Pressed`, `glowDanger`), plus the lower edge and inner bloom.
 7. **Artwork** is mesh: `meshMorning`, `meshEvening`, `meshQuiet` (more to come, one per kind of week), always with grain and its own coloured cast.
-8. **In SwiftUI:** `MeshGradient` (iOS 18) for artwork; precomputed OKLCH stops in `LinearGradient` for bodies and fades; a noise shader or a tiled noise image in `.softLight` for grain.
+8. **In SwiftUI:** the `rArtworkMesh` shader (RArtwork.metal) for artwork, mesh and grain in one pass; precomputed OKLCH stops in `LinearGradient` for bodies and fades; a noise shader or a tiled noise image in `.softLight` for grain.
 
 Drawn in Paper: f4 · depth, surfaces, gradients (bad vs good).
+
+Tune artwork in the Gradient Lab (`design-system/tools/gradient-lab.html`, published for the founder). It runs the same shader, so what you see there is what the app draws. Its recipe line pastes straight into `gradient.mesh*`.

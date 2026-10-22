@@ -56,6 +56,8 @@ public enum RColor {
     public static let textSecondary = dynamic(UIColor(red: 0.3725, green: 0.3647, blue: 0.3569, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
     /// Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.)
     public static let textLabel = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.6627, green: 0.6471, blue: 0.6196, alpha: 1))
+    /// The hint inside a field on surface.control: the lightest grey that still passes AA there (4.57:1 light, 4.54:1 dark). Founder, 21 Oct: just passes.
+    public static let textPlaceholder = dynamic(UIColor(red: 0.4118, green: 0.4039, blue: 0.3961, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
     /// Hints and the least important metadata. (AA: 4.6:1; never on a control fill.)
     public static let textTertiary = dynamic(UIColor(red: 0.4353, green: 0.4275, blue: 0.4196, alpha: 1), UIColor(red: 0.5882, green: 0.5765, blue: 0.5529, alpha: 1))
     /// Anything that cannot be used right now.
@@ -206,6 +208,14 @@ public enum RColor {
     public static let voiceSpeaking = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
     /// Waveform bars at rest.
     public static let voiceWaveIdle = dynamic(UIColor(red: 0.7765, green: 0.7608, blue: 0.7451, alpha: 1), UIColor(red: 0.3059, green: 0.2941, blue: 0.2745, alpha: 1))
+    /// Listening glow, the deeper sky pooling left of the bar (sky.400 at 45%; offset −64 10, blur 34, spread −16).
+    public static let voiceGlowPool = dynamic(UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 0.45), UIColor(red: 0.1373, green: 0.6039, blue: 0.8706, alpha: 0.45))
+    /// Listening glow, the pale sky lifting right (sky.200 at 60%; offset 72 −6, blur 30, spread −14).
+    public static let voiceGlowLift = dynamic(UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 0.6), UIColor(red: 0.5333, green: 0.702, blue: 0.8118, alpha: 0.6))
+    /// Listening glow, the sky shadow under the right side (sky.500 at 38%; offset 18 20, blur 36, spread −18).
+    public static let voiceGlowUnder = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.38), UIColor(red: 0.0078, green: 0.5529, blue: 0.8196, alpha: 0.38))
+    /// Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16).
+    public static let voiceGlowTop = dynamic(UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 0.26), UIColor(red: 0.8157, green: 0.6118, blue: 0.1804, alpha: 0.26))
     /// How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.)
     public static let playerProgress = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// How much has loaded ahead.
@@ -342,6 +352,36 @@ public enum RColor {
     public static let glowSuccessEdgeLit = dynamic(UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.4), UIColor(red: 0.0784, green: 0.149, blue: 0.102, alpha: 0.6))
     /// The inner light while focused (inset 0 0 14pt).
     public static let glowSuccessBloomLit = dynamic(UIColor(red: 0.7843, green: 0.9255, blue: 0.8078, alpha: 0.45), UIColor(red: 0.6549, green: 0.8667, blue: 0.6902, alpha: 0.35))
+    /// Grouped content that sits just above the page.
+    public static let shadowCard1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
+    public static let shadowCard2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.04), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.04))
+    /// Floating pills and the mini-player.
+    public static let shadowRaised1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.12), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    /// Menus and popovers.
+    public static let shadowMenu1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.16), UIColor(red: 0, green: 0, blue: 0, alpha: 0.6))
+    public static let shadowMenu2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.06))
+    /// Sheets and dialogs.
+    public static let shadowOverlay1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.24), UIColor(red: 0, green: 0, blue: 0, alpha: 0.7))
+    public static let shadowOverlay2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08))
+    /// The primary glow: halo plus two drops.
+    public static let shadowPrimaryAction1 = dynamic(UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.46), UIColor(red: 0.1843, green: 0.702, blue: 1, alpha: 0.3))
+    public static let shadowPrimaryAction2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.15), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
+    public static let shadowPrimaryAction3 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.25), UIColor(red: 0, green: 0, blue: 0, alpha: 0.25))
+    /// The secondary action.
+    public static let shadowSecondaryAction1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.15), UIColor(red: 0, green: 0, blue: 0, alpha: 0.45))
+    /// The Retrospect mark disc.
+    public static let shadowMark1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.24), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    public static let shadowMark2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.12), UIColor(red: 0, green: 0, blue: 0, alpha: 0.12))
+    /// Switch and slider knobs.
+    public static let shadowThumb1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.1), UIColor(red: 0, green: 0, blue: 0, alpha: 0.22))
+    public static let shadowThumb2 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.07), UIColor(red: 0, green: 0, blue: 0, alpha: 0.07))
+    /// The faint shadow under text on the glow.
+    public static let shadowOnAccentText1 = dynamic(UIColor(red: 0, green: 0, blue: 0, alpha: 0.2), UIColor(red: 0, green: 0, blue: 0, alpha: 0.2))
+    /// A solid ink action lifting off the page.
+    public static let shadowInkAction1 = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 0.2), UIColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+    /// A menu floating over the page: a wide soft cast and a tight contact.
+    public static let shadowPopover1 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.22), UIColor(red: 0, green: 0, blue: 0, alpha: 0.6))
+    public static let shadowPopover2 = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08), UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.08))
     /// Inner stroke, 1pt inset all round: the lit edge of paper. Paired with the outer stroke, always.
     public static let depthStrokeInner = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 0.85), UIColor(red: 1, green: 1, blue: 1, alpha: 0.08))
     /// The top of the inner stroke, 1pt brighter: light from above.
@@ -440,6 +480,8 @@ public enum RDimension {
     public static let sizeControlLarge: CGFloat = 48
     /// The paywall-scale primary and secondary.
     public static let sizeControlHero: CGFloat = 60
+    /// Top-bar icon buttons (back, close, more): the visible wash circle; the hit area stays 44.
+    public static let sizeControlIcon: CGFloat = 36
     /// Nothing tappable is smaller than this.
     public static let sizeTouchTarget: CGFloat = 44
     /// Inline icons.
@@ -478,6 +520,8 @@ public enum RDimension {
     public static let sizeAvatarLarge: CGFloat = 72
     /// Height of a count or status badge.
     public static let sizeBadge: CGFloat = 20
+    /// Inline padding of a tag (Paper label · today: 20 tall, radius 10, padding 7). The guess dot side takes 6.
+    public static let sizeTagPadding: CGFloat = 7
     /// A list row with a title and a line under it.
     public static let sizeRowDefault: CGFloat = 56
     /// A single-line list row.
@@ -488,6 +532,8 @@ public enum RDimension {
     public static let sizeNavBar: CGFloat = 44
     /// The tab bar (without the home indicator).
     public static let sizeTabBar: CGFloat = 49
+    /// A well or button slot inside a 48 field: the search field's mic well and its clear slot.
+    public static let sizeFieldWell: CGFloat = 36
     /// The search field on You.
     public static let sizeSearchField: CGFloat = 36
     /// The handle at the top of a sheet.
@@ -512,6 +558,8 @@ public enum RDimension {
     public static let sizeVoiceBarGap: CGFloat = 2
     /// Tallest waveform bar.
     public static let sizeVoiceBarMax: CGFloat = 32
+    /// One of the three dots the level bars settle into while Retro is thinking.
+    public static let sizeVoiceThinkingDot: CGFloat = 5
     /// The player's progress bar.
     public static let sizePlayerScrubber: CGFloat = 4
     /// The knob you drag on the progress bar.
@@ -526,6 +574,8 @@ public enum RDimension {
     public static let sizeComposerMaxHeight: CGFloat = 160
     /// The input card at rest: room for two lines of words above the well row.
     public static let sizeComposerCardMinHeight: CGFloat = 120
+    /// The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24).
+    public static let sizeComposerWell: CGFloat = 40
     /// The progress ring on a goal.
     public static let sizeGoalRing: CGFloat = 44
     /// The progress ring's thickness.
@@ -540,6 +590,14 @@ public enum RDimension {
     public static let sizePopoverRow: CGFloat = 50
     /// Height of the knows-you meter track (ON-6).
     public static let sizeMeter: CGFloat = 4
+    /// The switch track's width.
+    public static let sizeSwitchWidth: CGFloat = 51
+    /// The switch track's height.
+    public static let sizeSwitchHeight: CGFloat = 31
+    /// The switch thumb (track height − 2 × size.border.ring).
+    public static let sizeSwitchThumb: CGFloat = 27
+    /// The thumb's width while held: it stretches toward its travel.
+    public static let sizeSwitchThumbHeld: CGFloat = 33
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
@@ -598,6 +656,12 @@ public enum RDimension {
     public static let layoutWidgetPadding: CGFloat = 16
 }
 
+/// Corner shape from radius.style. Views draw corners through RShape, never a bare Capsule() or RoundedRectangle.
+public enum RCorner {
+    /// Every corner is a squircle: continuous curvature, pills and wells included, never a circular arc meeting a straight edge.
+    public static let style: RoundedCornerStyle = .continuous
+}
+
 /// Springs and curves from motion.* (design-system/principles/motion-system.md). Views use these, never a raw .spring(...).
 public enum RMotion {
     /// Nodes settling after a drag or a zoom.
@@ -622,6 +686,18 @@ public enum RMotion {
     public static func exit(_ duration: Double) -> Animation { .timingCurve(0.4, 0, 1, 1, duration: duration) }
     /// Symmetric in-out for non-gesture moves that start and end at rest (meter fill, progress steps).
     public static func move(_ duration: Double) -> Animation { .timingCurve(0.65, 0, 0.35, 1, duration: duration) }
+}
+
+/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: points blended in OKLab over a base, plus grain).
+public enum RArtworkRecipes {
+    /// Episode artwork: morning. Sky with a warm paper glow rising in one corner, never a ramp from sky to beige.
+    public static let morning = RArtworkRecipe(base: Color(red: 0.1843, green: 0.6588, blue: 0.9412), blobs: [.init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.18, y: 0, radius: 0.7, weight: 1), .init(color: Color(red: 0.1216, green: 0.4902, blue: 0.7294), x: 1, y: 1, radius: 0.8, weight: 1), .init(color: Color(red: 0.9686, green: 0.9529, blue: 0.9333), x: 0, y: 1, radius: 0.55, weight: 0.55)], softness: 0.7, grain: .init(mode: .multi, opacity: 0.12, size: 1.5))
+    /// Episode artwork: evening. Deep sky with low amber light.
+    public static let evening = RArtworkRecipe(base: Color(red: 0.1216, green: 0.4902, blue: 0.7294), blobs: [.init(color: Color(red: 0.949, green: 0.7216, blue: 0.2941), x: 0.9, y: 0.1, radius: 0.45, weight: 0.8), .init(color: Color(red: 0.9137, green: 0.5647, blue: 0.4157), x: 0.7, y: 0.3, radius: 0.3, weight: 0.45), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.8, weight: 1), .init(color: Color(red: 0.498, green: 0.8039, blue: 1), x: 0.12, y: 0.3, radius: 0.35, weight: 0.5)], softness: 0.7, grain: .init(mode: .multi, opacity: 0.12, size: 1.5))
+    /// Episode artwork: a quiet week. Paper with a breath of sky.
+    public static let quiet = RArtworkRecipe(base: Color(red: 0.9373, green: 0.9255, blue: 0.9059), blobs: [.init(color: Color(red: 0.702, green: 0.8824, blue: 1), x: 0.8, y: 0.1, radius: 0.6, weight: 0.8), .init(color: Color(red: 0.8941, green: 0.8588, blue: 0.8078), x: 0.1, y: 0.9, radius: 0.7, weight: 1), .init(color: Color(red: 1, green: 1, blue: 1), x: 0.3, y: 0.2, radius: 0.35, weight: 0.7)], softness: 0.7, grain: .init(mode: .multi, opacity: 0.12, size: 1.5))
+    /// Episode artwork: the weekly episode. Night with low amber and a red ember, as drawn on the approved mini-player (ON-11, PC-1).
+    public static let weekly = RArtworkRecipe(base: Color(red: 0.2275, green: 0.2196, blue: 0.2039), blobs: [.init(color: Color(red: 1, green: 0.7843, blue: 0.3608), x: 0.88, y: 0.08, radius: 0.9, weight: 1), .init(color: Color(red: 0.9412, green: 0.3922, blue: 0.3686), x: 0.3, y: 0.3, radius: 0.75, weight: 0.55), .init(color: Color(red: 0.7176, green: 0.4745, blue: 0.1216), x: 0.7, y: 0.8, radius: 0.9, weight: 0.75), .init(color: Color(red: 0.0863, green: 0.3686, blue: 0.549), x: 0, y: 1, radius: 0.85, weight: 1), .init(color: Color(red: 0.9843, green: 0.9412, blue: 0.8549), x: 0.78, y: 0.16, radius: 0.33, weight: 0.75)], softness: 0.7, grain: .init(mode: .multi, opacity: 0.12, size: 1.5))
 }
 
 /// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.
@@ -680,6 +756,8 @@ public enum RNumber {
     public static let fontTrackingTitle: Double = -0.035
     /// 20–24pt headlines and quotes.
     public static let fontTrackingCard: Double = -0.02
+    /// Artwork corner radius as a share of its size.
+    public static let radiusArtworkRatio: Double = 0.2
     /// Taps and toggles.
     public static let motionDurationInstant: Double = 0.08
     /// Small state changes.
