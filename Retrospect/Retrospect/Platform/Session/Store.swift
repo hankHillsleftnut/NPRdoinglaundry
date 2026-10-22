@@ -1,12 +1,40 @@
 import Foundation
 
 extension Session {
-    /// Who's signed in: the tokens from contract 00 §3 and the user's id.
+    /// Who's signed in: the tokens from contract 00 §3, the user's id, and
+    /// what the gate and the old screens need offline at launch (their access
+    /// state, first name, which provider signed them in, and Apple's id for
+    /// the revocation check).
     struct Credentials: Sendable, Equatable {
         let accessToken: String
         let accessTokenExpiresAt: Date
         let refreshToken: String
         let userID: String
+        let access: AccessState
+        let firstName: String?
+        let provider: Provider
+        /// `ASAuthorizationAppleIDCredential.user`; nil for other providers.
+        let appleUserID: String?
+
+        init(
+            accessToken: String,
+            accessTokenExpiresAt: Date,
+            refreshToken: String,
+            userID: String,
+            access: AccessState = .unknown,
+            firstName: String? = nil,
+            provider: Provider = .unknown,
+            appleUserID: String? = nil
+        ) {
+            self.accessToken = accessToken
+            self.accessTokenExpiresAt = accessTokenExpiresAt
+            self.refreshToken = refreshToken
+            self.userID = userID
+            self.access = access
+            self.firstName = firstName
+            self.provider = provider
+            self.appleUserID = appleUserID
+        }
     }
 
     /// What the launch check found. Carries no values, so it can be logged.
@@ -38,6 +66,10 @@ extension Session {
         /// Set in UserDefaults once launch hygiene has run. UserDefaults don't
         /// survive deleting the app; Keychain items do.
         static let installSentinelKey = "platform.installSentinel"
+        /// Set in UserDefaults the moment a sign-out begins and removed once the
+        /// session item is gone, so a Keychain delete that fails can't bring a
+        /// signed-out session back at the next launch.
+        static let sessionEndedKey = "platform.sessionEnded"
         /// The old app's UserDefaults: any of them means this is an update, not a new install.
         static let legacyDefaultsKeys = ["hasCompletedOnboarding", "onboardingSignedIn", "onboardingCurrentStep"]
 
@@ -81,6 +113,21 @@ extension Session {
         /// Sign-out: the session goes; `hasSignedInBefore` and a pending invite stay.
         func clearCredentials() throws {
             try keychain.delete(Account.session.rawValue)
+        }
+
+        /// Whether a sign-out began and its delete hasn't succeeded yet.
+        var isSessionEnded: Bool {
+            defaults.object(forKey: Self.sessionEndedKey) != nil
+        }
+
+        /// Sign-out begins: whatever the Keychain does next, the session is over.
+        func markSessionEnded() {
+            defaults.set(true, forKey: Self.sessionEndedKey)
+        }
+
+        /// The session item is gone: the mark has done its job.
+        func clearSessionEnded() {
+            defaults.removeObject(forKey: Self.sessionEndedKey)
         }
 
         // MARK: Flags
@@ -137,24 +184,38 @@ extension Session {
             return isUpdate ? .keptUpdate : .wipedLeftovers
         }
 
-        /// The launch bridge, called from `AppEntry` before the old app starts,
+        /// The launch check, called from `AppEntry` before the old app starts,
         /// so it runs before the old client restores its sign-in or anything
-        /// reads the session. Before the phone's first unlock after a restart
-        /// (iOS can prewarm the app then), UserDefaults read as empty, which
-        /// would look like a fresh install and wipe a real session, so the check
-        /// waits for a later launch. Logs what it did, or the Keychain status
-        /// when it failed; never throws.
+        /// reads the session. The sentinel is read first: an ordinary launch
+        /// touches the Keychain not at all. Only when it's missing is the phone
+        /// probed, because before its first unlock after a restart (iOS can
+        /// prewarm the app then) UserDefaults read as empty, which would look
+        /// like a fresh install and wipe a real session; then the check waits
+        /// and the session manager runs it again on the first active scene.
+        /// Logs what it did, or the status when it failed; never throws. A
+        /// probe that fails for another reason is logged as such and the
+        /// check counts as not run.
         @discardableResult
         static func checkInstallAtLaunch(
-            isUnlockedSinceBoot: Bool,
+            probe: () -> UnlockProbe,
             log: any Platform.LogSink,
             keychain: any KeychainBackend = SystemKeychain(service: service),
             legacyKeychain: any KeychainBackend = SystemKeychain(service: legacyService),
             defaults: UserDefaults = .standard
         ) -> InstallCheck? {
-            guard isUnlockedSinceBoot else {
+            guard defaults.object(forKey: installSentinelKey) == nil else {
+                log.record(.installChecked(.alreadyDone))
+                return .alreadyDone
+            }
+            switch probe() {
+            case .locked:
                 log.record(.installChecked(.deferredUntilUnlock))
                 return .deferredUntilUnlock
+            case let .failed(status):
+                log.record(.installCheckFailed(status: status))
+                return nil
+            case .unlocked:
+                break
             }
             do {
                 let check = try applyInstallSentinel(keychain: keychain, legacyKeychain: legacyKeychain, defaults: defaults)
@@ -164,26 +225,43 @@ extension Session {
                 log.record(.installCheckFailed(status: error.status))
                 return nil
             } catch {
-                log.record(.installCheckFailed(status: 0))
+                log.record(.installCheckErrored)
                 return nil
             }
         }
 
+        /// The launch check again, on this store's items (the session manager
+        /// runs it on the first active scene when launch deferred it or it
+        /// didn't run).
+        func checkInstall(probe: () -> UnlockProbe, log: any Platform.LogSink) -> InstallCheck? {
+            Self.checkInstallAtLaunch(probe: probe, log: log, keychain: keychain, legacyKeychain: legacyKeychain, defaults: defaults)
+        }
+
         // MARK: The session item
 
-        /// The session as stored. The expiry is kept as text and read leniently,
-        /// so a bad expiry never costs the tokens beside it.
+        /// The session as stored. Only the tokens and the user id are required;
+        /// the expiry and the fields added after PL1.3 are read leniently, so a
+        /// bad value never costs the tokens beside it and an item written by an
+        /// earlier build still reads (as `unknown` and nil).
         private struct Saved: Codable {
             let accessToken: String
             let accessTokenExpiresAt: String?
             let refreshToken: String
             let userID: String
+            let access: String?
+            let firstName: String?
+            let provider: String?
+            let appleUserID: String?
 
             init(_ credentials: Credentials) {
                 accessToken = credentials.accessToken
                 accessTokenExpiresAt = Backend.Coding.timestamp(credentials.accessTokenExpiresAt)
                 refreshToken = credentials.refreshToken
                 userID = credentials.userID
+                access = credentials.access.rawValue
+                firstName = credentials.firstName
+                provider = credentials.provider.rawValue
+                appleUserID = credentials.appleUserID
             }
 
             init(from decoder: any Decoder) throws {
@@ -192,6 +270,10 @@ extension Session {
                 accessTokenExpiresAt = try? container.decodeIfPresent(String.self, forKey: .accessTokenExpiresAt)
                 refreshToken = try container.decode(String.self, forKey: .refreshToken)
                 userID = try container.decode(String.self, forKey: .userID)
+                access = try? container.decodeIfPresent(String.self, forKey: .access)
+                firstName = try? container.decodeIfPresent(String.self, forKey: .firstName)
+                provider = try? container.decodeIfPresent(String.self, forKey: .provider)
+                appleUserID = try? container.decodeIfPresent(String.self, forKey: .appleUserID)
             }
         }
 
@@ -207,7 +289,11 @@ extension Session {
                 accessToken: saved.accessToken,
                 accessTokenExpiresAt: expiry(saved.accessTokenExpiresAt),
                 refreshToken: saved.refreshToken,
-                userID: saved.userID
+                userID: saved.userID,
+                access: saved.access.flatMap(AccessState.init(rawValue:)) ?? .unknown,
+                firstName: saved.firstName,
+                provider: saved.provider.flatMap(Provider.init(rawValue:)) ?? .unknown,
+                appleUserID: saved.appleUserID
             )
         }
 

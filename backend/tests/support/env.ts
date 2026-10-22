@@ -30,7 +30,7 @@ const PLACEHOLDERS: Record<string, string> = {
  * Cleared, so a key exported in the shell never reaches a test. (config.ts
  * skips its .env file entirely when NODE_ENV is "test".)
  */
-const EMPTY = ['ADMIN_SECRET', 'SENTRY_DSN', 'ELEVENLABS_API_KEY', 'PERPLEXITY_API_KEY', 'APPLE_PRIVATE_KEY'];
+const EMPTY = ['ADMIN_SECRET', 'SENTRY_DSN', 'ELEVENLABS_API_KEY', 'PERPLEXITY_API_KEY', 'APPLE_PRIVATE_KEY', 'DAILY_BRIEF_UTC_TIME'];
 
 // Tests run with these values, whatever the shell or a local .env holds.
 for (const [key, value] of Object.entries(PLACEHOLDERS)) process.env[key] = value;

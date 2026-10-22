@@ -7,6 +7,7 @@ import Testing
 /// shape that drifts fails on both sides. A fixture nobody mapped fails here too.
 struct ContractFixtureTests {
     typealias Journal = Flows.Journal
+    typealias AppleBody = Backend.AppleSignInBody
 
     /// The repo's `docs/team/contracts/fixtures`, found from this file's place in the repo.
     /// PL0.1's shared `Fixtures` helper replaces this once it lands.
@@ -39,6 +40,7 @@ struct ContractFixtureTests {
         "brief.latest.quiet": decodes(LatestBrief.self),
         "brief.latest.none": decodes(LatestBrief.self),
         "brief.latest.off": decodes(LatestBrief.self),
+        "brief.latest.making": decodes(LatestBrief.self),
         "briefs.list": decodes(BriefPage.self),
         "briefs.list.last": decodes(BriefPage.self),
         "briefs.enabled.response": decodes(Enabled.self),
@@ -47,6 +49,7 @@ struct ContractFixtureTests {
         "guesses.silent": decodes(Guesses.self),
         "guess.answer": decodes(Answer.self),
         "guess.answer.declined": decodes(Answer.self),
+        "guess.answer.expired": decodes(Answer.self),
         "guess.why": decodes(Journal.Guess.self),
         "took": decodes(Journal.Took.self),
         "took.waiting": decodes(Journal.Took.self),
@@ -72,26 +75,27 @@ struct ContractFixtureTests {
     // MARK: - Contract 00
 
     static let platformResponses: [String: (Data) throws -> Void] = [
-        "auth.response": decodes(Auth.self),
-        "auth.response.waitlisted": decodes(Auth.self),
-        "signout.response": decodes(SignedOut.self),
+        "auth.response": decodes(Backend.AuthResponse.self),
+        "auth.response.waitlisted": decodes(Backend.AuthResponse.self),
+        "signout.response": decodes(Backend.SignedOut.self),
         "access.waitlisted": decodes(Access.self),
         "access.member": decodes(Access.self),
         "waitlist.response": decodes(OnWaitlist.self),
         "public-waitlist.response": decodes(Received.self),
         "redeem.response": decodes(Redeem.self),
         "redeem.response.minimal": decodes(Redeem.self),
+        "redeem.response.alreadyin": decodes(Redeem.self),
         "invites-mine": decodes(InvitesMine.self),
         "meta": decodes(Meta.self),
         "diagnostics.response": decodes(DiagnosticsReceipt.self),
     ]
 
     static let platformRequests: [String: (Data) throws -> Void] = [
-        "auth-apple.request": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
-        "auth-apple.request.minimal": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request.minimal": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
         "auth-google.request": request(GoogleSignIn.self, required: ["idToken", "rawNonce"]),
-        "refresh.request": request(RefreshToken.self, required: ["refreshToken"]),
-        "signout.request": request(RefreshToken.self, required: ["refreshToken"]),
+        "refresh.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
+        "signout.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
         "waitlist.request": request(WaitlistReason.self, required: [], optional: ["reason"]),
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
         "redeem.request": request(RedeemRequest.self, required: ["code"]),
@@ -153,6 +157,10 @@ struct ContractFixtureTests {
         #expect(v2.brief?.audio?.durationSeconds == 74.2)
         #expect(v2.brief?.parts.last?.startSeconds == 41.5)
         #expect(try envelope(LatestBrief.self, "02", "brief.latest.off").enabled == false)
+        let making = try envelope(LatestBrief.self, "02", "brief.latest.making")
+        #expect(making.brief == nil && making.enabled && making.nextAt != nil)
+        #expect(try envelope(LatestBrief.self, "02", "brief.latest.none").nextAt == nil)
+        #expect(try envelope(Answer.self, "02", "guess.answer.expired").status == .expired)
         let briefs = try envelope(BriefPage.self, "02", "briefs.list").briefs
         #expect(briefs.map(\.date) == ["2026-10-21", "2026-10-20"], "briefs are newest first")
         #expect(briefs[0].createdAt > briefs[1].createdAt)
@@ -183,6 +191,25 @@ struct ContractFixtureTests {
         #expect(target?.kind == .fact)
         #expect(retired == 3)
         #expect(try envelope(Journal.CorrectionOutcome.self, "02", "correction.not") == .notACorrection)
+    }
+
+    @Test("the auth fixtures decode into the session's own types, with their access state and name")
+    func authValues() throws {
+        let member = try envelope(Backend.AuthResponse.self, "00", "auth.response")
+        #expect(member.access.state == .member)
+        #expect(member.user.firstName == "sam")
+        #expect(!member.user.isNew)
+        #expect(member.accessTokenExpiresAt == Date(timeIntervalSince1970: 1_792_570_500))
+
+        let waitlisted = try envelope(Backend.AuthResponse.self, "00", "auth.response.waitlisted")
+        #expect(waitlisted.access.state == .waitlisted)
+        #expect(waitlisted.user.isNew)
+
+        let first = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request"))
+        #expect(first.firstAuthorization == .init(givenName: "sam", familyName: nil, email: nil))
+        let later = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request.minimal"))
+        #expect(later.firstAuthorization == nil)
+        #expect(try envelope(Backend.SignedOut.self, "00", "signout.response").signedOut)
     }
 
     @Test("an enum value the app doesn't know decodes as unknown, never failing the response")

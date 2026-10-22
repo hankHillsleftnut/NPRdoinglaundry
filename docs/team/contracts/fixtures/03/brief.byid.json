@@ -24,7 +24,7 @@
         }
       ],
       "audio": {
-        "url": "https://example.supabase.co/storage/v1/object/sign/podcast-audio/briefs/u/b.mp3?token=invented",
+        "url": "https://example.supabase.co/storage/v1/object/sign/brief-audio/00000000-0000-4000-8000-000000000001/9e4d7a20-1b3c-4e5f-8a6d-2c0b1f3e5d74.mp3?token=invented",
         "expiresAt": "2026-10-21T09:00:04.200Z",
         "durationSeconds": 248.0
       },
