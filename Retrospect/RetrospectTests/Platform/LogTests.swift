@@ -97,8 +97,8 @@ extension Platform.Log.Event {
     fileprivate enum Kind: CaseIterable {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
-             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal
-        installCheckFailed, diagnosticsWriteFailed
+             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
+             diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
