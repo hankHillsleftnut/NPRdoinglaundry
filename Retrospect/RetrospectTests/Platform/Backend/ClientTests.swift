@@ -65,7 +65,9 @@ struct ClientTests {
             configuration: configuration,
             session: session,
             tokens: tokens,
+            reachability: ManualReachability(),
             clock: TestClock(),
+            jitter: { _ in .zero },
             log: recorder,
             timeZone: { TimeZone(identifier: "America/Los_Angeles") ?? .gmt },
             languages: { ["en-GB", "fr"] }
@@ -133,7 +135,7 @@ struct ClientTests {
 
     @Test("statuses without a contract body map to what they mean", arguments: [
         (400, Backend.Failure.Kind.invalidRequest), (401, .unauthenticated), (404, .notFound), (426, .updateRequired),
-        (429, .rateLimited(retryAfter: nil)), (502, .upstreamUnavailable), (503, .upstreamUnavailable), (504, .upstreamTimeout),
+        (408, .timedOut), (429, .rateLimited(retryAfter: nil)), (502, .upstreamUnavailable), (503, .upstreamUnavailable), (504, .upstreamTimeout),
         (500, .internal), (418, .unknown(code: "http_418")),
     ])
     func statusesWithoutAContractBody(_ status: Int, _ kind: Backend.Failure.Kind) async {
@@ -155,15 +157,16 @@ struct ClientTests {
         #expect(thrown?.kind == .decoding)
     }
 
-    @Test("with the network down the failure is offline, and the request is logged with no status")
+    @Test("with the network down the failure is offline, and each send is logged with no status")
     func withTheNetworkDownTheFailureIsOffline() async {
         defer { StubProtocol.clear(session) }
         StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
 
         let thrown = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
 
+        // Reachability still says online, so the read tries all three times.
         #expect(thrown?.kind == .offline)
-        #expect(recorder.events == [.requestSent(path: .meta, status: 0, ms: 0)])
+        #expect(recorder.events == Array(repeating: .requestSent(path: .meta, status: 0, ms: 0), count: 3))
     }
 
     @Test("transport errors map to offline, timed out or transport", arguments: [
