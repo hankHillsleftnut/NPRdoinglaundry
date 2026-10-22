@@ -1,0 +1,39 @@
+{
+  "reportId": "00000000-0000-4000-8000-0000000000d1",
+  "createdAt": "2026-10-22T09:30:00.000Z",
+  "note": "the brief stopped halfway",
+  "environment": {
+    "appVersion": "1.0",
+    "build": "42",
+    "osVersion": "26.0",
+    "deviceModel": "iPhone17,1",
+    "locale": "en_US",
+    "timeZone": "America/Los_Angeles",
+    "dynamicType": "large",
+    "reduceMotion": false,
+    "voiceOver": false,
+    "network": "wifi",
+    "freeDisk": "5_to_20gb"
+  },
+  "account": { "provider": "apple", "entitlement": "trial" },
+  "events": [
+    { "t": "2026-10-22T09:20:00.000Z", "kind": "app_foreground" },
+    { "t": "2026-10-22T09:20:01.000Z", "kind": "screen_shown", "screen": "journal" },
+    { "t": "2026-10-22T09:20:05.000Z", "kind": "control_tapped", "screen": "journal", "control": "brief.play" },
+    { "t": "2026-10-22T09:20:05.200Z", "kind": "playback_started", "itemId": "00000000-0000-4000-8000-0000000000b1", "positionMs": 0 },
+    { "t": "2026-10-22T09:22:10.000Z", "kind": "playback_paused", "itemId": "00000000-0000-4000-8000-0000000000b1", "positionMs": 125000 }
+  ],
+  "network": [
+    { "t": "2026-10-22T09:20:02.000Z", "method": "GET", "route": "/v2/briefs/latest", "status": 200, "ms": 340, "retries": 0 },
+    { "t": "2026-10-22T09:22:09.000Z", "method": "GET", "route": "/v2/briefs/:id/audio", "status": 504, "code": "upstream_timeout", "ms": 30000, "retries": 1 }
+  ],
+  "outbox": { "queued": 0, "sending": 0, "sent": 12, "failed": 0, "oldestAgeSeconds": null, "lastFailureCodes": [] },
+  "failures": [ { "t": "2026-10-22T09:22:10.000Z", "code": "brief.audio_failed", "screen": "journal" } ],
+  "performance": {
+    "launchMs": 820,
+    "hitchRates": [ { "screen": "journal", "ratio": 0.01 } ],
+    "memoryWarnings": 0,
+    "thermalChanges": []
+  },
+  "crashes": []
+}

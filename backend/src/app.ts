@@ -21,7 +21,10 @@ import type { AgentDoorClient } from './doors/agent.js';
 import { createDoorKit, type DoorFactory } from './doors/door.js';
 import { v2ErrorHandler } from './doors/errors.js';
 import { MemoryLimiter, type Limiter } from './doors/limits.js';
-import { createV2Router } from './doors/router.js';
+import { createV2Router, type V2RouterDeps } from './doors/router.js';
+import { createDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store.js';
+import { supabaseDiagnosticsBackend } from './diagnostics/supabase-backend.js';
+import { supabaseAdmin } from './utils/supabase.js';
 import { log, type DoorLogLine } from './utils/log.js';
 
 /**
@@ -39,7 +42,9 @@ export interface AppDeps {
   /** Text-to-speech settings; from config by default (tests pass a fake provider). */
   speechSynth?: SpeechRouteDeps['synth'];
   /** Builds the /v2 router from the door kit; the real one by default. */
-  v2Router?: (door: DoorFactory) => Router;
+  v2Router?: (door: DoorFactory, routerDeps: V2RouterDeps) => Router;
+  /** Diagnostics reports (DG.1); the database and the private bucket by default. */
+  diagnostics?: DiagnosticsStore;
 }
 
 /**
@@ -106,7 +111,9 @@ export function createApp(deps: AppDeps): express.Express {
     now: deps.now,
     reportBug: (err, name) => captureException(err, { door: name }),
   });
-  app.use('/v2', makeAuthMiddleware(deps.users, { envelope: true, now: deps.now }), (deps.v2Router ?? createV2Router)(door));
+  app.use('/v2', makeAuthMiddleware(deps.users, { envelope: true, now: deps.now }), (deps.v2Router ?? createV2Router)(door, {
+    diagnostics: deps.diagnostics ?? createDiagnosticsStore(supabaseDiagnosticsBackend(supabaseAdmin)),
+  }));
   app.use('/v2', v2ErrorHandler);
 
   // Error handling middleware

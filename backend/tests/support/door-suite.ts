@@ -37,6 +37,8 @@ export interface DoorSuiteSpec {
   /** What the happy path's `data` must equal (the contract fixture). */
   expect: (userId: string) => unknown;
   setup?: (h: Harness, userId: string) => Promise<void> | void;
+  /** A fresh diagnostics store for each test, for the diagnostics door. */
+  diagnostics?: () => NonNullable<AppDeps['diagnostics']>;
   /** For doors not yet in createV2Router (the suite's own self-test). */
   v2Router?: AppDeps['v2Router'];
 }
@@ -48,6 +50,7 @@ async function withHarness(spec: DoorSuiteSpec, fn: (h: Harness, auth: Record<st
   const h = await startHarness({
     ...(spec.agent ? { agentRoutes: { [spec.agent.route]: spec.agent.ok } } : {}),
     ...(spec.v2Router ? { v2Router: spec.v2Router } : {}),
+    ...(spec.diagnostics ? { diagnostics: spec.diagnostics() } : {}),
   });
   try {
     const auth = { Authorization: `Bearer ${h.asUser(USER)}` };

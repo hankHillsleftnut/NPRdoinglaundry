@@ -107,6 +107,13 @@ Sharing is the system share sheet with the link and one line of text (founder co
 
 **`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on.
 
-## 6. Fixtures
+## 5a. Diagnostics: "send a report" (DG.1, addendum, for the integrator's review)
+
+**`POST /v2/diagnostics`** (token required; any access state may send one) with `Idempotency-Key: <reportId>` and the report as JSON (gzip allowed, ≤ 2 MB as sent) → `{ "reference": "r-7KQ2" }`.
+- The report is how the app behaved, never what the person wrote: every field is a number, a boolean, a timestamp, a closed list, or a code-defined id (`screen`, `control`, `sheet`, a failure `code`) matching `^[a-z][a-z0-9_.-]{0,63}$`; network entries carry route **templates** (`/v2/briefs/:id/audio`), never real ids. The one free text is `note` ("what happened?", ≤ 1,000 characters). Every object is strict: unknown fields are `invalid_request`. The exact shape is `backend/src/diagnostics/schema.ts`; fixtures `diagnostics.request.json`, `diagnostics.request.minimal.json`, `diagnostics.response.json`.
+- Sending the same report again (same id, same body) returns the same reference and stores nothing new; the same id with a different body, or another person's id, is `idempotency_mismatch`. A key that isn't the body's `reportId`, or a report over 2 MB, is `invalid_request`.
+- Kept 30 days, private, under the sender's id; read only by the founder's team, only for reports someone chose to send.
+
+
 
 `fixtures/00/`: `auth-apple.request.json`, `auth.response.json`, `auth.response.waitlisted.json`, `refresh.request.json`, `error.invalid_credentials.json`, `error.session_revoked.json`, `error.invite_required.json`, `error.rate_limited.json`, `error.spend_limited.json`, `error.update_required.json`, `access.waitlisted.json`, `access.member.json`, `redeem.request.json`, `redeem.response.json`, `error.invite_used.json`, `invites-mine.json`, `meta.json`. Written with the contract; reviewed with it.
