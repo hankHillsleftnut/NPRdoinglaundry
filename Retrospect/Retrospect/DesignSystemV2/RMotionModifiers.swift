@@ -136,12 +136,15 @@ private struct RBlurReplace: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentTransition(reduceMotion ? .opacity : .interpolate)
-            .transition(transition)
+            .transition(.rBlurReplace(reduceMotion: reduceMotion))
     }
+}
 
+extension AnyTransition {
     /// In on curve.standard 280 with the blur; out faster, on curve.exit 200 (craft 1.8).
-    /// Reduce Motion: a 140ms cross-fade, no blur (motion-system §8).
-    private var transition: AnyTransition {
+    /// Reduce Motion: a 140ms cross-fade, no blur (motion-system §8). For views that choose
+    /// their transition at runtime; otherwise use `.rBlurReplace()`.
+    static func rBlurReplace(reduceMotion: Bool) -> AnyTransition {
         if reduceMotion {
             return AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationFast))
         }
