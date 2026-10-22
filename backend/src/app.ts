@@ -30,6 +30,9 @@ import type { InviteStore } from './invites/store.js';
 import type { EntryStore } from './entries/store.js';
 import { handOffToAgent } from './services/agent-handoff.js';
 import { createPublicInviteRouter } from './invites/public.js';
+import { supabaseBriefStore, type BriefDbClient, type BriefStore } from './briefs/store.js';
+import { supabaseSignAudio, type SignAudio } from './briefs/audio.js';
+import { supabaseGuessStore, type GuessStore } from './guesses/store.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
 import { createSessionRouter, type SessionRouteDeps } from './sessions/routes.js';
@@ -65,6 +68,12 @@ export interface AppDeps {
   access: AccessStore;
   /** Invites (BE0.12): as above. */
   invites: InviteStore;
+  /** Briefs (BE1.3): the agent's daily_briefs and the switch, in the shared database by default; tests pass PGlite. */
+  briefs?: BriefStore;
+  /** Signs a link to a brief's audio (BE1.3b); Supabase Storage by default, tests pass a fake. */
+  signAudio?: SignAudio;
+  /** Guesses (BE1.4): ownership and status from the agent's hypotheses rows; tests pass PGlite. */
+  guesses?: GuessStore;
   /** Journal entries (BE1.1): migration 022's functions; tests pass PGlite. */
   entries: EntryStore;
   /** Starts the brain's read of a stored entry after the response; the agent's /ingest/run by default (tests record calls). */
@@ -188,6 +197,12 @@ export function createApp(deps: AppDeps): express.Express {
     invites: {
       access: deps.access, invites: deps.invites, limiter, now: deps.now, codeKey: config.invites.codeKey, baseUrl: config.invites.baseUrl,
     },
+    briefs: {
+      briefs: deps.briefs ?? supabaseBriefStore(supabaseAdmin as unknown as BriefDbClient),
+      signAudio: deps.signAudio ?? supabaseSignAudio(supabaseAdmin),
+      runTimeUtc: config.briefs.runTimeUtc,
+    },
+    guesses: { guesses: deps.guesses ?? supabaseGuessStore(supabaseAdmin as unknown as BriefDbClient) },
     entries: {
       entries: deps.entries,
       // Same hand-off as /content (the agent's /ingest/run, one row), through the

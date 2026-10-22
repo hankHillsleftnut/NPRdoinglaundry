@@ -44,6 +44,8 @@ extension ContractFixtureTests {
     struct LatestBrief: Decodable {
         let brief: Journal.Brief?
         let enabled: Bool
+        /// When the next brief runs; nil when none is scheduled (BE1.3).
+        let nextAt: Date?
     }
 
     struct BriefPage: Decodable {
@@ -98,58 +100,10 @@ extension ContractFixtureTests {
         let note: String?
     }
 
-    // Contract 00 responses (mirrors)
-
-    struct AuthUser: Decodable {
-        let id: String
-        let firstName: String?
-        let isNew: Bool
-    }
-
-    struct AccessState: Decodable {
-        let state: String
-    }
-
-    struct Auth: Decodable {
-        let accessToken: String
-        let refreshToken: String
-        let accessTokenExpiresAt: Date
-        let user: AuthUser
-        let access: AccessState
-    }
-
-    struct SignedOut: Decodable {
-        let signedOut: Bool
-    }
-
-    struct Access: Decodable {
-        let state: String
-        let onWaitlist: Bool
-    }
-
-    struct OnWaitlist: Decodable {
-        let onWaitlist: Bool
-    }
+    // Contract 00 responses (mirrors, until PL1.7's invite types land)
 
     struct Received: Decodable {
         let received: Bool
-    }
-
-    struct Redeem: Decodable {
-        let access: AccessState
-        let invitedBy: String?
-    }
-
-    struct Invite: Decodable {
-        let id: String
-        let link: URL?
-        let createdAt: Date
-        let state: String
-        let usedBy: String?
-    }
-
-    struct InvitesMine: Decodable {
-        let invites: [Invite]
     }
 
     struct Meta: Decodable {
@@ -161,30 +115,9 @@ extension ContractFixtureTests {
 
     // Contract 00 requests (mirrors)
 
-    struct FullName: Decodable {
-        let givenName: String?
-        let familyName: String?
-    }
-
-    struct AppleSignIn: Decodable {
-        let identityToken: String
-        let authorizationCode: String
-        let rawNonce: String
-        let fullName: FullName?
-        let email: String?
-    }
-
     struct GoogleSignIn: Decodable {
         let idToken: String
         let rawNonce: String
-    }
-
-    struct RefreshToken: Decodable {
-        let refreshToken: String
-    }
-
-    struct WaitlistReason: Decodable {
-        let reason: String?
     }
 
     struct PublicWaitlist: Decodable {
@@ -198,17 +131,7 @@ extension ContractFixtureTests {
         let code: String
     }
 
-    // Diagnostics (DG.1): mirrors until DG.5 lands the real report builder.
-
-    struct DiagnosticsReceipt: Decodable {
-        let reference: String
-    }
-
-    struct DiagnosticsReport: Decodable {
-        let reportId: UUID
-        let createdAt: Date
-        let note: String?
-    }
+    // Diagnostics (DG.1): the report and receipt are the real types (DG.5); the id lists stay a mirror.
 
     struct DiagnosticsIds: Decodable {
         let routes: [String]

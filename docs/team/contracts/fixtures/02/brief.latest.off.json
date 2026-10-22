@@ -2,6 +2,7 @@
   "success": true,
   "data": {
     "brief": null,
-    "enabled": false
+    "enabled": false,
+    "nextAt": null
   }
 }

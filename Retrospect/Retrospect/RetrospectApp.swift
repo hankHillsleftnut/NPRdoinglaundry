@@ -249,6 +249,9 @@ struct RetrospectApp: App {
             .environment(platform)
             .animatedThemeTransition()
             .task {
+                // Bridge (DG.4): the launch event and MetricKit crash markers.
+                platform.didLaunch()
+                await platform.bindSessionLifecycle(to: apiClient)
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
                 appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }
             }
@@ -362,6 +365,8 @@ struct RetrospectApp: App {
                 }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
+                // Bridge (DG.4): foreground and background land in the diagnostics rings.
+                platform.scenePhaseChanged(to: newPhase)
                 // Bridge (PL2.2b): unsent entries go when the app comes back, and while it sleeps.
                 if newPhase == .active {
                     Task { await platform.outbox?.drain(reason: .foreground) }
@@ -382,6 +387,7 @@ struct RetrospectApp: App {
                 // Delayed refresh gives the hidden DeviceActivityReport time to trigger
                 // the extension and write fresh data to the App Group.
                 if newPhase == .active {
+                    platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
                     ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
                     IntegrationsSyncService.shared.syncIfNeeded()

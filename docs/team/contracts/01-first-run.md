@@ -109,7 +109,7 @@ tear         ──▶ POST /v2/invites/redeem     (contract 00 §4: spends it; 
 
 ### 2.1 Preview (public, before sign-in)
 
-`GET /public/invites/:code` — public, no token, bucket `public` (per IP: 30 a minute), no model call (BE2.0a)
+`GET /public/invites/:code` — public, no token, bucket `invitePreview` (per IP: 30 a minute), no model call (BE2.0a)
 
 → `200`
 ```json
@@ -121,7 +121,7 @@ or, for a code that is unknown, used, revoked or expired, **the same 200 with no
 ```
 - The code is normalised as the redeem door does (case-insensitive, dashes and spaces ignored, Crockford `O→0`, `I/L→1`); a string that can't be 13 Crockford characters is `{ live: false }`, not `invalid_request`.
 - The app shows the name only when `live` is true ("priya kept a place for you."); otherwise the neutral line ("a place, kept for you."). It never tells a signed-out person that a code is used.
-- Same rule as the link page (`GET /i/:code`, BE0.12): the inviter's first name appears only for a live code. Errors: `rate_limited` only.
+- Same rule as the link page (`GET /i/:code`, BE0.12): the inviter's first name appears only for a live code. Errors: `rate_limited` only (bucket `invitePreview`, 30 a minute per address). `face.issuedOn` is the UTC date the invite was made until `users.time_zone` is written; `from` is null on founder and review invites until the founder's display name is configured (BE2.0a).
 
 ### 2.2 Check (signed in, before spending)
 
@@ -137,13 +137,13 @@ or, for a code that is unknown, used, revoked or expired, **the same 200 with no
 ```json
 { "success": true, "data": { "usable": false, "reason": "yours", "face": { "from": "priya", "kind": "member", "serial": 412, "issuedOn": "2026-10-19" } } }
 ```
-Errors: `invite_invalid` (400: not a code, or no such code), `invite_used` (400: someone else used it; the ticket prints with "already used" and no tear handle), `invite_expired` (400), `rate_limited` (429), `invalid_request` (400: missing `code`). A `member`, `staff` or `approved` person gets `200 { usable: false, reason: "alreadyIn", face: null }` and the app shows nothing (they're already in).
+Errors: `invite_invalid` (400: not a code, no such code, or a revoked one, as on redeem), `invite_used` (400: someone else used it; the ticket prints with "already used" and no tear handle), `invite_expired` (400), `rate_limited` (429), `invalid_request` (400: missing `code`). A `member`, `staff` or `approved` person gets `200 { usable: false, reason: "alreadyIn", face: null }` and the app shows nothing (they're already in). The order (BE2.0b): no such code → `invite_invalid`; this person already redeemed it → `yours` (checked before "already in", since after the tear they're `approved`); not `waitlisted` → `alreadyIn`; revoked → `invite_invalid`; used by someone else → `invite_used`; expired → `invite_expired`; otherwise `usable`. The check reads nothing it doesn't need (never the sealed code) and changes no row. `issuedOn` is the UTC date until `users.time_zone` is written (it can be a day off near midnight).
 
 `reason`: `"yours" | "alreadyIn" | "unknown"`.
 
 ### 2.3 Redeem (the tear) — contract 00 §4, amended
 
-`POST /v2/invites/redeem` — `Idempotency-Key: <a UUID made when the tear starts>`, BE0.12's limit (5 per 10 minutes per user and per IP; an idempotent replay doesn't count), no model call
+`POST /v2/invites/redeem` — `Idempotency-Key: <a UUID made when the tear starts>`, BE0.12's limit (5 per 10 minutes per user, 20 per address; a replay may count: single flight plus a few retries stays under five), no model call
 ```json
 { "code": "7KQ2M9XD4RTAB" }
 ```
@@ -152,9 +152,9 @@ Errors: `invite_invalid` (400: not a code, or no such code), `invite_used` (400:
 { "success": true, "data": { "access": { "state": "approved" }, "invitedBy": "priya", "invite": { "serial": 412, "redeemedOn": "2026-10-21" } } }
 ```
 Amendments to contract 00 §4 (BE2.0b):
-1. **Idempotent for the redeemer.** The same person redeeming the same code again (a retried tear, a lost response) gets the same `200`, not `invite_used`. Another person gets `invite_used`. The idempotency key covers a retry with a lost response even before the code lookup.
-2. **`invite.redeemedOn`** (YYYY-MM-DD in the redeemer's time zone) is the date printed on the kept stub ("21 oct 2026"), and `invite.serial` repeats the face's number.
-3. Errors unchanged: `invite_invalid`, `invite_used`, `invite_expired`, `rate_limited`; plus `upstream_unavailable` never (no agent call).
+1. **Idempotent for the redeemer.** The same person redeeming the same code again (a retried tear, a lost response) gets the same `200`, not `invite_used`, with the stored `serial` and `redeemedOn` (a retry after midnight still says the tear's date). Another person gets `invite_used`. The idempotency key covers a retry with a lost response even before the code lookup: the key is kept on the row the tear spent (scoped to the redeemer; no separate store); the same person's same key with a different normalised code is `409 idempotency_mismatch`; another person sending the same key gets their own outcome, never the first person's. The key is optional in Beta 1 (a missing key behaves as today); when sent it must be a UUID, else `invalid_request`.
+2. **`invite.redeemedOn`** (YYYY-MM-DD in the redeemer's time zone, from `X-Time-Zone`; UTC without a usable header) is the date printed on the kept stub ("21 oct 2026"), and `invite.serial` repeats the face's number. `invite` is `null` only when no code was spent (an `approved`, `member` or `staff` caller; `fixtures/00/redeem.response.alreadyin.json`).
+3. Errors unchanged: `invite_invalid` (also revoked), `invite_used`, `invite_expired`, `rate_limited`; plus `idempotency_mismatch` (409); `upstream_unavailable` never (no agent call).
 
 ### 2.4 What the app keeps
 

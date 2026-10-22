@@ -7,6 +7,7 @@ import Testing
 /// shape that drifts fails on both sides. A fixture nobody mapped fails here too.
 struct ContractFixtureTests {
     typealias Journal = Flows.Journal
+    typealias AppleBody = Backend.AppleSignInBody
 
     /// The repo's `docs/team/contracts/fixtures`, found from this file's place in the repo.
     /// PL0.1's shared `Fixtures` helper replaces this once it lands.
@@ -39,6 +40,7 @@ struct ContractFixtureTests {
         "brief.latest.quiet": decodes(LatestBrief.self),
         "brief.latest.none": decodes(LatestBrief.self),
         "brief.latest.off": decodes(LatestBrief.self),
+        "brief.latest.making": decodes(LatestBrief.self),
         "briefs.list": decodes(BriefPage.self),
         "briefs.list.last": decodes(BriefPage.self),
         "briefs.enabled.response": decodes(Enabled.self),
@@ -47,6 +49,7 @@ struct ContractFixtureTests {
         "guesses.silent": decodes(Guesses.self),
         "guess.answer": decodes(Answer.self),
         "guess.answer.declined": decodes(Answer.self),
+        "guess.answer.expired": decodes(Answer.self),
         "guess.why": decodes(Journal.Guess.self),
         "took": decodes(Journal.Took.self),
         "took.waiting": decodes(Journal.Took.self),
@@ -72,35 +75,36 @@ struct ContractFixtureTests {
     // MARK: - Contract 00
 
     static let platformResponses: [String: (Data) throws -> Void] = [
-        "auth.response": decodes(Auth.self),
-        "auth.response.waitlisted": decodes(Auth.self),
-        "signout.response": decodes(SignedOut.self),
-        "access.waitlisted": decodes(Access.self),
-        "access.member": decodes(Access.self),
-        "waitlist.response": decodes(OnWaitlist.self),
+        "auth.response": decodes(Backend.AuthResponse.self),
+        "auth.response.waitlisted": decodes(Backend.AuthResponse.self),
+        "signout.response": decodes(Backend.SignedOut.self),
+        "access.waitlisted": decodes(Session.AccessInfo.self),
+        "access.member": decodes(Session.AccessInfo.self),
+        "waitlist.response": decodes(Session.OnWaitlist.self),
         "public-waitlist.response": decodes(Received.self),
-        "redeem.response": decodes(Redeem.self),
-        "redeem.response.minimal": decodes(Redeem.self),
-        "invites-mine": decodes(InvitesMine.self),
+        "redeem.response": decodes(Session.Redeemed.self),
+        "redeem.response.minimal": decodes(Session.Redeemed.self),
+        "redeem.response.alreadyin": decodes(Session.Redeemed.self),
+        "invites-mine": decodes(Session.InvitesMine.self),
         "meta": decodes(Meta.self),
-        "diagnostics.response": decodes(DiagnosticsReceipt.self),
+        "diagnostics.response": decodes(Backend.Endpoints.SendReport.Receipt.self),
     ]
 
     static let platformRequests: [String: (Data) throws -> Void] = [
-        "auth-apple.request": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
-        "auth-apple.request.minimal": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request.minimal": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
         "auth-google.request": request(GoogleSignIn.self, required: ["idToken", "rawNonce"]),
-        "refresh.request": request(RefreshToken.self, required: ["refreshToken"]),
-        "signout.request": request(RefreshToken.self, required: ["refreshToken"]),
-        "waitlist.request": request(WaitlistReason.self, required: [], optional: ["reason"]),
+        "refresh.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
+        "signout.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
+        "waitlist.request": request(Backend.WaitlistBody.self, required: [], optional: ["reason"]),
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
-        "redeem.request": request(RedeemRequest.self, required: ["code"]),
+        "redeem.request": request(Backend.InviteCodeBody.self, required: ["code"]),
         "diagnostics.request": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         "diagnostics.request.minimal": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         // The closed id lists the report may carry, shared with the backend (DG.1, DG.4).
@@ -153,6 +157,10 @@ struct ContractFixtureTests {
         #expect(v2.brief?.audio?.durationSeconds == 74.2)
         #expect(v2.brief?.parts.last?.startSeconds == 41.5)
         #expect(try envelope(LatestBrief.self, "02", "brief.latest.off").enabled == false)
+        let making = try envelope(LatestBrief.self, "02", "brief.latest.making")
+        #expect(making.brief == nil && making.enabled && making.nextAt != nil)
+        #expect(try envelope(LatestBrief.self, "02", "brief.latest.none").nextAt == nil)
+        #expect(try envelope(Answer.self, "02", "guess.answer.expired").status == .expired)
         let briefs = try envelope(BriefPage.self, "02", "briefs.list").briefs
         #expect(briefs.map(\.date) == ["2026-10-21", "2026-10-20"], "briefs are newest first")
         #expect(briefs[0].createdAt > briefs[1].createdAt)
@@ -183,6 +191,51 @@ struct ContractFixtureTests {
         #expect(target?.kind == .fact)
         #expect(retired == 3)
         #expect(try envelope(Journal.CorrectionOutcome.self, "02", "correction.not") == .notACorrection)
+    }
+
+    @Test("the auth fixtures decode into the session's own types, with their access state and name")
+    func authValues() throws {
+        let member = try envelope(Backend.AuthResponse.self, "00", "auth.response")
+        #expect(member.access.state == .member)
+        #expect(member.user.firstName == "sam")
+        #expect(!member.user.isNew)
+        #expect(member.accessTokenExpiresAt == Date(timeIntervalSince1970: 1_792_570_500))
+
+        let waitlisted = try envelope(Backend.AuthResponse.self, "00", "auth.response.waitlisted")
+        #expect(waitlisted.access.state == .waitlisted)
+        #expect(waitlisted.user.isNew)
+
+        let first = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request"))
+        #expect(first.firstAuthorization == .init(givenName: "sam", familyName: nil, email: nil))
+        let later = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request.minimal"))
+        #expect(later.firstAuthorization == nil)
+        #expect(try envelope(Backend.SignedOut.self, "00", "signout.response").signedOut)
+    }
+
+    @Test("the invite fixtures decode into the session's own types: the stub, the face, the three invites")
+    func inviteValues() throws {
+        let redeemed = try envelope(Session.Redeemed.self, "00", "redeem.response")
+        #expect(redeemed.access.state == .approved)
+        #expect(redeemed.invitedBy == "priya")
+        #expect(redeemed.invite == Session.Stub(serial: 412, redeemedOn: "2026-10-21"))
+        #expect(try envelope(Session.Redeemed.self, "00", "redeem.response.alreadyin").invite == nil)
+        #expect(try envelope(Session.AccessInfo.self, "00", "access.waitlisted") == Session.AccessInfo(state: .waitlisted, onWaitlist: true))
+
+        let mine = try envelope(Session.InvitesMine.self, "00", "invites-mine").invites
+        #expect(mine.count == 3)
+        #expect(mine.map(\.state) == [.used, .unused, .unused])
+        #expect(mine[0].link == nil && mine[1].link != nil)
+
+        let usable = try envelope(Session.InviteCheck.self, "01", "invite.check.usable")
+        #expect(usable.usable && usable.reason == nil)
+        #expect(usable.face == Session.TicketFace(from: "priya", kind: .member, serial: 412, issuedOn: "2026-10-19"))
+        let yours = try envelope(Session.InviteCheck.self, "01", "invite.check.yours")
+        #expect(!yours.usable && yours.reason == .yours && yours.face != nil)
+        let alreadyIn = try envelope(Session.InviteCheck.self, "01", "invite.check.alreadyin")
+        #expect(!alreadyIn.usable && alreadyIn.reason == .alreadyIn && alreadyIn.face == nil)
+        _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.check.request"))
+        _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.redeem.request"))
+        #expect(try envelope(Session.Redeemed.self, "01", "invite.redeem.response").invite?.serial == 412)
     }
 
     @Test("an enum value the app doesn't know decodes as unknown, never failing the response")

@@ -77,7 +77,7 @@ struct SystemKeychainTests {
     func theUnlockProbeLeavesNothing() throws {
         defer { try? keychain.deleteAll() }
 
-        #expect(keychain.isUnlockedSinceBoot())
+        #expect(keychain.probeUnlock() == .unlocked)
         #expect(try keychain.read("unlock_probe") == nil)
     }
 

@@ -8,8 +8,8 @@ Why: once old routes are retired, very old app versions must be told to update i
 Inputs: contract 00 §2 (`update_required`, 426), §5 (`GET /v2/meta` → `minVersion`, `latestVersion` as `"1.0 (40)"`).
 
 Spec:
-- `Platform/Backend/AppVersion.swift`: `struct Backend.AppVersion: Comparable, Sendable { let marketing: [Int]; let build: Int; init?(_ string: String) }` parsing `"1.0 (42)"`; compares marketing numerically component by component, then build.
-- `Platform.Environment.updateRequired` becomes true when any call throws `.updateRequired`, or `GET /v2/meta` (called once at launch and on each `.active`, at most every 6 hours) reports a `minVersion` above the running version. It never becomes false within a session once true.
+- `Platform/Backend/AppVersion.swift`: `struct Backend.AppVersion: Comparable, Sendable { let marketing: [Int]; let build: Int; init?(_ string: String) }` parsing `"1.0 (42)"`; `Comparable` orders marketing numerically component by component, then build. **The floor compares builds only** (`isBelow(floor:)`), the server's rule (BE0.10, `checkAppVersion`): builds only go up, the marketing version can stay put; the app must agree with the door that answers 426. (Amended in the PL1.6 PR, 22 Oct.)
+- `Platform.AppEnvironment.updateRequired` (read from `Platform.VersionFloor`) becomes true when any call throws `.updateRequired`, or `GET /v2/meta` (called once at launch and on each `.active`, at most every 6 hours) reports a `minVersion` above the running version. It never becomes false within a session once true.
 
 Tests (layer 5): "1.10 (5) is newer than 1.9 (99)"; "a 426 sets updateRequired"; "meta with a higher minVersion sets updateRequired"; "an unparseable version never sets it and logs once".
 

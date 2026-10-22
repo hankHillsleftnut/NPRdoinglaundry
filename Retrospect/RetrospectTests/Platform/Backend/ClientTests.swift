@@ -60,6 +60,8 @@ struct ClientTests {
     private let recorder = Platform.Log.Recorder()
     private let configuration = Backend.Configuration.resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false)
 
+    private let diagnostics = DiagnosticsSpy()
+
     private func client(tokens: Tokens = Tokens()) -> Backend.Client {
         Backend.Client(
             configuration: configuration,
@@ -69,6 +71,7 @@ struct ClientTests {
             clock: TestClock(),
             jitter: { _ in .zero },
             log: recorder,
+            diagnostics: diagnostics,
             timeZone: { TimeZone(identifier: "America/Los_Angeles") ?? .gmt },
             languages: { ["en-GB", "fr"] }
         )
@@ -280,6 +283,65 @@ struct ClientTests {
         _ = try await client().send(Backend.Endpoints.Meta())
 
         #expect(recorder.events == [.requestSent(path: .meta, status: 200, ms: 0)])
+    }
+
+    // MARK: Diagnostics (DG.4)
+
+    @Test("a request that succeeds is recorded by route template, method, status and time, with no code")
+    func aSuccessfulRequestIsRecorded() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(Fixtures.data("00", "meta"))
+
+        _ = try await client().send(Backend.Endpoints.Meta())
+
+        #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
+    }
+
+    @Test("a door's error is recorded with its status and contract code, one row per attempt")
+    func aDoorsErrorIsRecordedWithItsCode() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(status: 504, Fixtures.data("00", "error.upstream_timeout"))
+
+        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+
+        // A read retries a 504 three times (PL1.2); each attempt is its own request row.
+        let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 504, code: .upstreamTimeout, ms: 0))
+        #expect(await diagnostics.records == [attempt, attempt, attempt])
+    }
+
+    @Test("an error code outside the contract is recorded with no code, so its text never leaves the phone")
+    func anUnknownCodeIsRecordedWithNoCode() async {
+        defer { StubProtocol.clear(session) }
+        serve(status: 400, Data(#"{"success":false,"error":{"code":"brand_new","message":"invented words"}}"#.utf8))
+
+        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+
+        #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 400, ms: 0))])
+        #expect(await ContentCheck.values(in: diagnostics.records).isEmpty)
+    }
+
+    @Test("a request that never reached the server is recorded with status 0 and no code, one row per attempt")
+    func anUnreachedRequestIsRecordedWithStatusZero() async {
+        defer { StubProtocol.clear(session) }
+        StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
+
+        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+
+        let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 0, ms: 0))
+        #expect(await diagnostics.records == [attempt, attempt, attempt])
+    }
+
+    @Test("a client without a diagnostics sink still works")
+    func aClientWithoutDiagnosticsWorks() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(Fixtures.data("00", "meta"))
+        let bare = Backend.Client(
+            configuration: configuration, session: session, tokens: Tokens(), reachability: ManualReachability(), clock: TestClock(), log: recorder
+        )
+
+        _ = try await bare.send(Backend.Endpoints.Meta())
+
+        #expect(await diagnostics.records.isEmpty)
     }
 
     @Test("an unknown error code is logged as a kind, with no text")
