@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "9c5a7e3f-4d6b-5c8a-9e2f-8a3b4c5d6e69",
+      "kind": "why",
+      "register": "asked",
+      "text": "could the sunday walks be about having too little left in the tank midweek?",
+      "basis": "did",
+      "moments": [
+        {
+          "episodeId": "3d9c1f84-2a77-4b1e-8c55-71a0e2b6c3d2",
+          "episodeTitle": "tuesdays, mostly",
+          "quote": "I wonder if the walks are where the week finally slows down.",
+          "inThisEpisode": true
+        }
+      ],
+      "evidence": {
+        "rows": [
+          {
+            "kind": "steps",
+            "id": "1a3c5e7b-9d2f-4b6a-8c0e-2f4a6c8e0b91",
+            "date": "2026-10-12",
+            "excerpt": "9,800 steps · sunday"
+          }
+        ],
+        "total": 1,
+        "nextCursor": null
+      }
+    }
+  }
+}

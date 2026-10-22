@@ -1,0 +1,875 @@
+{
+ "nodes": [
+  {
+   "id": "podcasts",
+   "parent": null,
+   "title": "podcasts",
+   "plain": "your weekly episode, and everything Retro has made for you",
+   "needs": []
+  },
+  {
+   "id": "pod.listen",
+   "parent": "podcasts",
+   "title": "flow · find and listen",
+   "plain": "open the podcasts tab, play this week's episode, read along, jump chapters",
+   "needs": []
+  },
+  {
+   "id": "pod.why",
+   "parent": "podcasts",
+   "title": "flow · why this is here",
+   "plain": "see what a part of an episode claims and what it rests on",
+   "needs": []
+  },
+  {
+   "id": "pod.weekly",
+   "parent": "podcasts",
+   "title": "flow · the weekly episode arrives",
+   "plain": "this week's episode is made right, on your Sunday morning, and a quiet push says so",
+   "needs": []
+  },
+  {
+   "id": "pod.feedback",
+   "parent": "podcasts",
+   "title": "flow · tell retro how it went",
+   "plain": "say more or less of this, and next week's episode hears it",
+   "needs": []
+  },
+  {
+   "id": "pod.retire",
+   "parent": "podcasts",
+   "title": "flow · retiring the old podcasts",
+   "plain": "one podcasts tab and one copy of every episode, nothing lost",
+   "needs": []
+  },
+  {
+   "id": "PC-1",
+   "parent": "pod.listen",
+   "title": "PC-1 podcasts",
+   "plain": "your episodes and briefs, newest first",
+   "needs": []
+  },
+  {
+   "id": "PC-2",
+   "parent": "pod.listen",
+   "title": "PC-2 the player",
+   "plain": "the episode in full: words, chapters, controls",
+   "needs": []
+  },
+  {
+   "id": "cap.playback",
+   "parent": "pod.listen",
+   "title": "playback (platform)",
+   "plain": "audio that plays, keeps playing, and shows on the lock screen",
+   "needs": []
+  },
+  {
+   "id": "cap.library",
+   "parent": "pod.listen",
+   "title": "the library (server)",
+   "plain": "the list of episodes and briefs, fast",
+   "needs": []
+  },
+  {
+   "id": "cap.episode",
+   "parent": "pod.listen",
+   "title": "one episode (server)",
+   "plain": "an episode's words, chapters and private audio",
+   "needs": []
+  },
+  {
+   "id": "cap.offline",
+   "parent": "pod.listen",
+   "title": "offline (platform)",
+   "plain": "episodes on your phone for when there's no signal",
+   "needs": []
+  },
+  {
+   "id": "pod.sample",
+   "parent": "pod.listen",
+   "title": "sample data",
+   "plain": "every state buildable without a server",
+   "needs": []
+  },
+  {
+   "id": "UI5.0",
+   "parent": "pod.sample",
+   "title": "SamplePodcastsData",
+   "plain": "sample episodes for every state",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "Flows/Podcasts.swift",
+    "UI3.0",
+    "T02"
+   ]
+  },
+  {
+   "id": "C17-t",
+   "parent": "PC-1",
+   "title": "top bar, tab title",
+   "plain": "the same quiet title on every tab",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C17"
+   ]
+  },
+  {
+   "id": "C27",
+   "parent": "PC-1",
+   "title": "episode tile",
+   "plain": "episodes as covers you want to open",
+   "needs": []
+  },
+  {
+   "id": "C27.1",
+   "parent": "C27",
+   "title": "hero tile",
+   "plain": "this week's episode with the one glowing play",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "#42",
+    "T01",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "C27.2",
+   "parent": "C27",
+   "title": "square tile",
+   "plain": "earlier episodes and briefs, two across",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C27.1"
+   ]
+  },
+  {
+   "id": "C27.3",
+   "parent": "C27",
+   "title": "upcoming row (making, quiet week)",
+   "plain": "an honest line when it's on its way or the week was quiet",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C27.1"
+   ]
+  },
+  {
+   "id": "P13",
+   "parent": "PC-1",
+   "title": "PC-1 page",
+   "plain": "the podcasts tab itself",
+   "needs": []
+  },
+  {
+   "id": "P13.1",
+   "parent": "P13",
+   "title": "PC-1 layout and states",
+   "plain": "the podcasts tab, every state",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C17-t",
+    "C18",
+    "C27.1",
+    "C27.2",
+    "C27.3",
+    "C39",
+    "C22",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "P13.2",
+   "parent": "P13",
+   "title": "PC-1 edges and the mini-player",
+   "plain": "tiles dissolve into the tab bar; what's playing stays in reach",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P13.1",
+    "UI0.1",
+    "C22"
+   ]
+  },
+  {
+   "id": "M10",
+   "parent": "PC-1",
+   "title": "M10 tiles lag the scroll",
+   "plain": "covers trail your scroll and settle",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P13.1"
+   ]
+  },
+  {
+   "id": "UI5.6",
+   "parent": "PC-2",
+   "title": "the player on every tab",
+   "plain": "what's playing follows you to every tab",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P10",
+    "C22",
+    "C19.1",
+    "app shell (integrator)"
+   ]
+  },
+  {
+   "id": "C23e",
+   "parent": "PC-2",
+   "title": "player, episode mode",
+   "plain": "the player for episodes, built on the brief player",
+   "needs": []
+  },
+  {
+   "id": "C23e.1",
+   "parent": "C23e",
+   "title": "header, title, why line",
+   "plain": "opens on the title and what it was made from",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C23b",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "C23e.2",
+   "parent": "C23e",
+   "title": "transcript by line",
+   "plain": "read along line by line; long-press for why or correct",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C23b",
+    "C20",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "C23e.3",
+   "parent": "C23e",
+   "title": "a guess arriving",
+   "plain": "the episode's one question, answerable in place",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C28",
+    "C23e.2"
+   ]
+  },
+  {
+   "id": "C24-s",
+   "parent": "PC-2",
+   "title": "speed",
+   "plain": "listen faster or slower in one tap",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C24"
+   ]
+  },
+  {
+   "id": "C20-p",
+   "parent": "PC-2",
+   "title": "the … menu",
+   "plain": "chapters, download, where it plays",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C20",
+    "C24",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "UI5.1",
+   "parent": "PC-2",
+   "title": "chapter list",
+   "plain": "every topic, and jump to one",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C20-p"
+   ]
+  },
+  {
+   "id": "UI5.4",
+   "parent": "PC-2",
+   "title": "episode feedback",
+   "plain": "more or less of this, in a tap or your words",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "Paper drawing approved",
+    "#56",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "P14",
+   "parent": "PC-2",
+   "title": "PC-2 page",
+   "plain": "the player page",
+   "needs": []
+  },
+  {
+   "id": "P14.1",
+   "parent": "P14",
+   "title": "PC-2 opening, playing, closing, states",
+   "plain": "the weekly episode, in full",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "UI5.6",
+    "C23e.1",
+    "C23e.2",
+    "C24-s",
+    "C22",
+    "P13.1"
+   ]
+  },
+  {
+   "id": "P14.2",
+   "parent": "P14",
+   "title": "PC-2 menu, chapters, guess, correcting, feedback",
+   "plain": "everything else the player can do",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P14.1",
+    "C20-p",
+    "UI5.1",
+    "C23e.3",
+    "UI1.2"
+   ]
+  },
+  {
+   "id": "M09",
+   "parent": "PC-2",
+   "title": "M09 play morph, rolling time, chapter ticks",
+   "plain": "the player feels alive in your hand",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P14.1"
+   ]
+  },
+  {
+   "id": "M06",
+   "parent": "PC-2",
+   "title": "M06 player shrinks into the mini-player (first run owns)",
+   "plain": "the tease becomes the paywall in one motion",
+   "size": "L",
+   "side": "views",
+   "needs": [
+    "P07",
+    "P14.1",
+    "C22-p"
+   ]
+  },
+  {
+   "id": "T05a",
+   "parent": "pod.listen",
+   "title": "T05a podcasts flow test",
+   "plain": "one test proves the weekly episode works end to end",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P13.2",
+    "P14.2",
+    "P15",
+    "PL3.4g"
+   ]
+  },
+  {
+   "id": "PLP.1",
+   "parent": "cap.playback",
+   "title": "the live player",
+   "plain": "press play and it really plays",
+   "needs": []
+  },
+  {
+   "id": "PLP.1a",
+   "parent": "PLP.1",
+   "title": "live player engine, extracted from today's StreamingPodcastPlayback",
+   "plain": "audio plays, survives the lock screen, pauses for calls",
+   "size": "L",
+   "side": "platform",
+   "needs": [
+    "PL0.3",
+    "Flows/Playback.swift",
+    "PL3.1b"
+   ]
+  },
+  {
+   "id": "PLP.1b",
+   "parent": "PLP.1",
+   "title": "old screens play through the one engine",
+   "plain": "one player behind everything you play, old screens included",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PLP.1a"
+   ]
+  },
+  {
+   "id": "PLP.2",
+   "parent": "cap.playback",
+   "title": "lock screen and Control Center",
+   "plain": "pause and skip from the lock screen, chapter as title",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PLP.1a",
+    "#42"
+   ]
+  },
+  {
+   "id": "PLP.3",
+   "parent": "cap.playback",
+   "title": "back where you were",
+   "plain": "reopen exactly where you left off",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PLP.1a",
+    "PL2.1"
+   ]
+  },
+  {
+   "id": "BE3.4",
+   "parent": "cap.library",
+   "title": "library door",
+   "plain": "the podcasts list from the brain",
+   "needs": []
+  },
+  {
+   "id": "BE3.4a",
+   "parent": "BE3.4",
+   "title": "library route (agent)",
+   "plain": "episodes without the heavy columns",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE3.4b",
+   "parent": "BE3.4",
+   "title": "GET /v2/podcasts",
+   "plain": "this week's first, briefs and episodes merged",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE3.4a",
+    "BE1.3",
+    "BE2.5a",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE3.6",
+   "parent": "cap.library",
+   "title": "GET /v2/briefs/:id",
+   "plain": "an older brief plays like today's",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE1.3",
+    "BE1.3b",
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "PL3.4a",
+   "parent": "cap.library",
+   "title": "library on real data",
+   "plain": "the tab opens instantly, even offline",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL2.4",
+    "PL1.5",
+    "Flows/Podcasts.swift",
+    "BE3.4b",
+    "BE3.6"
+   ]
+  },
+  {
+   "id": "BE3.0",
+   "parent": "cap.episode",
+   "title": "the episode itself (brain)",
+   "plain": "what Retro says, kept exactly, with chapters",
+   "needs": []
+  },
+  {
+   "id": "BE3.0a",
+   "parent": "BE3.0",
+   "title": "sections and chapter titles",
+   "plain": "the transcript is exactly what was said, in topics",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.8"
+   ]
+  },
+  {
+   "id": "BE3.0b",
+   "parent": "BE3.0",
+   "title": "audio per chapter, measured",
+   "plain": "chapter ticks land where topics really start",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE3.0a",
+    "BE1.3b",
+    "BEA.4",
+    "BEA.7"
+   ]
+  },
+  {
+   "id": "BE3.0c",
+   "parent": "BE3.0",
+   "title": "line times",
+   "plain": "the transcript follows line by line",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE3.0b"
+   ]
+  },
+  {
+   "id": "BE3.5",
+   "parent": "cap.episode",
+   "title": "GET /v2/episodes/:id",
+   "plain": "one episode with its words, chapters and private audio",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE3.0a",
+    "BE3.0c",
+    "BEA.7",
+    "BEA.2",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "PL3.4b",
+   "parent": "cap.episode",
+   "title": "one episode on real data",
+   "plain": "an opened episode opens again instantly, offline",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.4a",
+    "PLP.3",
+    "BE3.5"
+   ]
+  },
+  {
+   "id": "PL3.4c1",
+   "parent": "cap.episode",
+   "title": "episode audio links",
+   "plain": "a paused episode still plays hours later",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.1b",
+    "PLP.1a",
+    "PL3.4b",
+    "BE3.5",
+    "BEA.7"
+   ]
+  },
+  {
+   "id": "PL3.4f",
+   "parent": "cap.episode",
+   "title": "a guess inside an episode",
+   "plain": "answer once, it counts everywhere",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.1c",
+    "PL3.4b"
+   ]
+  },
+  {
+   "id": "PL3.4c2",
+   "parent": "cap.offline",
+   "title": "offline copies",
+   "plain": "this week's episode is on your phone before your flight",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.4c1",
+    "PLP.3"
+   ]
+  },
+  {
+   "id": "PC-3",
+   "parent": "pod.why",
+   "title": "PC-3 why this is here",
+   "plain": "one claim, where it's said, what it rests on",
+   "needs": []
+  },
+  {
+   "id": "UI5.3",
+   "parent": "PC-3",
+   "title": "the claim, stated or asked (shared: built here, reused by goals GL-2 and you YO-4)",
+   "plain": "a guess never looks like a fact, here and on goals and you",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C28",
+    "T01"
+   ]
+  },
+  {
+   "id": "UI5.2",
+   "parent": "PC-3",
+   "title": "where retro says it",
+   "plain": "hear the exact moment",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#42",
+    "#45",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "P15",
+   "parent": "PC-3",
+   "title": "PC-3 page",
+   "plain": "why this is here, in full",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P14.2",
+    "UI5.3",
+    "UI5.2",
+    "C32",
+    "UI1.2"
+   ]
+  },
+  {
+   "id": "cap.why",
+   "parent": "pod.why",
+   "title": "claims and evidence (server + platform)",
+   "plain": "the claim and its sources, from the brain",
+   "needs": []
+  },
+  {
+   "id": "BE3.1",
+   "parent": "cap.why",
+   "title": "why this is here (server)",
+   "plain": "the claim route and its door",
+   "needs": []
+  },
+  {
+   "id": "BE3.1a",
+   "parent": "BE3.1",
+   "title": "claim route (agent)",
+   "plain": "claim, sureness, moments and sources",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BE3.0a"
+   ]
+  },
+  {
+   "id": "BE3.1b",
+   "parent": "BE3.1",
+   "title": "GET /v2/episodes/:id/claims/:claimId",
+   "plain": "the claim, safely, in the contract",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE3.1a",
+    "BE3.5",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "PL3.4d",
+   "parent": "cap.why",
+   "title": "claims on real data",
+   "plain": "why this is here works on your data",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.4b",
+    "BE3.1b"
+   ]
+  },
+  {
+   "id": "cap.weekly",
+   "parent": "pod.weekly",
+   "title": "the weekly schedule and push",
+   "plain": "made for your Sunday, announced quietly",
+   "needs": []
+  },
+  {
+   "id": "BE3.3a",
+   "parent": "cap.weekly",
+   "title": "weekly episode in your own week",
+   "plain": "Sunday 9 your time, not 6 a.m. UTC",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.5a",
+    "BEA.4",
+    "BEA.5",
+    "BEA.8"
+   ]
+  },
+  {
+   "id": "BE3.3b",
+   "parent": "cap.weekly",
+   "title": "episode-ready push",
+   "plain": "one quiet notification, never at night",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE3.3a",
+    "BE2.6",
+    "BE2.7"
+   ]
+  },
+  {
+   "id": "PL3.4g",
+   "parent": "cap.weekly",
+   "title": "links and the episode-ready tap",
+   "plain": "tapping the notification opens the episode",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL5.2",
+    "PL5.3",
+    "PL3.4b"
+   ]
+  },
+  {
+   "id": "cap.feedback",
+   "parent": "pod.feedback",
+   "title": "feedback (server + platform)",
+   "plain": "feedback that's never lost and actually heard",
+   "needs": []
+  },
+  {
+   "id": "BE3.2a",
+   "parent": "cap.feedback",
+   "title": "the next episode hears feedback (agent)",
+   "plain": "what you said shapes next week",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BEA.3"
+   ]
+  },
+  {
+   "id": "BE3.2b",
+   "parent": "cap.feedback",
+   "title": "POST /v2/episodes/:id/feedback",
+   "plain": "feedback sent once, even retried",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE3.2a",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "PL3.4e",
+   "parent": "cap.feedback",
+   "title": "feedback through the outbox",
+   "plain": "feedback offline waits and sends once",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL2.2",
+    "PL3.4b",
+    "BE3.2b"
+   ]
+  },
+  {
+   "id": "X3",
+   "parent": "pod.retire",
+   "title": "retire podcasts.json and the old tab",
+   "plain": "no more last-writer-wins file",
+   "needs": []
+  },
+  {
+   "id": "X3.1",
+   "parent": "X3",
+   "title": "old podcasts on this phone, carried over",
+   "plain": "episodes made on the phone stay listenable",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL2.6",
+    "PLP.3",
+    "PL3.4b"
+   ]
+  },
+  {
+   "id": "X3.2a",
+   "parent": "X3",
+   "title": "remove dead and dev-only writers",
+   "plain": "five of eleven writers gone, no visible change",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "founder go"
+   ]
+  },
+  {
+   "id": "X3.2b",
+   "parent": "X3",
+   "title": "remove the old podcasts tab",
+   "plain": "one podcasts tab",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "G3",
+    "X3.1"
+   ]
+  },
+  {
+   "id": "X3.2c",
+   "parent": "X3",
+   "title": "remove the old Sunday reminders",
+   "plain": "one Sunday notification, not two",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "BE3.3b"
+   ]
+  },
+  {
+   "id": "BE3.8",
+   "parent": "X3",
+   "title": "old routes on private audio",
+   "plain": "the old tab keeps playing when audio goes private",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BEA.7"
+   ]
+  }
+ ]
+}

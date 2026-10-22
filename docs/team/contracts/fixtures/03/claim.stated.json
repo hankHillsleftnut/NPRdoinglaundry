@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "5f1c9b2e-8d3a-5e47-b0c6-4a2d1e9f8b36",
+      "kind": "pattern",
+      "register": "stated",
+      "text": "your standups run long most mornings",
+      "basis": "both",
+      "sureness": "very sure",
+      "moments": [
+        {
+          "episodeId": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01",
+          "episodeTitle": "the week the plan met the calendar",
+          "startSeconds": 0.0,
+          "quote": "Three mornings this week started with the standup, and each one ran long.",
+          "inThisEpisode": true
+        },
+        {
+          "episodeId": "3d9c1f84-2a77-4b1e-8c55-71a0e2b6c3d2",
+          "episodeTitle": "tuesdays, mostly",
+          "startSeconds": 61.2,
+          "quote": "The standup came up again on Tuesday.",
+          "inThisEpisode": false
+        }
+      ],
+      "evidence": {
+        "rows": [
+          {
+            "kind": "entries",
+            "id": "4c8a2e6f-1d3b-4a5c-9e7f-0b2d4f6a8c80",
+            "date": "2026-10-14",
+            "excerpt": "standup ran over again, didn't get to the draft",
+            "opens": {
+              "kind": "entry",
+              "id": "4c8a2e6f-1d3b-4a5c-9e7f-0b2d4f6a8c80"
+            }
+          },
+          {
+            "kind": "calendar",
+            "id": "1a3c5e7b-9d2f-4b6a-8c0e-2f4a6c8e0b91",
+            "date": "2026-10-14",
+            "excerpt": "team standup · 70 min"
+          },
+          {
+            "kind": "entries",
+            "id": "d2f4a6c8-0e1b-4d3f-a5c7-9e1b3d5f7a02",
+            "date": "2026-10-09",
+            "excerpt": "another long standup, writing slot gone",
+            "opens": {
+              "kind": "entry",
+              "id": "d2f4a6c8-0e1b-4d3f-a5c7-9e1b3d5f7a02"
+            }
+          }
+        ],
+        "total": 6,
+        "nextCursor": "cGFnZTI"
+      },
+      "correct": {
+        "kind": "pattern",
+        "id": "0f1e2d3c-4b5a-4968-8776-655443322110"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "aps": {
+    "alert": {
+      "body": "this week's episode is here."
+    },
+    "sound": "default",
+    "thread-id": "episodes",
+    "category": "episode.ready"
+  },
+  "kind": "episodeReady",
+  "episodeId": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01",
+  "path": "/podcasts/episodes/0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01"
+}
