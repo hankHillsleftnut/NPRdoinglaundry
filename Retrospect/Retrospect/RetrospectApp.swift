@@ -89,11 +89,11 @@ struct RetrospectApp: App {
     }
 
     /// `-Screen <id> -State <name>`: one screen on sample data (T02's launcher, debug only).
-    private var launchedScreen: AnyView? {
+    private var isLauncherMode: Bool {
         #if DEBUG
-        ScreenLauncher.view()
+        ScreenLauncher.isRequested()
         #else
-        nil
+        false
         #endif
     }
 
@@ -164,8 +164,10 @@ struct RetrospectApp: App {
                     #if DEBUG
                     RDesignLab()
                     #endif
-                } else if let launched = launchedScreen {
-                    launched
+                } else if isLauncherMode {
+                    #if DEBUG
+                    ScreenLauncher()
+                    #endif
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
                     FirstPodcastFinaleDebugHost()
