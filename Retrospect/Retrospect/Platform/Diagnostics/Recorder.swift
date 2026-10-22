@@ -78,10 +78,20 @@ extension Platform.Diagnostics {
         /// Sign-out: lands what's waiting in this person's database, then
         /// forgets the database and anything still in memory, so nothing
         /// recorded before sign-out can reach the next person's rings.
-        func detach() {
+        /// The authenticated lifecycle also erases the store on sign-out. This
+        /// happens after detaching, so a later record cannot repopulate the store.
+        func detach(erasingDatabase: Bool = false) {
+            let previousDatabase = database
             flush()
             pending = []
             database = nil
+            if erasingDatabase {
+                do {
+                    try previousDatabase?.erase()
+                } catch {
+                    log.record(.diagnosticsWriteFailed)
+                }
+            }
         }
 
         /// Writes everything waiting, in one transaction, and trims the rings

@@ -29,9 +29,11 @@ extension Platform {
         let diagnostics: Platform.Diagnostics.Recorder
         private let crashReporter: Platform.Diagnostics.CrashReporter
         private let backgroundTasks: Platform.BackgroundTasks
-        /// Lifecycle records run one after another on this chain, so
+        private let openDatabase: @Sendable (String) throws -> Store.LocalDatabase
+        /// Diagnostics work runs one piece after another on this chain, so
         /// foreground and background land in the order the scene changed.
-        private var lifecycle: Task<Void, Never>?
+        private var diagnosticsWork: Task<Void, Never>?
+        private var sessionLifecycleBound = false
 
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
@@ -40,12 +42,14 @@ extension Platform {
             launch: Platform.LaunchOptions = .standard,
             configuration: Backend.Configuration,
             log: any Platform.LogSink,
-            backgroundTasks: Platform.BackgroundTasks = .uiKit
+            backgroundTasks: Platform.BackgroundTasks = .uiKit,
+            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
         ) {
             self.launch = launch
             self.configuration = configuration
             self.log = log
             self.backgroundTasks = backgroundTasks
+            self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
             crashReporter = Platform.Diagnostics.CrashReporter(sink: diagnostics)
         }
@@ -55,7 +59,12 @@ extension Platform {
         /// that were ignored are logged by flag, never by value.
         static func live(launch: Platform.LaunchOptions = .current, log: any Platform.LogSink = Log.SystemSink()) -> AppEnvironment {
             launch.problems.forEach { log.record(.launchOptionIgnored($0)) }
-            return AppEnvironment(launch: launch, configuration: .resolve(launch.environment), log: log)
+            return AppEnvironment(
+                launch: launch,
+                configuration: .resolve(launch.environment),
+                log: log,
+                openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
+            )
         }
 
         /// For previews and tests: no network, no disk, no Keychain; logs are
@@ -64,49 +73,92 @@ extension Platform {
             AppEnvironment(configuration: .resolve(.local, info: [:]), log: Log.Recorder())
         }
 
+        /// Bridge until the new session owns authentication: restore the signed-in
+        /// user's store, and finish store work before the old client changes users.
+        func bindSessionLifecycle(to client: RetrospectAPIClient) async {
+            guard !sessionLifecycleBound else { return }
+            sessionLifecycleBound = true
+            client.sessionWillChange = { [weak self] in
+                await self?.sessionWillChange().value
+            }
+            client.sessionDidChange = { [weak self] userID in
+                await self?.sessionDidChange(to: userID).value
+            }
+            if let userID = client.currentUserId {
+                await sessionDidChange(to: userID).value
+            }
+        }
+
+        @discardableResult
+        func sessionWillChange() -> Task<Void, Never> {
+            enqueueDiagnostics { [diagnostics] in
+                await diagnostics.detach(erasingDatabase: true)
+            }
+        }
+
+        @discardableResult
+        func sessionDidChange(to userID: String) -> Task<Void, Never> {
+            enqueueDiagnostics { [diagnostics, openDatabase, log] in
+                do {
+                    let database = try await Task.detached { try openDatabase(userID) }.value
+                    await diagnostics.attach(database)
+                } catch {
+                    log.record(.diagnosticsWriteFailed)
+                }
+            }
+        }
+
         /// Once, when the app's first scene is up: records the launch and
         /// starts listening for crash and hang diagnostics. Not called by the
         /// test host or previews, so neither subscribes to MetricKit.
         func didLaunch() {
             crashReporter.start()
-            let diagnostics = diagnostics
-            Task { await diagnostics.record(.event(.appLaunch)) }
+            enqueueDiagnostics { [diagnostics] in
+                await diagnostics.record(.event(.appLaunch))
+            }
         }
 
         /// Records foreground and background, and lands what's waiting when the
         /// app goes to the background (it may not come back). The flush runs
         /// under a background task, so the app isn't suspended in the middle
         /// of writing the very records a report is meant to carry.
-        func scenePhaseChanged(to phase: ScenePhase) {
-            let diagnostics = diagnostics
+        @discardableResult
+        func scenePhaseChanged(to phase: ScenePhase) -> Task<Void, Never>? {
             switch phase {
             case .active:
-                enqueueLifecycle { await diagnostics.record(.event(.appForeground)) }
+                return enqueueDiagnostics { [diagnostics] in
+                    await diagnostics.record(.event(.appForeground))
+                }
             case .background:
                 let keepAwake = backgroundTasks.begin("com.shauryanarang.Retrospect.diagnostics.flush")
-                enqueueLifecycle {
+                return enqueueDiagnostics { [diagnostics] in
                     await diagnostics.record(.event(.appBackground))
                     await diagnostics.flush()
                     keepAwake.end()
                 }
             case .inactive:
-                break
+                return nil
             @unknown default:
-                break
+                return nil
             }
         }
 
-        /// Waits for every lifecycle record queued so far to land. For tests.
+        /// Waits for every piece of diagnostics work queued so far. For tests.
         func lifecycleSettled() async {
-            await lifecycle?.value
+            await diagnosticsWork?.value
         }
 
-        private func enqueueLifecycle(_ work: @escaping @Sendable () async -> Void) {
-            let previous = lifecycle
-            lifecycle = Task {
+        /// Each callback waits for the previous callback's entire operation,
+        /// including its actor calls. The returned task is also a completion point.
+        @discardableResult
+        private func enqueueDiagnostics(_ operation: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
+            let previous = diagnosticsWork
+            let task = Task {
                 await previous?.value
-                await work()
+                await operation()
             }
+            diagnosticsWork = task
+            return task
         }
     }
 

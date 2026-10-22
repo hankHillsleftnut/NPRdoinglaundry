@@ -163,6 +163,7 @@ extension Platform.Diagnostics {
         init(_ path: Backend.PathTemplate) {
             self = switch path {
             case .meta: .meta
+            case .diagnostics: .diagnostics
             }
         }
     }
