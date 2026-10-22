@@ -422,8 +422,8 @@ struct RBriefCardGallery: View {
             }
             .padding(RDimension.spaceScreenMargin)
         }
-        // `-DesignLabBottom` opens on the lower states, for a second screenshot
-        .defaultScrollAnchor(ProcessInfo.processInfo.arguments.contains("-DesignLabBottom") ? .bottom : .top)
+        // `-DesignLabAnchor center|bottom` opens on the middle or lower states, for more screenshots
+        .defaultScrollAnchor(Self.anchor)
         .task {
             guard ProcessInfo.processInfo.arguments.contains("-DesignLabAutoplay") else { return }
             for pause in [1.5, 1.5] {
@@ -432,6 +432,15 @@ struct RBriefCardGallery: View {
             }
             do { try await Task.sleep(for: .seconds(1)) } catch { return }
             live = .rest
+        }
+    }
+
+    /// Where the page opens: `-DesignLabAnchor center` or `bottom`, else the top.
+    private static var anchor: UnitPoint {
+        switch UserDefaults.standard.string(forKey: "DesignLabAnchor") {
+        case "center": .center
+        case "bottom": .bottom
+        default: .top
         }
     }
 
