@@ -121,7 +121,7 @@ struct VersionFloorTests {
 
         let later = self.floor()
         serveMeta(min: "1.0 (43)")
-        await later.checkIfDue(using: client(floor: later))
+        await later.checkIfDue(using: self.client(floor: later))
         #expect(later.updateRequired)
     }
 
