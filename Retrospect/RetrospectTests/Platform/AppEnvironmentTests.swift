@@ -3,10 +3,10 @@ import Testing
 
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
-struct EnvironmentTests {
+struct AppEnvironmentTests {
     @Test("the preview environment builds without network, disk or Keychain, logging to memory")
     func thePreviewEnvironmentLogsToMemory() throws {
-        let environment = Platform.Environment.preview()
+        let environment = Platform.AppEnvironment.preview()
 
         let recorder = try #require(environment.log as? Platform.Log.Recorder)
         #expect(recorder.events.isEmpty)
@@ -15,7 +15,7 @@ struct EnvironmentTests {
 
     @Test("the live environment logs to the system log")
     func theLiveEnvironmentLogsToTheSystemLog() {
-        let environment = Platform.Environment.live()
+        let environment = Platform.AppEnvironment.live()
 
         #expect(environment.log is Platform.Log.SystemSink)
         #expect(environment.updateRequired == false)
@@ -23,8 +23,8 @@ struct EnvironmentTests {
 
     @Test("each preview environment is its own, so tests never share state")
     func eachPreviewEnvironmentIsItsOwn() throws {
-        let first = Platform.Environment.preview()
-        let second = Platform.Environment.preview()
+        let first = Platform.AppEnvironment.preview()
+        let second = Platform.AppEnvironment.preview()
         first.log.record(.refreshed)
         first.updateRequired = true
 

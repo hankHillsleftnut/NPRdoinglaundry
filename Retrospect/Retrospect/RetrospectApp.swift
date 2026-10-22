@@ -71,7 +71,7 @@ struct RetrospectApp: App {
     @StateObject private var firstPodcastOrchestrator = FirstPodcastOrchestrator.shared
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
-    @State private var platform = Platform.Environment.live()
+    @State private var platform = Platform.AppEnvironment.live()
     @Environment(\.scenePhase) private var scenePhase
 
     private var isPodcastLayoutDiagnosticsMode: Bool {

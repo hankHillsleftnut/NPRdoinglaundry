@@ -9,11 +9,11 @@ extension Platform {
     /// (the configuration in PL1.1, then the session, client, store, outbox,
     /// router, billing and flows), so tests can swap in fakes.
     ///
-    /// Views read it with `@Environment(Platform.Environment.self)`. Inside
-    /// `extension Platform`, `Environment` means this type, so code there never
-    /// uses SwiftUI's `@Environment` wrapper.
+    /// Views read it with `@Environment(Platform.AppEnvironment.self)`. It's
+    /// named `AppEnvironment`, not `Environment`, so code inside `extension
+    /// Platform` can still use SwiftUI's `@Environment` wrapper.
     @MainActor @Observable
-    final class Environment {
+    final class AppEnvironment {
         let log: any Platform.LogSink
 
         /// Set when the backend says this version is too old (PL1.6).
@@ -24,14 +24,14 @@ extension Platform {
         }
 
         /// The app's environment: logs go to the system log.
-        static func live() -> Environment {
-            Environment(log: Log.SystemSink())
+        static func live() -> AppEnvironment {
+            AppEnvironment(log: Log.SystemSink())
         }
 
         /// For previews and tests: no network, no disk, no Keychain; logs are
         /// kept in memory.
-        static func preview() -> Environment {
-            Environment(log: Log.Recorder())
+        static func preview() -> AppEnvironment {
+            AppEnvironment(log: Log.Recorder())
         }
     }
 }
