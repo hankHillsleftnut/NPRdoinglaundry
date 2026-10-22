@@ -28,6 +28,7 @@ struct RLabPage: Identifiable {
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("toast") { RToastGallery() },
+        RLabPage("topbar") { RTopBarGallery() },
     ]
 
     /// The page the lab opens on: `-DesignLabToast`, else `-DesignLabPage <name>`, else motion.
