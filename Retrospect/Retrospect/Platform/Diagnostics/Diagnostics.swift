@@ -156,6 +156,9 @@ extension Platform.Diagnostics {
         init(_ path: Backend.PathTemplate) {
             self = switch path {
             case .meta: .meta
+            case .authApple: .authApple
+            case .authRefresh: .authRefresh
+            case .authSignout: .authSignout
             }
         }
     }
