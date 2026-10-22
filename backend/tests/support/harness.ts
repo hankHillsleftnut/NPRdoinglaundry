@@ -58,7 +58,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export async function startHarness(opts: {
-  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router'];
+  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router']; speechSynth?: AppDeps['speechSynth'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -90,6 +90,7 @@ export async function startHarness(opts: {
     users: async (id) => users.get(id) ?? null,
     log: createLog((line) => logLines.push(line)),
     ...(opts.v2Router ? { v2Router: opts.v2Router } : {}),
+    ...(opts.speechSynth ? { speechSynth: opts.speechSynth } : {}),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);
