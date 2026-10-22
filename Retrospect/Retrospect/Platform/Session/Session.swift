@@ -91,6 +91,8 @@ extension Session {
 
         private var launchCheck: InstallCheck?
         private var started = false
+        /// The first read, so every caller that arrives during it waits for it.
+        private var starting: Task<Void, Never>?
         private var credentials: Credentials?
         private var hasSignedInBefore = false
         private var current: State = .locked
@@ -162,8 +164,8 @@ extension Session {
         /// about to expire.
         func becameActive() async {
             if launchCheck == nil || launchCheck == .deferredUntilUnlock {
+                await ensureStarted()
                 launchCheck = await store.checkInstall(probe: probeUnlock, log: log)
-                started = true
                 guard launchCheck != nil, launchCheck != .deferredUntilUnlock else {
                     publish(.locked)
                     return
@@ -307,12 +309,23 @@ extension Session {
 
         private func ensureStarted() async {
             guard !started else { return }
-            started = true
-            if launchCheck == nil || launchCheck == .deferredUntilUnlock {
-                publish(.locked)
+            if let starting {
+                await starting.value
                 return
             }
-            await read()
+            let task = Task { await self.start() }
+            starting = task
+            await task.value
+        }
+
+        private func start() async {
+            if launchCheck == nil || launchCheck == .deferredUntilUnlock {
+                publish(.locked)
+            } else {
+                await read()
+            }
+            started = true
+            starting = nil
         }
 
         /// The stored session, or why it can't be read yet.
@@ -376,7 +389,11 @@ extension Session {
                         log.record(.sessionRevoked)
                         await endSession(reason: .revoked, serverNotified: false)
                         throw Backend.Failure(.sessionRevoked, message: failure.message)
-                    case .timedOut, .transport, .decoding, .offline where attempt == 1:
+                    case .timedOut, .transport, .decoding, .offline:
+                        guard attempt == 1 else {
+                            log.record(.refreshFailed(RefreshFailure(failure.kind)))
+                            throw failure
+                        }
                         log.record(.refreshRetried)
                         attempt += 1
                     default:

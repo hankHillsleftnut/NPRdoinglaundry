@@ -457,6 +457,7 @@ struct SessionManagerTests {
             "/v2/meta": metaHandler(["a2"]),
             "/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer()) },
         ])
+        _ = await h.manager.state
         h.keychain.failCall(1, with: errSecIO)
 
         let token = try await h.manager.refreshAfterUnauthorized(failedToken: "invented.access.token")
