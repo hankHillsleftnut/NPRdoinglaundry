@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DoorFactory } from './door.js';
+import { DoorError, sendError } from './errors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -18,6 +19,11 @@ export function createV2Router(door: DoorFactory): Router {
     call: async (ctx) => ({ userId: ctx.userId }),
     map: (r) => r,
   }));
+
+  // Any other /v2 path: the envelope's 404, not the old routes' body.
+  router.use((_req, res) => {
+    sendError(res, new DoorError('not_found'));
+  });
 
   return router;
 }

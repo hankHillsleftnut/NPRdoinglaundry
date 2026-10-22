@@ -50,6 +50,8 @@ public enum RColor {
     public static let surfaceWashPressed = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.11), UIColor(red: 0, green: 0, blue: 0, alpha: 0.3))
     /// A paper surface lifted off a tinted or raised parent: the pills and cards inside a wash card, a sheet or a control. The canvas colour in light; one step up the ladder in dark, so it never reads as a hole.
     public static let surfaceLifted = dynamic(UIColor(red: 0.9569, green: 0.949, blue: 0.9333, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
+    /// Skeleton bars with Increase Contrast on: the control surface, one step stronger than surface.skeleton.
+    public static let surfaceSkeletonContrast = dynamic(UIColor(red: 0.9176, green: 0.9059, blue: 0.8902, alpha: 1), UIColor(red: 0.1804, green: 0.1725, blue: 0.1608, alpha: 1))
     /// Headlines and the words people read.
     public static let textPrimary = dynamic(UIColor(red: 0.0706, green: 0.0706, blue: 0.0706, alpha: 1), UIColor(red: 0.9294, green: 0.9176, blue: 0.8941, alpha: 1))
     /// Supporting sentences under a headline. (AA: 5.8:1 light, 7.5:1 dark.)
@@ -490,6 +492,10 @@ public enum RDimension {
     public static let sizeIconDefault: CGFloat = 20
     /// Transport and primary icons.
     public static let sizeIconLarge: CGFloat = 24
+    /// A glyph inside a 32 icon well (evidence and source rows).
+    public static let sizeIconInWell: CGFloat = 18
+    /// The › at the end of a row.
+    public static let sizeIconChevron: CGFloat = 14
     /// Artwork in a list row.
     public static let sizeArtworkRow: CGFloat = 40
     /// Artwork in a card or on the player header.
@@ -598,6 +604,12 @@ public enum RDimension {
     public static let sizeSwitchThumb: CGFloat = 27
     /// The thumb's width while held: it stretches toward its travel.
     public static let sizeSwitchThumbHeld: CGFloat = 33
+    /// Height of one skeleton bar.
+    public static let sizeSkeletonBar: CGFloat = 18
+    /// Space between skeleton bars: an 18 bar on a 27 line pitch.
+    public static let sizeSkeletonGap: CGFloat = 9
+    /// The raised mark above an empty state line.
+    public static let sizeEmptyMark: CGFloat = 52
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
@@ -636,6 +648,34 @@ public enum RDimension {
     public static let motionLifeFloatAmplitude: CGFloat = 2
     /// Most a tile lags behind the scroll.
     public static let motionScrollLagMaxOffset: CGFloat = 6
+    /// Tab screens: the blur band above the tab bar.
+    public static let blurTabBand: CGFloat = 70
+    /// Tab screens on short phones (SE): the band above the tab bar.
+    public static let blurTabBandCompact: CGFloat = 60
+    /// Tab screens: blur at the band's outer edge.
+    public static let blurTabMax: CGFloat = 14
+    /// Tab screens: the canvas tint covers only this much of the band, at the bottom.
+    public static let blurTabTint: CGFloat = 56
+    /// Journal: the top band's full height; it grows with scroll from 0.
+    public static let blurJournalTopBand: CGFloat = 80
+    /// Journal: blur at the top band's outer edge.
+    public static let blurJournalTopMax: CGFloat = 8
+    /// Player transcript: the top band.
+    public static let blurTranscriptTopBand: CGFloat = 96
+    /// Player transcript on short phones: the top band.
+    public static let blurTranscriptTopBandCompact: CGFloat = 64
+    /// Player transcript: blur at the top band's outer edge.
+    public static let blurTranscriptTopMax: CGFloat = 8
+    /// Player transcript: the bottom band, into the transport.
+    public static let blurTranscriptBottomBand: CGFloat = 140
+    /// Player transcript on short phones: the bottom band.
+    public static let blurTranscriptBottomBandCompact: CGFloat = 80
+    /// Player transcript: blur at the bottom band's outer edge.
+    public static let blurTranscriptBottomMax: CGFloat = 8
+    /// Drawer: the band under the foot.
+    public static let blurDrawerFootBand: CGFloat = 56
+    /// Drawer: blur at the foot band's outer edge.
+    public static let blurDrawerFootMax: CGFloat = 6
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
@@ -646,14 +686,20 @@ public enum RDimension {
     public static let layoutFocusOffset: CGFloat = 2
     /// Focus ring thickness.
     public static let layoutFocusWidth: CGFloat = 2
-    /// Width of a centred dialog.
-    public static let layoutDialogWidth: CGFloat = 300
     /// Widest a toast may grow.
     public static let layoutToastMaxWidth: CGFloat = 340
     /// Widest a sheet may grow (larger phones, iPad later).
     public static let layoutSheetMaxWidth: CGFloat = 560
     /// Content padding inside a widget.
     public static let layoutWidgetPadding: CGFloat = 16
+    /// A screen shorter than this (iPhone SE, 667) takes the compact layout: smaller bands and tighter rhythm, decided by the container's height, never the device model.
+    public static let layoutCompactHeight: CGFloat = 700
+    /// Space above the grabber inside a sheet.
+    public static let layoutSheetTop: CGFloat = 10
+    /// Space between the grabber and the sheet content.
+    public static let layoutSheetGrabberGap: CGFloat = 18
+    /// Side inset of sheet content.
+    public static let layoutSheetInset: CGFloat = 28
 }
 
 /// Corner shape from radius.style. Views draw corners through RShape, never a bare Capsule() or RoundedRectangle.
@@ -802,6 +848,10 @@ public enum RNumber {
     public static let motionDurationPopoverExit: Double = 0.11
     /// The tapped title dims before the menu appears, so the press registers first.
     public static let motionDurationSourceDim: Double = 0.066
+    /// How long loading waits before a skeleton shows, so quick loads never flash one.
+    public static let motionDurationSkeletonDelay: Double = 0.4
+    /// How long a skeleton waits before "still working" appears under it.
+    public static let motionDurationStillWorking: Double = 8
     /// A control while pressed.
     public static let motionScalePress: Double = 0.98
     /// Where things grow from as they appear.
@@ -828,6 +878,12 @@ public enum RNumber {
     public static let motionScrollLagMaxTilt: Double = 1.5
     /// Stagger at most this many items; the rest arrive together.
     public static let motionStaggerMax: Double = 6
+    /// Tab screens: colour boost under the blur, so the edge never greys.
+    public static let blurTabSaturation: Double = 1.5
+    /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
+    public static let blurTranscriptTopTint: Double = 0.3
+    /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
+    public static let blurTranscriptBottomTint: Double = 0.15
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.
@@ -840,6 +896,10 @@ public enum RNumber {
     public static let layerPopover: Double = 50
     /// Toasts, above everything.
     public static let layerToast: Double = 60
+    /// A half-height sheet, as a share of the screen.
+    public static let layoutSheetDetentMedium: Double = 0.5
+    /// Widest a message may be, as a share of the screen.
+    public static let layoutMessageMaxWidth: Double = 0.78
     /// Anything that cannot be used right now (when not using text.disabled).
     public static let opacityDisabled: Double = 0.4
     /// Content inside a control while pressed.
@@ -850,4 +910,6 @@ public enum RNumber {
     public static let opacitySourcePressed: Double = 0.7
     /// Something of yours on its way: a message sending, a save in flight. Same value as opacity.pressed, different meaning.
     public static let opacityPending: Double = 0.7
+    /// With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine.
+    public static let opacitySkeletonPulseFloor: Double = 0.6
 }
