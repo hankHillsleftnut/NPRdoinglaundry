@@ -39,6 +39,27 @@ struct RetryTests {
         }
     }
 
+    /// An endpoint asking for a timeout no real send could meet.
+    private struct Blink: Backend.Endpoint {
+        typealias Response = Backend.Meta
+
+        var method: Backend.Method {
+            .get
+        }
+
+        var path: Backend.PathTemplate {
+            .meta
+        }
+
+        var requiresAuth: Bool {
+            false
+        }
+
+        var timeout: Duration {
+            .milliseconds(100)
+        }
+    }
+
     private struct NoTokens: Backend.TokenProviding {
         func accessToken() async throws -> String { "t" }
         func refreshAfterUnauthorized(failedToken _: String) async throws -> String { "t" }
@@ -215,9 +236,24 @@ struct RetryTests {
         #expect(StubProtocol.requests(on: session).count == 1)
     }
 
-    @Test("backoff delays stay within the jitter bounds", arguments: 1 ... 6)
+    @Test("no policy allows more than five sends, however many it asks for")
+    func noPolicyAllowsMoreThanFiveSends() {
+        #expect(Backend.RetryPolicy.read(attempts: 10).attempts == 5)
+        #expect(Backend.RetryPolicy.keyedWrite(attempts: 100).attempts == 5)
+        #expect(Backend.RetryPolicy.read(attempts: 0).attempts == 1)
+        #expect(Backend.RetryPolicy.never.attempts == 1)
+        #expect(Backend.RetryPolicy.read(attempts: 10).retryDelay(after: Backend.Failure(.transport), attempt: 5) { $0 } == nil)
+    }
+
+    @Test("a sub-second endpoint timeout is raised to one second")
+    func aSubSecondTimeoutIsRaised() async throws {
+        let request = try await client().request(for: Blink(), token: nil)
+        #expect(request.timeoutInterval == 1)
+    }
+
+    @Test("backoff delays stay within the jitter bounds", arguments: 1 ... 4)
     func backoffDelaysStayWithinTheJitterBounds(_ attempt: Int) {
-        let policy = Backend.RetryPolicy.read(attempts: 10)
+        let policy = Backend.RetryPolicy.read(attempts: 5)
         let ceiling = Backend.RetryPolicy.backoffCeiling(attempt: attempt)
 
         let low = policy.retryDelay(after: Backend.Failure(.transport), attempt: attempt) { _ in .zero }

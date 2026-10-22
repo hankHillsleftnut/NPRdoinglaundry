@@ -20,6 +20,7 @@ extension Backend {
         case invitesCheck = "/v2/invites/check"
         case invitesRedeem = "/v2/invites/redeem"
         case invitesMine = "/v2/invites/mine"
+        case guessByID = "/v2/guesses/:id"
     }
 
     /// The body of a request that sends none.

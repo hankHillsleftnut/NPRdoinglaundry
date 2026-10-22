@@ -168,6 +168,7 @@ extension Platform.Diagnostics {
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
+            case .guessByID: .guessesById
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: Self.gate(path)
             }
         }
@@ -181,7 +182,7 @@ extension Platform.Diagnostics {
             case .invitesCheck: .invitesCheck
             case .invitesRedeem: .invitesRedeem
             case .invitesMine: .invitesMine
-            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout:
+            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }

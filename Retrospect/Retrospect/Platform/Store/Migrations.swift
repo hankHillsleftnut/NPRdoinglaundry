@@ -8,6 +8,7 @@ extension Store {
             var migrator = DatabaseMigrator()
             migrator.registerMigration("v1", migrate: v1)
             migrator.registerMigration("v2", migrate: v2)
+            migrator.registerMigration("v3", migrate: v3)
             return migrator
         }
 
@@ -63,6 +64,14 @@ extension Store {
                 table.column("payload", .blob).notNull()
             }
             try db.create(index: "diagnostics_ring", on: "diagnostics", columns: ["ring"])
+        }
+
+        /// PL2.2b (PL3.1 F2): the acknowledgement line shown under an entry,
+        /// chosen once when it's first sent and never changed.
+        private static func v3(_ db: GRDB.Database) throws {
+            try db.alter(table: "entries") { table in
+                table.add(column: "acknowledgement", .text)
+            }
         }
     }
 }

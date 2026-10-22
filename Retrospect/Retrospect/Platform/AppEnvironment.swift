@@ -44,6 +44,10 @@ extension Platform {
         private var diagnosticsWork: Task<Void, Never>?
         private var sessionLifecycleBound = false
 
+        /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
+        /// nil before. The scene-phase and background-task bridges drain it.
+        var outbox: Store.Outbox?
+
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
             floor.updateRequired
