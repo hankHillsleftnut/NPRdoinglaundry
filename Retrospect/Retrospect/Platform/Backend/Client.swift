@@ -142,7 +142,8 @@ extension Backend {
         /// time and the contract code if the door sent one. Never the URL, the
         /// body or the message.
         private func record(_ endpoint: some Endpoint, status: Int, ms: Int, code: Platform.Diagnostics.ErrorCode?) async {
-            guard let diagnostics else { return }
+            // The public preview isn't one of the closed `/v2` routes a report may name.
+            guard let diagnostics, endpoint.path != .invitePreview else { return }
             await diagnostics.record(.request(Platform.Diagnostics.Request(
                 method: endpoint.method, route: Platform.Diagnostics.Route(endpoint.path), status: status, code: code, ms: ms
             )))
