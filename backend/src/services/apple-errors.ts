@@ -15,7 +15,9 @@ const REJECTED_TOKEN_CODES: ReadonlySet<string> = new Set([
   'ERR_JWT_INVALID',
   'ERR_JWS_INVALID',
   // An algorithm Apple never uses (alg "none", HS256): a forged or foreign token.
+  // jwtVerify's `algorithms: ['RS256']` refuses them with ERR_JOSE_ALG_NOT_ALLOWED.
   'ERR_JOSE_NOT_SUPPORTED',
+  'ERR_JOSE_ALG_NOT_ALLOWED',
 ]);
 
 export function isRejectedAppleToken(err: unknown): boolean {

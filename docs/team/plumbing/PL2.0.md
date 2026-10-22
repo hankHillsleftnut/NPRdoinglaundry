@@ -11,7 +11,7 @@ Inputs:
 - GRDB 7's own docs: `DatabasePool`, `DatabaseMigrator` (including `eraseDatabaseOnSchemaChange` for DEBUG only), `ValueObservation`, `Configuration.prepareDatabase`.
 
 Spec:
-- **The package:** `https://github.com/groue/GRDB.swift`, product `GRDB`, rule `exactVersion` at the newest 7.x release tagged at least two weeks ago, added through Xcode (never by hand-editing `project.pbxproj`), linked to the app target only. `Package.resolved` updated in the same PR (PL0.4 made it tracked). Static linking is fine; no `GRDB-dynamic`.
+- **The package:** `https://github.com/groue/GRDB.swift`, product `GRDB`, rule `exactVersion` at the newest 7.x release tagged at least two weeks ago, added as exact-text `project.pbxproj` edits, then `xcodebuild -resolvePackageDependencies` (there is no Xcode GUI here; integrator, 22 Oct), linked to the app target only. `Package.resolved` updated in the same PR (PL0.4 made it tracked). Static linking is fine; no `GRDB-dynamic`.
 - **The spike** (on a throwaway branch, measured, then deleted; only its numbers go in the PR body):
   1. A `DatabasePool` in a temp folder with WAL, `foreign_keys = ON`, and `busyTimeout` 5 s; an in-memory `DatabaseQueue` for tests.
   2. A `v1` migration with two tables, a `v2` migration adding a column and an index; open a v1 file with the v2 migrator.
