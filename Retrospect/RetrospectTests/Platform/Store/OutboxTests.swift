@@ -142,7 +142,7 @@ struct OutboxTests {
     func noOutboxLogLineCarriesText() async throws {
         try await outbox().enqueueEntry(draft())
 
-        #expect(recorder.events == [.outboxEnqueued(operation: .entryCreate)])
+        #expect(recorder.events == [.outbox(.enqueued(operation: .entryCreate))])
     }
 
     // MARK: Counting and retrying

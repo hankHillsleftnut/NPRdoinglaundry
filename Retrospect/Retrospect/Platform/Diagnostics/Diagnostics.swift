@@ -168,6 +168,7 @@ extension Platform.Diagnostics {
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
+            case .guessByID: .guessesById
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: Self.gate(path)
             }
         }
@@ -183,7 +184,7 @@ extension Platform.Diagnostics {
             case .invitesMine: .invitesMine
             // Not a `/v2` route, so a report never names it: the client records nothing for it.
             case .invitePreview: .invitesCheck
-            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout:
+            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }

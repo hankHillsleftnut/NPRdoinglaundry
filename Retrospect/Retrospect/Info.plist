@@ -43,6 +43,7 @@
 	<array>
 		<string>com.shauryanarang.Retrospect.integrations.refresh</string>
 		<string>com.shauryanarang.Retrospect.integrations.processing</string>
+		<string>com.shauryanarang.Retrospect.outbox.drain</string>
 	</array>
 	<key>PLIST_VERSION</key>
 	<string>1</string>

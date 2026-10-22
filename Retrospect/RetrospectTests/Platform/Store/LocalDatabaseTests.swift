@@ -54,6 +54,19 @@ struct LocalDatabaseTests {
         ])
     }
 
+    @Test("v3 adds the acknowledgement column, empty until an entry is sent, and it round-trips")
+    func v3AddsTheAcknowledgementColumn() throws {
+        let database = try Store.LocalDatabase.inMemory()
+        var row = entry()
+        try database.writer.write { try row.insert($0) }
+        #expect(try database.writer.read { try String.fetchOne($0, sql: "SELECT acknowledgement FROM entries") } == nil)
+
+        row.acknowledgement = "got it."
+        try database.writer.write { try row.update($0) }
+
+        #expect(try database.writer.read { try Store.EntryRow.fetchOne($0, key: row.localID) }?.acknowledgement == "got it.")
+    }
+
     @Test("an entry row round-trips with every sync state", arguments: [Store.SyncState.local, .sending, .sent, .failed, .legacy])
     func anEntryRowRoundTrips(_ state: Store.SyncState) throws {
         let database = try Store.LocalDatabase.inMemory()

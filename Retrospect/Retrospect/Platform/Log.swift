@@ -15,19 +15,30 @@ extension Platform {
 }
 
 extension Platform.Log {
+    enum Outbox: Equatable, Sendable {
+        case enqueued(operation: Store.OutboxOperation)
+        /// One drain finished: how many items landed, how many were refused for good.
+        case drained(sent: Int, failed: Int)
+        case sent(operation: Store.OutboxOperation, attempts: Int, ms: Int)
+        /// A retryable failure: the item waits for its next attempt.
+        case retry(operation: Store.OutboxOperation, code: Store.FailureCode)
+        /// Refused for good (or out of attempts): the item is dead, its entity failed.
+        case dead(operation: Store.OutboxOperation, code: Store.FailureCode)
+        /// The pass stopped early: offline, or the session needs attention.
+        case paused(code: Store.FailureCode)
+    }
+
     enum Event: Equatable, Sendable {
         /// The session was refreshed.
         case refreshed
-        /// One outbox drain finished.
-        case outboxDrained(sent: Int, failed: Int)
+        /// The outbox (PL2.2): what was queued, sent, retried, refused or paused. No text, no ids.
+        case outbox(Outbox)
         /// One request finished: its door, the HTTP status (0 when nothing came
         /// back) and how long it took.
         case requestSent(path: Backend.PathTemplate, status: Int, ms: Int)
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
-        /// Something was queued in the outbox (PL2.2). No text, no ids.
-        case outboxEnqueued(operation: Store.OutboxOperation)
         /// Someone signed in (PL1.4): which provider, and whether the account is new.
         case signedIn(provider: Session.Provider, isNew: Bool)
         /// The system couldn't make random bytes for a sign-in nonce (PL1.4), so
@@ -92,14 +103,12 @@ extension Platform.Log {
             switch event {
             case .refreshed:
                 logger.info("session refreshed")
-            case let .outboxDrained(sent, failed):
-                logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .outbox(event):
+                record(event)
             case let .requestSent(path, status, ms):
                 record(sent: path, status: status, ms: ms)
             case let .unknownErrorCode(path):
                 record(unknownCodeFrom: path)
-            case let .outboxEnqueued(operation):
-                record(operation)
             case let .launchOptionIgnored(problem):
                 record(problem)
             case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed, .signedIn,
@@ -205,6 +214,7 @@ extension Platform.Log {
             case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
+            case .guessByID: logger.info("request /v2/guesses/:id: status \(status), \(ms) ms")
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(sentInvite: path, status: status, ms: ms)
             }
         }
@@ -229,6 +239,7 @@ extension Platform.Log {
             case .authApple: logger.error("unknown error code from /v2/auth/apple")
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
+            case .guessByID: logger.error("unknown error code from /v2/guesses/:id")
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(unknownCodeFromInvite: path)
             }
         }
@@ -307,6 +318,7 @@ extension Platform.Log {
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
+            case .guessByID: logger.info("401 on /v2/guesses/:id: refreshed and replayed once")
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(replayedInvite: path)
             }
         }
@@ -319,7 +331,7 @@ extension Platform.Log {
             case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
             case .invitePreview: logger.info("401 on /public/invites/:code: refreshed and replayed once")
-            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout: break
+            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout, .guessByID: break
             }
         }
 
@@ -341,11 +353,36 @@ extension Platform.Log {
             }
         }
 
-        private func record(_ operation: Store.OutboxOperation) {
-            switch operation {
-            case .entryCreate: logger.info("outbox: entry.create queued")
-            case .unknown: logger.info("outbox: unknown operation queued")
+        private func record(_ event: Outbox) {
+            switch event {
+            case let .enqueued(operation):
+                logger.info("outbox: \(Self.name(operation)) queued")
+            case let .drained(sent, failed):
+                logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .sent(operation, attempts, ms):
+                logger.info("outbox: \(Self.name(operation)) sent on attempt \(attempts), \(ms) ms")
+            case let .retry(operation, code):
+                logger.info("outbox: \(Self.name(operation)) will retry after \(Self.name(code))")
+            case let .dead(operation, code):
+                logger.error("outbox: \(Self.name(operation)) refused: \(Self.name(code))")
+            case let .paused(code):
+                logger.info("outbox: pass paused: \(Self.name(code))")
             }
+        }
+
+        /// The fixed name of an operation: a closed list, never a value from the server.
+        private static func name(_ operation: Store.OutboxOperation) -> StaticString {
+            switch operation {
+            case .entryCreate: "entry.create"
+            case .guessAnswer: "guess.answer"
+            case .diagnosticsSend: "diagnostics.send"
+            case .unknown: "unknown operation"
+            }
+        }
+
+        /// The fixed name of a failure code: a closed list, never the server's message.
+        private static func name(_ code: Store.FailureCode) -> String {
+            code.rawValue
         }
 
         private func record(_ check: Session.InstallCheck) {

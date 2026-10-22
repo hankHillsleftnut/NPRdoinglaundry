@@ -22,6 +22,7 @@ extension Backend {
         case invitesMine = "/v2/invites/mine"
         /// The one public door outside `/v2` (contract 01 §2.1): the ticket's face for a link, signed out.
         case invitePreview = "/public/invites/:code"
+        case guessByID = "/v2/guesses/:id"
     }
 
     /// The body of a request that sends none.
