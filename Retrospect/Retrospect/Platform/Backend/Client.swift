@@ -13,11 +13,19 @@ extension Backend {
     /// `send` throws only `Backend.Failure`, with one exception: if the calling
     /// task is cancelled it throws `CancellationError`, so a cancelled caller
     /// stops instead of treating it as a failed request.
+    ///
+    /// Offline, it fails at once without sending. Otherwise it sends up to the
+    /// endpoint's `retry` attempts, waiting a jittered backoff on the injected
+    /// clock between them, and gives up with `.offline` if the phone has gone
+    /// offline by then. A keyed write resends the same request, key included;
+    /// a write without a key is sent once, whatever its endpoint says.
     actor Client {
         private let configuration: Configuration
         private let session: URLSession
         private let tokens: any TokenProviding
+        private let reachability: any Reachability
         private let clock: any Clock<Duration>
+        private let jitter: @Sendable (Duration) -> Duration
         private let log: any Platform.LogSink
         private let diagnostics: (any Platform.Diagnostics.Sink)?
         private let timeZone: @Sendable () -> TimeZone
@@ -27,7 +35,9 @@ extension Backend {
             configuration: Configuration,
             session: URLSession = Client.makeSession(),
             tokens: any TokenProviding,
+            reachability: any Reachability,
             clock: any Clock<Duration> = ContinuousClock(),
+            jitter: @escaping @Sendable (Duration) -> Duration = Client.randomJitter,
             log: any Platform.LogSink,
             diagnostics: (any Platform.Diagnostics.Sink)? = nil,
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
@@ -36,7 +46,9 @@ extension Backend {
             self.configuration = configuration
             self.session = session
             self.tokens = tokens
+            self.reachability = reachability
             self.clock = clock
+            self.jitter = jitter
             self.log = log
             self.diagnostics = diagnostics
             self.timeZone = timeZone
@@ -54,11 +66,42 @@ extension Backend {
             return URLSession(configuration: configuration)
         }
 
+        /// The most any one send may take, whatever the endpoint asks for.
+        static let longestTimeout: Duration = .seconds(60)
+
+        /// A duration between zero and `ceiling`, uniformly (full jitter).
+        static let randomJitter: @Sendable (Duration) -> Duration = { ceiling in
+            var generator = SystemRandomNumberGenerator()
+            return fullJitter(ceiling, using: &generator)
+        }
+
+        /// Full jitter drawn from `generator` (tests pass a seeded one).
+        static func fullJitter(_ ceiling: Duration, using generator: inout some RandomNumberGenerator) -> Duration {
+            ceiling * Double.random(in: 0 ... 1, using: &generator)
+        }
+
         func send<E: Endpoint>(_ endpoint: E) async throws -> E.Response {
+            guard await reachability.isOnline else { throw Failure(.offline) }
             let token = endpoint.requiresAuth ? try await accessToken() : nil
             let request = try request(for: endpoint, token: token)
-            let loaded = await load(request, path: endpoint.path)
-            switch loaded {
+            let policy = RetryPolicy.effective(endpoint.retry, method: endpoint.method, hasIdempotencyKey: endpoint.idempotencyKey != nil)
+            var attempt = 1
+            while true {
+                do {
+                    return try await sendOnce(endpoint, request: request)
+                } catch let failure as Failure {
+                    guard let delay = policy.retryDelay(after: failure, attempt: attempt, jitter: jitter) else { throw failure }
+                    try await clock.sleep(for: delay)
+                    guard await reachability.isOnline else { throw Failure(.offline) }
+                    attempt += 1
+                }
+            }
+        }
+
+        /// One attempt: sent, decoded, and recorded for diagnostics whatever
+        /// happens (a retried request records one row per attempt).
+        private func sendOnce<E: Endpoint>(_ endpoint: E, request: URLRequest) async throws -> E.Response {
+            switch await load(request, path: endpoint.path) {
             case let .failed(error, ms):
                 if error is Failure {
                     await record(endpoint, status: 0, ms: ms, code: nil)
@@ -100,7 +143,7 @@ extension Backend {
 
             var request = URLRequest(url: url)
             request.httpMethod = endpoint.method.rawValue
-            request.timeoutInterval = TimeInterval(endpoint.timeout.components.seconds)
+            request.timeoutInterval = TimeInterval(min(endpoint.timeout, Self.longestTimeout).components.seconds)
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue(configuration.appVersion, forHTTPHeaderField: "X-App-Version")
             request.setValue(timeZone().identifier, forHTTPHeaderField: "X-Time-Zone")
@@ -217,6 +260,7 @@ extension Backend {
             case 400: .invalidRequest
             case 401: .unauthenticated
             case 404: .notFound
+            case 408: .timedOut
             case 426: .updateRequired
             case 429: .rateLimited(retryAfter: nil)
             case 502, 503: .upstreamUnavailable
