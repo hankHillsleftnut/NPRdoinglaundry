@@ -37,6 +37,14 @@ extension Flows {
             case inviteRequired
             /// Paused by the founder (contract 00: suspended).
             case suspended
+            /// The sign-in token was rejected (contract 00: invalid_credentials).
+            case invalidCredentials
+            /// The invite code doesn't exist (contract 00 §4: invite_invalid).
+            case inviteInvalid
+            /// The invite code was already used (contract 00 §4: invite_used).
+            case inviteUsed
+            /// The invite code has expired (contract 00 §4: invite_expired).
+            case inviteExpired
             /// The app sent something the server refused as malformed: a bug state
             /// (contract 00: invalid_request, idempotency_mismatch). Logged as a count.
             case invalid
@@ -59,7 +67,8 @@ extension Flows {
             switch kind {
             case .network, .server, .rateLimited, .unknown:
                 true
-            case .notFound, .spendLimited, .updateRequired, .signedOut, .inviteRequired, .suspended, .invalid:
+            case .notFound, .spendLimited, .updateRequired, .signedOut, .inviteRequired, .suspended, .invalid, .invalidCredentials,
+                 .inviteInvalid, .inviteUsed, .inviteExpired:
                 false
             }
         }
@@ -80,6 +89,10 @@ extension Flows {
         static let inviteRequired = Self(.inviteRequired)
         static let suspended = Self(.suspended)
         static let invalid = Self(.invalid)
+        static let invalidCredentials = Self(.invalidCredentials)
+        static let inviteInvalid = Self(.inviteInvalid)
+        static let inviteUsed = Self(.inviteUsed)
+        static let inviteExpired = Self(.inviteExpired)
         static let unknown = Self(.unknown)
 
         static func rateLimited(retryAfterSeconds: Int?) -> Self {

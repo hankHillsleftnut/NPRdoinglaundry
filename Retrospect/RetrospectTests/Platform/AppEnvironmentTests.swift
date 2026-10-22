@@ -21,6 +21,22 @@ struct AppEnvironmentTests {
         #expect(environment.updateRequired == false)
     }
 
+    @Test("live() uses the production configuration")
+    func liveUsesTheProductionConfiguration() {
+        let configuration = Platform.AppEnvironment.live().configuration
+
+        #expect(configuration.environment == .production)
+        #expect(configuration.baseURL.absoluteString == "https://retrospect-api.onrender.com")
+    }
+
+    @Test("the preview environment points at local staging and reads no bundle")
+    func thePreviewEnvironmentPointsAtLocalStaging() {
+        let configuration = Platform.AppEnvironment.preview().configuration
+
+        #expect(configuration.environment == .local)
+        #expect(configuration.appVersion == "0 (0)")
+    }
+
     @Test("each preview environment is its own, so tests never share state")
     func eachPreviewEnvironmentIsItsOwn() throws {
         let first = Platform.AppEnvironment.preview()
