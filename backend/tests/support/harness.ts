@@ -71,7 +71,6 @@ export async function startHarness(opts: {
   diagnostics?: AppDeps['diagnostics'];
   access?: AppDeps['access']; invites?: AppDeps['invites']; entries?: AppDeps['entries'];
   startIngest?: AppDeps['startIngest'];
-  access?: AppDeps['access']; invites?: AppDeps['invites'];
   versions?: AppDeps['versions'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
