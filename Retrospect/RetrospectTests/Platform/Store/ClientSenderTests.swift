@@ -86,6 +86,52 @@ struct ClientSenderTests {
         #expect(result == Store.OutboxSendResult())
     }
 
+    @Test("a queued report goes to POST /v2/diagnostics with its id as the key, the stored bytes as the body, and its reference comes back")
+    func aReportGoesToItsDoor() async throws {
+        defer { StubProtocol.clear(session) }
+        let report = try JSONDecoder.contract.decode(Platform.Diagnostics.Report.self, from: Fixtures.data("00", "diagnostics.request"))
+        let payload = try Backend.Coding.encoder.encode(report)
+        let row = Store.OutboxRow(
+            id: report.reportId, operation: .diagnosticsSend, entityID: report.reportId, payload: payload, attempts: 0,
+            nextAttemptAt: Date(timeIntervalSince1970: 1_792_569_604), status: .inFlight, lastErrorCode: nil,
+            createdAt: Date(timeIntervalSince1970: 1_792_569_604)
+        )
+        StubProtocol.register(on: session) { request in
+            try (HTTPURLResponse.stub(request, status: 200), Fixtures.data("00", "diagnostics.response"))
+        }
+
+        let result = try await sender().send(row)
+
+        let request = try #require(StubProtocol.requests(on: session).first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/v2/diagnostics")
+        #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == report.reportId)
+        #expect(request.httpBody == payload)
+        #expect(result.reference == "r-7KQ2")
+        #expect(result.serverID == nil)
+    }
+
+    @Test("a stored report that no longer decodes, or whose id isn't its row's, is refused without a request")
+    func aBrokenReportIsNotSent() async throws {
+        defer { StubProtocol.clear(session) }
+        let report = try JSONDecoder.contract.decode(Platform.Diagnostics.Report.self, from: Fixtures.data("00", "diagnostics.request"))
+        let at = Date(timeIntervalSince1970: 1_792_569_604)
+        let garbled = Store.OutboxRow(
+            id: report.reportId, operation: .diagnosticsSend, entityID: report.reportId, payload: Data("{}".utf8), attempts: 0,
+            nextAttemptAt: at, status: .inFlight, lastErrorCode: nil, createdAt: at
+        )
+        let mismatched = try Store.OutboxRow(
+            id: "00000000-0000-4000-8000-000000000555", operation: .diagnosticsSend, entityID: report.reportId,
+            payload: Backend.Coding.encoder.encode(report), attempts: 0, nextAttemptAt: at, status: .inFlight, lastErrorCode: nil, createdAt: at
+        )
+
+        for row in [garbled, mismatched] {
+            await #expect(throws: Backend.Failure.self) { try await sender().send(row) }
+        }
+
+        #expect(StubProtocol.requests(on: session).isEmpty)
+    }
+
     @Test("a door's refusal comes back as the backend failure, for the drainer to settle")
     func aRefusalComesBackAsTheFailure() async throws {
         defer { StubProtocol.clear(session) }

@@ -378,6 +378,7 @@ extension Platform.Log {
             switch operation {
             case .entryCreate: "entry.create"
             case .guessAnswer: "guess.answer"
+            case .diagnosticsSend: "diagnostics.send"
             case .unknown: "unknown operation"
             }
         }

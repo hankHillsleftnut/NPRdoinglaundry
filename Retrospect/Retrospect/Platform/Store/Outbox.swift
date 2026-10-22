@@ -53,20 +53,21 @@ extension Store {
         let database: LocalDatabase
         private let sender: (any OutboxSending)?
         private let reachability: (any Backend.Reachability)?
-        private let now: @Sendable () -> Date
+        let now: @Sendable () -> Date
         private let timeZone: @Sendable () -> TimeZone
         private let jitter: @Sendable (Duration) -> Duration
         /// Chooses an acknowledgement line: an index below its argument.
         private let pick: @Sendable (Int) -> Int
-        private let log: any Platform.LogSink
+        let log: any Platform.LogSink
         /// Sleeps until a retry is due; replaceable so tests don't wait.
         private let sleep: @Sendable (TimeInterval) async throws -> Void
         private var retryWake: Task<Void, Never>?
         private var isDraining = false
         private var needsAnotherPass = false
-        private var started = false
+        var started = false
         fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
+        var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
         /// tests); `drain` does nothing.
@@ -147,12 +148,14 @@ extension Store {
             return key
         }
 
-        /// Items not yet sent: pending, in flight or refused. Feeds sign-out's
-        /// "you have unsent entries" (PL1.5).
+        /// Entries and answers not yet sent: pending, in flight or refused (a
+        /// report isn't the person's words, so it isn't counted). Feeds
+        /// sign-out's "you have unsent entries" (PL1.5).
         func unsentCount() throws -> Int {
             try database.writer.read { db in
                 try Store.OutboxRow
                     .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
+                    .filter(Column(OutboxRow.CodingKeys.operation) != OutboxOperation.diagnosticsSend.rawValue)
                     .fetchCount(db)
             }
         }
@@ -272,6 +275,9 @@ extension Store {
                     let result = try await sender.send(item)
                     try markDone(item, result: result)
                     tally.sent += 1
+                    if item.operation == .diagnosticsSend, let reference = result.reference {
+                        publish(ReportReceipt(reportID: item.id, reference: reference))
+                    }
                     log.record(.outbox(.sent(operation: item.operation, attempts: item.attempts + 1, ms: Self.milliseconds(since: startedAt, now: now()))))
                 } catch is CancellationError {
                     try? markPending(item, at: now())
@@ -416,6 +422,10 @@ extension Store {
             let pick = pick
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .done, nextAttemptAt: item.nextAttemptAt, attempts: item.attempts + 1, code: nil), db)
+                if item.operation == .diagnosticsSend {
+                    // Delivered: the report's bytes aren't kept (the rings they came from are the device's own).
+                    try db.execute(sql: "UPDATE outbox SET payload = ? WHERE id = ?", arguments: [Data(), item.id])
+                }
                 guard item.operation == .entryCreate else { return }
                 let previous = try String.fetchOne(
                     db, sql: "SELECT acknowledgement FROM entries WHERE acknowledgement IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1"
