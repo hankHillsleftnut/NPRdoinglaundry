@@ -9,7 +9,7 @@ The backend and the brain running on this Mac against a second, free Supabase pr
 
 ## The rules
 
-- **Staging only, checked three ways.** Each staging script reads `.env.staging` itself, with its values winning over anything exported in the shell (so an exported production `DATABASE_URL` can never be used); refuses unless that file says `RETROSPECT_ENV=staging`; and refuses any database that holds a user who isn't a `dev-test-user:` test account. The services do the same: `DOTENV_CONFIG_PATH` (and, for the agent, `DOTENV_CONFIG_OVERRIDE=true`) makes the staging file win over the shell.
+- **Staging only, checked three ways.** Each staging script reads `.env.staging` itself, with its values winning over anything exported in the shell (so an exported production `DATABASE_URL` can never be used); refuses unless that file says `RETROSPECT_ENV=staging`; and refuses any database that holds a user who isn't a `dev-test-user:` test account. The services do the same: both `dev:staging` scripts set `DOTENV_CONFIG_PATH=.env.staging DOTENV_CONFIG_OVERRIDE=true` and preload `dotenv/config`, so the staging file wins over the shell before any module (Sentry included) reads the environment. The seed makes its accounts with its own staging client, never through whatever backend is listening locally.
 - **No secret leaves the env files.** Values live only in the two untracked `.env.staging` files. Never paste them into a PR, a report, a log or a chat; check them by name or by a successful connection.
 - **No model spend by default.** The model keys are placeholders, so model calls fail and nothing is spent. Real keys go in only when a test needs a real model, and that spend is logged as test spend in `cost-per-user.md`. From BEA.4 the agent also stops all model calls once staging has spent `STAGING_DAILY_CAP_USD` (default $5) in 24 hours.
 - **Invented content only.** The seeded accounts hold made-up words. Never copy a real person's entries into staging.
@@ -36,7 +36,7 @@ The backend and the brain running on this Mac against a second, free Supabase pr
 ```sh
 cd backend
 npm run staging:up            # checks both env files, starts the agent and the backend, waits for health
-npm run staging:seed          # creates the three test accounts (safe to re-run)
+npm run staging:seed          # creates the three test accounts (safe to re-run; needs no backend running)
 npm run staging:up -- stop    # stops both
 ```
 

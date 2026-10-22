@@ -78,8 +78,17 @@ stop >/dev/null
 for port in 3000 3001; do
   if lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; then echo "port $port is already in use; stop that first"; exit 1; fi
 done
-(cd "$AGENT_DIR" && nohup npm run dev:staging >"$LOG_DIR/agent.log" 2>&1 & echo $! >"$LOG_DIR/agent.pid")
-(cd "$BACKEND_DIR" && nohup npm run dev:staging >"$LOG_DIR/backend.log" 2>&1 & echo $! >"$LOG_DIR/backend.pid")
+# Background npm itself (not a subshell around it), so the recorded pid is the
+# `npm run dev:staging` process that stop checks for and kills.
+start_service() {
+  local name="$1" dir="$2"
+  cd "$dir"
+  nohup npm run dev:staging >"$LOG_DIR/$name.log" 2>&1 &
+  echo $! >"$LOG_DIR/$name.pid"
+  cd - >/dev/null
+}
+start_service agent "$AGENT_DIR"
+start_service backend "$BACKEND_DIR"
 
 wait_for() {
   local label="$1" url="$2" code="000"

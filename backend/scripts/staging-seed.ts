@@ -5,8 +5,9 @@
  *   npm run staging:seed               seed what is missing
  *   npm run staging:seed -- --reset    remove the three accounts, then seed them fresh
  *
- * Needs the backend running on local staging (`npm run dev:staging`): accounts
- * are made through its dev route, the way the app's test builds sign in.
+ * Accounts are made with this script's own staging client (the same
+ * `dev-test-user:seed-<key>` subjects the dev route reaches), so it needs no
+ * backend running; test builds then get a token from the dev route.
  * Prints account names, ids, row counts and error codes only. Staging only
  * (scripts/staging/guard.ts): reads .env.staging itself, over the shell, and
  * refuses a database with any user who isn't a test account.
@@ -15,6 +16,8 @@ import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { assertStaging, loadStagingEnv, requireVar } from './staging/guard.js';
 import { TEST_SUBJECT_PREFIX } from './staging/migrations.js';
+import { ensureSeedAccount } from './staging/seed-accounts.js';
+import type { UsersClient } from '../src/services/users.js';
 import { seedAll, SEED_MODEL_VERSION, type AccountKey, type Row, type SeedPorts, type SeedTable } from './staging/seed.js';
 
 const MARKED_BY_METADATA: ReadonlySet<SeedTable> = new Set<SeedTable>(['raw_content', 'podcast_episodes']);
@@ -29,21 +32,11 @@ function ports(env: NodeJS.ProcessEnv): SeedPorts {
   const db = createClient(requireVar(env, 'SUPABASE_URL'), requireVar(env, 'SUPABASE_SERVICE_KEY'), {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const backend = env.STAGING_BACKEND_URL ?? `http://localhost:${env.PORT ?? '3000'}`;
 
   return {
-    async ensureAccount(key: AccountKey) {
-      const res = await fetch(`${backend}/auth/dev/test-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-      });
-      if (!res.ok) throw new Error(`the dev route answered ${res.status}; is the backend running with npm run dev:staging?`);
-      const body = (await res.json()) as { data?: { user?: { id?: string } } };
-      const id = body.data?.user?.id;
-      if (!id) throw new Error('the dev route returned no user id');
-      return id;
-    },
+    // Made with this script's own staging client, never through whatever
+    // backend is listening locally (it could be configured for production).
+    ensureAccount: (key: AccountKey) => ensureSeedAccount(db as unknown as UsersClient, key),
     async seededIds(table, userId) {
       const marker = MARKED_BY_METADATA.has(table)
         ? db.from(table).select('id').eq('user_id', userId).eq('metadata->>test_account', 'true')
@@ -64,8 +57,9 @@ function ports(env: NodeJS.ProcessEnv): SeedPorts {
       return (count ?? 0) > 0;
     },
     async nonTestUserCount() {
+      // A row with no Apple subject isn't a test account either.
       const { count, error } = await db.from('users').select('id', { count: 'exact', head: true })
-        .not('apple_user_id', 'like', `${TEST_SUBJECT_PREFIX}%`);
+        .or(`apple_user_id.is.null,apple_user_id.not.like.${TEST_SUBJECT_PREFIX}*`);
       if (error) throw new Error(`reading users failed (${error.code})`);
       return count ?? 0;
     },
