@@ -4,6 +4,9 @@ What changed, in plain words, newest first. Every merged PR that changes what th
 
 ## 22 Oct 2026 · morning (new integrator)
 
+- **Sign in with Apple** on the new server: Apple's token is checked (our app, Apple's keys, a one-time code), your name and email are kept only from the first sign-in, and only what Apple vouches for (#109). A test of the real check found that some forged tokens caused a server error instead of a refusal; fixed before merge.
+- Database migrations refuse any connection setting that could switch off certificate checks (brain #134).
+- The top bar, with its title that shrinks as you scroll (#83). The design lab lists its pages in one place (#105).
 - **Signing in, part two:** the app can refresh its sign-in and sign out. A retry after a dropped connection gets the same new sign-in, so nobody is signed out by a bad signal; a stolen copy used later ends that device's session (#108).
 - **The brain:**
   - "that's not right" now saves in one step or not at all; before, it could half-apply in production (#132);

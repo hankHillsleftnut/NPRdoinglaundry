@@ -1,5 +1,7 @@
 # Before you push: what reviewers caught today, so you catch it first
 
+> **Prototype mode until Beta 1 ships** (founder, 22 Oct): `docs/team/prototype-mode.md` overrides this file where they differ — a fresh reviewer only on risky PRs (sign-in, sessions, store, outbox, doors, brain queries, diagnostics, migrations); one PR per whole component, page or route; exact Paper matching only for P09–P12, their visible components, the invite ticket and M14; nits go to `docs/team/polish-list.md`.
+
 Every PR gets three reviews (an automated pass, a fresh reviewer and the integrator). Each fix round costs about an hour. Check these yourself before the first push.
 
 **Every PR**
