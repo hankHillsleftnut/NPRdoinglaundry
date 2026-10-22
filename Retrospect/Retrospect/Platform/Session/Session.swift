@@ -104,6 +104,8 @@ extension Session {
         /// The pair in memory is newer than the one on disk: save again later.
         private var pendingSave = false
         private var signingOut = false
+        /// False after a mirror write failed: the old client's token is stale.
+        private var mirrorInSync = true
 
         init(
             store: Store,
@@ -293,8 +295,13 @@ extension Session {
                 outcome = .signedOut
             } else {
                 do {
-                    _ = try await refresh()
-                    outcome = .refreshed
+                    let fresh = try await refresh()
+                    // A retry with a stale mirrored token would 401 again and sign a
+                    // good session out: the old client retries only when the mirror holds it.
+                    if !mirrorInSync {
+                        write(mirrorFor: fresh)
+                    }
+                    outcome = mirrorInSync ? .refreshed : .unavailable
                 } catch let failure as Backend.Failure where failure.kind == .sessionRevoked {
                     outcome = .signedOut
                 } catch {
@@ -328,9 +335,15 @@ extension Session {
             starting = nil
         }
 
-        /// The stored session, or why it can't be read yet.
+        /// The stored session, or why it can't be read yet. A sign-out whose
+        /// delete failed is finished here first: the item is never adopted
+        /// while the sign-out mark stands.
         private func read() async {
             do {
+                if await store.isSessionEnded {
+                    try await store.clearCredentials()
+                    await store.clearSessionEnded()
+                }
                 let stored = try await store.credentials()
                 hasSignedInBefore = try await store.hasSignedInBefore
                 credentials = stored
@@ -448,9 +461,12 @@ extension Session {
         private func write(mirrorFor credentials: Credentials) {
             do {
                 try mirror.write(accessToken: credentials.accessToken, userID: credentials.userID, appleUserID: credentials.appleUserID)
+                mirrorInSync = true
             } catch let error as KeychainError {
+                mirrorInSync = false
                 log.record(.keychainWriteFailed(.mirror, status: error.status))
             } catch {
+                mirrorInSync = false
                 log.record(.keychainWriteFailed(.mirror, status: errSecInternalError))
             }
         }
@@ -471,8 +487,10 @@ extension Session {
             credentials = nil
             pendingSave = false
             receivedAt = nil
+            await store.markSessionEnded()
             do {
                 try await store.clearCredentials()
+                await store.clearSessionEnded()
             } catch let error as KeychainError {
                 log.record(.keychainWriteFailed(.sessionClear, status: error.status))
             } catch {

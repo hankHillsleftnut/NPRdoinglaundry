@@ -99,11 +99,24 @@ extension Session {
         func complete(_ result: Result<ASAuthorization, any Error>) async throws -> SignInOutcome {
             switch result {
             case let .success(authorization):
-                return try await signIn(with: Self.credential(from: authorization.credential))
+                return try await complete(credential: authorization.credential)
             case let .failure(error):
                 pending = nil
                 throw Self.signInError(for: error)
             }
+        }
+
+        /// The success half of `complete`, from the credential Apple returned.
+        /// An unreadable credential uses the nonce up like every other exit.
+        func complete(credential: any ASAuthorizationCredential) async throws -> SignInOutcome {
+            let read: AppleCredential
+            do {
+                read = try Self.credential(from: credential)
+            } catch {
+                pending = nil
+                throw error
+            }
+            return try await signIn(with: read)
         }
 
         /// The sign-in itself, from a credential already read out of Apple's
@@ -175,28 +188,37 @@ extension Session {
         static let timeout: Duration = .seconds(3)
 
         static let live: @Sendable (String) async -> AppleCredentialState = { appleUserID in
-            await withTaskGroup(of: AppleCredentialState.self) { group in
-                group.addTask { await ask(appleUserID) }
-                group.addTask {
-                    try? await Task.sleep(for: timeout)
-                    return .unknown
+            await first(timeout: timeout) { answer in
+                ASAuthorizationAppleIDProvider().getCredentialState(forUserID: appleUserID) { state, error in
+                    guard error == nil else { return answer(.unknown) }
+                    switch state {
+                    case .authorized, .transferred: answer(.authorized)
+                    case .revoked, .notFound: answer(.revoked)
+                    @unknown default: answer(.unknown)
+                    }
                 }
-                let first = await group.next() ?? .unknown
-                group.cancelAll()
-                return first
             }
         }
 
-        private static func ask(_ appleUserID: String) async -> AppleCredentialState {
+        /// Whichever comes first: `ask`'s answer or the timer (`.unknown`).
+        /// One continuation, resumed exactly once; a late answer is dropped.
+        static func first(
+            timeout: Duration,
+            ask: @escaping @Sendable (@escaping @Sendable (AppleCredentialState) -> Void) -> Void
+        ) async -> AppleCredentialState {
             await withCheckedContinuation { continuation in
-                ASAuthorizationAppleIDProvider().getCredentialState(forUserID: appleUserID) { state, error in
-                    guard error == nil else { return continuation.resume(returning: .unknown) }
-                    switch state {
-                    case .authorized, .transferred: continuation.resume(returning: .authorized)
-                    case .revoked, .notFound: continuation.resume(returning: .revoked)
-                    @unknown default: continuation.resume(returning: .unknown)
+                let resumed = Platform.Box(false)
+                let answer: @Sendable (AppleCredentialState) -> Void = { state in
+                    let first = resumed.exchange(true) == false
+                    if first {
+                        continuation.resume(returning: state)
                     }
                 }
+                Task {
+                    try? await Task.sleep(for: timeout)
+                    answer(.unknown)
+                }
+                ask(answer)
             }
         }
     }

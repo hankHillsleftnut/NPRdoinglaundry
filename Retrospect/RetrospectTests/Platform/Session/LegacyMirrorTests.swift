@@ -59,6 +59,19 @@ struct LegacyMirrorTests {
         #expect(published.value.last == .some(nil))
     }
 
+    @Test("a clear that fails on one item still removes the others, publishes signed out, then reports the failure")
+    func aFailedClearStillRemovesTheOthers() async throws {
+        try mirror().write(accessToken: "t", userID: "u", appleUserID: "a")
+        await settle()
+        keychain.failCall(1, with: errSecIO) // the first delete (jwt_token) fails
+
+        #expect(throws: Session.KeychainError(status: errSecIO)) { try mirror().clear() }
+        await settle()
+
+        #expect(keychain.contents.keys.sorted() == ["jwt_token"], "the other two are gone")
+        #expect(published.value.last == .some(nil))
+    }
+
     @Test("a Keychain failure surfaces its status and publishes nothing")
     func aFailureSurfacesItsStatus() async {
         keychain.failEveryCall(with: errSecIO)

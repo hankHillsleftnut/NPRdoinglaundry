@@ -42,11 +42,22 @@ extension Session {
             publish(userID)
         }
 
+        /// Removes every item it can, tells the old client, then reports the
+        /// first failure: one stuck item never leaves the others or the old
+        /// client's state signed in.
         func clear() throws {
+            var firstError: (any Error)?
             for account in Account.allCases {
-                try keychain.delete(account.rawValue)
+                do {
+                    try keychain.delete(account.rawValue)
+                } catch {
+                    firstError = firstError ?? error
+                }
             }
             publish(nil)
+            if let firstError {
+                throw firstError
+            }
         }
 
         private func publish(_ userID: String?) {

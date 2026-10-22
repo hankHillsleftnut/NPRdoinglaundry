@@ -5,6 +5,7 @@ import type { AccessState } from '../access/store.js';
 import type { AgentCallOptions, AgentDoorClient } from './agent.js';
 import { DoorError, fromAgentError, sendError, type DoorErrorCode } from './errors.js';
 import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
+import { checkAppVersion, minBuildOf, type AppVersions } from './versions.js';
 
 /**
  * A door: one authenticated `/v2` route that safely exposes one brain
@@ -14,6 +15,9 @@ import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
  *
  *   1. the user comes from the token (`req.user`, set by the auth middleware),
  *      never from the client;
+ *   1a. the version floor (BE0.10): a build below MIN_APP_VERSION is told to
+ *      update (`update_required`, 426) whatever it asked for; a request with
+ *      no usable X-App-Version passes until REQUIRE_APP_VERSION is on;
  *   2. the invite gate: a suspended person is refused everywhere
  *      (`suspended`), a waitlisted one everywhere but the doors marked
  *      `openToWaitlisted` (`invite_required`), contract 00 §4;
@@ -73,6 +77,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
 export interface DoorKitDeps {
   agent: AgentDoorClient;
   limiter: Limiter;
+  /** The version floor every door enforces (BE0.10). */
+  versions: Pick<AppVersions, 'minVersion' | 'requireVersion'>;
   log: { door(line: DoorLogLine): void };
   now: () => number;
   /**
@@ -100,6 +106,8 @@ function requestInput(req: Request): unknown {
 }
 
 export function createDoorKit(deps: DoorKitDeps) {
+  // Read once: a server with an unreadable floor fails here, at start, not per request.
+  const minBuild = minBuildOf(deps.versions);
   return function door<Req, AgentRes, Res>(spec: DoorSpec<Req, AgentRes, Res>): RequestHandler {
     return (req: Request, res: Response) => {
       const started = deps.now();
@@ -148,6 +156,7 @@ export function createDoorKit(deps: DoorKitDeps) {
 
       const run = async () => {
         if (!userId) throw new DoorError('unauthenticated');
+        if (checkAppVersion(appVersion, minBuild, deps.versions.requireVersion) === 'update_required') throw new DoorError('update_required');
         // The gate. No access state means migration 007 isn't applied yet: everyone was a member then.
         const access = req.user?.access;
         if (access === 'suspended') throw new DoorError('suspended');

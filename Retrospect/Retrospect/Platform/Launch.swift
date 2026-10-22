@@ -15,6 +15,15 @@ extension Platform {
             get { lock.withLock { stored } }
             set { lock.withLock { stored = newValue } }
         }
+
+        /// Sets the value and returns what it was, in one step.
+        func exchange(_ newValue: Value) -> Value {
+            lock.withLock {
+                let old = stored
+                stored = newValue
+                return old
+            }
+        }
     }
 
     /// What this launch did before the app started, read once by the
