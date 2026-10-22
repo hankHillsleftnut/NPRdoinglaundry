@@ -10,6 +10,7 @@ import { startDiagnosticsPurge } from './diagnostics/purge.js';
 import { captureException } from './services/telemetry.js';
 import { supabaseAccessStore, type AccessRpcClient } from './access/store.js';
 import { supabaseInviteStore } from './invites/store.js';
+import { supabaseEntryStore } from './entries/store.js';
 import { supabaseAdmin } from './utils/supabase.js';
 
 const diagnostics = createDiagnosticsStore(supabaseDiagnosticsBackend(supabaseAdmin));
@@ -23,6 +24,7 @@ const app = createApp({
   diagnostics,
   access: supabaseAccessStore(rpc),
   invites: supabaseInviteStore(rpc),
+  entries: supabaseEntryStore(rpc),
 });
 
 console.log('Legacy backend crons are disabled. Agent crons own ingestion and podcasts.');

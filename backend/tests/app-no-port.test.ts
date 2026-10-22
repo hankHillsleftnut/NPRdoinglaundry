@@ -15,7 +15,7 @@ test('importing the app opens no port', async () => {
   } as typeof original;
   try {
     const { createApp } = await import('../src/app.js');
-    createApp({ agent: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never, access: {} as never, invites: {} as never });
+    createApp({ agent: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never, access: {} as never, invites: {} as never, entries: {} as never });
     assert.equal(listened, 0);
   } finally {
     net.Server.prototype.listen = original;

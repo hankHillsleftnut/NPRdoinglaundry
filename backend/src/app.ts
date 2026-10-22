@@ -27,6 +27,8 @@ import { createV2Router, MAX_REPORT_BYTES, type V2RouterDeps } from './doors/rou
 import type { DiagnosticsStore } from './diagnostics/store.js';
 import type { AccessStore } from './access/store.js';
 import type { InviteStore } from './invites/store.js';
+import type { EntryStore } from './entries/store.js';
+import { handOffToAgent } from './services/agent-handoff.js';
 import { createPublicInviteRouter } from './invites/public.js';
 import { supabaseBriefStore, type BriefDbClient, type BriefStore } from './briefs/store.js';
 import { supabaseSignAudio, type SignAudio } from './briefs/audio.js';
@@ -69,6 +71,10 @@ export interface AppDeps {
   briefs?: BriefStore;
   /** Signs a link to a brief's audio (BE1.3b); Supabase Storage by default, tests pass a fake. */
   signAudio?: SignAudio;
+  /** Journal entries (BE1.1): migration 022's functions; tests pass PGlite. */
+  entries: EntryStore;
+  /** Starts the brain's read of a stored entry after the response; the agent's /ingest/run by default (tests record calls). */
+  startIngest?: (userId: string, rawContentId: string) => void;
   /** The version floor, the newest version and the environment (BE0.10); from config by default. */
   versions?: AppVersions;
 }
@@ -192,6 +198,20 @@ export function createApp(deps: AppDeps): express.Express {
       briefs: deps.briefs ?? supabaseBriefStore(supabaseAdmin as unknown as BriefDbClient),
       signAudio: deps.signAudio ?? supabaseSignAudio(supabaseAdmin),
       runTimeUtc: config.briefs.runTimeUtc,
+    entries: {
+      entries: deps.entries,
+      // Same hand-off as /content (the agent's /ingest/run, one row), through the
+      // door's agent client: after the response, and never able to write the
+      // row's status (agent-handoff.ts). No retry here: a row the agent didn't
+      // hear about stays pending for its next sweep.
+      startIngest: deps.startIngest ?? ((userId, rawContentId) => {
+        setImmediate(() => {
+          void handOffToAgent(
+            (args) => deps.agent.post('/ingest/run', { userId: args.userId, rawContentIds: args.rawContentIds, daysBack: 1, notes: 'Triggered by retrospect-api POST /v2/entries' }, { timeoutMs: 10_000, retry: 'none' }),
+            { userId, rawContentIds: [rawContentId] },
+          );
+        });
+      }),
     },
   }));
   app.use('/v2', v2ErrorHandler);
