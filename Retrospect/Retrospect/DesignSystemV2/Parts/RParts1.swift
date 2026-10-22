@@ -48,9 +48,11 @@ struct RIconWell: View {
     var tint: Color = RColor.iconDefault
     /// surface.wash, or status.dangerSubtle for a danger row (part 26).
     var fill: Color = RColor.surfaceWash
+    /// The glyph's share of its 20 frame (RSymbol). Some boards draw it at 18 (evidence rows).
+    var glyphScale: CGFloat = 0.82 // literal-ok: RSymbol's default glyph scale
 
     var body: some View {
-        RSymbol(name: symbol, tint: tint)
+        RSymbol(name: symbol, tint: tint, glyphScale: glyphScale)
             .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
             .background(fill, in: RShape.rect(RDimension.radiusDefault))
     }

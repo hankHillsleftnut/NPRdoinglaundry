@@ -184,7 +184,8 @@ struct RSettingsRow: View {
 }
 
 /// Pressed: surface.subtle at once, back over 240ms; Reduce Motion: no fade (part 22).
-private struct RSettingsRowStyle: ButtonStyle {
+/// Shared by every list row (settings, evidence) so all lists press the same way.
+struct RSettingsRowStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
