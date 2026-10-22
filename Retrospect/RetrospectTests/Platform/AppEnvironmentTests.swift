@@ -93,7 +93,7 @@ struct AppEnvironmentTests {
         let first = Platform.AppEnvironment.preview()
         let second = Platform.AppEnvironment.preview()
         first.log.record(.refreshed)
-        first.updateRequired = true
+        first.floor.serverRequiresUpdate()
 
         let secondLog = try #require(second.log as? Platform.Log.Recorder)
         #expect(secondLog.events.isEmpty)

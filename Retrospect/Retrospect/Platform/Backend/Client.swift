@@ -29,6 +29,8 @@ extension Backend {
         private let log: any Platform.LogSink
         private let timeZone: @Sendable () -> TimeZone
         private let languages: @Sendable () -> [String]
+        /// Called on every `update_required` answer (PL1.6's version floor).
+        private let onUpdateRequired: @Sendable () -> Void
 
         init(
             configuration: Configuration,
@@ -39,7 +41,8 @@ extension Backend {
             jitter: @escaping @Sendable (Duration) -> Duration = Client.randomJitter,
             log: any Platform.LogSink,
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
-            languages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages }
+            languages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
+            onUpdateRequired: @escaping @Sendable () -> Void = {}
         ) {
             self.configuration = configuration
             self.session = session
@@ -50,6 +53,7 @@ extension Backend {
             self.log = log
             self.timeZone = timeZone
             self.languages = languages
+            self.onUpdateRequired = onUpdateRequired
         }
 
         /// Its own ephemeral session: no shared cookies or cache, no waiting for
@@ -232,9 +236,17 @@ extension Backend {
                 if case .unknown = failure.kind {
                     log.record(.unknownErrorCode(path: path))
                 }
-                throw failure
+                throw noting(failure)
             }
-            throw Failure((200 ..< 300).contains(status) ? .decoding : Self.kind(status: status))
+            throw noting(Failure((200 ..< 300).contains(status) ? .decoding : Self.kind(status: status)))
+        }
+
+        /// A 426 reaches the version floor before it reaches the caller.
+        private func noting(_ failure: Failure) -> Failure {
+            if failure.kind == .updateRequired {
+                onUpdateRequired()
+            }
+            return failure
         }
 
         /// A failure for an error status whose body isn't the contract's. Only

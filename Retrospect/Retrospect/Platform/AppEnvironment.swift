@@ -28,9 +28,13 @@ extension Platform {
         let reachability: any Backend.Reachability
         /// The invite: a pending code, its check after sign-in, the tear (PL1.7).
         let invites: Session.InviteCenter
+        /// The version floor (PL1.6): whether this build must update.
+        let floor: Platform.VersionFloor
 
-        /// Set when the backend says this version is too old (PL1.6).
-        var updateRequired = false
+        /// True once the backend has said this version is too old (PL1.6); never false again.
+        var updateRequired: Bool {
+            floor.updateRequired
+        }
 
         init(
             launch: Platform.LaunchOptions = .standard,
@@ -39,7 +43,8 @@ extension Platform {
             session: Session.Manager,
             client: Backend.Client,
             reachability: any Backend.Reachability,
-            invites: Session.InviteCenter
+            invites: Session.InviteCenter,
+            floor: Platform.VersionFloor
         ) {
             self.launch = launch
             self.configuration = configuration
@@ -48,6 +53,7 @@ extension Platform {
             self.client = client
             self.reachability = reachability
             self.invites = invites
+            self.floor = floor
         }
 
         /// The app's environment, set by this launch's options (always live
@@ -77,7 +83,11 @@ extension Platform {
                 clearGate: { Bridges.clearSignInGate() },
                 appleCredentialState: Session.AppleRevocationCheck.live
             )
-            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            let client = Backend.Client(
+                configuration: configuration, tokens: session, reachability: reachability, log: log,
+                onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
+            )
             session.connect(client)
             Bridges.refreshLegacy = { await session.refreshForLegacy() }
             Bridges.legacySignedOut = { _ = await session.signOut(force: true) }
@@ -85,7 +95,7 @@ extension Platform {
             invites.start()
             return AppEnvironment(
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
-                invites: invites
+                invites: invites, floor: floor
             )
         }
 
@@ -106,11 +116,16 @@ extension Platform {
                 appleCredentialState: { _ in .unknown }
             )
             let reachability = Backend.PathReachability(monitor: nil)
-            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            let client = Backend.Client(
+                configuration: configuration, tokens: session, reachability: reachability, log: log,
+                onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
+            )
             session.connect(client)
             let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
             return AppEnvironment(
-                configuration: configuration, log: log, session: session, client: client, reachability: reachability, invites: invites
+                configuration: configuration, log: log, session: session, client: client, reachability: reachability, invites: invites,
+                floor: floor
             )
         }
 
@@ -123,6 +138,7 @@ extension Platform {
         /// check, reads, checks Apple, saves what it couldn't, and renews.
         func becameActive() {
             Task {
+                await floor.checkIfDue(using: client)
                 await session.becameActive()
                 await invites.retryIfWaiting()
             }
