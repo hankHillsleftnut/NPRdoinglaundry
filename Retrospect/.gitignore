@@ -33,6 +33,16 @@ Package.resolved
 Pods/
 *.xcworkspace
 
+# The app's one lockfile is committed (PL0.4). Git can't re-include a file
+# whose parent folder is ignored, so each level is opened, then re-ignored.
+!Retrospect.xcodeproj/project.xcworkspace/
+Retrospect.xcodeproj/project.xcworkspace/*
+!Retrospect.xcodeproj/project.xcworkspace/xcshareddata/
+Retrospect.xcodeproj/project.xcworkspace/xcshareddata/*
+!Retrospect.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+Retrospect.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!Retrospect.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
 # Carthage
 Carthage/Build/
 
