@@ -32,7 +32,10 @@ extension Backend {
         var body: Body? { get }
         /// False only for the contract's public doors.
         var requiresAuth: Bool { get }
+        /// How long one send may take. The client caps it at `Backend.Client.longestTimeout`.
         var timeout: Duration { get }
+        /// When to send again (defaults by method and key: `RetryPolicy.default`).
+        var retry: Backend.RetryPolicy { get }
         /// Set on every write the contract marks idempotent: the entity's own id.
         var idempotencyKey: UUID? { get }
     }
@@ -60,6 +63,10 @@ extension Backend.Endpoint {
 
     var idempotencyKey: UUID? {
         nil
+    }
+
+    var retry: Backend.RetryPolicy {
+        .default(for: method, hasIdempotencyKey: idempotencyKey != nil)
     }
 }
 
