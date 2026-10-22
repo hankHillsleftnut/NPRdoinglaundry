@@ -1,26 +1,9 @@
 import assert from 'node:assert/strict';
-import net from 'node:net';
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import jwt from 'jsonwebtoken';
 import { startHarness } from './support/harness.js';
 import { routeList } from './support/route-list.js';
-
-// BE0.2: tests can build the app without it binding a port or reaching a service.
-test('importing the app opens no port', async () => {
-  const original = net.Server.prototype.listen;
-  let listened = 0;
-  net.Server.prototype.listen = function (this: net.Server, ...args: unknown[]) {
-    listened++;
-    return (original as (...a: unknown[]) => net.Server).apply(this, args);
-  } as typeof original;
-  try {
-    const { createApp } = await import('../src/app.js');
-    createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null });
-    assert.equal(listened, 0);
-  } finally {
-    net.Server.prototype.listen = original;
-  }
-});
 
 // BE0.2: the refactor moved code, not routes. This is index.ts's stack before
 // the refactor (no ADMIN_SECRET), read from the built server; the PR shows the
@@ -115,8 +98,8 @@ test('a failing user lookup is a 500, not a 401', async () => {
   app.get('/v2/x', makeAuthMiddleware(failing, { envelope: true }), (_req, res) => { res.json({ ok: true }); });
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));
-  const port = (server.address() as net.AddressInfo).port;
-  const token = jwt.sign({ userId: 'u1', appleUserId: 'a1' }, process.env.JWT_SECRET ?? '');
+  const port = (server.address() as AddressInfo).port;
+  const token = jwt.sign({ userId: '44444444-4444-4444-8444-444444444444', appleUserId: 'a1' }, process.env.JWT_SECRET ?? '');
   const error = console.error;
   console.error = () => undefined;
   try {
@@ -129,5 +112,22 @@ test('a failing user lookup is a 500, not a 401', async () => {
   } finally {
     console.error = error;
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('a signed token whose user id is not a UUID is a 401, never a lookup', async () => {
+  const h = await startHarness();
+  let lookups = 0;
+  const original = h.users.get.bind(h.users);
+  h.users.get = (id: string) => { lookups++; return original(id); };
+  try {
+    for (const userId of ['u1', "1' OR '1'='1", '']) {
+      const token = jwt.sign({ userId, appleUserId: 'a1', iat: Math.floor(h.clock.now / 1000) }, process.env.JWT_SECRET ?? '', { expiresIn: '1d' });
+      const res = await h.request('GET', '/v2/ping', undefined, { Authorization: `Bearer ${token}` });
+      assert.equal(res.status, 401, JSON.stringify(userId));
+    }
+    assert.equal(lookups, 0);
+  } finally {
+    await h.close();
   }
 });

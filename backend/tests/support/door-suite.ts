@@ -32,6 +32,8 @@ export interface DoorSuiteSpec {
   otherUsersThing?: (h: Harness, otherUserId: string) => Promise<string> | string;
   /** The agent route the door calls, and a reply that makes it succeed. */
   agent?: { route: string; ok: () => AgentReply };
+  /** When the path names a thing owned by one user: the path to the same kind of thing owned by `userId`. */
+  pathFor?: (userId: string) => string;
   /** What the happy path's `data` must equal (the contract fixture). */
   expect: (userId: string) => unknown;
   setup?: (h: Harness, userId: string) => Promise<void> | void;
@@ -56,6 +58,9 @@ async function withHarness(spec: DoorSuiteSpec, fn: (h: Harness, auth: Record<st
   }
 }
 
+/** The door's own path for the second user: the same path unless it names the first user's thing. */
+const otherUsersOwnPath = (spec: DoorSuiteSpec) => spec.pathFor?.(OTHER) ?? spec.path;
+
 const code = (body: unknown) => (body as { error?: { code?: string } }).error?.code;
 
 export function doorSuite(spec: DoorSuiteSpec): void {
@@ -70,6 +75,15 @@ export function doorSuite(spec: DoorSuiteSpec): void {
     const bad = await send(h, { Authorization: 'Bearer not-a-token' });
     assert.equal(bad.status, 401);
     assert.equal(code(bad.body), 'unauthenticated');
+    assert.equal(h.agentCalls.length, 0, 'the agent is never reached');
+  }));
+
+  test(`${name}: an expired token is a 401`, () => withHarness(spec, async (h, auth) => {
+    h.clock.now += 31 * 24 * 60 * 60 * 1000;
+    const res = await send(h, auth);
+    assert.equal(res.status, 401);
+    assert.equal(code(res.body), 'unauthenticated');
+    assert.equal(h.agentCalls.length, 0);
   }));
 
   test(`${name}: a waitlisted user is a 403`, { todo: 'the waitlist gate arrives with BE0.12' }, () => undefined);
@@ -82,6 +96,7 @@ export function doorSuite(spec: DoorSuiteSpec): void {
       const res = await send(h, auth, path);
       assert.equal(res.status, 404);
       assert.equal(code(res.body), 'not_found');
+      assert.equal(h.agentCalls.length, 0, 'refused before the agent: ownership is checked by the door, not left to the agent');
     }));
   } else {
     test(`${name}: another user's id is a 404`, { skip: 'this door names no thing by id' }, () => undefined);
@@ -92,6 +107,7 @@ export function doorSuite(spec: DoorSuiteSpec): void {
     const res = await send(h, auth, path, spec.invalid.body ?? spec.validBody);
     assert.equal(res.status, 400);
     assert.equal(code(res.body), 'invalid_request');
+    assert.equal(h.agentCalls.length, 0, 'the agent is never reached');
   }));
 
   test(`${name}: over the limit is a 429 with retryAfterSeconds`, () => withHarness(spec, async (h, auth) => {
@@ -101,6 +117,9 @@ export function doorSuite(spec: DoorSuiteSpec): void {
     assert.equal(res.status, 429);
     assert.equal(code(res.body), 'rate_limited');
     assert.ok(((res.body as { error: { retryAfterSeconds?: number } }).error.retryAfterSeconds ?? 0) > 0);
+    const other = await send(h, { Authorization: `Bearer ${h.asUser(OTHER)}` }, otherUsersOwnPath(spec));
+    assert.notEqual(other.status, 429, 'another user is not limited by this one');
+    assert.notEqual(other.status, 401, 'and was really signed in');
   }));
 
   if (spec.agent) {

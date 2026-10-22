@@ -46,7 +46,7 @@ export interface AppDeps {
  */
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
-  const legacyAuth = makeAuthMiddleware(deps.users);
+  const legacyAuth = makeAuthMiddleware(deps.users, { now: deps.now });
   const limiter = deps.limiter ?? new MemoryLimiter();
   trustRenderProxy(app);
 
@@ -104,7 +104,7 @@ export function createApp(deps: AppDeps): express.Express {
     now: deps.now,
     reportBug: (err, name) => captureException(err, { door: name }),
   });
-  app.use('/v2', makeAuthMiddleware(deps.users, { envelope: true }), (deps.v2Router ?? createV2Router)(door));
+  app.use('/v2', makeAuthMiddleware(deps.users, { envelope: true, now: deps.now }), (deps.v2Router ?? createV2Router)(door));
   app.use('/v2', v2ErrorHandler);
 
   // Error handling middleware

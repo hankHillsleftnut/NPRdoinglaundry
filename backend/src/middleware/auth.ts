@@ -51,7 +51,9 @@ const LEGACY_FAILURES: Record<AuthFailure, { status: number; error: string }> = 
  * A lookup that fails (the database is unreachable) is a 500, not a 401: a 401
  * signs the current app out, and an outage shouldn't sign everyone out.
  */
-export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean } = {}): RequestHandler {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean; now?: () => number } = {}): RequestHandler {
   const fail = (res: Response, failure: AuthFailure) => {
     if (opts.envelope) {
       sendError(res, new DoorError(failure === 'error' ? 'internal' : 'unauthenticated'));
@@ -71,12 +73,15 @@ export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean
 
     let payload: JWTPayload;
     try {
-      payload = jwt.verify(authHeader.substring(7), config.jwt.secret) as JWTPayload;
+      payload = jwt.verify(authHeader.substring(7), config.jwt.secret, {
+        ...(opts.now ? { clockTimestamp: Math.floor(opts.now() / 1000) } : {}),
+      }) as JWTPayload;
     } catch {
       fail(res, 'invalid');
       return;
     }
-    if (typeof payload?.userId !== 'string' || payload.userId === '') {
+    // A validly signed token with no user id, or one that isn't a UUID, names no user.
+    if (typeof payload?.userId !== 'string' || !UUID.test(payload.userId)) {
       fail(res, 'invalid');
       return;
     }

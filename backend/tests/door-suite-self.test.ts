@@ -26,7 +26,9 @@ function withSampleDoor(door: DoorFactory): Router {
 }
 
 const USER = '11111111-1111-4111-8111-111111111111';
+const OTHER = '22222222-2222-4222-8222-222222222222';
 owners.set('s-mine', USER);
+owners.set('s-other', OTHER);
 
 doorSuite({
   method: 'GET',
@@ -34,6 +36,7 @@ doorSuite({
   bucket: 'read',
   invalid: { query: 'extra=1' },
   otherUsersThing: (_h, other) => { owners.set('s-theirs', other); return '/v2/samples/s-theirs'; },
+  pathFor: (userId) => (userId === OTHER ? '/v2/samples/s-other' : '/v2/samples/s-mine'),
   agent: { route: `GET /samples/${USER}/s-mine`, ok: () => ({ status: 200, body: { title: 'a sample', trace_id: 'x' } }) },
   expect: () => ({ title: 'a sample' }),
   v2Router: withSampleDoor,

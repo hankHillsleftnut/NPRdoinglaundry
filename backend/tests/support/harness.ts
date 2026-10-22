@@ -14,7 +14,7 @@ import type { AddressInfo } from 'node:net';
 import { createApp, type AppDeps } from '../../src/app.js';
 import { createAgentDoorClient } from '../../src/doors/agent.js';
 import { MemoryLimiter } from '../../src/doors/limits.js';
-import { generateToken } from '../../src/middleware/auth.js';
+import jwt from 'jsonwebtoken';
 import type { AuthUser } from '../../src/types/index.js';
 import { createLog } from '../../src/utils/log.js';
 
@@ -24,7 +24,7 @@ export type AgentRoutes = Record<string, (body: unknown, url: URL) => AgentReply
 
 export interface Harness {
   url: string;
-  /** Adds the user if needed and returns a valid access token for them. */
+  /** Adds the user if needed and returns an access token for them, issued at the harness clock (valid 30 days). */
   asUser(id: string): string;
   request(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<{
     status: number; headers: Headers; body: unknown;
@@ -98,7 +98,10 @@ export async function startHarness(opts: {
     url,
     asUser(id) {
       if (!users.has(id)) users.set(id, { id, appleUserId: `apple-${id}` });
-      return generateToken(users.get(id)!);
+      const user = users.get(id)!;
+      // Same claims as generateToken, but issued at the harness clock, so a test
+      // can move the clock past expiry without real time passing.
+      return jwt.sign({ userId: user.id, appleUserId: user.appleUserId, iat: Math.floor(clock.now / 1000) }, process.env.JWT_SECRET ?? '', { expiresIn: '30d' });
     },
     async request(method, path, body, headers = {}) {
       const res = await fetch(`${url}${path}`, {

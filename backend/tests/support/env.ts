@@ -26,11 +26,10 @@ const PLACEHOLDERS: Record<string, string> = {
 };
 
 /**
- * Set to empty rather than deleted: config.ts runs dotenv, which fills in any
- * variable that is missing from a local `.env` (never one that is set), so an
- * empty value keeps a developer's real key out of the tests.
+ * Cleared, so a key exported in the shell never reaches a test. (config.ts
+ * skips its .env file entirely when NODE_ENV is "test".)
  */
-const EMPTY = ['ADMIN_SECRET', 'SENTRY_DSN', 'ELEVENLABS_API_KEY', 'PERPLEXITY_API_KEY', 'APPLE_PRIVATE_KEY', 'DOTENV_CONFIG_PATH'];
+const EMPTY = ['ADMIN_SECRET', 'SENTRY_DSN', 'ELEVENLABS_API_KEY', 'PERPLEXITY_API_KEY', 'APPLE_PRIVATE_KEY'];
 
 // Tests run with these values, whatever the shell or a local .env holds.
 for (const [key, value] of Object.entries(PLACEHOLDERS)) process.env[key] = value;

@@ -45,6 +45,7 @@ Founder, 21 Oct: "if you're suggesting that we set up tests so that the app beha
 ## 4. CI
 
 - Backend `api` job: build, typecheck, tests (adds layer 3 and the backend half of layer 4).
+- Backend tests run as `tsx --test --import ./tests/support/env.ts …` (`npm test`): `env.ts` sets placeholder config before anything imports it, and `config.ts` reads no `.env` file when `NODE_ENV` is `test`. A new test needs no env setup of its own; HTTP tests use `tests/support/harness.ts` and doors use `tests/support/door-suite.ts`.
 - Agent CI (its own repo): security check, typecheck, tests, build.
 - iOS `ios` job: build, then `xcodebuild test -testPlan Platform` (layers 4, 5) and the snapshot test plan (layer 6). UI and accessibility tests (layers 7, 8) run on page PRs and nightly, because they're slow on one runner.
 - A red test is never merged. A flaky test is fixed or quarantined in the same day, with a findings-log entry; never retried until green.

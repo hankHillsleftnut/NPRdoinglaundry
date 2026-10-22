@@ -5,8 +5,9 @@ import dotenv from 'dotenv';
 // missing there is never filled in from the `.env` beside it, and a production
 // value exported in the shell never reaches a staging run. Without it (Render,
 // plain `npm run dev`), `.env` is read as before and never overrides.
+// Tests never read an env file: tests/support/env.ts sets every value they use.
 const envFile = process.env.DOTENV_CONFIG_PATH;
-dotenv.config(envFile ? { path: envFile, override: true } : undefined);
+if (process.env.NODE_ENV !== 'test') dotenv.config(envFile ? { path: envFile, override: true } : undefined);
 
 function requireEnv(key: string): string {
   const value = process.env[key];
