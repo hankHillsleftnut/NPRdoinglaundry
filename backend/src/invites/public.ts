@@ -9,7 +9,7 @@ import type { InviteStore } from './store.js';
 /**
  * The public side of invites (BE0.12, contract 00 §4), no token:
  *   POST /public/waitlist                     the website's form; always { received: true }
- *   GET  /i/:code                             the link page
+ *   GET  /i/:code                             the link page (60 per 10 minutes per address; over it, the neutral page)
  *   GET  /.well-known/apple-app-site-association   so /i/* opens the app
  *
  * Nothing here says whether an email is known or a code is valid: the form
@@ -93,6 +93,14 @@ export function createPublicInviteRouter(deps: PublicInviteDeps): Router {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.type('html');
+    // Over the address limit the lookup is skipped and the neutral page is
+    // served, never a 429: a visitor can't tell "too many" from "not live",
+    // and a sweep of codes learns nothing.
+    const taken = deps.limiter.take(`ip:${req.ip ?? 'unknown'}`, 'invitePage', deps.now());
+    if (!taken.ok) {
+      res.status(200).send(linkPage({ code, from: null, appUrl: deps.appUrl }));
+      return;
+    }
     void (async () => {
       const face = code ? await deps.invites.face(hashCode(code), new Date(deps.now()).toISOString()) : { live: false, from: null };
       res.status(200).send(linkPage({ code, from: face.live ? face.from : null, appUrl: deps.appUrl }));
