@@ -64,6 +64,7 @@ export function createApp(deps: AppDeps): express.Express {
   const app = express();
   const legacyAuth = makeAuthMiddleware(deps.users, { now: deps.now });
   const limiter = deps.limiter ?? new MemoryLimiter();
+  const { diagnostics } = deps;
   trustRenderProxy(app);
 
   // Security middleware — relax CSP for the admin dashboard's inline scripts
@@ -97,7 +98,7 @@ export function createApp(deps: AppDeps): express.Express {
   });
 
   // Admin routes and the dashboard (admin secret, not JWT; absent without ADMIN_SECRET)
-  mountAdmin(app, { secret: config.admin.secret, publicDir });
+  mountAdmin(app, { secret: config.admin.secret, publicDir, diagnostics });
 
   // Auth routes (no auth middleware)
   app.use('/auth', authRouter);
@@ -140,7 +141,7 @@ export function createApp(deps: AppDeps): express.Express {
     },
   }));
   app.use('/v2', v2Auth, (deps.v2Router ?? createV2Router)(door, {
-    diagnostics: deps.diagnostics,
+    diagnostics,
   }));
   app.use('/v2', v2ErrorHandler);
 
