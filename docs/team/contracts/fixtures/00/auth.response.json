@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "accessToken": "invented.access.token",
+    "refreshToken": "invented-refresh-token",
+    "accessTokenExpiresAt": "2026-10-21T08:15:00.000Z",
+    "user": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "firstName": "sam",
+      "isNew": false
+    },
+    "access": {
+      "state": "member"
+    }
+  }
+}

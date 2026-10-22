@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "data": {
+    "guesses": [
+      {
+        "id": "00000000-0000-4000-8000-000000000401",
+        "question": "could the short nights be about the friday deadline?",
+        "framework": {
+          "name": "stress and sleep",
+          "source": "sleep research",
+          "wonders": "whether pressure at work shows up in your nights"
+        },
+        "rationale": "the short nights started the week the ship date was set.",
+        "status": "offered",
+        "restsOn": [
+          {
+            "kind": "pattern",
+            "id": "00000000-0000-4000-8000-000000000301",
+            "text": "under seven hours, four nights running"
+          },
+          {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000103",
+            "text": "ship the first version friday"
+          }
+        ]
+      }
+    ],
+    "speaking": true
+  }
+}

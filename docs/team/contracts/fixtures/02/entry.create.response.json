@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "entry": {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "kind": "typed",
+      "text": "dentist at 3 today, dreading it",
+      "createdAt": "2026-10-21T13:02:11.410Z",
+      "day": "2026-10-21",
+      "reading": "waiting",
+      "clientEntryId": "00000000-0000-4000-8000-000000000901"
+    }
+  }
+}

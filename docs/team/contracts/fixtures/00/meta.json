@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "minVersion": "1.0 (40)",
+    "latestVersion": "1.1 (55)",
+    "serverTime": "2026-10-21T08:00:04.200Z",
+    "environment": "staging"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "update_required",
+    "message": "There's a new version of Retrospect."
+  }
+}
