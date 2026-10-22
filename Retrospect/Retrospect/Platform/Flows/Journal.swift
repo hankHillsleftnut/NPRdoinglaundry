@@ -105,8 +105,17 @@ extension Flows.Journal {
             )
         }
 
-        /// An entry sent from this phone, before the server has it.
-        init(local clientEntryId: String, kind: Kind, text: String, createdAt: Date, day: String, delivery: Delivery) {
+        /// An entry sent from this phone, before the server has it. `matches` is set when a search
+        /// finds it on the phone.
+        init(
+            local clientEntryId: String,
+            kind: Kind,
+            text: String,
+            createdAt: Date,
+            day: String,
+            delivery: Delivery,
+            matches: [Match]? = nil
+        ) {
             self.init(
                 serverId: nil,
                 clientEntryId: clientEntryId,
@@ -115,7 +124,7 @@ extension Flows.Journal {
                 createdAt: createdAt,
                 day: day,
                 reading: .waiting,
-                matches: nil,
+                matches: matches,
                 delivery: delivery
             )
         }
