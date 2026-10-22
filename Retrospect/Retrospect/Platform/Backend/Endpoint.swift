@@ -10,6 +10,7 @@ extension Backend {
     /// and each new case gets its fixed line in `Platform.Log.SystemSink`.
     enum PathTemplate: String, Sendable, CaseIterable {
         case meta = "/v2/meta"
+        case entries = "/v2/entries"
     }
 
     /// The body of a request that sends none.

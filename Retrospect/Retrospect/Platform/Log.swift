@@ -26,6 +26,8 @@ extension Platform.Log {
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
+        /// Something was queued in the outbox (PL2.2). No text, no ids.
+        case outboxEnqueued(operation: Store.OutboxOperation)
         /// The launch install check ran (PL1.3): what it found.
         case installChecked(Session.InstallCheck)
         /// The launch install check failed with this Keychain status; the next
@@ -51,10 +53,17 @@ extension Platform.Log {
             case let .requestSent(path, status, ms):
                 switch path {
                 case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+                case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
                 }
             case let .unknownErrorCode(path):
                 switch path {
                 case .meta: logger.error("unknown error code from /v2/meta")
+                case .entries: logger.error("unknown error code from /v2/entries")
+                }
+            case let .outboxEnqueued(operation):
+                switch operation {
+                case .entryCreate: logger.info("outbox: entry.create queued")
+                case .unknown: logger.info("outbox: unknown operation queued")
                 }
             case let .launchOptionIgnored(problem):
                 record(problem)
@@ -82,6 +91,8 @@ extension Platform.Log {
             case .missingValue(.data): logger.error("launch option -Data: no value, using live")
             case .missingValue(.environment): logger.error("launch option -Environment: no value, using production")
             case .missingValue(.account): logger.error("launch option -Account: no value, ignored")
+            case .tooLong(.screen): logger.error("launch option -Screen: longer than 64 characters, ignored")
+            case .tooLong(.state): logger.error("launch option -State: longer than 64 characters, ignored")
             case .accountNeedsStaging: logger.error("launch option -Account needs -Environment local or staging, ignored")
             }
         }
