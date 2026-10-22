@@ -129,7 +129,7 @@ struct LocalDatabaseTests {
     func anOutboxRowAndACachedDocumentRoundTrip() throws {
         let database = try Store.LocalDatabase.inMemory()
         let outbox = Store.OutboxRow(
-            id: "key-1", operation: "entry.create", entityID: "key-1", payload: Data("{}".utf8), attempts: 2,
+            id: "key-1", operation: .entryCreate, entityID: "key-1", payload: Data("{}".utf8), attempts: 2,
             nextAttemptAt: Date(timeIntervalSince1970: 1_792_569_700), status: .inFlight, lastErrorCode: "timedOut",
             createdAt: Date(timeIntervalSince1970: 1_792_569_604)
         )

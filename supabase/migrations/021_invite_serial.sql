@@ -139,10 +139,14 @@ $$;
 --   { outcome: 'mismatch' }               this key was used by this caller for another code
 --   { outcome: 'invalid' | 'used' | 'expired' }
 --   { outcome: 'no_user' }
+-- The last two parameters have defaults, so the backend that is live when this is applied
+-- (it calls with five arguments) keeps tearing until the new one is deployed: no
+-- "function not found" in between. Without a date the tear's day is the UTC day, the
+-- same rule the backfill above uses.
 DROP FUNCTION IF EXISTS redeem_invite(UUID, TEXT, TIMESTAMPTZ, TEXT[], TEXT[]);
 CREATE OR REPLACE FUNCTION redeem_invite(
     p_user UUID, p_code_hash TEXT, p_now TIMESTAMPTZ, p_new_hashes TEXT[], p_new_ciphertexts TEXT[],
-    p_redeem_key UUID, p_redeemed_on DATE
+    p_redeem_key UUID DEFAULT NULL, p_redeemed_on DATE DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -201,7 +205,7 @@ BEGIN
 
     UPDATE invites
        SET used_by_user_id = p_user, used_at = p_now, code_ciphertext = NULL,
-           redeem_key = p_redeem_key, redeemed_on = p_redeemed_on
+           redeem_key = p_redeem_key, redeemed_on = COALESCE(p_redeemed_on, (p_now AT TIME ZONE 'UTC')::date)
      WHERE id = v_invite.id AND used_by_user_id IS NULL AND revoked_at IS NULL
      RETURNING id INTO v_used;
     IF v_used IS NULL THEN
@@ -214,7 +218,7 @@ BEGIN
     UPDATE waitlist SET status = 'approved', decided_at = p_now, invite_id = v_invite.id
      WHERE user_id = p_user AND status = 'waiting';
     RETURN jsonb_build_object('outcome', 'redeemed', 'invited_by', v_by,
-                              'serial', v_invite.serial, 'redeemed_on', p_redeemed_on);
+                              'serial', v_invite.serial, 'redeemed_on', COALESCE(p_redeemed_on, (p_now AT TIME ZONE 'UTC')::date));
 END;
 $$;
 

@@ -73,6 +73,7 @@ extension Platform.Log.Event {
             case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
             case .unknownErrorCode: .unknownErrorCode(path: .meta)
             case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
+            case .outboxEnqueued: .outboxEnqueued(operation: .entryCreate)
             case .signedIn: .signedIn(provider: .apple, isNew: true)
             case .nonceUnavailable: .nonceUnavailable(status: -4)
             case .installChecked: .installChecked(.wipedLeftovers)
@@ -98,6 +99,7 @@ extension Platform.Log.Event {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
+             outboxEnqueued,
              diagnosticsWriteFailed
     }
 
@@ -108,6 +110,7 @@ extension Platform.Log.Event {
         case .requestSent: .requestSent
         case .unknownErrorCode: .unknownErrorCode
         case .launchOptionIgnored: .launchOptionIgnored
+        case .outboxEnqueued: .outboxEnqueued
         case .signedIn: .signedIn
         case .nonceUnavailable: .nonceUnavailable
         case .installChecked: .installChecked

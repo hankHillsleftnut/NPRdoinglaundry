@@ -2,6 +2,21 @@
 
 What changed, in plain words, newest first. Every merged PR that changes what the app, the backend or the team does gets a line here, in the same PR or the integrator's next one. Big changes get a short paragraph: what a person will notice, and what to watch. (Founder, 22 Oct: "always have a changelog for every massive change".)
 
+## 22 Oct 2026 · evening
+
+- **Signing in works end to end in the app:** Sign in with Apple with a one-time nonce, silent refresh (one refresh at a time, a clock that's wrong doesn't loop), sign-out, and a retry that can't sign you out by accident; the old screens' 401s are bridged to the new session (#134, #142). One bump of a person's session version now ends their phones' sessions (#137).
+- **Entries reach the server:** send an entry once, even when the answer is lost (#128); today, the whole history with a cursor, and search with highlighted matches (#132). A fresh person's brief is **on by default** (#146, the founder's call).
+- **The brief and the guesses:** the brief, its list and its switch (#133) and the guess cards with "why" (#138); in the brain, the brief is spoken part by part into a **private** audio bucket, so there's no permanent public link (brain #138), episode audio gets signed, expiring links (brain #137), quiet weeks aren't errors (brain #139), and open guesses can be listed without using up their two offers (brain #141).
+- **Invites:** a code is checked before it's torn, torn once even if the answer is lost, and shows its number and date (#122); the signed-out preview of a link (#135).
+- **Safety and limits:** every model call is counted against the daily cap, per person and for staging (brain #136); a refused "spend limit" is never retried and reaches the app as itself (#145); `/v2/meta` and the update-required floor exist on the server (#140). Fixed before merge: a spend-total that silently stopped at 1,000 rows, a brief that could be spoken twice, and a calendar test fixture that held a real name and address (brain #140).
+- **Journal parts:** your message bubble and voice bubble (#123, #124), the brief card (#125), sheets (#127), dialogs (#129), the long-press menu (#130), skeleton loading (#103), the empty line (#126), sample journal data (#86). All parts of the first journal screen are now on main; the screen itself is next.
+- **The app's plumbing:** retries, backoff and reachability (#102); the migration that fixes the old five-argument tear call (#148).
+- **CI is on GitHub's own runners** while the repos are public: fast, free, and off the founder's Mac (#120, #136). Secret scanning and push protection are on; outside pull requests need approval before any workflow runs.
+
+**Watch**
+- Migrations 005, 007, 019 to 026 and brain 152 to 155 are unapplied anywhere; 021 now keeps the old tear call working until the new backend is deployed.
+- Both repos are public for CI minutes: two old API keys in the app's history were rotated first.
+
 ## 22 Oct 2026 · afternoon (integrator on Fable)
 
 - **Faster, with the same gates.** The founder reset usage, so the team went to five engineers (two Platform, two backend, views) plus a short high-effort "contract pass" before every integration piece and a fresh reviewer the moment a risky PR opens. Nothing merges without the same four gates as before. Details in `docs/team/prototype-mode.md` ("Team shape").

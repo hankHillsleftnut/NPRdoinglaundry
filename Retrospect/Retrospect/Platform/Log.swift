@@ -26,6 +26,8 @@ extension Platform.Log {
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
+        /// Something was queued in the outbox (PL2.2). No text, no ids.
+        case outboxEnqueued(operation: Store.OutboxOperation)
         /// Someone signed in (PL1.4): which provider, and whether the account is new.
         case signedIn(provider: Session.Provider, isNew: Bool)
         /// The system couldn't make random bytes for a sign-in nonce (PL1.4), so
@@ -90,6 +92,8 @@ extension Platform.Log {
                 record(signedInWith: provider, isNew: isNew)
             case let .nonceUnavailable(status):
                 logger.error("sign-in nonce unavailable: random status \(status)")
+            case let .outboxEnqueued(operation):
+                record(operation)
             case let .launchOptionIgnored(problem):
                 record(problem)
             case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
@@ -151,6 +155,7 @@ extension Platform.Log {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
             case .diagnostics: logger.info("request /v2/diagnostics: status \(status), \(ms) ms")
+            case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
             case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
@@ -161,6 +166,7 @@ extension Platform.Log {
             switch path {
             case .meta: logger.error("unknown error code from /v2/meta")
             case .diagnostics: logger.error("unknown error code from /v2/diagnostics")
+            case .entries: logger.error("unknown error code from /v2/entries")
             case .authApple: logger.error("unknown error code from /v2/auth/apple")
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
@@ -199,6 +205,7 @@ extension Platform.Log {
             switch path {
             case .meta: logger.info("401 on /v2/meta: refreshed and replayed once")
             case .diagnostics: logger.info("401 on /v2/diagnostics: refreshed and replayed once")
+            case .entries: logger.info("401 on /v2/entries: refreshed and replayed once")
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
@@ -222,6 +229,13 @@ extension Platform.Log {
             }
         }
 
+        private func record(_ operation: Store.OutboxOperation) {
+            switch operation {
+            case .entryCreate: logger.info("outbox: entry.create queued")
+            case .unknown: logger.info("outbox: unknown operation queued")
+            }
+        }
+
         private func record(_ check: Session.InstallCheck) {
             switch check {
             case .alreadyDone: logger.debug("install check: already done")
@@ -239,6 +253,8 @@ extension Platform.Log {
             case .missingValue(.data): logger.error("launch option -Data: no value, using live")
             case .missingValue(.environment): logger.error("launch option -Environment: no value, using production")
             case .missingValue(.account): logger.error("launch option -Account: no value, ignored")
+            case .tooLong(.screen): logger.error("launch option -Screen: longer than 64 characters, ignored")
+            case .tooLong(.state): logger.error("launch option -State: longer than 64 characters, ignored")
             case .accountNeedsStaging: logger.error("launch option -Account needs -Environment local or staging, ignored")
             }
         }

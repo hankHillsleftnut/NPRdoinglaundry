@@ -37,6 +37,19 @@ struct LaunchOptionsTests {
         #expect(options.problems.isEmpty)
     }
 
+    @Test("a -Screen or -State value longer than 64 characters is ignored and reported", arguments: Platform.LaunchOptions.TextFlag.allCases)
+    func aLongTextValueIsIgnored(_ flag: Platform.LaunchOptions.TextFlag) {
+        let longest = String(repeating: "a", count: 64)
+
+        let kept = Platform.LaunchOptions.parse(["Retrospect", flag.rawValue, longest])
+        let dropped = Platform.LaunchOptions.parse(["Retrospect", flag.rawValue, longest + "a"])
+
+        #expect((flag == .screen ? kept.screen : kept.state) == longest)
+        #expect(kept.problems.isEmpty)
+        #expect(dropped.screen == nil && dropped.state == nil)
+        #expect(dropped.problems == [.tooLong(flag)])
+    }
+
     @Test("an unknown value falls back to the default and is reported", arguments: [
         (["-Data", "fake"], Platform.LaunchOptions.Problem.unknownValue(.data)),
         (["-Environment", "moon"], .unknownValue(.environment)),

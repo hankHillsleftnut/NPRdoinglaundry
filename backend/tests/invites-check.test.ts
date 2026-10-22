@@ -251,6 +251,26 @@ test('a replayed key with the same code is the same 200; the same key with anoth
   }
 });
 
+test('the old five-argument redeem call still works: a backend deployed before 021 keeps tearing (*)', async () => {
+  const h = await harness();
+  try {
+    const c = await invite();
+    const p = await person(h, 'waitlisted');
+    const fresh = [nextCode(), nextCode(), nextCode()];
+    const out = await db.query<{ r: { outcome: string; redeemed_on: string | null } }>(
+      `SELECT redeem_invite($1, $2, $3, $4, $5) AS r`,
+      [p, hashCode(c), new Date(T0).toISOString(), fresh.map((x) => hashCode(x)), fresh.map((x) => sealCode(x, KEY))],
+    );
+    const utcDay = new Date(T0).toISOString().slice(0, 10);
+    assert.equal(out.rows[0]!.r.outcome, 'redeemed');
+    assert.equal(out.rows[0]!.r.redeemed_on, utcDay, 'no date sent: the UTC day');
+    assert.equal((await row(c)).redeemed_on, utcDay, 'the row holds it, so the person\'s own retry can read it');
+    assert.equal(await memberInvites(p), 3);
+  } finally {
+    await h.close();
+  }
+});
+
 test('another person\'s key is theirs alone (*)', async () => {
   const h = await harness();
   try {
