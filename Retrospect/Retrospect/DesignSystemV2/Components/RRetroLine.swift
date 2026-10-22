@@ -10,8 +10,15 @@
 import SwiftUI
 
 struct RRetroLine: View {
+    /// One thing Retro says, with an identity that stays put while lines are added (v1: the
+    /// entry's client id; v2: the streamed line's id).
+    struct Line: Identifiable, Hashable {
+        let id: String
+        let text: String
+    }
+
     /// What Retro says, a line at a time. v1 passes one acknowledgement.
-    let lines: [String]
+    let lines: [Line]
     /// True while Retro is still speaking (v2's streaming): each new line blurs in as it lands.
     /// v1 always passes false.
     var arriving = false
@@ -20,15 +27,15 @@ struct RRetroLine: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RDimension.space0) {
-            // a line's place is its identity: lines are only ever appended, and two lines can
-            // say the same words
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                Text(line)
+            ForEach(lines) { line in
+                Text(line.text)
                     .rText(.bodyReading)
                     .foregroundStyle(RColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .modifier(RLineArrival(arriving: arriving))
+                    // one path: only the transition depends on `arriving`, so a line never
+                    // changes identity when streaming ends
+                    .transition(arriving ? .rBlurReplace(reduceMotion: reduceMotion) : .identity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -37,59 +44,55 @@ struct RRetroLine: View {
             ? AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationFast))
             : AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationBase)))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("retrospect: \(lines.joined(separator: " "))")
-    }
-}
-
-/// v2's streamed lines: each one blurs in as it's added (`rBlurReplace`); v1 lines just sit.
-private struct RLineArrival: ViewModifier {
-    let arriving: Bool
-
-    func body(content: Content) -> some View {
-        if arriving {
-            content.rBlurReplace()
-        } else {
-            content
-        }
+        .accessibilityLabel("retrospect: \(lines.map(\.text).joined(separator: " "))")
     }
 }
 
 extension View {
-    /// Announces Retro's newest line once, when it first appears (a new acknowledgement), never
-    /// again on scrolling. Put it on the thread with the latest line.
-    func rRetroAnnouncement(latest line: String?) -> some View {
-        onChange(of: line) { old, new in
-            if let new, new != old {
-                AccessibilityNotification.Announcement("retrospect: \(new)").post()
-            }
+    /// Announces Retro's acknowledgement once, for the entry this session watched go from sending
+    /// to sent. The host passes that entry's id (nil until one lands here) and its line. A thread
+    /// loaded already sent, or scrolled back to, never announces: only a change of id does.
+    func rRetroAnnouncement(landed clientEntryId: String?, line: String?) -> some View {
+        onChange(of: clientEntryId) { _, landed in
+            guard landed != nil, let line else { return }
+            AccessibilityNotification.Announcement("retrospect: \(line)").post()
         }
     }
 }
 
 #if DEBUG
 /// Lab page "retro": Retro's acknowledgement at rest, a long reply that wraps, and an
-/// acknowledgement landing after a send. `-DesignLabAutoplay` sends a few times, for recordings.
+/// acknowledgement landing after a send (sending, then sent a second later).
+/// `-DesignLabAutoplay` sends a few times, for recordings.
 struct RRetroLineGallery: View {
     @State private var sent = 0
-    private let acknowledgements = ["got it.", "saved.", "it's in.", "kept."]
+    @State private var sending = false
+    /// The entry this session watched go from sending to sent.
+    @State private var landed: String?
+    private let acknowledgements = Flows.Journal.Acknowledgements.lines
+
+    private var latest: RRetroLine.Line? {
+        landed.map { RRetroLine.Line(id: $0, text: acknowledgements[(sent - 1) % acknowledgements.count]) }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RDimension.space6) {
                 caption("acknowledgement")
-                RRetroLine(lines: ["got it."])
+                RRetroLine(lines: [.init(id: "rest", text: acknowledgements[0])])
                 caption("a long line fills the column (v2's replies)")
-                RRetroLine(lines: ["third monday like that. what's different about mondays?"])
+                RRetroLine(lines: [.init(id: "long", text: "third monday like that. what's different about mondays?")])
                 caption("landing after a send")
                 VStack(alignment: .leading, spacing: RDimension.space2) {
-                    if sent > 0 {
-                        RRetroLine(lines: [acknowledgements[(sent - 1) % acknowledgements.count]])
-                            .id(sent)
+                    if let latest {
+                        RRetroLine(lines: [latest])
+                            .id(latest.id)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: RDimension.sizeTouchTarget, alignment: .topLeading)
-                .rRetroAnnouncement(latest: sent > 0 ? acknowledgements[(sent - 1) % acknowledgements.count] : nil)
-                RPill(title: "send", style: .raised) { sent += 1 }
+                .rRetroAnnouncement(landed: landed, line: latest?.text)
+                RPill(title: "send", style: .raised) { Task { await send() } }
+                    .disabled(sending)
             }
             .padding(RDimension.spaceScreenMargin)
         }
@@ -97,9 +100,18 @@ struct RRetroLineGallery: View {
             guard ProcessInfo.processInfo.arguments.contains("-DesignLabAutoplay") else { return }
             for _ in 0 ..< 3 {
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
-                sent += 1
+                await send()
             }
         }
+    }
+
+    /// Sending, then sent a second later: only then does the line land.
+    private func send() async {
+        sending = true
+        defer { sending = false }
+        do { try await Task.sleep(for: .seconds(1)) } catch { return }
+        sent += 1
+        landed = "entry-\(sent)"
     }
 
     private func caption(_ text: String) -> some View {
