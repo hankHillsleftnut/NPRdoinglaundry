@@ -13,6 +13,7 @@ import DeviceActivity
 // MARK: - App Delegate for Notifications
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        guard !Platform.isRunningUnitTests else { return true }
         UNUserNotificationCenter.current().delegate = self
         // Initialize RevenueCat (no-op until the purchases-ios SDK is added). Must
         // run before any paywall queries customerInfo/offerings.
@@ -145,7 +146,9 @@ struct RetrospectApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if isDesignLabMode {
+                if Platform.isRunningUnitTests {
+                    Color.clear
+                } else if isDesignLabMode {
                     #if DEBUG
                     RDesignLab()
                     #endif
