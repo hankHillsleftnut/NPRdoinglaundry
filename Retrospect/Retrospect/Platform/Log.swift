@@ -94,15 +94,12 @@ extension Platform.Log {
                 record(sent: path, status: status, ms: ms)
             case let .unknownErrorCode(path):
                 record(unknownCodeFrom: path)
-            case let .signedIn(provider, isNew):
-                record(signedInWith: provider, isNew: isNew)
-            case let .nonceUnavailable(status):
-                logger.error("sign-in nonce unavailable: random status \(status)")
             case let .outboxEnqueued(operation):
                 record(operation)
             case let .launchOptionIgnored(problem):
                 record(problem)
-            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
+            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed, .signedIn,
+                 .nonceUnavailable:
                 recordSession(event)
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
@@ -141,6 +138,10 @@ extension Platform.Log {
                 record(replayed: path)
             case let .keychainWriteFailed(item, status):
                 record(writeFailed: item, status: status)
+            case let .signedIn(provider, isNew):
+                record(signedInWith: provider, isNew: isNew)
+            case let .nonceUnavailable(status):
+                logger.error("sign-in nonce unavailable: random status \(status)")
             default:
                 break
             }
@@ -281,11 +282,18 @@ extension Platform.Log {
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(replayedInvite: path)
+            }
+        }
+
+        private func record(replayedInvite path: Backend.PathTemplate) {
+            switch path {
             case .access: logger.info("401 on /v2/access: refreshed and replayed once")
             case .waitlist: logger.info("401 on /v2/waitlist: refreshed and replayed once")
             case .invitesCheck: logger.info("401 on /v2/invites/check: refreshed and replayed once")
             case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
+            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout: break
             }
         }
 
