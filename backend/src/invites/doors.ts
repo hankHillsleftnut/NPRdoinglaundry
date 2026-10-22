@@ -33,6 +33,19 @@ export interface InviteDoorDeps {
 /** Each person who gets in receives this many single-use invites (founder, 21 Oct). */
 export const INVITES_EACH = 3;
 
+/**
+ * The link for a sealed code, or null when it can't be opened: a code sealed
+ * under an earlier INVITE_CODE_KEY (the key was rotated) or a damaged value
+ * loses its link, and "your invites" still answers instead of a 500.
+ */
+export function linkFor(sealed: string, codeKey: string, baseUrl: string): string | null {
+  try {
+    return inviteLink(baseUrl, openCode(sealed, codeKey));
+  } catch {
+    return null;
+  }
+}
+
 const Empty = z.object({}).strict();
 const WaitlistBody = z.object({ reason: z.string().max(280).nullable().optional() }).strict();
 /** Check and redeem take the same body (fixtures 00/redeem.request.json, 01/invite.check.request.json). */
@@ -181,7 +194,7 @@ export function mountInviteDoors(router: Router, door: DoorFactory, deps: Invite
     map: (rows) => ({
       invites: rows.map((r) => ({
         id: r.id,
-        link: !r.used && r.sealed && deps.codeKey ? inviteLink(deps.baseUrl, openCode(r.sealed, deps.codeKey)) : null,
+        link: !r.used && r.sealed && deps.codeKey ? linkFor(r.sealed, deps.codeKey, deps.baseUrl) : null,
         createdAt: r.createdAt,
         state: r.used ? 'used' : 'unused',
         usedBy: r.used ? r.usedBy : null,
