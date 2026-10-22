@@ -78,11 +78,11 @@ extension Store {
         }
 
         static func databaseDateEncodingStrategy(for _: String) -> DatabaseDateEncodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.encoding
         }
 
         static func databaseDateDecodingStrategy(for _: String) -> DatabaseDateDecodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.decoding
         }
     }
 
@@ -109,11 +109,11 @@ extension Store {
         }
 
         static func databaseDateEncodingStrategy(for _: String) -> DatabaseDateEncodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.encoding
         }
 
         static func databaseDateDecodingStrategy(for _: String) -> DatabaseDateDecodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.decoding
         }
     }
 
@@ -132,21 +132,32 @@ extension Store {
         }
 
         static func databaseDateEncodingStrategy(for _: String) -> DatabaseDateEncodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.encoding
         }
 
         static func databaseDateDecodingStrategy(for _: String) -> DatabaseDateDecodingStrategy {
-            .formatted(Store.timestampFormatter)
+            Store.Timestamp.decoding
         }
     }
 
-    /// Dates are stored as ISO 8601 UTC with milliseconds
-    /// (`2026-10-21T08:00:04.200Z`): they sort as text and read like the contracts.
-    static let timestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-        return formatter
-    }()
+    /// Dates are written as ISO 8601 UTC with milliseconds
+    /// (`2026-10-21T08:00:04.200Z`): they sort as text and read like the
+    /// contracts. They're read with or without the fraction, so one odd row
+    /// never fails a whole fetch.
+    enum Timestamp {
+        static let encoding = DatabaseDateEncodingStrategy.custom { Backend.Coding.timestamp($0) }
+        static let decoding = DatabaseDateDecodingStrategy.custom { value in
+            String.fromDatabaseValue(value).flatMap(date)
+        }
+
+        static func date(_ text: String) -> Date? {
+            if let date = try? Date(text, strategy: withFraction) {
+                return date
+            }
+            return try? Date(text, strategy: wholeSeconds)
+        }
+
+        private static let withFraction = Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: .gmt)
+        private static let wholeSeconds = Date.ISO8601FormatStyle(timeZone: .gmt)
+    }
 }
