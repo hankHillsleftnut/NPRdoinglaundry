@@ -29,6 +29,9 @@ final class SampleJournalData: Flows.JournalData {
     /// Picks acknowledgements in turn, so the sample never depends on randomness.
     @ObservationIgnored private var acknowledgementTurn = 0
     @ObservationIgnored private var sentFromHere = 0
+    /// The scenario's content is laid down once; after that, edits, deletes, sends and answers
+    /// survive a screen reappearing and calling `load()` again.
+    @ObservationIgnored private var seeded = false
 
     /// How long the sample's pretend network takes to send (the card's one second).
     static let sendDelay: Duration = .seconds(1)
@@ -49,6 +52,8 @@ final class SampleJournalData: Flows.JournalData {
             await waitUntilCancelled()
             return
         }
+        guard !seeded else { return }
+        seeded = true
         today = Self.today(for: scenario)
         brief = Self.brief(for: scenario)
         guesses = Self.guesses(for: scenario)
@@ -134,7 +139,8 @@ final class SampleJournalData: Flows.JournalData {
     }
 
     private func sendNew(kind: Journal.Entry.Kind, text: String) async {
-        guard case var .loaded(entries) = today else { return }
+        // a thought sent before today has loaded (or after it failed) is still saved
+        var entries = today.value ?? []
         sentFromHere += 1
         let id = String(format: "00000000-0000-4000-8000-%012d", 5000 + sentFromHere)
         let now = Content.todayEntries.last?.createdAt.addingTimeInterval(Double(sentFromHere) * 60) ?? Date(timeIntervalSince1970: 0)
@@ -191,6 +197,8 @@ final class SampleJournalData: Flows.JournalData {
         switch scenario {
         case .guessPending:
             await waitUntilCancelled()
+            // the answer never reached the server: the guess goes back to how it was
+            guesses = guesses.map { $0.id == guess.id ? guess : $0 }
             return .failed(Content.networkFailure)
         case .guessError:
             guesses = guesses.map { $0.id == guess.id ? guess : $0 }
@@ -282,7 +290,8 @@ final class SampleJournalData: Flows.JournalData {
         guard let serverId = entry.serverId else {
             return Journal.Entry(
                 local: entry.clientEntryId ?? entry.id, kind: entry.kind, text: text ?? entry.text,
-                createdAt: entry.createdAt, day: entry.day, delivery: entry.delivery
+                createdAt: entry.createdAt, day: entry.day, delivery: entry.delivery,
+                matches: matches
             )
         }
         var json: [String: Any] = [

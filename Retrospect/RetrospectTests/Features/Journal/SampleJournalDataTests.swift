@@ -5,6 +5,7 @@ import Testing
 /// UI1.0: the journal's sample data behaves like the seam promises, on an injected clock, and its
 /// content is contract 02's fixtures wherever a fixture exists.
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct SampleJournalDataTests {
     typealias Journal = Flows.Journal
     typealias Content = SampleJournalContent
@@ -30,6 +31,16 @@ struct SampleJournalDataTests {
         case .loaded, .failed: break
         case .loading: Issue.record("\(scenario.rawValue) is still loading")
         }
+    }
+
+    @Test("loading again keeps what changed since the first load")
+    func secondLoadKeepsChanges() async throws {
+        let data = SampleJournalData(scenario: .full, clock: TestClock())
+        await data.load()
+        let first = try #require(data.today.value?.first)
+        _ = await data.delete(id: first.id)
+        await data.load()
+        #expect(data.today.value?.contains { $0.id == first.id } == false)
     }
 
     @Test("loading never resolves within 60 simulated seconds")
@@ -151,7 +162,43 @@ struct SampleJournalDataTests {
         #expect(clock.heldSleeps == 0)
     }
 
+    @Test("a thought sent before today loads is still saved and sent")
+    func sendBeforeLoadSaves() async {
+        let clock = TestClock()
+        let data = SampleJournalData(scenario: .full, clock: clock)
+        let send = Task { await data.send(text: "before it loaded") }
+        await settle(clock, waiting: 1)
+        #expect(data.today.value?.map(\.text) == ["before it loaded"])
+        clock.advance(by: SampleJournalData.sendDelay)
+        await send.value
+        #expect(data.today.value?.last?.delivery == .sent)
+    }
+
+    @Test("a thought sent after today failed to load is still saved")
+    func sendAfterFailedLoadSaves() async {
+        let clock = TestClock()
+        let data = SampleJournalData(scenario: .errorNetwork, clock: clock)
+        await data.load()
+        let send = Task { await data.send(text: "after a failure") }
+        await settle(clock, waiting: 1)
+        #expect(data.today.value?.map(\.text) == ["after a failure"])
+        clock.advance(by: SampleJournalData.sendDelay)
+        await send.value
+        #expect(data.today.value?.last?.delivery == .sent)
+    }
+
     // MARK: - The drawer
+
+    @Test("search marks matches on an entry that is only on the phone")
+    func searchMarksPhoneOnlyEntries() async throws {
+        let data = SampleJournalData(scenario: .offline, clock: TestClock())
+        await data.load()
+        await data.send(text: "on the train home")
+        let page = try await data.entries(cursor: nil, query: "train").get()
+        let hit = try #require(page.items.first { $0.text == "on the train home" })
+        #expect(hit.serverId == nil)
+        #expect(hit.matches == [.init(start: 7, length: 5)])
+    }
 
     @Test("search marks every match in UTF-16 units, as entries.search.json does")
     func searchMarksMatches() async throws {
@@ -182,6 +229,20 @@ struct SampleJournalDataTests {
         let guess = Content.guess(.offered)
         let outcome = await data.answer(guess, verdict: .yes)
         #expect(outcome == .failed(.network))
+        #expect(data.guesses == [guess])
+    }
+
+    @Test("a pending answer that is cancelled puts the guess back")
+    func cancelledPendingAnswerRestores() async {
+        let clock = TestClock()
+        let data = SampleJournalData(scenario: .guessPending, clock: clock)
+        await data.load()
+        let guess = Content.guess(.offered)
+        let answer = Task { await data.answer(guess, verdict: .yes) }
+        await settle(clock, waiting: 1)
+        #expect(data.guesses.first?.status == .confirmed)
+        answer.cancel()
+        _ = await answer.value
         #expect(data.guesses == [guess])
     }
 }
