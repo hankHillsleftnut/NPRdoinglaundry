@@ -70,7 +70,7 @@ export async function startHarness(opts: {
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
   access?: AppDeps['access']; invites?: AppDeps['invites'];
-  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio'];
+  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio']; guesses?: AppDeps['guesses'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -112,6 +112,7 @@ export async function startHarness(opts: {
     invites: opts.invites ?? notConfigured('invites'),
     briefs: opts.briefs ?? notConfigured<NonNullable<AppDeps['briefs']>>('briefs'),
     ...(opts.signAudio ? { signAudio: opts.signAudio } : {}),
+    guesses: opts.guesses ?? notConfigured<NonNullable<AppDeps['guesses']>>('guesses'),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

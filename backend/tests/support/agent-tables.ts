@@ -1,9 +1,9 @@
 import type { PGlite } from '@electric-sql/pglite' with { 'resolution-mode': 'import' };
 
 /**
- * The agent's tables the brief doors read, as the agent's migrations define
- * them (retrospect-agent `supabase/migrations/128_daily_briefs.sql` and
- * `155_brief_audio.sql`), for a backend test database. The backend's own
+ * The agent's tables the brief and guess doors read, as the agent's migrations
+ * define them (retrospect-agent `supabase/migrations/128_daily_briefs.sql`,
+ * `155_brief_audio.sql` and `149_hypotheses_and_dials.sql`), for a backend test database. The backend's own
  * migrations never create these: production and staging get them from the
  * agent's migrate command. Kept to the columns the doors touch, verbatim in
  * type and default, so a mapping that works here works on the real rows.
@@ -34,6 +34,23 @@ export const AGENT_BRIEF_TABLES_SQL = `
     UNIQUE (user_id, brief_date)
   );
   CREATE INDEX IF NOT EXISTS idx_daily_briefs_user_date ON daily_briefs(user_id, brief_date DESC);
+
+  -- 149_hypotheses_and_dials.sql: the rows the guess doors read for ownership and status.
+  CREATE TABLE IF NOT EXISTS hypotheses (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    framework       TEXT NOT NULL,
+    domain_id       TEXT,
+    question        TEXT NOT NULL,
+    rationale       TEXT,
+    supports        JSONB NOT NULL DEFAULT '[]',
+    status          TEXT NOT NULL DEFAULT 'stored' CHECK (status IN ('stored', 'offered', 'confirmed', 'declined', 'expired')),
+    offered_count   INTEGER NOT NULL DEFAULT 0,
+    last_offered_at TIMESTAMPTZ,
+    status_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    model_version   TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
 `;
 
 export async function createAgentBriefTables(db: PGlite): Promise<void> {

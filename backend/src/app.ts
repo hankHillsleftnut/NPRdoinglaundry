@@ -28,6 +28,7 @@ import type { InviteStore } from './invites/store.js';
 import { createPublicInviteRouter } from './invites/public.js';
 import { supabaseBriefStore, type BriefDbClient, type BriefStore } from './briefs/store.js';
 import { supabaseSignAudio, type SignAudio } from './briefs/audio.js';
+import { supabaseGuessStore, type GuessStore } from './guesses/store.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
 import { createSessionRouter, type SessionRouteDeps } from './sessions/routes.js';
@@ -67,6 +68,8 @@ export interface AppDeps {
   briefs?: BriefStore;
   /** Signs a link to a brief's audio (BE1.3b); Supabase Storage by default, tests pass a fake. */
   signAudio?: SignAudio;
+  /** Guesses (BE1.4): ownership and status from the agent's hypotheses rows; tests pass PGlite. */
+  guesses?: GuessStore;
 }
 
 /**
@@ -180,6 +183,7 @@ export function createApp(deps: AppDeps): express.Express {
       signAudio: deps.signAudio ?? supabaseSignAudio(supabaseAdmin),
       runTimeUtc: config.briefs.runTimeUtc,
     },
+    guesses: { guesses: deps.guesses ?? supabaseGuessStore(supabaseAdmin as unknown as BriefDbClient) },
   }));
   app.use('/v2', v2ErrorHandler);
 

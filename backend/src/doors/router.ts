@@ -6,6 +6,7 @@ import { DiagnosticsReport } from '../diagnostics/schema.js';
 import type { DiagnosticsStore } from '../diagnostics/store.js';
 import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
 import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
+import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -16,6 +17,7 @@ export interface V2RouterDeps {
   diagnostics: DiagnosticsStore;
   invites: InviteDoorDeps;
   briefs: BriefDoorDeps;
+  guesses: GuessDoorDeps;
 }
 
 /**
@@ -77,6 +79,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
 
   // Today's brief, the list, one brief, the switch (BE1.3, BE1.3b).
   mountBriefDoors(router, door, deps.briefs);
+
+  // The guess cards (BE1.4).
+  mountGuessDoors(router, door, deps.guesses);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {
