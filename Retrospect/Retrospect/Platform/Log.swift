@@ -73,19 +73,6 @@ extension Platform.Log {
         private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
-            }
-        }
-
-        private func recordUnknownErrorCode(_ path: Backend.PathTemplate) {
-            switch path {
-            case .meta: logger.error("unknown error code from /v2/meta")
-            }
-        }
-
-        /// One fixed line per door: the template is never interpolated.
-        private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
-            switch path {
-            case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
             case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
             }
         }
