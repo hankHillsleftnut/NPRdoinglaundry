@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostics reports</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1c1c1e; --muted: #6e6e73; --line: #d2d2d7; --bg: #fff; --row: #f5f5f7; --bad: #b42318; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --muted: #a1a1a6; --line: #3a3a3c; --bg: #111; --row: #1c1c1e; --bad: #ff6b5e; } }
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 14px/1.45 -apple-system, system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 8px 0 16px; }
+  form, .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  input, button { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+  button { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr.pick:hover { background: var(--row); cursor: pointer; }
+  .muted { color: var(--muted); }
+  .bad { color: var(--bad); }
+  .note { background: var(--row); padding: 8px 12px; border-radius: 8px; margin: 8px 0; white-space: pre-wrap; }
+  .label { font-size: 12px; text-transform: lowercase; color: var(--muted); }
+  code { font: 12px ui-monospace, Menlo, monospace; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 12px 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Diagnostics reports</h1>
+  <p class="muted">Reports people chose to send. Read one only to fix what went wrong. Kept 30 days.</p>
+
+  <form id="auth">
+    <input id="secret" type="password" placeholder="admin secret" autocomplete="off" aria-label="admin secret">
+    <button>open</button>
+    <span id="authError" class="bad" role="status"></span>
+  </form>
+
+  <section id="app" hidden>
+    <form id="filter">
+      <input id="reference" placeholder="reference, e.g. r-7KQ2" aria-label="reference">
+      <input id="userId" placeholder="user id" aria-label="user id">
+      <button>find</button>
+    </form>
+    <div class="scroll"><table>
+      <thead><tr><th>reference</th><th>sent</th><th>user</th><th>app</th><th>events</th><th>requests</th><th>failures</th><th>crashes</th><th>note</th></tr></thead>
+      <tbody id="list"></tbody>
+    </table></div>
+    <section id="detail"></section>
+  </section>
+</main>
+<script>
+  // Everything from a report is put on the page as text, never as HTML.
+  let SECRET = sessionStorage.getItem('adminSecret') || '';
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = String(text); if (cls) e.className = cls; return e; };
+
+  async function api(path) {
+    const res = await fetch('/admin/diagnostics' + path, { headers: { 'x-admin-secret': SECRET } });
+    if (!res.ok) throw new Error(String(res.status));
+    return res;
+  }
+
+  async function load() {
+    const q = new URLSearchParams();
+    if ($('reference').value.trim()) q.set('reference', $('reference').value.trim());
+    if ($('userId').value.trim()) q.set('userId', $('userId').value.trim());
+    const rows = (await (await api('?' + q)).json()).data;
+    const list = $('list');
+    list.replaceChildren();
+    if (rows.length === 0) { const tr = el('tr'); const td = el('td', 'no reports', 'muted'); td.colSpan = 9; tr.append(td); list.append(tr); }
+    for (const r of rows) {
+      const tr = el('tr', undefined, 'pick');
+      tr.tabIndex = 0;
+      [r.reference, new Date(r.createdAt).toLocaleString(), r.userId, r.appVersion || '', r.counts.events, r.counts.requests, r.counts.failures, r.counts.crashes, r.counts.hasNote ? 'yes' : '']
+        .forEach((v, i) => tr.append(el('td', v, i === 2 ? 'muted' : undefined)));
+      tr.onclick = tr.onkeydown = (e) => { if (e.type === 'click' || e.key === 'Enter') show(r.reference); };
+      list.append(tr);
+    }
+  }
+
+  async function show(reference) {
+    const d = (await (await api('/' + encodeURIComponent(reference))).json()).data;
+    const r = d.report;
+    const detail = $('detail');
+    detail.replaceChildren();
+    const bar = el('div', undefined, 'bar');
+    bar.append(el('h2', d.reference));
+    const dl = el('button', 'download');
+    dl.onclick = async () => {
+      const blob = await (await api('/' + encodeURIComponent(reference) + '/download')).blob();
+      const a = el('a'); a.href = URL.createObjectURL(blob); a.download = reference + '.json'; a.click(); URL.revokeObjectURL(a.href);
+    };
+    bar.append(dl);
+    detail.append(bar);
+    if (r.note) { detail.append(el('div', 'their note (the only free text)', 'label')); detail.append(el('div', r.note, 'note')); }
+
+    const grid = el('div', undefined, 'grid');
+    const card = (title, obj) => { const c = el('div', undefined, 'card'); c.append(el('div', title, 'label')); for (const [k, v] of Object.entries(obj)) c.append(el('div', k + ': ' + (Array.isArray(v) ? v.join(', ') : v))); grid.append(c); };
+    card('environment', r.environment);
+    card('account', { ...r.account, userId: d.userId });
+    card('outbox', r.outbox);
+    card('performance', { launchMs: r.performance.launchMs, memoryWarnings: r.performance.memoryWarnings, thermalChanges: r.performance.thermalChanges.length });
+    detail.append(grid);
+
+    // One timeline: events, requests, failures and crashes, in time order.
+    const line = [
+      ...r.events.map((e) => ({ t: e.t, what: e.kind, detail: [e.screen, e.control, e.sheet, e.permission, e.granted === undefined ? '' : (e.granted ? 'granted' : 'denied'), e.positionMs === undefined ? '' : e.positionMs + ' ms'].filter(Boolean).join(' · ') })),
+      ...r.network.map((n) => ({ t: n.t, what: n.method + ' ' + n.route, detail: n.status + (n.code ? ' ' + n.code : '') + ' · ' + n.ms + ' ms' + (n.retries ? ' · retries ' + n.retries : '') + (n.idempotency ? ' · ' + n.idempotency : ''), bad: n.status >= 400 || n.status === 0 })),
+      ...r.failures.map((f) => ({ t: f.t, what: 'failure ' + f.code, detail: f.screen, bad: true })),
+      ...r.crashes.map((c) => ({ t: c.t, what: c.kind, detail: '', bad: true })),
+    ].sort((a, b) => a.t.localeCompare(b.t));
+    const table = el('table');
+    const head = el('thead');
+    const headRow = el('tr');
+    headRow.append(el('th', 'time'), el('th', 'what'), el('th', 'detail'));
+    head.append(headRow);
+    table.append(head);
+    const body = el('tbody');
+    for (const row of line) {
+      const tr = el('tr', undefined, row.bad ? 'bad' : undefined);
+      tr.append(el('td', new Date(row.t).toLocaleTimeString()), el('td', row.what), el('td', row.detail));
+      body.append(tr);
+    }
+    table.append(body);
+    const wrap = el('div', undefined, 'scroll'); wrap.append(table);
+    detail.append(el('div', 'timeline', 'label'), wrap);
+  }
+
+  async function open() {
+    try { await load(); sessionStorage.setItem('adminSecret', SECRET); $('auth').hidden = true; $('app').hidden = false; }
+    catch { $('authError').textContent = 'that secret did not work'; SECRET = ''; }
+  }
+  $('auth').onsubmit = (e) => { e.preventDefault(); SECRET = $('secret').value.trim(); open(); };
+  $('filter').onsubmit = (e) => { e.preventDefault(); load().catch(() => { $('list').replaceChildren(); }); };
+  if (SECRET) open();
+</script>
+</body>
+</html>

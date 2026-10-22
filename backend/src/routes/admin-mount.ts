@@ -2,6 +2,8 @@ import path from 'path';
 import express, { type Express } from 'express';
 import { makeAdminAuth } from '../middleware/admin-auth.js';
 import { adminRouter } from './admin.js';
+import { createAdminDiagnosticsRouter } from './admin-diagnostics.js';
+import type { DiagnosticsStore } from '../diagnostics/store.js';
 
 /**
  * Mounts `/admin`, `/dashboard` and the dashboard's files under `/public` only
@@ -10,7 +12,7 @@ import { adminRouter } from './admin.js';
  * secret there is no admin at all, rather than a guessable default.
  * Returns whether it mounted.
  */
-export function mountAdmin(app: Express, opts: { secret: string | null; publicDir: string }): boolean {
+export function mountAdmin(app: Express, opts: { secret: string | null; publicDir: string; diagnostics?: DiagnosticsStore }): boolean {
   if (!opts.secret) {
     console.warn('[admin] ADMIN_SECRET is not set: /admin, /dashboard and /public are not mounted.');
     return false;
@@ -19,6 +21,11 @@ export function mountAdmin(app: Express, opts: { secret: string | null; publicDi
   app.get('/dashboard', (_req, res) => {
     res.sendFile(path.join(opts.publicDir, 'dashboard.html'));
   });
-  app.use('/admin', makeAdminAuth(opts.secret), adminRouter);
+  app.get('/dashboard/diagnostics', (_req, res) => {
+    res.sendFile(path.join(opts.publicDir, 'diagnostics.html'));
+  });
+  const auth = makeAdminAuth(opts.secret);
+  if (opts.diagnostics) app.use('/admin/diagnostics', auth, createAdminDiagnosticsRouter(opts.diagnostics));
+  app.use('/admin', auth, adminRouter);
   return true;
 }
