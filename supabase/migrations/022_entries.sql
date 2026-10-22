@@ -29,13 +29,16 @@
 -- production by an agent.
 -- ============================================================================
 
+-- Built without CONCURRENTLY (the hand-apply runs in a transaction; the
+-- column is new, so the index is empty and the lock is brief).
 CREATE UNIQUE INDEX IF NOT EXISTS raw_content_client_entry_unique
     ON raw_content (user_id, (metadata->>'client_entry_id'))
     WHERE metadata->>'client_entry_id' IS NOT NULL;
 
 -- The zone a request's dates are read in. The header wins and is remembered;
--- without one the remembered zone is used, and UTC when nothing is known.
--- NULL when there is no such user.
+-- without one the remembered zone is used, and UTC when nothing is known or
+-- the remembered name is not a zone Postgres knows. NULL when there is no
+-- such user.
 CREATE OR REPLACE FUNCTION resolve_zone(p_user UUID, p_zone TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -44,6 +47,7 @@ SET search_path = public
 AS $$
 DECLARE
     v_stored TEXT;
+    v_zone TEXT;
 BEGIN
     SELECT time_zone INTO v_stored FROM users WHERE id = p_user;
     IF NOT FOUND THEN
@@ -52,7 +56,13 @@ BEGIN
     IF p_zone IS NOT NULL AND p_zone IS DISTINCT FROM v_stored THEN
         UPDATE users SET time_zone = p_zone WHERE id = p_user;
     END IF;
-    RETURN COALESCE(p_zone, v_stored, 'UTC');
+    v_zone := COALESCE(p_zone, v_stored, 'UTC');
+    BEGIN
+        PERFORM now() AT TIME ZONE v_zone;
+    EXCEPTION WHEN invalid_parameter_value THEN
+        v_zone := 'UTC';
+    END;
+    RETURN v_zone;
 END;
 $$;
 
@@ -61,7 +71,7 @@ $$;
 CREATE OR REPLACE FUNCTION entry_json(r raw_content, p_zone TEXT)
 RETURNS JSONB
 LANGUAGE sql
-IMMUTABLE
+STABLE
 AS $$
     SELECT jsonb_build_object(
         'id', r.id,
@@ -124,7 +134,8 @@ $$;
 
 -- Today's entries (GET /v2/entries/today): the person's own words (p_types is
 -- the agent's "sent by the person" set) whose moment falls on today's calendar
--- day in their zone, oldest first, at most p_limit.
+-- day in their zone, oldest first; over p_limit the oldest fall off the
+-- thread (the newest p_limit are kept, then shown oldest first).
 --   { date, entries: [...] } or { outcome: 'no_user' }
 CREATE OR REPLACE FUNCTION entries_today(p_user UUID, p_types TEXT[], p_zone TEXT, p_now TIMESTAMPTZ, p_limit INT)
 RETURNS JSONB
@@ -148,7 +159,7 @@ BEGIN
           SELECT * FROM raw_content
            WHERE user_id = p_user AND content_type = ANY(p_types)
              AND (COALESCE(content_date, created_at) AT TIME ZONE v_zone)::date = v_day
-           ORDER BY COALESCE(content_date, created_at), id
+           ORDER BY COALESCE(content_date, created_at) DESC, id DESC
            LIMIT p_limit
       ) r;
     RETURN jsonb_build_object('date', v_day, 'entries', v_entries);

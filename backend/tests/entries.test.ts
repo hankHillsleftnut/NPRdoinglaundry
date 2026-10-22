@@ -114,7 +114,7 @@ test('ten retries with the same key make one row and one ingest, and answer 200 
     const upper = await send(h, sam, { ...body, clientEntryId: body.clientEntryId.toUpperCase() }, {}, body.clientEntryId.toUpperCase());
     assert.equal(upper.status, 200, 'the key compares case-insensitively');
     assert.deepEqual(upper.body, first.body);
-    // At once: two retries racing for the first write still make one row.
+    // Two retries sent together (the harness serialises them on one connection; the index decides a true race the same way).
     const race = draft();
     const results = await Promise.all([send(h, sam, race), send(h, sam, race)]);
     assert.deepEqual(results.map((r) => r.status).sort(), [200, 201]);
@@ -162,7 +162,10 @@ test('a future createdAt is clamped to now and counted, not refused (*)', async 
     const old = await send(h, sam, draft({ createdAt: '2025-01-01T00:00:00.000Z' }));
     assert.equal(old.status, 201, 'no floor: an old offline entry is never thrown away');
     assert.equal(data<{ entry: Entry }>(old.body).entry.day, '2025-01-01');
-    assert.equal(h.logLines.filter((l) => l.includes('clockSkew')).length, 1, 'only the clamped one is counted');
+    const aheadBody = JSON.parse(JSON.stringify(draft({ createdAt: new Date(T0 + CLOCK_SKEW_MS + 60_000).toISOString() }))) as ReturnType<typeof draft>;
+    assert.equal((await send(h, sam, aheadBody)).status, 201);
+    assert.equal((await send(h, sam, aheadBody)).status, 200, 'its replay');
+    assert.equal(h.logLines.filter((l) => l.includes('clockSkew')).length, 2, 'the clamped ones are counted once each, never on a replay');
   } finally {
     await h.close();
   }
@@ -210,6 +213,19 @@ test('today follows X-Time-Zone, not UTC, and stores the zone on the person for 
     const fresh = await person(h);
     const utc = data<{ date: string; entries: Entry[] }>((await today(h, fresh)).body);
     assert.deepEqual(utc, { date: '2026-10-22', entries: [] }, 'nothing known: UTC');
+    await db.query(`UPDATE users SET time_zone = 'Mars/Olympus' WHERE id = $1`, [fresh]);
+    assert.equal(data<{ date: string }>((await today(h, fresh)).body).date, '2026-10-22', 'a remembered name that is not a zone falls back to UTC, not a 500');
+    // East of UTC: 10:30Z on the 21st is 00:30 on the 22nd in Kiritimati (UTC+14).
+    h.clock.now = Date.parse('2026-10-21T10:30:00.000Z');
+    const east = await person(h);
+    const kiri = { 'X-Time-Zone': 'Pacific/Kiritimati' };
+    assert.equal(data<{ entry: Entry }>((await send(h, east, draft({ createdAt: '2026-10-21T10:30:00.000Z' }), kiri)).body).entry.day, '2026-10-22');
+    const eastToday = data<{ date: string; entries: Entry[] }>((await today(h, east, kiri)).body);
+    assert.equal(eastToday.date, '2026-10-22');
+    assert.equal(eastToday.entries.length, 1, "tomorrow's entry in UTC is today's where they are");
+    const inUtc = data<{ date: string; entries: Entry[] }>((await today(h, east, { 'X-Time-Zone': 'UTC' })).body);
+    assert.deepEqual([inUtc.date, inUtc.entries.map((e) => e.day)], ['2026-10-21', ['2026-10-21']], 'the same instant read in UTC is still the 21st, on both the date and the entry');
+    h.clock.now = Date.parse('2026-10-22T07:30:00.000Z');
     // The same instant, a day earlier for them: still today's list, keyed by the response's date.
     h.clock.now += 24 * 60 * 60 * 1000;
     assert.equal(data<{ entries: Entry[] }>((await today(h, sam, zone)).body).entries.length, 0, "yesterday's entry has left today");
@@ -277,8 +293,51 @@ test('today lists every kind the person sends, maps the rest to imported, and st
     const values = Array.from({ length: more }, (_, k) => `('${sam}', 'journal_entry', 'bulk ${k}', '${new Date(T0 - 1_800_000 + k * 1000).toISOString()}', '${new Date(T0 - 1_800_000 + k * 1000).toISOString()}')`);
     await db.query(`INSERT INTO raw_content (user_id, content_type, content, content_date, created_at) VALUES ${values.join(',')}`);
     const capped = data<{ entries: Entry[] }>((await today(h, sam)).body).entries;
-    assert.equal(capped.length, TODAY_LIMIT, 'at most 200, the oldest first');
-    assert.equal(capped[0]!.text, 'item text_entry');
+    assert.equal(capped.length, TODAY_LIMIT, 'at most 200');
+    assert.equal(capped[capped.length - 1]!.text, `bulk ${more - 1}`, 'the newest is kept');
+    assert.equal(capped[0]!.text, `item ${SENT_TYPES[5]}`, 'the five oldest fell off the thread; what is left is oldest first');
+  } finally {
+    await h.close();
+  }
+});
+
+test("another person sending your clientEntryId gets a row of their own, and yours is untouched (*)", async () => {
+  const h = await harness();
+  try {
+    const [a, b] = [await person(h), await person(h)];
+    const body = draft();
+    const mine = await send(h, a, body);
+    assert.equal(mine.status, 201);
+    const theirs = await send(h, b, { ...body, text: 'the same key, someone else' });
+    assert.equal(theirs.status, 201, "their first use of the key, not a replay of A's and not a mismatch");
+    assert.notEqual(data<{ entry: Entry }>(theirs.body).entry.id, data<{ entry: Entry }>(mine.body).entry.id);
+    assert.deepEqual(h.ingested.map((i) => i.userId), [a, b]);
+    assert.deepEqual((await rows(a)).map((r) => r.content), [body.text], "A's row is untouched");
+    assert.deepEqual((await rows(b)).map((r) => r.content), ['the same key, someone else']);
+    assert.deepEqual((await send(h, a, body)).body, mine.body, "A's replay is still A's");
+    assert.equal(data<{ entries: Entry[] }>((await today(h, b)).body).entries.some((e) => e.text === body.text), false, "B's today never shows A's words");
+  } finally {
+    await h.close();
+  }
+});
+
+test("the server's own hand-off reaches the brain's /ingest/run with the stored row, after the response", async () => {
+  const h = await startHarness({ entries, now: T0, agentRoutes: { 'POST /ingest/run': () => ({ status: 200, body: { ok: true } }) } });
+  try {
+    const sam = await person(h);
+    const res = await send(h, sam, draft());
+    assert.equal(res.status, 201);
+    const id = data<{ entry: Entry }>(res.body).entry.id;
+    for (let i = 0; i < 50 && h.agentCalls.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
+    assert.equal(h.agentCalls.length, 1);
+    assert.equal(h.agentCalls[0]!.path, '/ingest/run');
+    assert.deepEqual((h.agentCalls[0]!.body as { userId: string; rawContentIds: string[] }).rawContentIds, [id]);
+    assert.equal((h.agentCalls[0]!.body as { userId: string }).userId, sam);
+    h.setAgent({ 'POST /ingest/run': () => ({ status: 500, body: { error: 'down' } }) });
+    const second = await send(h, sam, draft());
+    assert.equal(second.status, 201, 'the brain being down is invisible to the app');
+    for (let i = 0; i < 50 && h.agentCalls.length < 2; i++) await new Promise((r) => setTimeout(r, 20));
+    assert.equal((await rows(sam)).every((r) => r.status === 'pending'), true, 'the row stays pending for the next sweep');
   } finally {
     await h.close();
   }

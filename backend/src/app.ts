@@ -27,7 +27,6 @@ import type { AccessStore } from './access/store.js';
 import type { InviteStore } from './invites/store.js';
 import type { EntryStore } from './entries/store.js';
 import { handOffToAgent } from './services/agent-handoff.js';
-import { runAgentIngest } from './services/agent-client.js';
 import { createPublicInviteRouter } from './invites/public.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
@@ -178,9 +177,17 @@ export function createApp(deps: AppDeps): express.Express {
     },
     entries: {
       entries: deps.entries,
-      // Same hand-off as /content: after the response, and never able to write the row's status (agent-handoff.ts).
+      // Same hand-off as /content (the agent's /ingest/run, one row), through the
+      // door's agent client: after the response, and never able to write the
+      // row's status (agent-handoff.ts). No retry here: a row the agent didn't
+      // hear about stays pending for its next sweep.
       startIngest: deps.startIngest ?? ((userId, rawContentId) => {
-        setImmediate(() => { void handOffToAgent(runAgentIngest, { userId, rawContentIds: [rawContentId] }); });
+        setImmediate(() => {
+          void handOffToAgent(
+            (args) => deps.agent.post('/ingest/run', { userId: args.userId, rawContentIds: args.rawContentIds, daysBack: 1, notes: 'Triggered by retrospect-api POST /v2/entries' }, { timeoutMs: 10_000, retry: 'none' }),
+            { userId, rawContentIds: [rawContentId] },
+          );
+        });
       }),
     },
   }));
