@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "kind": "fact",
+        "id": "00000000-0000-4000-8000-000000000302",
+        "text": "you have a dentist appointment on tuesdays at 3",
+        "sureness": "fairly sure"
+      },
+      {
+        "kind": "fact",
+        "id": "00000000-0000-4000-8000-000000000303",
+        "text": "you find dentist visits stressful",
+        "sureness": "very sure"
+      },
+      {
+        "kind": "pattern",
+        "id": "00000000-0000-4000-8000-000000000304",
+        "text": "you mention dread before appointments",
+        "sureness": "just a hunch"
+      }
+    ],
+    "reading": "read"
+  }
+}

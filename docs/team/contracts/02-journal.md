@@ -52,7 +52,7 @@ type Brief = {
 - `audio` is absent until BE1.3b ships (briefs have no audio today) and absent on quiet days.
 
 `GET /v2/briefs/latest` → `{ "brief": Brief | null, "enabled": true }` (`enabled` is the user's brief switch; off by default, founder 21 Oct).
-`GET /v2/briefs?cursor=<opaque>&limit=20` → `{ "briefs": Brief[], "nextCursor": "…" | null }` (no audio in the list).
+`GET /v2/briefs?cursor=<opaque>&limit=20` → `{ "briefs": Brief[], "nextCursor": "…" | null }`, newest first (no audio in the list).
 `PUT /v2/briefs/enabled` `{ "enabled": true }` → `{ "enabled": true }`.
 
 ## 4. Guesses (the guess cards)
@@ -67,7 +67,7 @@ type Guess = {
   restsOn: Array<SourceRef & { text: string }>;   // the door resolves each {kind,id} to text (the agent gives ids only)
 };
 ```
-`GET /v2/guesses` → `{ "guesses": Guess[], "speaking": true }`. `speaking` is the founder's master dial (`product_dials.hypotheses.speak`, off today; decision D11); when false, `guesses` is `[]`.
+`GET /v2/guesses` → `{ "guesses": Guess[], "speaking": true }`, newest first. `speaking` is the founder's master dial (`product_dials.hypotheses.speak`, off today; decision D11); when false, `guesses` is `[]`.
 `POST /v2/guesses/:id` `{ "verdict": "yes" | "no" }` → `{ "status": "confirmed" | "declined" }`. Idempotent: answering an already-answered guess returns its stored status (the agent 404s on a repeat; the door reads state first).
 `GET /v2/guesses/:id/why` → `Guess`.
 
@@ -85,7 +85,7 @@ type Entry = {
 };
 ```
 Only the person's own words are listed (the "sent by the person" set in the agent's planner), never records, mail or third-party items.
-`GET /v2/entries?cursor=&limit=50&q=` → `{ "entries": Entry[], "nextCursor": … }`. `q` searches the person's own entries only (matched words come back as ranges for highlighting: `matches: [{ start, length }]`).
+`GET /v2/entries?cursor=&limit=50&q=` → `{ "entries": Entry[], "nextCursor": … }`, newest first. `q` searches the person's own entries only (matched words come back as ranges for highlighting: `matches: [{ start, length }]`, counted in **UTF-16 code units** of `text`, the unit Swift's `NSRange` and JavaScript strings share).
 `GET /v2/entries/:id` → `{ "entry": Entry }`.
 `PATCH /v2/entries/:id` `{ "text": "…" }` → `{ "entry": Entry }` (editing re-sends it for reading: "retro is reading it again").
 `DELETE /v2/entries/:id` → `{ "deleted": true }`; deleting removes everything taken from it (the founder's rule K7; the door confirms the cascade in BE1.5).
@@ -96,12 +96,12 @@ Only the person's own words are listed (the "sent by the person" set in the agen
 ```json
 { "items": [ { "kind": "fact", "id": "…", "text": "you're training for a half marathon", "sureness": "fairly sure" } ], "reading": "read" }
 ```
-`sureness`: `just a hunch | fairly sure | very sure` from the agent's confidence (thresholds in the contract fixtures: < 0.5, < 0.8, ≥ 0.8; founder to confirm the words). `items` is `[]` with `reading: "waiting"` when nothing has been read yet ("nothing taken yet" fills in on its own).
+`items` are in the order Retro took them. `sureness`: `just a hunch | fairly sure | very sure` from the agent's confidence (thresholds in the contract fixtures: < 0.5, < 0.8, ≥ 0.8; founder to confirm the words). `items` is `[]` with `reading: "waiting"` when nothing has been read yet ("nothing taken yet" fills in on its own).
 
 `POST /v2/corrections` `{ "text": "i stopped running in september", "about": { "kind": "fact", "id": "…" } }` (`about` optional: present when "not right" is tapped on a specific item) → one of:
 ```json
 { "outcome": "applied", "target": { "kind": "fact", "id": "…", "text": "…" }, "retired": 3, "echo": "got it. i'll stop saying \"training for the half marathon\", and 2 things built on it." }
-{ "outcome": "confirm", "candidates": [ { "kind": "answer", "id": "…", "text": "…" } ] }
+{ "outcome": "confirm", "candidates": [ { "kind": "answer", "id": "…", "text": "…" } ] }   // most likely first
 { "outcome": "askOwnWords", "target": { … }, "quote": "i am going to run the half in march", "writtenOn": "2026-09-02" }
 { "outcome": "notACorrection" }
 ```
@@ -119,4 +119,7 @@ Blocked until **BEA.1** (corrections that touch an answer fail in production tod
 
 ## 8. Fixtures
 
-`fixtures/02/`: `entries.today.json`, `entries.today.empty.json`, `entry.create.request.json`, `entry.create.response.json`, `brief.latest.v1.json`, `brief.latest.v2.json`, `brief.latest.quiet.json`, `brief.latest.none.json`, `briefs.list.json`, `guesses.json`, `guesses.silent.json`, `guess.answer.json`, `entries.list.json`, `entries.search.json`, `entry.json`, `took.json`, `took.waiting.json`, `correction.applied.json`, `correction.confirm.json`, `correction.ask.json`, `correction.not.json`, `error.*.json` for each code the doors can return.
+**List order, everywhere in this contract:** today's entries oldest first; the entries list, briefs and guesses newest first; brief parts in spoken order; what Retro took in the order it took them; correction candidates most likely first.
+
+
+`fixtures/02/`: `entries.today.json`, `entries.today.empty.json`, `entry.create.request.json`, `entry.create.response.json`, `brief.latest.v1.json`, `brief.latest.v2.json`, `brief.latest.quiet.json`, `brief.latest.none.json`, `briefs.list.json`, `guesses.json`, `guesses.silent.json`, `guess.answer.json`, `entries.list.json`, `entries.search.json`, `entry.json`, `took.json`, `took.waiting.json`, `correction.applied.json`, `correction.confirm.json`, `correction.ask.json`, `correction.not.json`, `error.*.json` for each code the doors can return. Every response fixture is the full contract 00 envelope; request fixtures are the bare body. The app's tests map every file in the folder to a model and fail on an unmapped one.

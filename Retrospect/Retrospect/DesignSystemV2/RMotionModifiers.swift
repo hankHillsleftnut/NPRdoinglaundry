@@ -130,11 +130,33 @@ extension View {
 
 // MARK: - Blur replace (changing text)
 
+private struct RBlurReplace: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(reduceMotion ? .opacity : .interpolate)
+            .transition(transition)
+    }
+
+    /// In on curve.standard 280 with the blur; out faster, on curve.exit 200 (craft 1.8).
+    /// Reduce Motion: a 140ms cross-fade, no blur (motion-system §8).
+    private var transition: AnyTransition {
+        if reduceMotion {
+            return AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationFast))
+        }
+        return .asymmetric(
+            insertion: AnyTransition(.blurReplace).animation(RMotion.standard(RNumber.motionDurationSlow)),
+            removal: AnyTransition(.blurReplace).animation(RMotion.exit(RNumber.motionDurationBase))
+        )
+    }
+}
+
 extension View {
-    /// Changing text blurs out and in rather than double-printing. Animate the change with
-    /// `withAnimation(RMotion.standard(RNumber.motionDurationSlow))`.
+    /// Text or a line that comes and goes blurs out and in rather than double-printing. The
+    /// timing travels with the transition, so callers only insert or remove the view.
     func rBlurReplace() -> some View {
-        contentTransition(.interpolate).transition(.blurReplace)
+        modifier(RBlurReplace())
     }
 }
 

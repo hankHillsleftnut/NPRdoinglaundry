@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "data": {
+    "invites": [
+      {
+        "id": "00000000-0000-4000-8000-000000000011",
+        "link": null,
+        "createdAt": "2026-10-21T08:00:00.000Z",
+        "state": "used",
+        "usedBy": "priya"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000012",
+        "link": "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB",
+        "createdAt": "2026-10-21T08:00:00.000Z",
+        "state": "unused",
+        "usedBy": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000013",
+        "link": "https://retrospect-api.onrender.com/i/QW3E8RTY2UPAL",
+        "createdAt": "2026-10-21T08:00:00.000Z",
+        "state": "unused",
+        "usedBy": null
+      }
+    ]
+  }
+}

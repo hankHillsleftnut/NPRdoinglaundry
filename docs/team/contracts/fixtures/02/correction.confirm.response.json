@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "outcome": "applied",
+    "retired": 3,
+    "target": {
+      "kind": "fact",
+      "id": "00000000-0000-4000-8000-000000000305",
+      "text": "you're training for a half marathon"
+    },
+    "echo": "got it. i'll stop saying \"training for the half marathon\"."
+  }
+}

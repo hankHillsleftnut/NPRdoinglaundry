@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "outcome": "confirm",
+    "candidates": [
+      {
+        "kind": "answer",
+        "id": "00000000-0000-4000-8000-000000000306",
+        "text": "you run to clear your head"
+      },
+      {
+        "kind": "fact",
+        "id": "00000000-0000-4000-8000-000000000305",
+        "text": "you're training for a half marathon"
+      }
+    ]
+  }
+}
