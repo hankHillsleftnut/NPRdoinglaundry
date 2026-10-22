@@ -7,7 +7,7 @@ on:
 
 jobs:
   api:
-    runs-on: [self-hosted, macOS, retrospect]
+    runs-on: [self-hosted, light]
     defaults:
       run:
         working-directory: backend
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
@@ -28,7 +28,7 @@ jobs:
   changes:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
     # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained).
-    runs-on: [self-hosted, macOS, retrospect]
+    runs-on: [self-hosted, light]
     outputs:
       app: ${{ steps.changed.outputs.app }}
     steps:
@@ -47,7 +47,7 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: [self-hosted, macOS, retrospect]
+    runs-on: [self-hosted, macOS, retrospect]  # the first runner only: one iOS build at a time
     steps:
       - uses: actions/checkout@v4
       - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build
