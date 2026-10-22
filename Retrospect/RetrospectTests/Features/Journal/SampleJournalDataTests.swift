@@ -172,6 +172,27 @@ struct SampleJournalDataTests {
         clock.advance(by: SampleJournalData.sendDelay)
         await send.value
         #expect(data.today.value?.last?.delivery == .sent)
+        await data.load()
+        #expect(data.today.value?.last?.text == "before it loaded")
+        #expect(data.today.value?.count == Content.todayEntries.count + 1)
+    }
+
+    @Test("in loading, one entry never resolves until its task is cancelled")
+    func loadingEntryNeverResolves() async {
+        let clock = TestClock()
+        let data = SampleJournalData(scenario: .loading, clock: clock)
+        var resolved = false
+        let open = Task {
+            _ = await data.entry(id: Content.todayEntries[0].id)
+            resolved = true
+        }
+        await settle(clock, waiting: 1)
+        clock.advance(by: .seconds(60))
+        await Task.yield()
+        #expect(!resolved)
+        open.cancel()
+        await open.value
+        #expect(resolved)
     }
 
     @Test("a thought sent after today failed to load is still saved")

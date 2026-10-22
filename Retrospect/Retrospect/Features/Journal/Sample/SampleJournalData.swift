@@ -54,7 +54,16 @@ final class SampleJournalData: Flows.JournalData {
         }
         guard !seeded else { return }
         seeded = true
-        today = Self.today(for: scenario)
+        // thoughts sent before the first load stay, after the scenario's own entries
+        let sentEarly = today.value ?? []
+        switch Self.today(for: scenario) {
+        case let .loaded(entries):
+            today = .loaded(entries + sentEarly)
+        case let seed where sentEarly.isEmpty:
+            today = seed
+        default:
+            today = .loaded(sentEarly)
+        }
         brief = Self.brief(for: scenario)
         guesses = Self.guesses(for: scenario)
         for entry in today.value ?? [] where entry.delivery == .sent {
@@ -259,6 +268,10 @@ final class SampleJournalData: Flows.JournalData {
     }
 
     func entry(id: String) async -> Result<Journal.Entry, Flows.Failure> {
+        if scenario == .loading {
+            await waitUntilCancelled()
+            return .failure(Content.networkFailure)
+        }
         let all = (today.value ?? Content.todayEntries) + earlier
         guard let found = all.first(where: { $0.id == id || $0.serverId == id }) else {
             return .failure(.notFound)
