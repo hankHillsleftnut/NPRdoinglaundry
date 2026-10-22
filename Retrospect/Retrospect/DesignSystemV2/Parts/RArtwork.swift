@@ -91,14 +91,31 @@ public struct RArtworkRecipe {
 /// Episode artwork at any size.
 struct RArtwork: View {
     let recipe: RArtworkRecipe
-    var size: CGFloat = RDimension.sizeArtworkRow
+    let width: CGFloat
+    let height: CGFloat
+    /// The corner radius; by default radius.artworkRatio of the shorter side.
+    var cornerRadius: CGFloat?
     @Environment(\.displayScale) private var displayScale
+
+    /// Square artwork (tiles, thumbs, the player).
+    init(recipe: RArtworkRecipe, size: CGFloat = RDimension.sizeArtworkRow) {
+        self.init(recipe: recipe, width: size, height: size)
+    }
+
+    /// Artwork of any shape (the brief card's panel). The mesh scales to the longer side, so a
+    /// wide panel shows the same picture as its square thumb, only cropped.
+    init(recipe: RArtworkRecipe, width: CGFloat, height: CGFloat, cornerRadius: CGFloat? = nil) {
+        self.recipe = recipe
+        self.width = width
+        self.height = height
+        self.cornerRadius = cornerRadius
+    }
 
     var body: some View {
         Rectangle()
-            .frame(width: size, height: size)
+            .frame(width: width, height: height)
             .colorEffect(ShaderLibrary.rArtworkMesh(
-                .float2(size, size),
+                .float2(width, height),
                 .floatArray(recipe.shaderPoints),
                 .float3(recipe.shaderBase.x, recipe.shaderBase.y, recipe.shaderBase.z),
                 .float(recipe.softness),
@@ -106,7 +123,7 @@ struct RArtwork: View {
                 .float(recipe.grain.mode == .mono ? 0 : 1),
                 .float(recipe.grain.size / displayScale)
             ))
-            .clipShape(RShape.rect(size * RNumber.radiusArtworkRatio))
+            .clipShape(RShape.rect(cornerRadius ?? Swift.min(width, height) * RNumber.radiusArtworkRatio))
             .accessibilityHidden(true)
     }
 }

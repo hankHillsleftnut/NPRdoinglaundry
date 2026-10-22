@@ -1,0 +1,152 @@
+import Foundation
+import GRDB
+
+extension Platform.Diagnostics {
+    /// The append-only recorder: `record` takes a `Record`, stamps it with the
+    /// time and keeps it in the ring for its kind (`Store.DiagnosticRow`).
+    /// Writes are batched: a batch lands after `flushAfter`, or at once when
+    /// it reaches `batchSize`, or when `flush()` is called (on the way to the
+    /// background, before a report is built). Every write also trims each
+    /// ring it touched to its cap and drops rows older than `retention`.
+    ///
+    /// Before sign-in there's no database yet: records wait in memory (the
+    /// newest `pendingCap`) and land when `attach` is called. A write that
+    /// fails is logged as a count and its batch dropped; recording never
+    /// throws at its callers.
+    actor Recorder {
+        /// 7 days: the report's window (docs/team/flows/diagnostics.md).
+        static let retention: TimeInterval = 7 * 24 * 60 * 60
+        static let batchSize = 50
+        static let flushAfter: Duration = .seconds(2)
+        /// The most records kept in memory while no database is attached:
+        /// each ring's cap, so the first flush can fill every ring and no
+        /// ring's wait evicts another's (`bounded`).
+        static let pendingCap = Ring.allCases.map(\.cap).reduce(0, +)
+
+        private var database: Store.LocalDatabase?
+        private var pending: [Store.DiagnosticRow] = []
+        private var scheduledFlush: Task<Void, Never>?
+        private let now: @Sendable () -> Date
+        private let clock: any Clock<Duration>
+        private let log: any Platform.LogSink
+
+        init(
+            database: Store.LocalDatabase? = nil,
+            now: @escaping @Sendable () -> Date = { Date() },
+            clock: any Clock<Duration> = ContinuousClock(),
+            log: any Platform.LogSink
+        ) {
+            self.database = database
+            self.now = now
+            self.clock = clock
+            self.log = log
+        }
+
+        /// Keeps `record`, stamped with now. Returns before anything is written.
+        func record(_ record: Record) {
+            let payload: Data
+            do {
+                payload = try Self.encode(record)
+            } catch {
+                log.record(.diagnosticsWriteFailed)
+                return
+            }
+            pending.append(Store.DiagnosticRow(id: nil, ring: record.ring, at: now(), payload: payload))
+            pending = Self.bounded(pending)
+            if database == nil {
+                return
+            }
+            if pending.count >= Self.batchSize {
+                flush()
+            } else {
+                scheduleFlush()
+            }
+        }
+
+        /// The database to write to, once it's open: drops rows older than
+        /// the window ("pruned on launch") and lands what was waiting.
+        func attach(_ database: Store.LocalDatabase) {
+            self.database = database
+            do {
+                try database.writer.write { try Store.DiagnosticRow.deleteOlder(than: cutoff, in: $0) }
+            } catch {
+                log.record(.diagnosticsWriteFailed)
+            }
+            flush()
+        }
+
+        /// Writes everything waiting, in one transaction, and trims the rings
+        /// it touched. Nothing happens without a database.
+        func flush() {
+            scheduledFlush?.cancel()
+            scheduledFlush = nil
+            guard let database, !pending.isEmpty else { return }
+            let batch = pending
+            pending = []
+            do {
+                try database.writer.write { db in
+                    for var row in batch {
+                        try row.insert(db)
+                    }
+                    for ring in Set(batch.map(\.ring)) {
+                        try Store.DiagnosticRow.trim(ring, in: db)
+                    }
+                    try Store.DiagnosticRow.deleteOlder(than: cutoff, in: db)
+                }
+            } catch {
+                log.record(.diagnosticsWriteFailed)
+            }
+        }
+
+        /// One ring's rows as recorded, oldest first; what's still waiting in
+        /// memory is flushed first. Empty without a database.
+        func rows(in ring: Ring) throws -> [Store.DiagnosticRow] {
+            flush()
+            guard let database else { return [] }
+            return try database.writer.read { try Store.DiagnosticRow.inRing(ring).fetchAll($0) }
+        }
+
+        /// Waits for a flush the delay scheduled, if one is scheduled. For tests.
+        func waitForScheduledFlush() async {
+            await scheduledFlush?.value
+        }
+
+        private var cutoff: Date {
+            now().addingTimeInterval(-Self.retention)
+        }
+
+        private func scheduleFlush() {
+            guard scheduledFlush == nil else { return }
+            scheduledFlush = Task {
+                try? await clock.sleep(for: Self.flushAfter)
+                guard !Task.isCancelled else { return }
+                flush()
+            }
+        }
+
+        /// `rows` with each ring cut to its own cap, oldest first to go: a
+        /// flood of one kind (events) never pushes out a rare one (a crash)
+        /// while they wait in memory, the same rule as the rings on disk.
+        static func bounded(_ rows: [Store.DiagnosticRow]) -> [Store.DiagnosticRow] {
+            var over = Dictionary(uniqueKeysWithValues: Ring.allCases.map { ring in
+                (ring, rows.count { $0.ring == ring } - ring.cap)
+            })
+            guard over.values.contains(where: { $0 > 0 }) else { return rows }
+            return rows.filter { row in
+                guard let excess = over[row.ring], excess > 0 else { return true }
+                over[row.ring] = excess - 1
+                return false
+            }
+        }
+
+        /// The record's JSON (the report's shape), keys sorted.
+        static func encode(_ record: Record) throws -> Data {
+            switch record {
+            case let .event(event): try Backend.Coding.encoder.encode(event)
+            case let .request(request): try Backend.Coding.encoder.encode(request)
+            case let .failure(failure): try Backend.Coding.encoder.encode(failure)
+            case let .crash(crash): try Backend.Coding.encoder.encode(crash)
+            }
+        }
+    }
+}
