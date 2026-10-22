@@ -104,15 +104,18 @@ enum RLoadingPhase: Equatable {
 final class RLoadingTimer {
     private(set) var phase: RLoadingPhase = .waiting
 
-    /// Both deadlines are measured from the load's start, so a late wake never pushes
-    /// "still working" past motion.duration.stillWorking.
-    func run(on clock: some Clock<Duration>) async {
+    /// Both deadlines are measured from the load's start: the first wait is measured on the
+    /// clock, and the second is what's left of motion.duration.stillWorking, so a late wake
+    /// never pushes "still working" later.
+    func run(on clock: any Clock<Duration>) async {
         phase = .waiting
-        let start = clock.now
         do {
-            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationSkeletonDelay)), tolerance: nil)
+            let waited = try await clock.measure {
+                try await clock.sleep(for: .seconds(RNumber.motionDurationSkeletonDelay))
+            }
             phase = .skeleton
-            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationStillWorking)), tolerance: nil)
+            let remaining = Duration.seconds(RNumber.motionDurationStillWorking) - waited
+            try await clock.sleep(for: Swift.max(remaining, .zero))
             phase = .stillWorking
         } catch {
             return
