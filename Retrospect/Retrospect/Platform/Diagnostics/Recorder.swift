@@ -13,7 +13,7 @@ extension Platform.Diagnostics {
     /// newest `pendingCap`) and land when `attach` is called. A write that
     /// fails is logged as a count and its batch dropped; recording never
     /// throws at its callers.
-    actor Recorder {
+    actor Recorder: Sink {
         /// 7 days: the report's window (docs/team/flows/diagnostics.md).
         static let retention: TimeInterval = 7 * 24 * 60 * 60
         static let batchSize = 50
@@ -75,8 +75,29 @@ extension Platform.Diagnostics {
             flush()
         }
 
+        /// Sign-out: lands what's waiting in this person's database, then
+        /// forgets the database and anything still in memory, so nothing
+        /// recorded before sign-out can reach the next person's rings.
+        /// The authenticated lifecycle also erases the store on sign-out. This
+        /// happens after detaching, so a later record cannot repopulate the store.
+        func detach(erasingDatabase: Bool = false) {
+            let previousDatabase = database
+            flush()
+            pending = []
+            database = nil
+            if erasingDatabase {
+                do {
+                    try previousDatabase?.erase()
+                } catch {
+                    log.record(.diagnosticsWriteFailed)
+                }
+            }
+        }
+
         /// Writes everything waiting, in one transaction, and trims the rings
-        /// it touched. Nothing happens without a database.
+        /// it touched. Nothing happens without a database. If the write
+        /// fails, it's logged and the batch goes back to the front of the
+        /// queue (newest `pendingCap` kept) for the next flush.
         func flush() {
             scheduledFlush?.cancel()
             scheduledFlush = nil
@@ -95,15 +116,17 @@ extension Platform.Diagnostics {
                 }
             } catch {
                 log.record(.diagnosticsWriteFailed)
+                pending = Self.bounded(batch + pending)
             }
         }
 
-        /// One ring's rows as recorded, oldest first; what's still waiting in
-        /// memory is flushed first. Empty without a database.
+        /// One ring's rows from the last 7 days, oldest first; what's still
+        /// waiting in memory is flushed first. Empty without a database.
         func rows(in ring: Ring) throws -> [Store.DiagnosticRow] {
             flush()
             guard let database else { return [] }
-            return try database.writer.read { try Store.DiagnosticRow.inRing(ring).fetchAll($0) }
+            let cutoff = cutoff
+            return try database.writer.read { try Store.DiagnosticRow.inRing(ring, since: cutoff).fetchAll($0) }
         }
 
         /// Waits for a flush the delay scheduled, if one is scheduled. For tests.

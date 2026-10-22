@@ -87,7 +87,7 @@ struct ContractFixtureTests {
         "redeem.response.alreadyin": decodes(Session.Redeemed.self),
         "invites-mine": decodes(Session.InvitesMine.self),
         "meta": decodes(Meta.self),
-        "diagnostics.response": decodes(DiagnosticsReceipt.self),
+        "diagnostics.response": decodes(Backend.Endpoints.SendReport.Receipt.self),
     ]
 
     static let platformRequests: [String: (Data) throws -> Void] = [
@@ -100,11 +100,11 @@ struct ContractFixtureTests {
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
         "redeem.request": request(Backend.InviteCodeBody.self, required: ["code"]),
         "diagnostics.request": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         "diagnostics.request.minimal": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         // The closed id lists the report may carry, shared with the backend (DG.1, DG.4).
