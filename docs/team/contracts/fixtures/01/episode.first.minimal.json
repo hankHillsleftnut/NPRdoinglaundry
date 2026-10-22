@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "data": {
+    "episode": {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "kind": "first",
+      "title": "the week you started",
+      "durationSeconds": 124,
+      "audio": {
+        "url": "https://storage.example.com/podcast-audio/fixture.mp3?token=fixture",
+        "expiresAt": "2026-10-21T14:05:00.000Z"
+      },
+      "chapters": [],
+      "transcript": [
+        {
+          "text": "you started this week from london."
+        }
+      ],
+      "createdAt": "2026-10-21T13:18:00.000Z"
+    }
+  }
+}
