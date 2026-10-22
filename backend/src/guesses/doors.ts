@@ -34,19 +34,21 @@ export function mountGuessDoors(router: Router, door: DoorFactory, deps: GuessDo
     name: 'guesses.list',
     bucket: 'read',
     request: Empty,
-    call: (ctx) => ctx.agent.get<{ speaking?: unknown; guesses?: AgentGuess[] }>(`/hypotheses/${ctx.userId}/pending`, { ...AGENT, retry: 'read' }),
-    map: (r) => {
+    call: async (ctx) => {
+      const r = await ctx.agent.get<{ speaking?: unknown; guesses?: AgentGuess[] }>(`/hypotheses/${ctx.userId}/pending`, { ...AGENT, retry: 'read' });
       const speaking = r.speaking === true;
-      const mapped: Guess[] = [];
+      const guesses: Guess[] = [];
       let dropped = 0;
       for (const g of speaking ? (r.guesses ?? []) : []) {
         const guess = mapGuess(g);
-        if (guess) mapped.push(guess);
+        if (guess) guesses.push(guess);
         else dropped++;
       }
-      if (dropped) console.warn(`[guesses.list] dropped=${dropped} (statuses the contract has no name for)`);
-      return { guesses: mapped, speaking };
+      return { guesses, speaking, dropped };
     },
+    map: (r) => ({ guesses: r.guesses, speaking: r.speaking }),
+    // A guess with a status the contract has no name for is left out and counted in the door log, beside the other metrics.
+    logCounts: (r) => (r.dropped ? { dropped: r.dropped } : {}),
   }));
 
   router.get('/guesses/:id/why', door({

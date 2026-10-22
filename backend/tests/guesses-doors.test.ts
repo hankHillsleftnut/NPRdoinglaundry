@@ -111,6 +111,9 @@ test('pending is empty while the dial is off, and the door shows nothing it cann
   const listed = data<{ guesses: Array<{ id: string }>; speaking: boolean }>((await h.request('GET', '/v2/guesses', undefined, p.auth)).body);
   assert.deepEqual(listed.guesses.map((g) => g.id), [USER_GUESS], 'a status the contract has no name for is dropped');
   assert.equal(listed.speaking, true);
+  const line = JSON.parse(h.logLines[h.logLines.length - 1]!) as Record<string, unknown>;
+  assert.equal(line.door, 'guesses.list');
+  assert.equal(line.dropped, 1, 'the drop is counted in the door log, beside the other metrics');
 });
 
 test('restsOn carries readable text for every kind, with the agent\'s kinds mapped', () => {
