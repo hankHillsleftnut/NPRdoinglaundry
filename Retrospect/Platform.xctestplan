@@ -1,0 +1,36 @@
+{
+  "configurations" : [
+    {
+      "id" : "6B1F0C2E-3D4A-4E5B-9C7D-8E9F0A1B2C3D",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:Retrospect.xcodeproj",
+          "identifier" : "7512528F2DF20D0C000A527F",
+          "name" : "Retrospect"
+        }
+      ]
+    },
+    "maximumTestExecutionTimeAllowance" : 60,
+    "testExecutionOrdering" : "random",
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:Retrospect.xcodeproj",
+        "identifier" : "7512529F2DF20D0D000A527F",
+        "name" : "RetrospectTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -1,5 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { config } from '../utils/config.js';
+import { Router, Request, Response } from 'express';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { createGoal, listGoals, extractGoalsFromText, extractAndSaveGoals } from '../services/goals.js';
 import { listObservations } from '../services/observations.js';
@@ -9,19 +8,7 @@ import { generateAgentPodcast, runAgentIngest } from '../services/agent-client.j
 
 export const adminRouter = Router();
 
-// ============================================
-// Admin secret middleware
-// ============================================
-function adminAuth(req: Request, res: Response, next: NextFunction): void {
-  const secret = req.query.secret as string || req.headers['x-admin-secret'] as string;
-  if (!secret || secret !== config.admin.secret) {
-    res.status(403).json({ success: false, error: 'Invalid admin secret' });
-    return;
-  }
-  next();
-}
-
-adminRouter.use(adminAuth);
+// The admin secret is checked where this router is mounted (routes/admin-mount.ts).
 
 // ============================================
 // Users

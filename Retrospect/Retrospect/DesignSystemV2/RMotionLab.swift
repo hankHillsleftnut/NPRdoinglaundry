@@ -12,6 +12,8 @@ import SwiftUI
 /// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
 enum RLabPage: String, CaseIterable, Identifiable {
     case motion, foundation, parts, artwork, toast
+    case offline
+    case evidence
 
     var id: String {
         rawValue
@@ -49,6 +51,8 @@ struct RDesignLab: View {
                 }
             case .artwork: RArtworkLab()
             case .toast: RToastGallery()
+            case .offline: ROfflineLineGallery()
+            case .evidence: REvidenceRowGallery()
             }
         }
         .background(RColor.backgroundCanvas)

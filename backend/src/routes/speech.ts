@@ -1,110 +1,80 @@
 import { Router, Request, Response } from 'express';
 import { config } from '../utils/config.js';
-
-export const speechRouter = Router();
-
-const TTS_URL_BASE = 'https://api.elevenlabs.io/v1/text-to-speech';
+import { captureException } from '../services/telemetry.js';
+import { MemoryLimiter, type Limiter } from '../doors/limits.js';
+import { SPEECH_DEFAULTS, SpeechProviderError, synthesizeSpeech, type SynthOptions } from '../services/speech-synth.js';
 
 // Bounds the spend a single authenticated request can trigger on the provider.
 const MAX_TEXT_CHARS = 20_000;
 
+export interface SpeechRouteDeps {
+  /** Per-user limit, bucket `expensive` (10 a minute, 60 an hour). */
+  limiter: Limiter;
+  now: () => number;
+  synth: Omit<SynthOptions, 'apiKey'> & { apiKey: string | null };
+  report?: (err: unknown) => void;
+}
+
 /**
- * Split text at sentence boundaries so no chunk exceeds the model's per-request
- * character limit and no cut lands mid-sentence.
+ * POST /speech/synthesize. Body: { text: string }. Returns audio/mpeg, or the
+ * old routes' `{ success: false, error }` with a generic message: what the
+ * provider said goes to the server log and Sentry only.
  */
-function chunkScript(text: string, maxChars: number): string[] {
-  if (text.length <= maxChars) return [text];
+export function createSpeechRouter(deps: SpeechRouteDeps): Router {
+  const router = Router();
+  router.post('/synthesize', async (req: Request, res: Response): Promise<void> => {
+    try {
+      const apiKey = deps.synth.apiKey;
+      if (!apiKey) {
+        res.status(503).json({ success: false, error: 'ELEVENLABS_API_KEY is not configured on the server' });
+        return;
+      }
 
-  const chunks: string[] = [];
-  let remaining = text;
+      const { text } = req.body ?? {};
+      if (typeof text !== 'string' || text.trim().length === 0) {
+        res.status(400).json({ success: false, error: 'text is required' });
+        return;
+      }
+      if (text.length > MAX_TEXT_CHARS) {
+        res.status(400).json({ success: false, error: `text exceeds the ${MAX_TEXT_CHARS} character limit` });
+        return;
+      }
 
-  while (remaining.length > maxChars) {
-    const slice = remaining.slice(0, maxChars);
-    const lastBoundary = Math.max(
-      slice.lastIndexOf('. '),
-      slice.lastIndexOf('! '),
-      slice.lastIndexOf('? '),
-      slice.lastIndexOf('.\n')
-    );
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+      const taken = deps.limiter.take(userId, 'expensive', deps.now());
+      if (!taken.ok) {
+        res.setHeader('Retry-After', String(taken.retryAfterSeconds));
+        res.status(429).json({ success: false, error: 'Too many requests, please try again later' });
+        return;
+      }
 
-    const cutAt = lastBoundary > 0 ? lastBoundary + 1 : maxChars;
-    chunks.push(remaining.slice(0, cutAt).trim());
-    remaining = remaining.slice(cutAt).trim();
-  }
-
-  if (remaining.length > 0) chunks.push(remaining);
-  return chunks;
-}
-
-async function synthesizeChunk(text: string, voiceId: string, apiKey: string): Promise<Buffer> {
-  const response = await fetch(`${TTS_URL_BASE}/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      'Content-Type': 'application/json',
-      Accept: 'audio/mpeg',
-    },
-    body: JSON.stringify({
-      text,
-      model_id: config.elevenlabs.model,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-      },
-    }),
+      const audio = await synthesizeSpeech(text, { ...deps.synth, apiKey });
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', String(audio.length));
+      res.send(audio);
+    } catch (err) {
+      // Status and kind only: the provider's words (which can echo the text) go to Sentry.
+      const failure = err instanceof SpeechProviderError ? `${err.kind}, status ${err.status ?? 'none'}` : `unexpected ${err instanceof Error ? err.name : 'error'}`;
+      console.error(`[speech] synthesis failed (${failure})`);
+      (deps.report ?? captureException)(err);
+      res.status(500).json({ success: false, error: 'Speech synthesis failed' });
+    }
   });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`ElevenLabs TTS failed (${response.status}): ${errorText.slice(0, 300)}`);
-  }
-
-  return Buffer.from(await response.arrayBuffer());
+  return router;
 }
 
-// POST /speech/synthesize
-// Body: { text: string }
-// Returns: audio/mpeg on success, { success: false, error } otherwise
-speechRouter.post('/synthesize', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const apiKey = config.elevenlabs.apiKey;
-    if (!apiKey) {
-      res.status(503).json({
-        success: false,
-        error: 'ELEVENLABS_API_KEY is not configured on the server',
-      });
-      return;
-    }
-
-    const { text } = req.body ?? {};
-
-    if (typeof text !== 'string' || text.trim().length === 0) {
-      res.status(400).json({ success: false, error: 'text is required' });
-      return;
-    }
-
-    if (text.length > MAX_TEXT_CHARS) {
-      res.status(400).json({
-        success: false,
-        error: `text exceeds the ${MAX_TEXT_CHARS} character limit`,
-      });
-      return;
-    }
-
-    const chunks = chunkScript(text, config.elevenlabs.maxCharsPerRequest);
-    const buffers = await Promise.all(
-      chunks.map((chunk) => synthesizeChunk(chunk, config.elevenlabs.voiceId, apiKey))
-    );
-    const audio = Buffer.concat(buffers);
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', String(audio.length));
-    res.send(audio);
-  } catch (err) {
-    console.error('[speech] synthesis error:', err);
-    res.status(500).json({
-      success: false,
-      error: err instanceof Error ? err.message : 'Speech synthesis failed',
-    });
-  }
+export const speechRouter = createSpeechRouter({
+  limiter: new MemoryLimiter(),
+  now: Date.now,
+  synth: {
+    apiKey: config.elevenlabs.apiKey || null,
+    voiceId: config.elevenlabs.voiceId,
+    model: config.elevenlabs.model,
+    maxCharsPerRequest: config.elevenlabs.maxCharsPerRequest,
+    ...SPEECH_DEFAULTS,
+  },
 });

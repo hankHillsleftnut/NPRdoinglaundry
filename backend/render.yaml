@@ -12,6 +12,12 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      # jose (Apple sign-in) is ESM-only; Node 22.12+ can require() it.
+      - key: NODE_VERSION
+        value: 22.12.0
+      # Without it /admin and /dashboard are not mounted (no default secret).
+      - key: ADMIN_SECRET
+        sync: false
       - key: NODE_ENV
         value: production
       - key: PORT

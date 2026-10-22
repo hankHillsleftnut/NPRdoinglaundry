@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "usable": false,
+    "reason": "yours",
+    "face": {
+      "from": "priya",
+      "kind": "member",
+      "serial": 412,
+      "issuedOn": "2026-10-19"
+    }
+  }
+}

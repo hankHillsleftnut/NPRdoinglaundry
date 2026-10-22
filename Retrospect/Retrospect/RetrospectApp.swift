@@ -47,7 +47,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 }
 
-@main
 struct RetrospectApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     

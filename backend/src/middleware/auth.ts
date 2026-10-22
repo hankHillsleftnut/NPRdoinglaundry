@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../utils/config.js';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import type { AuthUser, JWTPayload } from '../types/index.js';
+import { getOrCreateUserWith, type UsersClient } from '../services/users.js';
 
 // Extend Express Request type to include user
 declare global {
@@ -86,51 +87,10 @@ export function generateToken(user: AuthUser): string {
   });
 }
 
-// Create or get user from Apple Sign In
+// Create or get user from Apple Sign In (race-safe; see services/users.ts)
 export async function getOrCreateUser(
   appleUserId: string,
   email?: string
 ): Promise<AuthUser> {
-  // Try to find existing user
-  const { data: existingUser } = await supabaseAdmin
-    .from(Tables.USERS)
-    .select('id, apple_user_id, email')
-    .eq('apple_user_id', appleUserId)
-    .single();
-
-  if (existingUser) {
-    // Update email if provided and different
-    if (email && email !== existingUser.email) {
-      await supabaseAdmin
-        .from(Tables.USERS)
-        .update({ email })
-        .eq('id', existingUser.id);
-    }
-
-    return {
-      id: existingUser.id,
-      appleUserId: existingUser.apple_user_id,
-      email: email ?? existingUser.email ?? undefined,
-    };
-  }
-
-  // Create new user
-  const { data: newUser, error } = await supabaseAdmin
-    .from(Tables.USERS)
-    .insert({
-      apple_user_id: appleUserId,
-      email,
-    })
-    .select('id, apple_user_id, email')
-    .single();
-
-  if (error || !newUser) {
-    throw new Error('Failed to create user');
-  }
-
-  return {
-    id: newUser.id,
-    appleUserId: newUser.apple_user_id,
-    email: newUser.email ?? undefined,
-  };
+  return getOrCreateUserWith(supabaseAdmin as unknown as UsersClient, Tables.USERS, appleUserId, email);
 }

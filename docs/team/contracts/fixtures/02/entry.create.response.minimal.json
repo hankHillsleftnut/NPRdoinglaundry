@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "entry": {
+      "id": "00000000-0000-4000-8000-000000000104",
+      "kind": "typed",
+      "text": "ok",
+      "createdAt": "2026-10-21T21:00:00.000Z",
+      "day": "2026-10-21",
+      "reading": "waiting"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "session_revoked",
+    "message": "Please sign in again."
+  }
+}

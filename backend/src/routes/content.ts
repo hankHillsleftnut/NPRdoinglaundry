@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import { runAgentIngest } from '../services/agent-client.js';
-import { UploadContentSchema } from '../types/index.js';
-import { INTEGRATION_CATALOG } from '../services/integration-catalog.js';
-import { insertRawContent, type InsertClient, type InsertOutcome } from '../services/content-insert.js';
+import { insertRawContent, type InsertClient } from '../services/content-insert.js';
 import { handOffToAgent } from '../services/agent-handoff.js';
+import { uploadContentHandler } from './content-upload.js';
 
 export const contentRouter = Router();
 
@@ -37,159 +36,41 @@ export const contentRouter = Router();
 // Enforced structurally: the upload path hands off through handOffToAgent(),
 // which is never given a database client and so cannot write status at all.
 
-// POST /content - Upload new content for processing
-contentRouter.post('/', async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    if (!user) {
-      res.status(401).json({ success: false, error: 'Unauthorized' });
-      return;
-    }
-
-    // Validate request body
-    const validationResult = UploadContentSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid request body',
-        details: validationResult.error.errors,
-      });
-      return;
-    }
-
-    const { contentType, content, contentDate, metadata } = validationResult.data;
-
-    // Get data source ID if exists
-    const { data: dataSource } = await supabaseAdmin
-      .from(Tables.DATA_SOURCES)
-      .select('id')
-      .eq('name', contentType)
-      .single();
-
-    // Insert raw content -- once. A repeat of something already stored is
-    // recognised and answered with the original row, without a second copy and
-    // without a second ingest run. See services/content-insert.ts.
-    const effectiveDate = contentDate || new Date().toISOString();
-    const idempotencyKey = req.header('Idempotency-Key') ?? null;
-
-    let outcome: InsertOutcome;
-    try {
-      outcome = await insertRawContent(
-        // The real client is far richer than the slice insertRawContent uses;
-        // the cast is confined to this one boundary.
-        supabaseAdmin as unknown as InsertClient,
-        Tables.RAW_CONTENT,
-        {
-          user_id: user.id,
-          content_type: contentType,
-          content,
-          content_date: effectiveDate,
-          metadata: metadata || {},
-          source_id: dataSource?.id || null,
-          processing_status: 'pending',
-        },
-        {
-          userId: user.id,
-          contentType,
-          content,
-          contentDate: effectiveDate,
-          metadata: metadata || {},
-          idempotencyKey,
-        },
-      );
-    } catch (insertError) {
-      console.error('Insert error:', insertError);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to store content',
-      });
-      return;
-    }
-
-    if (outcome.kind === 'duplicate') {
-      // 200, not 409. The iOS "resync all" button replays every local entry
-      // and counts any error as a failure, so a 409 would make a perfectly
-      // healthy resync report hundreds of failures. A replay of the original is
-      // the honest answer, and the standard one for idempotent requests.
-      //
-      // Deliberately no ingest run here: nothing new arrived.
-      res.setHeader('Idempotency-Replayed', 'true');
-      res.status(200).json({
-        success: true,
-        data: {
-          rawContentId: outcome.id,
-          deduplicated: true,
-          dedupReason: outcome.strategy,
-          insightIds: [],
-          insightCount: 0,
-          observationsCreated: 0,
-          insightsCreated: 0,
-          goalCandidatesCreated: 0,
-          agentTraceId: null,
-          processingError: null,
-        },
-        message: 'Already stored; returning the existing entry',
-      });
-      return;
-    }
-
-    const rawContent = { id: outcome.id };
-
-    // Best-effort bridge into the durable integration ledger. Content ingestion
-    // must continue if the integration migration has not been deployed yet.
-    const provider = INTEGRATION_CATALOG.find((entry) => entry.id === contentType);
-    if (provider) {
-      const now = new Date().toISOString();
-      const { error: connectionError } = await supabaseAdmin
-        .from(Tables.INTEGRATION_CONNECTIONS)
-        .upsert({
-          user_id: user.id,
-          provider_id: provider.id,
-          collection_mode: provider.collectionMode,
-          status: 'connected',
-          connected_at: now,
-          last_verified_at: now,
-          disconnected_at: null,
-          metadata: {
-            registration_source: 'content_upload',
-          },
-        }, { onConflict: 'user_id,provider_id' });
-
-      if (connectionError) {
-        console.warn(`Could not update integration connection for ${provider.id}: ${connectionError.message}`);
-      }
-    }
-
-    // Return immediately — agent ingestion runs in the background.
-    // iOS does not need to wait for extraction to finish before proceeding.
-    res.status(202).json({
-      success: true,
-      data: {
-        rawContentId: rawContent.id,
-        insightIds: [],
-        insightCount: 0,
-        observationsCreated: 0,
-        insightsCreated: 0,
-        goalCandidatesCreated: 0,
-        agentTraceId: null,
-        processingError: null,
-      },
-      message: 'Content stored; agent ingestion running in background',
-    });
-
+// POST /content - Upload new content for processing (routes/content-upload.ts)
+contentRouter.post('/', uploadContentHandler({
+  async findDataSourceId(contentType) {
+    const { data } = await supabaseAdmin.from(Tables.DATA_SOURCES).select('id').eq('name', contentType).single();
+    return data?.id ?? null;
+  },
+  insert: (row, dedup) =>
+    // The real client is far richer than the slice insertRawContent uses;
+    // the cast is confined to this one boundary.
+    insertRawContent(supabaseAdmin as unknown as InsertClient, Tables.RAW_CONTENT, row, dedup),
+  async markConnected(userId, provider) {
+    // Content ingestion must continue if the integration migration has not been deployed yet.
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from(Tables.INTEGRATION_CONNECTIONS)
+      .upsert({
+        user_id: userId,
+        provider_id: provider.id,
+        collection_mode: provider.collectionMode,
+        status: 'connected',
+        connected_at: now,
+        last_verified_at: now,
+        disconnected_at: null,
+        metadata: { registration_source: 'content_upload' },
+      }, { onConflict: 'user_id,provider_id' });
+    if (error) console.warn(`Could not update integration connection for ${provider.id}: ${error.message}`);
+  },
+  startIngest(userId, rawContentId) {
     // Fire-and-forget: hand the row to the agent, which owns its status from
     // here. See "THE AGENT OWNS A ROW'S STATUS" at the top of this file.
     setImmediate(() => {
-      void handOffToAgent(runAgentIngest, { userId: user.id, rawContentIds: [rawContent.id] });
+      void handOffToAgent(runAgentIngest, { userId, rawContentIds: [rawContentId] });
     });
-  } catch (error) {
-    console.error('Content upload error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process content',
-    });
-  }
-});
+  },
+}));
 
 // GET /content - List raw content entries
 contentRouter.get('/', async (req: Request, res: Response) => {

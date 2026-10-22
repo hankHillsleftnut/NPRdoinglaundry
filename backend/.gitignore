@@ -8,6 +8,10 @@ dist/
 .env
 .env.local
 .env.*.local
+# Local staging values (docs/team/staging.md); only the .example is committed
+.env.staging
+# The root .gitignore ignores .env.*; the example holds names only and is committed
+!.env.staging.example
 
 # IDE
 .idea/

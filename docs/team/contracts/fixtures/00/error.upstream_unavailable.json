@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "upstream_unavailable",
+    "message": "Something's down on our side. Try again soon."
+  }
+}

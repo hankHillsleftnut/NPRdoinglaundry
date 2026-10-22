@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "data": {
+    "date": "2026-10-21",
+    "entries": [
+      {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "kind": "typed",
+        "text": "dentist at 3 today, dreading it",
+        "createdAt": "2026-10-21T13:02:11.410Z",
+        "day": "2026-10-21",
+        "reading": "read",
+        "clientEntryId": "00000000-0000-4000-8000-000000000901"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000102",
+        "kind": "voice",
+        "text": "walked the long way home by the canal. felt lighter after.",
+        "createdAt": "2026-10-21T18:40:02.000Z",
+        "day": "2026-10-21",
+        "reading": "reading",
+        "clientEntryId": "00000000-0000-4000-8000-000000000902"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000103",
+        "kind": "imported",
+        "text": "notes from the planning call: ship the first version friday",
+        "createdAt": "2026-10-21T20:15:44.120Z",
+        "day": "2026-10-21",
+        "reading": "waiting"
+      }
+    ]
+  }
+}
