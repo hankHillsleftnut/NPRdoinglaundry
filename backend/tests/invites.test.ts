@@ -18,7 +18,8 @@ import { supabaseAccessStore, type AccessState, type AccessStore } from '../src/
 import { supabaseInviteStore, type InviteStore } from '../src/invites/store.js';
 import { hashCode, newCode, normaliseCode, openCode, sealCode, displayCode } from '../src/invites/codes.js';
 import { createPublicInviteRouter, linkPage } from '../src/invites/public.js';
-import { MemoryLimiter } from '../src/doors/limits.js';
+import { linkFor } from '../src/invites/doors.js';
+import { DOOR_LIMITS, MemoryLimiter } from '../src/doors/limits.js';
 
 const KEY = process.env.INVITE_CODE_KEY ?? '';
 const FIXTURES = join(__dirname, '..', '..', 'docs', 'team', 'contracts', 'fixtures', '00');
@@ -161,6 +162,98 @@ test("the gate refuses waitlisted users everywhere but contract 00 §4's own doo
 
     const s = await person(h, 'suspended');
     for (const path of ['/v2/ping', '/v2/access']) assert.equal(code((await h.request('GET', path, undefined, as(h, s))).body), 'suspended', path);
+  } finally {
+    await h.close();
+  }
+});
+
+test('an approved waitlister is still on the waitlist until they redeem; declined is not', async () => {
+  const h = await harness();
+  try {
+    const onWaitlist = async (id: string) => data<{ onWaitlist: boolean }>((await h.request('GET', '/v2/access', undefined, as(h, id))).body).onWaitlist;
+    const sam = await person(h, 'waitlisted');
+    assert.deepEqual(data((await h.request('POST', '/v2/waitlist', { reason: 'please' }, as(h, sam))).body), { onWaitlist: true });
+    const row = (await invites.waitlist('waiting')).find((w) => w.userId === sam)!;
+    const founderCode = nextCode();
+    assert.equal(await invites.approve(row.id, hashCode(founderCode), sealCode(founderCode, KEY), new Date(T0).toISOString()), true);
+    // Approved, link not opened yet: the app must keep saying "you're on the list".
+    assert.equal(await onWaitlist(sam), true, 'approved reads as on the waitlist');
+    assert.deepEqual(data((await h.request('POST', '/v2/waitlist', { reason: 'again' }, as(h, sam))).body), { onWaitlist: true }, 'asking again changes nothing');
+    assert.equal((await db.query<{ n: number }>(`SELECT count(*)::int n FROM waitlist WHERE user_id = $1`, [sam])).rows[0]!.n, 1, 'still one row');
+    // The link lets them in: no longer waiting.
+    assert.equal((await redeem(h, sam, founderCode)).status, 200);
+    h.users.set(sam, { ...h.users.get(sam)!, access: 'approved' });
+    assert.equal(await onWaitlist(sam), false, 'in: not on the waitlist any more');
+
+    const no = await person(h, 'waitlisted');
+    await h.request('POST', '/v2/waitlist', {}, as(h, no));
+    const noRow = (await invites.waitlist('waiting')).find((w) => w.userId === no)!;
+    assert.equal(await invites.decline(noRow.id, new Date(T0).toISOString()), true);
+    assert.equal(await onWaitlist(no), false, 'declined is not on the waitlist');
+  } finally {
+    await h.close();
+  }
+});
+
+test('migration 020 makes an existing approved-but-unredeemed waitlister read as on the waitlist', async () => {
+  const old = await freshDatabase({ before: '020_waitlist_approved_state.sql' });
+  try {
+    const id = await insertUser(old);
+    await old.query(`INSERT INTO waitlist (source, user_id, status, decided_at) VALUES ('app', $1, 'approved', $2)`, [id, new Date(T0).toISOString()]);
+    const state = async () => (await old.query<{ on: boolean }>(`SELECT waitlist_state($1) AS "on"`, [id])).rows[0]!.on;
+    assert.equal(await state(), false, 'before 020: the bug');
+    await applyMigration(old, '020_waitlist_approved_state.sql');
+    assert.equal(await state(), true, 'after 020: on the waitlist');
+    await old.query(`UPDATE users SET access = 'approved' WHERE id = $1`, [id]);
+    assert.equal(await state(), false, 'once let in, no longer waiting');
+  } finally {
+    await old.close();
+  }
+});
+
+test('the link page is limited per address: over the limit it is the neutral page, never a 429', async () => {
+  let lookups = 0;
+  const counted: InviteStore = { ...invites, face: (...a) => { lookups++; return invites.face(...a); } };
+  const h = await startHarness({ access, invites: counted, now: T0 });
+  try {
+    const owner = await person(h, 'member', 'priya');
+    const live = await invite({ kind: 'member', owner });
+    const page = async () => {
+      const res = await fetch(`${h.url}/i/${live}`);
+      assert.equal(res.status, 200, 'never a 429');
+      return res.text();
+    };
+    const max = DOOR_LIMITS.buckets.invitePage[0]!.max;
+    for (let i = 0; i < max; i++) assert.ok((await page()).includes('priya saved you a place'), `request ${i + 1} is answered in full`);
+    assert.equal(lookups, max);
+    const over = await page();
+    assert.equal(over.includes('priya'), false, 'over the limit: the neutral page');
+    assert.ok(over.includes(displayCode(live)), 'with the code as typed, like any neutral page');
+    assert.equal(lookups, max, 'and no lookup');
+    h.clock.now += DOOR_LIMITS.buckets.invitePage[0]!.windowMs + 1;
+    assert.ok((await page()).includes('priya saved you a place'), 'the window rolls');
+  } finally {
+    await h.close();
+  }
+});
+
+test('a code sealed under another key loses its link, and "your invites" still answers', async () => {
+  const h = await harness();
+  try {
+    const sam = await person(h, 'member', 'sam');
+    const c = nextCode();
+    await db.query(`INSERT INTO invites (code_hash, code_ciphertext, kind, owner_user_id) VALUES ($1, $2, 'member', $3)`, [hashCode(c), sealCode(c, `${KEY}-rotated`), sam]);
+    const fine = await invite({ kind: 'member', owner: sam });
+    const res = await h.request('GET', '/v2/invites/mine', undefined, as(h, sam));
+    assert.equal(res.status, 200);
+    const mine = data<{ invites: { link: string | null; state: string }[] }>(res.body).invites;
+    // Both rows are unused; order is by created_at, which the two inserts can share, so don't depend on it.
+    assert.deepEqual(mine.map((i) => i.state), ['unused', 'unused']);
+    const links = mine.map((i) => i.link);
+    assert.equal(links.filter((l) => l === null).length, 1, 'the old-key invite has no link');
+    assert.equal(links.find((l) => l !== null)!.slice(-13), fine, 'the other keeps its link');
+    assert.equal(linkFor('not.even.sealed', KEY, 'https://x.test'), null);
+    assert.equal(linkFor(sealCode(c, KEY), KEY, 'https://x.test'), `https://x.test/i/${c}`);
   } finally {
     await h.close();
   }

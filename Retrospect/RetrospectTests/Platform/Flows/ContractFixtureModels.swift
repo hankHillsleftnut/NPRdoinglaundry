@@ -197,4 +197,24 @@ extension ContractFixtureTests {
     struct RedeemRequest: Decodable {
         let code: String
     }
+
+    // Diagnostics (DG.1): mirrors until DG.5 lands the real report builder.
+
+    struct DiagnosticsReceipt: Decodable {
+        let reference: String
+    }
+
+    struct DiagnosticsReport: Decodable {
+        let reportId: UUID
+        let createdAt: Date
+        let note: String?
+    }
+
+    struct DiagnosticsIds: Decodable {
+        let routes: [String]
+        let screens: [String]
+        let sheets: [String]
+        let controls: [String]
+        let failures: [String]
+    }
 }
