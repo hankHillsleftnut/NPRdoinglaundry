@@ -14,6 +14,8 @@ import type { AddressInfo } from 'node:net';
 import { createApp, type AppDeps } from '../../src/app.js';
 import { createAgentDoorClient } from '../../src/doors/agent.js';
 import { MemoryLimiter } from '../../src/doors/limits.js';
+import { createDiagnosticsStore } from '../../src/diagnostics/store.js';
+import { memoryDiagnostics } from './memory-diagnostics.js';
 import jwt from 'jsonwebtoken';
 import type { AuthUser } from '../../src/types/index.js';
 import { createLog } from '../../src/utils/log.js';
@@ -61,6 +63,7 @@ export async function startHarness(opts: {
   agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router'];
   speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
+  diagnostics?: AppDeps['diagnostics'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -93,6 +96,7 @@ export async function startHarness(opts: {
     log: createLog((line) => logLines.push(line)),
     ...(opts.v2Router ? { v2Router: opts.v2Router } : {}),
     ...(opts.speechSynth ? { speechSynth: opts.speechSynth } : {}),
+    diagnostics: opts.diagnostics ?? createDiagnosticsStore(memoryDiagnostics().backend),
     ...(opts.sessions ? { sessions: opts.sessions } : {}),
     ...(opts.verifyApple ? { verifyApple: opts.verifyApple } : {}),
     ...(opts.accounts ? { accounts: opts.accounts } : {}),

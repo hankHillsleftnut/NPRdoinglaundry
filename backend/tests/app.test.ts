@@ -7,15 +7,17 @@ import { routeList } from './support/route-list.js';
 
 // BE0.2: the refactor moved code, not routes. This is index.ts's stack before
 // the refactor (no ADMIN_SECRET), read from the built server, plus what later
-// bytes add on purpose: /v2/auth (BE0.4b).
+// bytes add on purpose: /v2/auth (BE0.4b), and the diagnostics report's own
+// 2 MB body parser ahead of the general one (DG.1).
 test('the route list is unchanged by the refactor', async () => {
   const { createApp } = await import('../src/app.js');
-  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null });
+  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never });
   assert.deepEqual(routeList(app), [
     'use * query',
     'use * expressInit',
     'use * helmetMiddleware',
     'use * corsMiddleware',
+    'use /v2/diagnostics jsonParser',
     'use * jsonParser',
     'use * <anonymous>',
     'GET /health',

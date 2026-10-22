@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**577 tokens** · 501 semantic · 276 marked *to set*
+**580 tokens** · 504 semantic · 276 marked *to set*
 
 ## palette
 
@@ -388,6 +388,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | Token | Purpose | Light | Dark | Source |
 |---|---|---|---|---|
 | `size.control.small` | Chips and small icon buttons. | 32pt |  | lime |
+| `size.control.medium` | Answer pills on a card: a step up from chips, so the answer reads as the card's next move. | 36pt |  | Paper B7U-0 / B7S-0 (guess card pills, 36 tall), C28 review 22 Oct |
 | `size.control.default` | Ordinary buttons (Apple minimum touch target). | 44pt |  | to set |
 | `size.control.large` | Prominent buttons. | 48pt |  | lime |
 | `size.control.hero` | The paywall-scale primary and secondary. | 60pt |  | paywall |
@@ -424,6 +425,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.grabber.width` | The handle at the top of a sheet. | 36pt |  | to set: app need |
 | `size.grabber.height` | The handle at the top of a sheet. | 5pt |  | to set: app need |
 | `size.inference.dash` | Dash length on a guess's edge: guesses never look like facts. | 4pt |  | to set: app need |
+| `size.inference.edgeIncreased` | A guess's dashed edge under Increase Contrast, so the edge still reads. | 1.5pt |  | guess-card.md accessibility (Increase Contrast: dash 1.5pt), C28 review 22 Oct |
 | `size.map.nodeMin` | The smallest node (mentioned rarely). | 8pt |  | to set: app need |
 | `size.map.nodeMax` | The largest node (mentioned most). | 56pt |  | to set: app need |
 | `size.map.edgeMin` | The thinnest link. | 0.5pt |  | to set: app need |
@@ -622,6 +624,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `opacity.dimmed` | Things not related to what you selected (the map). | 0.25 |  | to set: app need |
 | `opacity.sourcePressed` | A tappable title while pressed. | 0.7 |  | to set: from the title-menu recording (20 Oct) |
 | `opacity.pending` | Something of yours on its way: a message sending, a save in flight. Same value as opacity.pressed, different meaning. | 0.7 |  | message.md states (sending at 70%), M3 20 Oct |
+| `opacity.declined` | A guess you said isn't right: it stays readable but steps back from the thread. | 0.55 |  | guess-card.md states (declined dims to 55%), C28 review 22 Oct |
 | `opacity.skeletonPulseFloor` | With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine. | 0.6 |  | ui/C39.md C39.1 Reduce Motion (pulse 1 → 0.6 → 1) |
 
 ## icon

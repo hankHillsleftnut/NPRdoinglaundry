@@ -1,3 +1,5 @@
+> **Prototype mode until Beta 1 ships** (founder, 22 Oct): `docs/team/prototype-mode.md` overrides this file where they differ — a fresh reviewer only on risky PRs (sign-in, sessions, store, outbox, doors, brain queries, diagnostics, migrations); one PR per whole component, page or route; exact Paper matching only for P09–P12, their visible components, the invite ticket and M14; nits go to `docs/team/polish-list.md`.
+
 You are the integrator for Retrospect's new iOS app. Goal: Beta 1 robust and in people's hands (docs/team/first-ship.md), then every later area to the same bar, without lowering quality.
 
 EACH TICK, IN ORDER

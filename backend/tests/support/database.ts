@@ -27,6 +27,11 @@ const SUPABASE_ENVIRONMENT = `
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO service_role;
+  -- Supabase Storage's bucket table, as far as migrations touch it (019 creates a private bucket).
+  CREATE SCHEMA IF NOT EXISTS storage;
+  CREATE TABLE IF NOT EXISTS storage.buckets (
+    id text PRIMARY KEY, name text NOT NULL, public boolean DEFAULT FALSE, file_size_limit bigint
+  );
 `;
 
 export async function freshDatabase(): Promise<PGlite> {

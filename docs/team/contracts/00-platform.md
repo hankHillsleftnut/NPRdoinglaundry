@@ -107,6 +107,18 @@ Sharing is the system share sheet with the link and one line of text (founder co
 
 **`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on.
 
+## 5a. Diagnostics: "send a report" (DG.1, addendum; approved by the integrator, 22 Oct)
+
+**`POST /v2/diagnostics`** (token required; any access state may send one) with `Idempotency-Key: <reportId>` (required) and the report as JSON (gzip allowed; ≤ 2 MB after unzipping, whether the body is sent with a length or chunked) → `{ "reference": "r-7KQ2" }`.
+- The report is how the app behaved, never what the person wrote: every field is a number, a boolean, a timestamp, a UUID or a closed list. Screens, sheets, controls, failure kinds (`Flows.Failure.Kind`) and network route **templates** (`/v2/entries/:id`, never real ids) come from the closed lists in `diagnostics.ids.json`; the app records from the same lists, and a value not on them is `invalid_request`. The account section carries the provider, the access state (§4) and the entitlement; never an email. The one free text is `note` ("what happened?", ≤ 1,000 characters). Every object is strict: unknown fields are `invalid_request`. The exact shape is `backend/src/diagnostics/schema.ts`; the lists are `backend/src/diagnostics/ids.ts`.
+- Every timestamp is UTC with a `Z` (`2026-10-22T09:30:00.000Z`); an offset is `invalid_request`.
+- `failures[].screen` is optional: absent means a background failure (the outbox, a sync). `network[].retries` is optional (absent means 0). `network[].idempotency` is optional, and the client omits it until the door kit signals replays.
+- `environment` never costs the report: a field that fails its check (an unexpected locale format, a device model the pattern doesn't know) is stored as `null`, and the door log counts how many (`nulledFields`). The app sends `locale` as `languageCode_regionCode` and `deviceModel` as `utsname.machine`. An unknown field is still `invalid_request`.
+- Crashes carry `{ t, kind }` only: MetricKit diagnostic payloads are not carried in Beta 1.
+- Adding a screen, sheet, control or route is a contract change: `diagnostics.ids.json` and `ids.ts` together (a backend test holds them equal).
+- Sending the same report again (same id, same body) returns the same reference and stores nothing new; the same id with a different body, or another person's id, is `idempotency_mismatch`. A missing key, a key that isn't the body's `reportId`, or a report over 2 MB is `invalid_request`.
+- Kept 30 days, private, under the sender's id; read only by the founder's team, only for reports someone chose to send.
+
 ## 6. Fixtures
 
-`fixtures/00/`: `auth-apple.request.json`, `auth.response.json`, `auth.response.waitlisted.json`, `refresh.request.json`, `error.invalid_credentials.json`, `error.session_revoked.json`, `error.invite_required.json`, `error.rate_limited.json`, `error.spend_limited.json`, `error.update_required.json`, `access.waitlisted.json`, `access.member.json`, `redeem.request.json`, `redeem.response.json`, `error.invite_used.json`, `invites-mine.json`, `meta.json`. Written with the contract; reviewed with it.
+`fixtures/00/`: `auth-apple.request.json`, `auth.response.json`, `auth.response.waitlisted.json`, `refresh.request.json`, `error.invalid_credentials.json`, `error.session_revoked.json`, `error.invite_required.json`, `error.rate_limited.json`, `error.spend_limited.json`, `error.update_required.json`, `access.waitlisted.json`, `access.member.json`, `redeem.request.json`, `redeem.response.json`, `error.invite_used.json`, `invites-mine.json`, `meta.json`; diagnostics (§5a): `diagnostics.request.json`, `diagnostics.request.minimal.json`, `diagnostics.response.json`, `diagnostics.ids.json`. Written with the contract; reviewed with it.
