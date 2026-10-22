@@ -98,28 +98,10 @@ extension ContractFixtureTests {
         let note: String?
     }
 
-    // Contract 00 responses (mirrors)
-
-    struct AuthUser: Decodable {
-        let id: String
-        let firstName: String?
-        let isNew: Bool
-    }
+    // Contract 00 responses (mirrors, until PL1.7's invite types land)
 
     struct AccessState: Decodable {
         let state: String
-    }
-
-    struct Auth: Decodable {
-        let accessToken: String
-        let refreshToken: String
-        let accessTokenExpiresAt: Date
-        let user: AuthUser
-        let access: AccessState
-    }
-
-    struct SignedOut: Decodable {
-        let signedOut: Bool
     }
 
     struct Access: Decodable {
@@ -161,26 +143,9 @@ extension ContractFixtureTests {
 
     // Contract 00 requests (mirrors)
 
-    struct FullName: Decodable {
-        let givenName: String?
-        let familyName: String?
-    }
-
-    struct AppleSignIn: Decodable {
-        let identityToken: String
-        let authorizationCode: String
-        let rawNonce: String
-        let fullName: FullName?
-        let email: String?
-    }
-
     struct GoogleSignIn: Decodable {
         let idToken: String
         let rawNonce: String
-    }
-
-    struct RefreshToken: Decodable {
-        let refreshToken: String
     }
 
     struct WaitlistReason: Decodable {
