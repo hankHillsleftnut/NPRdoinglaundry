@@ -109,7 +109,7 @@ struct RMessageBubble: View {
             }
             .frame(maxWidth: Self.maxWidth(column: columnWidth, accessibilitySize: dynamicTypeSize.isAccessibilitySize))
             if let status {
-                statusLine(status)
+                RMessageStatusLine(status: status, retry: retry)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -142,8 +142,9 @@ struct RMessageBubble: View {
     }
 
     /// The bubble's corners: radius.message on three, size.border.inset on the one on your
-    /// side, each set on its own (message.md), in the token corner style.
-    private static var shape: UnevenRoundedRectangle {
+    /// side, each set on its own (message.md), in the token corner style. Shared with the
+    /// voice note (`RVoiceBubble`).
+    static var shape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
             topLeadingRadius: RDimension.radiusMessage,
             bottomLeadingRadius: RDimension.radiusMessage,
@@ -153,24 +154,25 @@ struct RMessageBubble: View {
         )
     }
 
-    @ViewBuilder
-    private func statusLine(_ status: Status) -> some View {
-        // the glyph takes the label's font, so it sits on the baseline and grows with Dynamic Type
-        let line = HStack(alignment: .firstTextBaseline, spacing: RDimension.space1) {
-            Image(systemName: status.symbol)
-                .imageScale(.small)
-                .accessibilityHidden(true)
-            Text(status.text)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .rText(.metaLine)
-        .foregroundStyle(status.colour)
-        .multilineTextAlignment(.trailing)
+    /// What VoiceOver reads: the same words with a comma for the dot.
+    static func spoken(_ text: String) -> String {
+        text.replacingOccurrences(of: " · ", with: ", ")
+    }
+}
+
+/// The line under a bubble of yours (text or voice): grey while it waits, danger when it didn't
+/// send. The not-sent line is the retry; the waiting line is only words. It blur-replaces in
+/// and out.
+struct RMessageStatusLine: View {
+    let status: RMessageBubble.Status
+    var retry: () -> Void = {}
+
+    var body: some View {
         switch status {
         case .waiting:
             line
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Self.spoken(status.text))
+                .accessibilityLabel(RMessageBubble.spoken(status.text))
                 .rBlurReplace()
         case .notSent:
             // a button only where a tap does something: the line is the retry
@@ -187,9 +189,18 @@ struct RMessageBubble: View {
         }
     }
 
-    /// What VoiceOver reads: the same words with a comma for the dot.
-    static func spoken(_ text: String) -> String {
-        text.replacingOccurrences(of: " · ", with: ", ")
+    private var line: some View {
+        // the glyph takes the label's font, so it sits on the baseline and grows with Dynamic Type
+        HStack(alignment: .firstTextBaseline, spacing: RDimension.space1) {
+            Image(systemName: status.symbol)
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text(status.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .rText(.metaLine)
+        .foregroundStyle(status.colour)
+        .multilineTextAlignment(.trailing)
     }
 }
 
