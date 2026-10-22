@@ -1,10 +1,11 @@
 import type { Request, RequestHandler, Response } from 'express';
 import type { ZodType, ZodTypeDef } from 'zod';
-import type { DoorLogCounts, DoorLogLine } from '../utils/log.js';
+import { APP_VERSION_PATTERN, type DoorLogCounts, type DoorLogLine } from '../utils/log.js';
 import type { AccessState } from '../access/store.js';
 import type { AgentCallOptions, AgentDoorClient } from './agent.js';
 import { DoorError, fromAgentError, sendError, type DoorErrorCode } from './errors.js';
 import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
+import { checkAppVersion, minBuildOf, type AppVersions } from './versions.js';
 
 /**
  * A door: one authenticated `/v2` route that safely exposes one brain
@@ -14,6 +15,9 @@ import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
  *
  *   1. the user comes from the token (`req.user`, set by the auth middleware),
  *      never from the client;
+ *   1a. the version floor (BE0.10): a build below MIN_APP_VERSION is told to
+ *      update (`update_required`, 426) whatever it asked for; a request with
+ *      no usable X-App-Version passes until REQUIRE_APP_VERSION is on;
  *   2. the invite gate: a suspended person is refused everywhere
  *      (`suspended`), a waitlisted one everywhere but the doors marked
  *      `openToWaitlisted` (`invite_required`), contract 00 §4;
@@ -47,6 +51,8 @@ export interface DoorContext {
   timeZone: string | null;
   /** The Idempotency-Key header as sent, or null without one; a door that marks a write idempotent checks its shape. */
   idempotencyKey: string | null;
+  /** The X-App-Version header when it has the contract's shape (`1.0 (42)`), else null; a door may store it. */
+  appVersion: string | null;
   now: number;
   /** The person's access state (contract 00 §4); `member` before migration 007, when everyone was one. */
   access: AccessState;
@@ -64,6 +70,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
   cost?: (result: AgentRes) => number | undefined;
   /** HTTP status on success (default 200). */
   successStatus?: number;
+  /** HTTP status on success decided by the result (a create that was a replay answers 200, not 201); wins over successStatus. */
+  status?: (result: AgentRes) => number;
   /** Sizes and counts for the log line on success (numbers only, by type and in the log). */
   logCounts?: (result: AgentRes) => DoorLogCounts;
   /** A waitlisted person may use this door (contract 00 §4's own doors, and diagnostics). */
@@ -73,6 +81,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
 export interface DoorKitDeps {
   agent: AgentDoorClient;
   limiter: Limiter;
+  /** The version floor every door enforces (BE0.10). */
+  versions: Pick<AppVersions, 'minVersion' | 'requireVersion'>;
   log: { door(line: DoorLogLine): void };
   now: () => number;
   /**
@@ -100,6 +110,8 @@ function requestInput(req: Request): unknown {
 }
 
 export function createDoorKit(deps: DoorKitDeps) {
+  // Read once: a server with an unreadable floor fails here, at start, not per request.
+  const minBuild = minBuildOf(deps.versions);
   return function door<Req, AgentRes, Res>(spec: DoorSpec<Req, AgentRes, Res>): RequestHandler {
     return (req: Request, res: Response) => {
       const started = deps.now();
@@ -148,13 +160,14 @@ export function createDoorKit(deps: DoorKitDeps) {
 
       const run = async () => {
         if (!userId) throw new DoorError('unauthenticated');
+        if (checkAppVersion(appVersion, minBuild, deps.versions.requireVersion) === 'update_required') throw new DoorError('update_required');
         // The gate. No access state means migration 007 isn't applied yet: everyone was a member then.
         const access = req.user?.access;
         if (access === 'suspended') throw new DoorError('suspended');
         if (access === 'waitlisted' && !spec.openToWaitlisted) throw new DoorError('invite_required');
         const ctx: DoorContext = {
           userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), idempotencyKey: req.header('Idempotency-Key') ?? null,
-          now: started, access: access ?? 'member',
+          appVersion: appVersion !== undefined && APP_VERSION_PATTERN.test(appVersion) ? appVersion : null, now: started, access: access ?? 'member',
         };
 
         const taken = deps.limiter.take(userId, spec.bucket, started);
@@ -185,8 +198,9 @@ export function createDoorKit(deps: DoorKitDeps) {
         }
         const data = spec.map(result, ctx);
         if (spec.logCounts) counts = spec.logCounts(result);
-        res.status(spec.successStatus ?? 200).json({ success: true, data });
-        finish(spec.successStatus ?? 200);
+        const status = spec.status?.(result) ?? spec.successStatus ?? 200;
+        res.status(status).json({ success: true, data });
+        finish(status);
       };
 
       run().catch((err: unknown) => {

@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "data": {
+    "entries": [
+      {
+        "id": "00000000-0000-4000-8000-000000000105",
+        "kind": "typed",
+        "text": "🚣 by the canal again",
+        "createdAt": "2026-10-20T07:15:00.000Z",
+        "day": "2026-10-20",
+        "reading": "read",
+        "matches": [
+          {
+            "start": 10,
+            "length": 5
+          }
+        ]
+      }
+    ],
+    "nextCursor": null
+  }
+}

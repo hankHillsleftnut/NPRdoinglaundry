@@ -20,17 +20,22 @@ struct RLabPage: Identifiable {
     /// Every page, in name order. Add a page as one line in its place.
     static let all: [RLabPage] = [
         RLabPage("artwork") { RArtworkLab() },
+        RLabPage("empty") { REmptyLineGallery() },
         RLabPage("entryrow") { REntryRowGallery() },
         RLabPage("error") { RErrorStateGallery() },
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("foundation") { RFoundationGallery() },
         RLabPage("guess") { RGuessCardGallery() },
+        RLabPage("journaldata") { SampleJournalGallery() },
+        RLabPage("message") { RMessageBubbleGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("retro") { RRetroLineGallery() },
+        RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
+        RLabPage("voice") { RVoiceBubbleGallery() },
     ]
 
     /// The page the lab opens on: `-DesignLabToast`, else `-DesignLabPage <name>`, else motion.

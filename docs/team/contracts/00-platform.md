@@ -107,7 +107,7 @@ Sharing is the system share sheet with the link and one line of text (founder co
 
 ## 5. Meta
 
-**`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on.
+**`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on. **The floor (BE0.10):** every signed-in `/v2` door compares `X-App-Version`'s build number (the bracketed part) with `minVersion`'s and answers `update_required` (426) below it, before anything else but the token check; `meta` itself never does, so an old build can always learn it is one. A request with no readable `X-App-Version` passes until the server requires it (`REQUIRE_APP_VERSION`), then is `update_required` too. The sign-in doors (§3) are not gated.
 
 ## 5a. Diagnostics: "send a report" (DG.1, addendum; approved by the integrator, 22 Oct)
 

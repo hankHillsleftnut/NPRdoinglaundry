@@ -15,17 +15,27 @@ concurrency:
 
 jobs:
   lint-and-format:
-    runs-on: [self-hosted, light]
+    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
+    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
     env:
       SWIFTLINT_VERSION: 0.65.1
       SWIFTFORMAT_VERSION: 0.64.0
     steps:
       - uses: actions/checkout@v4
-      - name: Pinned tool versions on the runner
+      - name: Pinned tool versions (a hosted runner downloads them; a self-hosted one must have them)
         run: |
-          test "$(swiftlint version)" = "${SWIFTLINT_VERSION}" || { echo "need SwiftLint ${SWIFTLINT_VERSION}"; exit 1; }
-          test "$(swiftformat --version)" = "${SWIFTFORMAT_VERSION}" || { echo "need SwiftFormat ${SWIFTFORMAT_VERSION}"; exit 1; }
-          mkdir -p tools && ln -sf "$(command -v swiftlint)" tools/swiftlint && ln -sf "$(command -v swiftformat)" tools/swiftformat
+          mkdir -p tools
+          if command -v swiftlint >/dev/null && command -v swiftformat >/dev/null; then
+            ln -sf "$(command -v swiftlint)" tools/swiftlint && ln -sf "$(command -v swiftformat)" tools/swiftformat
+          else
+            # Release asset names as published: swiftlint_linux_amd64.zip, swiftformat_linux.zip.
+            curl -fsSL -o /tmp/swiftlint.zip "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/swiftlint_linux_amd64.zip"
+            unzip -oq /tmp/swiftlint.zip -d /tmp/swiftlint && install "$(find /tmp/swiftlint -type f -name 'swiftlint*' | head -1)" tools/swiftlint
+            curl -fsSL -o /tmp/swiftformat.zip "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip"
+            unzip -oq /tmp/swiftformat.zip -d /tmp/swiftformat && install "$(find /tmp/swiftformat -type f -name 'swiftformat*' | head -1)" tools/swiftformat
+          fi
+          test "$(tools/swiftlint version)" = "${SWIFTLINT_VERSION}" || { echo "need SwiftLint ${SWIFTLINT_VERSION}"; exit 1; }
+          test "$(tools/swiftformat --version)" = "${SWIFTFORMAT_VERSION}" || { echo "need SwiftFormat ${SWIFTFORMAT_VERSION}"; exit 1; }
       - name: SwiftLint (strict)
         run: tools/swiftlint lint --strict --reporter github-actions-logging
       - name: SwiftFormat (lint only)
