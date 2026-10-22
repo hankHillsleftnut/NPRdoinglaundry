@@ -53,6 +53,10 @@ struct OutboxDrainTests {
         try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: key(id)) })
     }
 
+    private func entryCount() throws -> Int {
+        try database.writer.read { try Store.EntryRow.fetchCount($0) }
+    }
+
     private func rowByID(_ id: String) throws -> Store.OutboxRow {
         try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: id) })
     }
@@ -205,7 +209,7 @@ struct OutboxDrainTests {
         #expect(row.entityID == "guess-1")
         #expect(row.operation == .guessAnswer)
         #expect(try entry(a) == entryBefore, "the entry row is untouched by a guess's send")
-        #expect(try database.writer.read { try Store.EntryRow.fetchCount($0) } == 1, "no entry row is made for a guess")
+        #expect(try entryCount() == 1, "no entry row is made for a guess")
         #expect(recorder.events.contains(.outbox(.enqueued(operation: .guessAnswer))))
     }
 
@@ -226,7 +230,7 @@ struct OutboxDrainTests {
         #expect(try rowByID(refused.uuidString.lowercased()).lastErrorCode == "not_found")
         #expect(try rowByID(flaky.uuidString.lowercased()).status == .dead)
         #expect(try rowByID(flaky.uuidString.lowercased()).attempts == Store.Outbox.attemptLimit)
-        #expect(try database.writer.read { try Store.EntryRow.fetchCount($0) } == 0)
+        #expect(try entryCount() == 0)
         #expect(try await outbox.unsentCount() == 2, "queued answers count as unsent")
     }
 
