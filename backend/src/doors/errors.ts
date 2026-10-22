@@ -5,28 +5,30 @@ import type { NextFunction, Request, Response } from 'express';
  * `{ success: false, error: { code, message, retryAfterSeconds? } }`.
  *
  * Codes are a closed list; each has one HTTP status and one plain-words
- * message, safe to show as is. Nothing from the agent is ever forwarded: its
+ * message, safe to show as is, word for word the contract's fixtures
+ * (docs/team/contracts/fixtures/00/error.*.json, checked by
+ * tests/contract-00-fixtures.test.ts). Nothing from the agent is ever forwarded: its
  * messages can carry raw Postgres text (agent-api-reference §11).
  */
 export const DOOR_ERRORS = {
-  invalid_request: { status: 400, message: 'Something in that request wasn’t right.' },
-  invalid_credentials: { status: 401, message: 'That sign-in didn’t work. Nothing is lost; try again.' },
-  unauthenticated: { status: 401, message: 'Please sign in again.' },
-  session_revoked: { status: 401, message: 'You’ve been signed out. Please sign in again.' },
-  invite_required: { status: 403, message: 'You need an invite to get in.' },
-  suspended: { status: 403, message: 'Your account is paused.' },
-  not_found: { status: 404, message: 'That isn’t here.' },
-  idempotency_mismatch: { status: 409, message: 'That request was already used for something else.' },
-  update_required: { status: 426, message: 'Please update the app to keep going.' },
-  rate_limited: { status: 429, message: 'Too many tries. Try again in a minute.' },
-  spend_limited: { status: 429, message: 'That’s all for today. This comes back tomorrow.' },
-  upstream_timeout: { status: 504, message: 'That took too long. Try again.' },
-  upstream_unavailable: { status: 502, message: 'Something went wrong on our side. Try again.' },
-  internal: { status: 500, message: 'Something went wrong on our side. Try again.' },
+  invalid_request: { status: 400, message: "That didn't look right." },
+  invalid_credentials: { status: 401, message: "That didn't work. Nothing is lost; try again." },
+  unauthenticated: { status: 401, message: "Please sign in again." },
+  session_revoked: { status: 401, message: "Please sign in again." },
+  invite_required: { status: 403, message: "You'll need an invite to get in." },
+  suspended: { status: 403, message: "Your account is paused." },
+  not_found: { status: 404, message: "That isn't here any more." },
+  idempotency_mismatch: { status: 409, message: "That was already sent with different words." },
+  update_required: { status: 426, message: "There's a new version of Retrospect." },
+  rate_limited: { status: 429, message: "Too many tries. Try again in a minute." },
+  spend_limited: { status: 429, message: "I've done all I can today. This comes back tomorrow." },
+  upstream_timeout: { status: 504, message: "That took too long. Try again." },
+  upstream_unavailable: { status: 502, message: "Something's down on our side. Try again soon." },
+  internal: { status: 500, message: "Something went wrong on our side." },
   // Contract 00 §4: redeeming an invite.
-  invite_invalid: { status: 400, message: 'That invite code isn’t right.' },
-  invite_used: { status: 400, message: 'That invite has already been used.' },
-  invite_expired: { status: 400, message: 'That invite has expired.' },
+  invite_invalid: { status: 400, message: "That code doesn't look right." },
+  invite_used: { status: 400, message: "That invite has already been used." },
+  invite_expired: { status: 400, message: "That invite has expired." },
 } as const satisfies Record<string, { status: number; message: string }>;
 
 export type DoorErrorCode = keyof typeof DOOR_ERRORS;
