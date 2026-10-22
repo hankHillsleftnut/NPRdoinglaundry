@@ -439,6 +439,7 @@ struct OutboxDrainTests {
         try await outbox.enqueueEntry(draft(a))
 
         await outbox.start()
+        try await waitUntil { reachability.subscribers == 1 }
         reachability.send(true)
         try await waitUntil { sender.sends.count == 1 }
         try await outbox.enqueueEntry(draft(b))
@@ -463,9 +464,12 @@ struct OutboxDrainTests {
 
         await outbox.start()
         await outbox.start()
+        try await waitUntil { reachability.subscribers >= 1 }
         reachability.send(true)
         try await waitUntil { sender.sends.count == 1 }
-        await Task.yield()
+        for _ in 0 ..< 50 {
+            await Task.yield()
+        }
 
         #expect(reachability.subscribers == 1)
     }
