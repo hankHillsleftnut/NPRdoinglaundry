@@ -13,7 +13,13 @@
  * a shared store replaces MemoryLimiter behind the same interface in BE0.9.
  */
 
-export type LimitBucket = 'read' | 'write' | 'expensive';
+/**
+ * `redeem`: invite codes, 5 per 10 minutes per person (a code is 65 bits, but
+ * guessing should still be slow). `redeemAddress`: 20 per 10 minutes per
+ * address, looser, so a household or a café on one Wi-Fi isn't locked out by
+ * one person's typos. `publicWaitlist`: the website's form, 5 an hour per address.
+ */
+export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist';
 
 export type TakeResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
@@ -44,6 +50,9 @@ export const DOOR_LIMITS = {
     read: [{ windowMs: MINUTE, max: 120 }],
     write: [{ windowMs: MINUTE, max: 30 }],
     expensive: [{ windowMs: MINUTE, max: 10 }, { windowMs: HOUR, max: 60 }],
+    redeem: [{ windowMs: 10 * MINUTE, max: 5 }],
+    redeemAddress: [{ windowMs: 10 * MINUTE, max: 20 }],
+    publicWaitlist: [{ windowMs: HOUR, max: 5 }],
   } satisfies Record<LimitBucket, readonly LimitWindow[]>,
   /** Rolling window for model spend. */
   spendWindowMs: DAY,

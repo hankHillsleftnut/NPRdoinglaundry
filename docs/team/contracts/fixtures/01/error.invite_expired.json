@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "invite_expired",
-    "message": "this invitation has expired."
+    "message": "That invite has expired."
   }
 }

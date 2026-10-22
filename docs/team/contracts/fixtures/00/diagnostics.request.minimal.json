@@ -1,0 +1,25 @@
+{
+  "reportId": "00000000-0000-4000-8000-0000000000d2",
+  "createdAt": "2026-10-22T09:30:00.000Z",
+  "note": null,
+  "environment": {
+    "appVersion": "1.0",
+    "build": "42",
+    "osVersion": "26.0",
+    "deviceModel": "iPhone17,1",
+    "locale": "en_US",
+    "timeZone": "Europe/London",
+    "dynamicType": "large",
+    "reduceMotion": false,
+    "voiceOver": false,
+    "network": "none",
+    "freeDisk": "over_20gb"
+  },
+  "account": { "provider": "apple", "access": "waitlisted", "entitlement": "none" },
+  "events": [],
+  "network": [],
+  "outbox": { "queued": 1, "sending": 0, "sent": 0, "failed": 0, "oldestAgeSeconds": 4, "lastFailureCodes": [] },
+  "failures": [],
+  "performance": { "launchMs": null, "hitchRates": [], "memoryWarnings": 0, "thermalChanges": [] },
+  "crashes": []
+}

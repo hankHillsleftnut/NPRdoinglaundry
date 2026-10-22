@@ -5,6 +5,8 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import type { AuthUser, JWTPayload } from '../types/index.js';
 import { getOrCreateUserWith, type UsersClient } from '../services/users.js';
 import { DoorError, sendError } from '../doors/errors.js';
+import { verifyAccessToken } from '../sessions/tokens.js';
+import { ACCESS_STATES, type AccessState } from '../access/store.js';
 
 // Extend Express Request type to include user
 declare global {
@@ -18,17 +20,75 @@ declare global {
 /** Finds a signed-in user by id: null when there is no such user; throws when it can't tell. */
 export type UserLookup = (userId: string) => Promise<AuthUser | null>;
 
-/** The real lookup: one round trip to the users table per authenticated request. */
-export const supabaseUserLookup: UserLookup = async (userId) => {
-  const { data, error } = await supabaseAdmin
-    .from(Tables.USERS)
-    .select('id, apple_user_id, email')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
-  if (!data) return null;
-  return { id: data.id, appleUserId: data.apple_user_id, email: data.email ?? undefined };
-};
+/** Postgres: the column being read does not exist. */
+const UNDEFINED_COLUMN = '42703';
+
+/**
+ * The real lookup: one round trip to the users table per authenticated request.
+ *
+ * Reads users.access (migration 007) and users.token_version (005). If the
+ * server reaches production before a migration does, its column is missing:
+ * the lookup falls back to the columns that exist and logs once, so sign-ins
+ * keep working. Before 005, new access tokens are refused (no version to check
+ * them against), the safe side. Before 007 there is no access state, and the
+ * gate lets everyone through as before (everyone was grandfathered as a member).
+ */
+const COLUMN_SETS = [
+  'id, apple_user_id, email, token_version, first_name, access',
+  'id, apple_user_id, email, token_version, first_name',
+  'id, apple_user_id, email',
+] as const;
+const FALLBACK_WARNINGS = [
+  '[auth] users.access is missing: migration 007 is not applied. Everyone passes the invite gate.',
+  '[auth] users.token_version is missing: migration 005 is not applied. Only old tokens can sign in.',
+];
+const warned = new Set<number>();
+function warnOnce(i: number): void {
+  if (warned.has(i)) return;
+  warned.add(i);
+  console.warn(FALLBACK_WARNINGS[i]);
+}
+
+/** The slice of supabase-js the lookup uses. */
+export interface UserRowsClient {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+      };
+    };
+  };
+}
+
+export function userLookupWith(db: UserRowsClient): UserLookup {
+  return async (userId) => {
+    const read = (columns: string) => db.from(Tables.USERS).select(columns).eq('id', userId).maybeSingle();
+    // Newest schema first; each fallback is a migration not yet applied.
+    let found: { data: unknown; error: { code?: string } | null } | null = null;
+    for (const [i, columns] of COLUMN_SETS.entries()) {
+      found = await read(columns);
+      if (found.error?.code !== UNDEFINED_COLUMN || i === COLUMN_SETS.length - 1) break;
+      warnOnce(i);
+    }
+    const { data, error } = found!;
+    if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
+    if (!data) return null;
+    const row = data as unknown as {
+      id: string; apple_user_id: string; email: string | null; token_version?: number; first_name?: string | null; access?: string;
+    };
+    return {
+      id: row.id,
+      appleUserId: row.apple_user_id,
+      email: row.email ?? undefined,
+      ...(typeof row.token_version === 'number' ? { tokenVersion: row.token_version } : {}),
+      ...(typeof row.first_name === 'string' ? { firstName: row.first_name } : {}),
+      // An unknown value is the strictest state, never a way in.
+      ...(typeof row.access === 'string' ? { access: (ACCESS_STATES as readonly string[]).includes(row.access) ? row.access as AccessState : 'suspended' } : {}),
+    };
+  };
+}
+
+export const supabaseUserLookup: UserLookup = userLookupWith(supabaseAdmin as unknown as UserRowsClient);
 
 type AuthFailure = 'missing' | 'invalid' | 'no_user' | 'error';
 
@@ -71,24 +131,40 @@ export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean
       return;
     }
 
-    let payload: JWTPayload;
-    try {
-      payload = jwt.verify(authHeader.substring(7), config.jwt.secret, {
-        ...(opts.now ? { clockTimestamp: Math.floor(opts.now() / 1000) } : {}),
-      }) as JWTPayload;
-    } catch {
-      fail(res, 'invalid');
-      return;
+    const token = authHeader.substring(7);
+    const nowMs = opts.now ? opts.now() : Date.now();
+
+    // The new 15-minute access token (BE0.4), or the old 30-day shape, which
+    // old app versions keep using until X07 retires it.
+    let userId: string;
+    let requiredVersion: number | null = null;
+    const access = verifyAccessToken(token, config.jwt.secret, nowMs);
+    if (access) {
+      userId = access.userId;
+      requiredVersion = access.tokenVersion;
+    } else {
+      let payload: JWTPayload;
+      try {
+        payload = jwt.verify(token, config.jwt.secret, { clockTimestamp: Math.floor(nowMs / 1000) }) as JWTPayload;
+      } catch {
+        fail(res, 'invalid');
+        return;
+      }
+      if (typeof payload?.userId !== 'string') {
+        fail(res, 'invalid');
+        return;
+      }
+      userId = payload.userId;
     }
-    // A validly signed token with no user id, or one that isn't a UUID, names no user.
-    if (typeof payload?.userId !== 'string' || !UUID.test(payload.userId)) {
+    // A validly signed token whose user id isn't a UUID names no user.
+    if (!UUID.test(userId)) {
       fail(res, 'invalid');
       return;
     }
 
     let user: AuthUser | null;
     try {
-      user = await users(payload.userId);
+      user = await users(userId);
     } catch (error) {
       console.error('Auth middleware error:', error instanceof Error ? error.message : 'unknown');
       fail(res, 'error');
@@ -96,6 +172,11 @@ export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean
     }
     if (!user) {
       fail(res, 'no_user');
+      return;
+    }
+    // A bumped token_version ends every access token issued before it.
+    if (requiredVersion !== null && user.tokenVersion !== requiredVersion) {
+      fail(res, 'invalid');
       return;
     }
 

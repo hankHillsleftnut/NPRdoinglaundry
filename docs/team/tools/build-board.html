@@ -1,0 +1,247 @@
+<title>Retrospect Build Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one summary strip, then two engineer columns (tree of work → PRs), then the review log. */
+:root{
+  --bg:#f6f6f3; --panel:#ffffff; --ink:#1b1c1a; --muted:#6c6e68; --line:#e3e3dd;
+  --accent:#3b5bdb;
+  --s-todo:#b9bab3; --s-doing:#3b5bdb; --s-review:#c27c0e; --s-merged:#2f8a4c; --s-blocked:#c43d3d; --s-later:#d9d9d2;
+  --catch-bg:#fdf3e4; --catch-ink:#8a5507;
+  --sans:"Instrument Sans",-apple-system,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141513; --panel:#1c1d1b; --ink:#ececE6; --muted:#9a9c95; --line:#2d2e2b;
+  --accent:#8ea2ff; --s-todo:#55574f; --s-doing:#8ea2ff; --s-review:#e0a43a; --s-merged:#5cc17d; --s-blocked:#ef6b6b; --s-later:#3a3b37;
+  --catch-bg:#2e2416; --catch-ink:#f0c37a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141513; --panel:#1c1d1b; --ink:#ececE6; --muted:#9a9c95; --line:#2d2e2b;
+  --accent:#8ea2ff; --s-todo:#55574f; --s-doing:#8ea2ff; --s-review:#e0a43a; --s-merged:#5cc17d; --s-blocked:#ef6b6b; --s-later:#3a3b37;
+  --catch-bg:#2e2416; --catch-ink:#f0c37a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+header h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--muted)}
+.now{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:6px}
+.now b{font-weight:600}
+.label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;align-items:start}
+.eng{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;min-width:0}
+.eng h2{margin:0;font-size:16px;font-weight:600}
+.doing{font-size:13px}
+.bar{height:8px;border-radius:4px;background:var(--s-todo);display:flex;overflow:hidden}
+.bar span{display:block;height:100%}
+.counts{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.counts i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+details{border-top:1px solid var(--line)}
+details details{border-top:0;margin-left:14px}
+summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:baseline;padding:7px 0;min-width:0}
+summary::-webkit-details-marker{display:none}
+summary .chev{width:10px;color:var(--muted);flex-shrink:0;transition:transform .15s}
+details[open]>summary .chev{transform:rotate(90deg)}
+summary:focus-visible,.leaf:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.t{flex:1;min-width:0}
+.t small{display:block;color:var(--muted);font-size:12px}
+.lvl0>summary .t{font-weight:600}
+.frac{font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;font-variant-numeric:tabular-nums}
+.leaf{display:flex;gap:8px;align-items:baseline;padding:5px 0 5px 18px;min-width:0}
+.id{font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;min-width:58px}
+.pill{font-size:11px;font-weight:500;padding:1px 8px;border-radius:999px;flex-shrink:0;color:#fff;background:var(--s-todo)}
+.pill.todo{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.pill.doing{background:var(--s-doing)}.pill.review{background:var(--s-review)}.pill.merged{background:var(--s-merged)}.pill.blocked{background:var(--s-blocked)}
+.pill.later{background:var(--s-later);color:var(--muted)}
+.pr{font-family:var(--mono);font-size:11px;color:var(--accent);text-decoration:none;flex-shrink:0}
+.pr:hover{text-decoration:underline}
+.log{display:grid;gap:8px}
+.entry{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.entry.catch{background:var(--catch-bg);border-color:transparent}
+.entry .when{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.entry .who{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.entry.catch .who{color:var(--catch-ink)}
+.entry .body{grid-column:1/-1;min-width:0;overflow-wrap:anywhere}
+.entry .meta{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:4px 10px;border-radius:999px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+.status{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){summary .chev{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Retrospect build board</h1>
+    <p>Beta 1: the new journal and getting in. Two engineers; every task broken down to single PRs.</p>
+  </header>
+
+  <section class="now" aria-live="polite">
+    <span class="label">Integrator · right now</span>
+    <div id="now-int">Loading…</div>
+    <div class="status" id="updated"></div>
+  </section>
+
+  <section class="now" aria-live="polite">
+    <span class="label">Pace</span>
+    <div class="counts" id="pace" style="font-size:13px;gap:6px 20px">Measuring…</div>
+  </section>
+
+  <div class="cols">
+    <section class="eng" id="col-app"><h2>App engineer</h2><div class="empty">Loading the plan…</div></section>
+    <section class="eng" id="col-backend"><h2>Backend engineer</h2><div class="empty">Loading the plan…</div></section>
+  </div>
+
+  <section class="log">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:16px;font-weight:600">Updates and what I caught</h2>
+      <div class="tabs" role="group" aria-label="Filter the log">
+        <button type="button" id="f-all" aria-pressed="true">All</button>
+        <button type="button" id="f-catch" aria-pressed="false">Caught in review</button>
+        <button type="button" id="f-app" aria-pressed="false">App</button>
+        <button type="button" id="f-backend" aria-pressed="false">Backend</button>
+      </div>
+    </div>
+    <div id="log"><div class="empty">Updates from each engineer, and every problem I catch in their PRs, appear here.</div></div>
+  </section>
+</div>
+
+<script>
+const REPO = { app: "hankHillsleftnut/NPRdoinglaundry", backend: "hankHillsleftnut/NPRdoinglaundry" };
+const STATES = ["merged","review","doing","blocked","todo","later"];
+const NAMES = {todo:"to do",doing:"doing",review:"in review",merged:"merged",blocked:"blocked",later:"later"};
+const state = { plan:{}, status:{}, meta:null, log:[], filter:"all" };
+const key = id => id.replace(/[^A-Za-z0-9]/g,"_");
+const el = (tag, cls, text) => { const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+
+function statusOf(eng,id){ return (state.status[eng]?.[key(id)]) || {s:"todo"}; }
+
+function renderEng(eng){
+  const col = document.getElementById("col-"+eng);
+  const plan = state.plan[eng];
+  if(!plan){ return; }
+  const nodes = plan.nodes || [];
+  const kids = {}; nodes.forEach(n => (kids[n.parent||"_root"] ||= []).push(n));
+  const leavesUnder = id => { const k=kids[id]; if(!k) return [id]; return k.flatMap(c=>leavesUnder(c.id)); };
+  const allLeaves = leavesUnder("_root");
+  const counts = Object.fromEntries(STATES.map(s=>[s,0]));
+  allLeaves.forEach(id => counts[statusOf(eng,id).s] = (counts[statusOf(eng,id).s]||0)+1);
+  const total = allLeaves.length - (counts.later||0);
+
+  const openState = {}; col.querySelectorAll("details").forEach(d=>openState[d.dataset.id]=d.open);
+  col.replaceChildren();
+  col.append(el("h2",null, eng==="app"?"App engineer":"Backend engineer"));
+  const meta = state.meta?.[eng];
+  const doing = el("div","doing");
+  doing.append(el("span","label","Doing now"), el("div",null, meta || "Not started yet."));
+  col.append(doing);
+
+  const bar = el("div","bar"); bar.setAttribute("role","img");
+  bar.setAttribute("aria-label", `${counts.merged} of ${total} PRs merged`);
+  ["merged","review","doing","blocked"].forEach(s=>{ if(counts[s]){ const sp=el("span"); sp.style.width=(counts[s]/total*100)+"%"; sp.style.background=`var(--s-${s})`; bar.append(sp);} });
+  col.append(bar);
+  const c = el("div","counts");
+  const strong = el("span"); strong.style.color="var(--ink)"; strong.style.fontWeight="600"; strong.textContent=`${counts.merged} / ${total} Beta 1 PRs merged`; c.append(strong);
+  ["review","doing","blocked"].forEach(s=>{ if(counts[s]){ const sp=el("span"); const i=el("i"); i.style.background=`var(--s-${s})`; sp.append(i, `${counts[s]} ${NAMES[s]}`); c.append(sp);} });
+  if(counts.later){ const sp=el("span"); const i=el("i"); i.style.background="var(--s-later)"; sp.append(i, `${counts.later} after Beta 1`); c.append(sp); }
+  col.append(c);
+
+  const build = (parentId, depth, host) => {
+    (kids[parentId]||[]).forEach(n=>{
+      if(depth===0 && n.later && !host.querySelector(".later-head")){ const h=el("div","label later-head","After Beta 1 · in the plan, not started"); h.style.padding="14px 0 4px"; host.append(h); }
+      if(kids[n.id]){
+        const d = el("details","lvl"+depth); d.dataset.id=n.id;
+        d.open = openState[n.id] ?? (depth===0 && !n.later);
+        const s = el("summary"); s.append(el("span","chev","›"));
+        const t = el("span","t", n.title); if(n.plain) t.append(el("small",null,n.plain));
+        const ls = leavesUnder(n.id); const done = ls.filter(id=>statusOf(eng,id).s==="merged").length;
+        const active = ls.find(id=>["doing","review","blocked"].includes(statusOf(eng,id).s));
+        s.append(t);
+        if(active){ const st=statusOf(eng,active).s; s.append(el("span","pill "+st, NAMES[st])); }
+        s.append(el("span","frac",`${done}/${ls.length}`));
+        d.append(s); build(n.id, depth+1, d); host.append(d);
+      } else {
+        const st = statusOf(eng,n.id);
+        const row = el("div","leaf");
+        row.append(el("span","id",n.id));
+        const t = el("span","t",n.title); if(n.plain) t.append(el("small",null,n.plain));
+        if(st.note) t.append(el("small",null,st.note));
+        row.append(t);
+        if(st.pr){ const a=el("a","pr","#"+st.pr); a.href=`https://github.com/${st.repo||REPO[eng]}/pull/${st.pr}`; a.target="_blank"; a.rel="noopener"; row.append(a); }
+        row.append(el("span","pill "+st.s, NAMES[st.s]||st.s));
+        host.append(row);
+      }
+    });
+  };
+  const treeHost = el("div"); build("_root",0,treeHost); col.append(treeHost);
+}
+
+function renderNow(){
+  const m = state.meta;
+  document.getElementById("now-int").textContent = m?.integrator || "Setting up the board.";
+  const at = m?.at ? new Date(m.at) : null;
+  document.getElementById("updated").textContent = at ? "Updated " + at.toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}) : "";
+}
+
+function renderPace(p){
+  const host = document.getElementById("pace");
+  host.replaceChildren();
+  if(!p){ host.textContent = "Measuring…"; return; }
+  const items = [
+    ["merged today", p.mergedToday],
+    ["merged this week", p.mergedWeek],
+    ["open PRs", p.open],
+    ["open to merge, median", p.medianHours != null ? p.medianHours + " h" : null],
+    ["CI wait, median", p.ciWaitMin != null ? p.ciWaitMin + " min" : null],
+    ["fix rounds per PR", p.fixRounds],
+  ];
+  items.forEach(([k,v])=>{ if(v==null) return; const s=el("span"); const b=el("b",null,String(v)); b.style.color="var(--ink)"; b.style.fontWeight="600"; s.append(b," "+k); host.append(s); });
+  if(p.note){ const n=el("span",null,p.note); n.style.flexBasis="100%"; host.append(n); }
+}
+
+function renderLog(){
+  const host = document.getElementById("log");
+  const f = state.filter;
+  const rows = state.log.filter(r => f==="all" || (f==="catch" ? r.kind==="catch" : r.eng===f));
+  host.replaceChildren();
+  if(!rows.length){ host.append(el("div","empty", f==="catch" ? "Nothing caught yet. Every problem I find in an engineer's PR, and the layer that stops it happening again, will show here." : "No updates yet.")); return; }
+  rows.forEach(r=>{
+    const e = el("div","entry"+(r.kind==="catch"?" catch":""));
+    const who = {app:"App engineer",backend:"Backend engineer",integrator:"Integrator"}[r.eng]||r.eng;
+    e.append(el("span","who", r.kind==="catch" ? `Caught · ${who}` : who));
+    e.append(el("span","when", r.at ? new Date(r.at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : ""));
+    e.append(el("div","body", r.text||""));
+    const bits = [];
+    if(r.pr) bits.push("PR #"+r.pr);
+    if(r.layer) bits.push("fixed at: "+r.layer);
+    if(r.kind==="catch") bits.push(r.fixed ? "fixed before merge" : "open");
+    if(bits.length) e.append(el("div","meta", bits.join(" · ")));
+    host.append(e);
+  });
+}
+
+["all","catch","app","backend"].forEach(f=>{
+  document.getElementById("f-"+f).addEventListener("click",()=>{
+    state.filter=f;
+    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", String(b.id==="f-"+f)));
+    renderLog();
+  });
+});
+
+(async ()=>{
+  const db = await window.claude?.use?.("db");
+  if(!db){
+    document.getElementById("now-int").textContent = "Sign in to claude.ai to see the live board.";
+    document.querySelectorAll(".eng .empty").forEach(e=>e.textContent="The live plan needs a signed-in view.");
+    return;
+  }
+  const onErr = () => { document.getElementById("updated").textContent = "Live updates paused. Reload to reconnect."; };
+  ["app","backend"].forEach(eng=>{
+    db.doc("plan/"+eng).onSnapshot(s=>{ state.plan[eng]=s.exists?s.data():null; renderEng(eng); }, onErr);
+    db.doc("status/"+eng).onSnapshot(s=>{ state.status[eng]=s.exists?(s.data().items||{}):{}; renderEng(eng); }, onErr);
+  });
+  db.doc("meta/now").onSnapshot(s=>{ state.meta=s.exists?s.data():null; renderNow(); renderEng("app"); renderEng("backend"); }, onErr);
+  db.doc("meta/pace").onSnapshot(s=>renderPace(s.exists?s.data():null), onErr);
+  db.collection("log").orderBy("at","desc").limit(200).onSnapshot(s=>{ state.log=s.docs.map(d=>d.data()); renderLog(); }, onErr);
+})();
+</script>

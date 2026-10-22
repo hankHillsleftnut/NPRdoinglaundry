@@ -27,10 +27,11 @@ Spec:
       }
   }
   ```
-  Accounts: `access_token`, `access_expires_at` (ISO string), `refresh_token`, `user_id`, `has_signed_in_before`, `pending_invite_code`.
+  Accounts (integrator decision, 22 Oct: the session is **one JSON item**, saved in one Keychain write, so a save lands whole or leaves the previous session untouched): `session` (`accessToken`, `accessTokenExpiresAt` as ISO with ms, `refreshToken`, `userID`), `has_signed_in_before`, `pending_invite_code`. An unreadable expiry reads as `.distantPast` (refresh), never as signed out.
 - **Reinstall hygiene, without logging out people who simply update:** Keychain items survive deleting the app; UserDefaults don't. At launch, if the sentinel `platform.installSentinel` is missing:
   - and the old app's UserDefaults are also absent (`hasCompletedOnboarding`, `onboardingSignedIn`, `onboardingCurrentStep` all missing) → this is a fresh install or a reinstall: delete every item in `com.retrospect.session` **and** the old `com.retrospect.api` items, then write the sentinel;
   - otherwise → an update from the old app: write the sentinel and change nothing.
+- **Wired at launch** in `AppEntry.main()`, before `RetrospectApp` (whose old client restores its sign-in at init). Before the phone's first unlock after a restart (prewarming) UserDefaults read as empty, so the check waits for a launch when an `AfterFirstUnlock` Keychain write succeeds.
 - One place knows the identifiers: this file (the old client and ElevenLabs keep their copies until PL1.4's mirror byte).
 
 Acceptance: credentials round-trip through the real Keychain on the simulator with the right accessibility attribute; an update keeps the old sign-in; a reinstall clears it.

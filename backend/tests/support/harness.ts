@@ -14,6 +14,8 @@ import type { AddressInfo } from 'node:net';
 import { createApp, type AppDeps } from '../../src/app.js';
 import { createAgentDoorClient } from '../../src/doors/agent.js';
 import { MemoryLimiter } from '../../src/doors/limits.js';
+import { createDiagnosticsStore } from '../../src/diagnostics/store.js';
+import { memoryDiagnostics } from './memory-diagnostics.js';
 import jwt from 'jsonwebtoken';
 import type { AuthUser } from '../../src/types/index.js';
 import { createLog } from '../../src/utils/log.js';
@@ -57,8 +59,17 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+/** A store a test didn't set up: any call throws, so a test can't pass by not reaching it. */
+function notConfigured<T extends object>(what: string): T {
+  return new Proxy({} as T, { get: (_t, prop) => () => Promise.reject(new Error(`harness: ${what}.${String(prop)} is not set up in this test`)) });
+}
+
 export async function startHarness(opts: {
-  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router']; speechSynth?: AppDeps['speechSynth'];
+  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router'];
+  speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
+  verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
+  diagnostics?: AppDeps['diagnostics'];
+  access?: AppDeps['access']; invites?: AppDeps['invites'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -91,6 +102,13 @@ export async function startHarness(opts: {
     log: createLog((line) => logLines.push(line)),
     ...(opts.v2Router ? { v2Router: opts.v2Router } : {}),
     ...(opts.speechSynth ? { speechSynth: opts.speechSynth } : {}),
+    diagnostics: opts.diagnostics ?? createDiagnosticsStore(memoryDiagnostics().backend),
+    ...(opts.sessions ? { sessions: opts.sessions } : {}),
+    ...(opts.verifyApple ? { verifyApple: opts.verifyApple } : {}),
+    ...(opts.accounts ? { accounts: opts.accounts } : {}),
+    // Tests that use access or invites pass real stores (PGlite); anything else touching them fails loudly.
+    access: opts.access ?? notConfigured('access'),
+    invites: opts.invites ?? notConfigured('invites'),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

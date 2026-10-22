@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "invite_required",
-    "message": "retrospect is by invitation for now."
+    "message": "You'll need an invite to get in."
   }
 }

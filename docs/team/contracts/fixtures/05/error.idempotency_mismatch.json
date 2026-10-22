@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "idempotency_mismatch",
-    "message": "that request was already used for something else."
+    "message": "That was already sent with different words."
   }
 }

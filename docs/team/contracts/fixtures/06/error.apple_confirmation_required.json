@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "apple_confirmation_required",
-    "message": "confirm with apple to finish deleting your account."
+    "message": "Confirm with Apple to finish deleting your account."
   }
 }
