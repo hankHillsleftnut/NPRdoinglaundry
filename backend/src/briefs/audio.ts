@@ -20,11 +20,17 @@ export interface SigningClient {
 
 export function supabaseSignAudio(client: SigningClient, log: (line: string) => void = (l) => console.warn(l)): SignAudio {
   return async (path, nowMs) => {
-    const { data, error } = await client.storage.from(BRIEF_AUDIO_BUCKET).createSignedUrl(path, SIGNED_AUDIO_TTL_SECONDS);
-    if (error || !data?.signedUrl) {
-      log(`[briefs] audio link not signed (${error?.statusCode ?? 'no url'})`);
+    // A rejection (storage-js throws for what it doesn't classify) is the same as a refusal: the brief reads as text.
+    try {
+      const { data, error } = await client.storage.from(BRIEF_AUDIO_BUCKET).createSignedUrl(path, SIGNED_AUDIO_TTL_SECONDS);
+      if (error || !data?.signedUrl) {
+        log(`[briefs] audio link not signed (${error?.statusCode ?? 'no url'})`);
+        return null;
+      }
+      return { url: data.signedUrl, expiresAt: new Date(nowMs + SIGNED_AUDIO_TTL_SECONDS * 1000).toISOString() };
+    } catch {
+      log('[briefs] audio link not signed (exception)');
       return null;
     }
-    return { url: data.signedUrl, expiresAt: new Date(nowMs + SIGNED_AUDIO_TTL_SECONDS * 1000).toISOString() };
   };
 }

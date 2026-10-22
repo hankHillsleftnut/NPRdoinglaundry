@@ -194,6 +194,10 @@ test('a brief whose audio is still being made is not yet latest; stuck for 15 mi
   } finally {
     h.clock.now = NOW;
   }
+  // A making row with no audio timestamp counts from its creation: it can't hide forever.
+  const stale = await person();
+  const staleId = await insertBrief(stale.id, { created: new Date(NOW - MAKING_GRACE_MS).toISOString(), audio: { status: 'making', updatedAt: null } });
+  assert.equal(data<{ brief: { id: string } | null }>((await get('/v2/briefs/latest', stale.auth)).body).brief?.id, staleId);
 });
 
 test('audio is present only when ready, signed, expiring in an hour, with a startSeconds on every part; parts with audio come from audio_parts', async () => {
@@ -291,5 +295,7 @@ test('the real signer asks storage for an hour on the private bucket, and a refu
   assert.deepEqual(asked, [{ bucket: 'brief-audio', path: 'u/b.mp3', ttl: 3600 }]);
   const refused = supabaseSignAudio({ storage: { from: () => ({ createSignedUrl: async () => ({ data: null, error: { statusCode: '404', message: 'Object not found: u/b.mp3 secret words' } }) }) } }, (l) => logged.push(l));
   assert.equal(await refused('u/b.mp3', NOW), null);
-  assert.deepEqual(logged, ['[briefs] audio link not signed (404)']);
+  const thrown = supabaseSignAudio({ storage: { from: () => ({ createSignedUrl: async () => { throw new Error('fetch failed: u/b.mp3 secret words'); } }) } }, (l) => logged.push(l));
+  assert.equal(await thrown('u/b.mp3', NOW), null, 'a rejection is a text-only brief, not a 500');
+  assert.deepEqual(logged, ['[briefs] audio link not signed (404)', '[briefs] audio link not signed (exception)']);
 });

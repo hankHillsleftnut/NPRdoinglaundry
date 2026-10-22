@@ -115,7 +115,8 @@ export const MAKING_GRACE_MS = 15 * 60 * 1000;
 
 export function stillMaking(row: BriefRow, nowMs: number): boolean {
   if (row.audioStatus !== 'making') return false;
-  const since = row.audioUpdatedAt ? nowMs - Date.parse(row.audioUpdatedAt) : 0;
+  // A making row with no timestamp counts from its creation, so the grace can't last forever.
+  const since = nowMs - Date.parse(row.audioUpdatedAt ?? row.createdAt);
   return since < MAKING_GRACE_MS;
 }
 
