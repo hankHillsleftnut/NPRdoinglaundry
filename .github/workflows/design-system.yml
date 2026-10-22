@@ -6,8 +6,9 @@ on:
       - 'Retrospect/Retrospect/DesignSystemV2/**'
       - 'Retrospect/Retrospect/Features/**'
 concurrency:
-  # A newer push to the same PR (or to main) cancels the older run: only the latest counts.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # A newer push to the same PR cancels its older run. Pushes to main are keyed by commit, so
+  # a later merge never cancels an earlier one's iOS check.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
