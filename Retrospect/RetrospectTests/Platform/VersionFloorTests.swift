@@ -183,11 +183,23 @@ struct VersionFloorTests {
         #expect(unreadable.count == 1)
     }
 
-    @Test("the live environment's floor runs the bundle's version and asks meta on an active scene")
-    func theEnvironmentsFloor() {
+    @Test("the environment's floor runs the bundle's version: a meta floor above that build sets updateRequired through becameActive, one below doesn't")
+    func theEnvironmentsFloor() throws {
         let environment = Platform.AppEnvironment.preview()
+        let running = try #require(Backend.AppVersion(environment.configuration.appVersion))
+        #expect(environment.configuration.appVersion == "0 (0)", "the preview reads no bundle")
         #expect(!environment.updateRequired)
-        environment.floor.serverRequiresUpdate()
+
+        // A floor at the running build: current.
+        environment.floor.apply(floor: running.description)
+        #expect(!environment.updateRequired)
+        let log = try #require(environment.log as? Platform.Log.Recorder)
+        #expect(log.events.contains(.versionFloor(.current)))
+
+        // A floor one build above: must update, and never clears.
+        environment.floor.apply(floor: "\(running.marketing.map(String.init).joined(separator: ".")) (\(running.build + 1))")
+        #expect(environment.updateRequired)
+        environment.floor.apply(floor: running.description)
         #expect(environment.updateRequired)
     }
 }
