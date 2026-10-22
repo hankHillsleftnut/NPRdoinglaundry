@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "id": "00000000-0000-4000-8000-000000000203",
+      "date": "2026-10-21",
+      "kind": "quiet",
+      "parts": [
+        {
+          "text": "nothing new since your last brief. i'll keep listening.",
+          "sources": []
+        }
+      ],
+      "createdAt": "2026-10-21T07:58:00.000Z"
+    },
+    "enabled": true
+  }
+}

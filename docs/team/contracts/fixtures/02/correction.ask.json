@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "outcome": "askOwnWords",
+    "target": {
+      "kind": "fact",
+      "id": "00000000-0000-4000-8000-000000000305",
+      "text": "you're training for a half marathon"
+    },
+    "quote": "i am going to run the half in march",
+    "writtenOn": "2026-09-02"
+  }
+}

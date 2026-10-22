@@ -83,7 +83,7 @@ What "done" means for you: every state Paper draws is built and proven next to P
    - Sample data is **scenario-driven**: one `JournalScenario` enum value per state any journal screen draws. T02 selects them by name.
    - Sample data is **deterministic**: an injected clock, no randomness, and "loading" is a task that never resolves.
    - Every value is logged in `docs/design/sample-data-ledger.md`.
-3. **Screens take the protocol** (`any JournalData`), injected via `.environment`. They never take a concrete type and never import `Platform/Backend`. A view model exists only where a screen has its own logic (for example the drawer search debounce). Everything else reads the flow object directly.
+3. **Screens take the protocol** (`any Flows.JournalData`, `any Flows.Playback`), injected through the seam's own environment keys (`@Environment(\.journalData)`, `@Environment(\.playback)`, in `Platform/Flows/FlowEnvironment.swift`; decided 21 Oct). Every seam type lives under `Flows` (`Flows.Journal.Entry`, `Flows.Loadable`, `Flows.Failure`; cards that say `Backend.Failure` mean `Flows.Failure`). They never take a concrete type and never import `Platform/Backend`. A view model exists only where a screen has its own logic (for example the drawer search debounce). Everything else reads the flow object directly.
 4. **The wiring PR** (the integrator's) swaps `Sample…` for `Live…` in one line per flow and deletes the ledger rows. If anything on screen changes beyond the content, that's a bug in this seam, and it goes in the findings log.
 
 ## 5. How you work

@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "unauthenticated",
+    "message": "Please sign in again."
+  }
+}

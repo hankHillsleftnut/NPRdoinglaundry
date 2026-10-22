@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "data": {
+    "guesses": [
+      {
+        "id": "00000000-0000-4000-8000-000000000402",
+        "question": "is the canal walk a way to wind down?",
+        "framework": {
+          "name": "routines"
+        },
+        "status": "offered",
+        "restsOn": []
+      }
+    ],
+    "speaking": true
+  }
+}
