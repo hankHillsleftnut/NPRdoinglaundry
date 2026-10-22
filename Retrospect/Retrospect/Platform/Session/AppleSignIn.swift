@@ -166,3 +166,38 @@ extension Session {
         }
     }
 }
+
+extension Session {
+    /// Whether the person has removed the app from their Apple ID: asked on
+    /// every active scene for Apple sessions (the server learns nothing until
+    /// BE0.13). Three seconds, and every failure reads as unknown.
+    enum AppleRevocationCheck {
+        static let timeout: Duration = .seconds(3)
+
+        static let live: @Sendable (String) async -> AppleCredentialState = { appleUserID in
+            await withTaskGroup(of: AppleCredentialState.self) { group in
+                group.addTask { await ask(appleUserID) }
+                group.addTask {
+                    try? await Task.sleep(for: timeout)
+                    return .unknown
+                }
+                let first = await group.next() ?? .unknown
+                group.cancelAll()
+                return first
+            }
+        }
+
+        private static func ask(_ appleUserID: String) async -> AppleCredentialState {
+            await withCheckedContinuation { continuation in
+                ASAuthorizationAppleIDProvider().getCredentialState(forUserID: appleUserID) { state, error in
+                    guard error == nil else { return continuation.resume(returning: .unknown) }
+                    switch state {
+                    case .authorized, .transferred: continuation.resume(returning: .authorized)
+                    case .revoked, .notFound: continuation.resume(returning: .revoked)
+                    @unknown default: continuation.resume(returning: .unknown)
+                    }
+                }
+            }
+        }
+    }
+}

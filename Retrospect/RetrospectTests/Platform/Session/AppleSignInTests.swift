@@ -75,8 +75,6 @@ struct AppleSignInTests {
 
     private let session = URLSession.stubbed()
     private let recorder = Platform.Log.Recorder()
-    private let keychain = Session.MemoryKeychain()
-    private let legacy = Session.MemoryKeychain()
     private let installer = RecordingInstaller()
     private let fixtureRaw = "aW52ZW50ZWQtbm9uY2UtMzItYnl0ZXMtYmFzZTY0dXJs"
 
@@ -94,6 +92,7 @@ struct AppleSignInTests {
             configuration: .resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false),
             session: session,
             tokens: NoTokens(),
+            reachability: ManualReachability(),
             clock: TestClock(),
             log: recorder
         )
@@ -107,10 +106,6 @@ struct AppleSignInTests {
     private func fixtureSignIn(installer: (any Session.Installing)? = nil) -> Session.AppleSignIn {
         let raw = fixtureRaw
         return signIn(installer: installer ?? self.installer) { Session.Nonce(raw: raw) }
-    }
-
-    private func store() -> Session.Store {
-        Session.Store(keychain: keychain, legacyKeychain: legacy, defaults: UserDefaults(suiteName: "platform.tests.\(UUID().uuidString)") ?? .standard)
     }
 
     private func serve(status: Int = 200, _ data: Data) {
@@ -257,44 +252,6 @@ struct AppleSignInTests {
         #expect(installed.provider == .apple)
         #expect(installed.appleUserID == "001234.invented.5678")
         #expect(recorder.events.last == .signedIn(provider: .apple, isNew: true))
-    }
-
-    @Test("the store installs a session by saving it, then marking signed in before")
-    func theStoreInstallsThenMarks() async throws {
-        defer { StubProtocol.clear(session) }
-        try serve(Fixtures.data("00", "auth.response"))
-        let store = store()
-        let signIn = fixtureSignIn(installer: store)
-
-        signIn.prepare(request())
-        _ = try await signIn.signIn(with: first)
-
-        #expect(try await store.hasSignedInBefore)
-        let saved = try #require(try await store.credentials())
-        #expect(saved.provider == .apple)
-        #expect(saved.access == .member)
-        #expect(saved.appleUserID == "001234.invented.5678")
-    }
-
-    @Test("a save that fails leaves nothing marked and throws the Keychain status")
-    func aFailedSaveMarksNothing() async throws {
-        defer { StubProtocol.clear(session) }
-        try serve(Fixtures.data("00", "auth.response"))
-        keychain.failCall(1, with: errSecInteractionNotAllowed)
-        let store = store()
-        let signIn = fixtureSignIn(installer: store)
-
-        signIn.prepare(request())
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { _ = try await signIn.signIn(with: first) }
-
-        #expect(keychain.contents.isEmpty)
-        #expect(!recorder.events.contains {
-            if case .signedIn = $0 {
-                true
-            } else {
-                false
-            }
-        })
     }
 
     @Test("a suspended account still signs in, with its state")

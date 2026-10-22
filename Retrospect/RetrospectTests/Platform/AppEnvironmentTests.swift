@@ -15,7 +15,7 @@ struct AppEnvironmentTests {
 
     @Test("the live environment logs to the system log")
     func theLiveEnvironmentLogsToTheSystemLog() {
-        let environment = Platform.AppEnvironment.live(launch: .standard)
+        let environment = Platform.AppEnvironment.live(launch: .standard, reachability: Backend.PathReachability(monitor: nil))
 
         #expect(environment.log is Platform.Log.SystemSink)
         #expect(environment.updateRequired == false)
@@ -23,7 +23,7 @@ struct AppEnvironmentTests {
 
     @Test("live() uses the production configuration")
     func liveUsesTheProductionConfiguration() {
-        let configuration = Platform.AppEnvironment.live(launch: .standard).configuration
+        let configuration = Platform.AppEnvironment.live(launch: .standard, reachability: Backend.PathReachability(monitor: nil)).configuration
 
         #expect(configuration.environment == .production)
         #expect(configuration.baseURL.absoluteString == "https://retrospect-api.onrender.com")
@@ -33,7 +33,7 @@ struct AppEnvironmentTests {
     func liveFollowsTheLaunchsEnvironment() {
         let launch = Platform.LaunchOptions.parse(["app", "-Environment", "local", "-Data", "sample", "-State", "offline"])
 
-        let environment = Platform.AppEnvironment.live(launch: launch, log: Platform.Log.Recorder())
+        let environment = Platform.AppEnvironment.live(launch: launch, log: Platform.Log.Recorder(), reachability: Backend.PathReachability(monitor: nil))
 
         #expect(environment.configuration.environment == .local)
         #expect(environment.launch == launch)
@@ -43,9 +43,41 @@ struct AppEnvironmentTests {
     func ignoredLaunchOptionsAreLoggedByFlag() {
         let recorder = Platform.Log.Recorder()
 
-        _ = Platform.AppEnvironment.live(launch: .parse(["app", "-Data", "nonsense", "-Account", "month"]), log: recorder)
+        _ = Platform.AppEnvironment.live(
+            launch: .parse(["app", "-Data", "nonsense", "-Account", "month"]),
+            log: recorder,
+            reachability: Backend.PathReachability(monitor: nil)
+        )
 
         #expect(recorder.events == [.launchOptionIgnored(.unknownValue(.data)), .launchOptionIgnored(.accountNeedsStaging)])
+    }
+
+    @Test("live() joins the session and the client, sets the old app's bridges, and logs when staging resolves to this Mac")
+    func liveJoinsTheSessionAndTheClient() async {
+        let recorder = Platform.Log.Recorder()
+        Platform.Bridges.refreshLegacy = nil
+        Platform.Bridges.legacySignedOut = nil
+
+        let environment = Platform.AppEnvironment.live(
+            launch: .parse(["app", "-Environment", "staging"]), log: recorder, reachability: Backend.PathReachability(monitor: nil)
+        )
+
+        #expect(recorder.events == [.stagingResolvedToLocal])
+        #expect(environment.configuration.environment == .local)
+        #expect(Platform.Bridges.refreshLegacy != nil)
+        #expect(Platform.Bridges.legacySignedOut != nil)
+        // A signed-out session never reaches the server: no client is needed to say so.
+        #expect(await environment.session.signOut(force: true) == .signedOut)
+        Platform.Bridges.refreshLegacy = nil
+        Platform.Bridges.legacySignedOut = nil
+    }
+
+    @Test("the preview session starts signed out, with no Keychain and no network")
+    func thePreviewSessionStartsSignedOut() async {
+        let environment = Platform.AppEnvironment.preview()
+
+        #expect(await environment.session.state == .signedOut(hasSignedInBefore: false, reason: .none))
+        await #expect(throws: Backend.Failure(.unauthenticated)) { _ = try await environment.session.accessToken() }
     }
 
     @Test("the preview environment points at local staging and reads no bundle")

@@ -58,7 +58,7 @@ extension Session {
     /// either lands whole or leaves the previous session exactly as it was.
     /// "Signed in before" and a pending invite are items of their own: they
     /// outlive the session.
-    actor Store: Installing {
+    actor Store {
         /// The new session's Keychain service.
         static let service = "com.retrospect.session"
         /// The old client's service, wiped with ours on a fresh install.
@@ -109,14 +109,6 @@ extension Session {
         /// Sign-out: the session goes; `hasSignedInBefore` and a pending invite stay.
         func clearCredentials() throws {
             try keychain.delete(Account.session.rawValue)
-        }
-
-        /// A sign-in's session: saved whole, then marked as signed in before.
-        /// The session manager (PL1.5) takes this over, adding the old
-        /// screens' mirror between the two and publishing the state.
-        func install(_ credentials: Credentials) throws {
-            try save(credentials)
-            try markSignedInBefore()
         }
 
         // MARK: Flags
@@ -173,24 +165,38 @@ extension Session {
             return isUpdate ? .keptUpdate : .wipedLeftovers
         }
 
-        /// The launch bridge, called from `AppEntry` before the old app starts,
+        /// The launch check, called from `AppEntry` before the old app starts,
         /// so it runs before the old client restores its sign-in or anything
-        /// reads the session. Before the phone's first unlock after a restart
-        /// (iOS can prewarm the app then), UserDefaults read as empty, which
-        /// would look like a fresh install and wipe a real session, so the check
-        /// waits for a later launch. Logs what it did, or the Keychain status
-        /// when it failed; never throws.
+        /// reads the session. The sentinel is read first: an ordinary launch
+        /// touches the Keychain not at all. Only when it's missing is the phone
+        /// probed, because before its first unlock after a restart (iOS can
+        /// prewarm the app then) UserDefaults read as empty, which would look
+        /// like a fresh install and wipe a real session; then the check waits
+        /// and the session manager runs it again on the first active scene.
+        /// Logs what it did, or the status when it failed; never throws. A
+        /// probe that fails for another reason is logged as such and the
+        /// check counts as not run.
         @discardableResult
         static func checkInstallAtLaunch(
-            isUnlockedSinceBoot: Bool,
+            probe: () -> UnlockProbe,
             log: any Platform.LogSink,
             keychain: any KeychainBackend = SystemKeychain(service: service),
             legacyKeychain: any KeychainBackend = SystemKeychain(service: legacyService),
             defaults: UserDefaults = .standard
         ) -> InstallCheck? {
-            guard isUnlockedSinceBoot else {
+            guard defaults.object(forKey: installSentinelKey) == nil else {
+                log.record(.installChecked(.alreadyDone))
+                return .alreadyDone
+            }
+            switch probe() {
+            case .locked:
                 log.record(.installChecked(.deferredUntilUnlock))
                 return .deferredUntilUnlock
+            case let .failed(status):
+                log.record(.installCheckFailed(status: status))
+                return nil
+            case .unlocked:
+                break
             }
             do {
                 let check = try applyInstallSentinel(keychain: keychain, legacyKeychain: legacyKeychain, defaults: defaults)
@@ -200,9 +206,16 @@ extension Session {
                 log.record(.installCheckFailed(status: error.status))
                 return nil
             } catch {
-                log.record(.installCheckFailed(status: 0))
+                log.record(.installCheckErrored)
                 return nil
             }
+        }
+
+        /// The launch check again, on this store's items (the session manager
+        /// runs it on the first active scene when launch deferred it or it
+        /// didn't run).
+        func checkInstall(probe: () -> UnlockProbe, log: any Platform.LogSink) -> InstallCheck? {
+            Self.checkInstallAtLaunch(probe: probe, log: log, keychain: keychain, legacyKeychain: legacyKeychain, defaults: defaults)
         }
 
         // MARK: The session item

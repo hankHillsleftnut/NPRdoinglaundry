@@ -18,6 +18,15 @@ extension Session {
         let status: OSStatus
     }
 
+    /// What the unlock probe found.
+    enum UnlockProbe: Sendable, Equatable {
+        case unlocked
+        /// The phone hasn't been unlocked since it started.
+        case locked
+        /// The probe itself failed with this status; the phone's lock state is unknown.
+        case failed(status: OSStatus)
+    }
+
     /// The real Keychain. Every item is written `AfterFirstUnlockThisDeviceOnly`:
     /// readable in the background once the phone has been unlocked since it
     /// started (so the outbox can send while it's locked), never synced to
@@ -62,20 +71,6 @@ extension Session {
             let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
             let status = SecItemDelete(query as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status: status) }
-        }
-
-        /// Whether the phone has been unlocked since it started: an
-        /// `AfterFirstUnlock` item can be written only then. Writes and removes
-        /// a probe item that holds no data.
-        func isUnlockedSinceBoot() -> Bool {
-            let account = "unlock_probe"
-            do {
-                try write(Data(), account: account)
-                try? delete(account)
-                return true
-            } catch {
-                return false
-            }
         }
 
         /// What every write sets: the value and its accessibility. An update sets
@@ -164,6 +159,28 @@ extension Session {
                 self.oneCall = nil
                 throw KeychainError(status: oneCall.status)
             }
+        }
+    }
+}
+
+extension Session.KeychainBackend {
+    /// Whether the phone has been unlocked since it started: an
+    /// `AfterFirstUnlock` item can be written only then. Writes and removes
+    /// a probe item that holds no data. Only `errSecInteractionNotAllowed`
+    /// means locked; any other status is a failure of its own (a build
+    /// without the Keychain entitlement, say), never a reason to wait.
+    func probeUnlock() -> UnlockProbe {
+        let account = "unlock_probe"
+        do {
+            try write(Data(), account: account)
+            try? delete(account)
+            return .unlocked
+        } catch let error as KeychainError where error.status == errSecInteractionNotAllowed {
+            return .locked
+        } catch let error as KeychainError {
+            return .failed(status: error.status)
+        } catch {
+            return .failed(status: errSecInternalError)
         }
     }
 }

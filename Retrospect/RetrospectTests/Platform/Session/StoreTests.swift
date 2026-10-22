@@ -307,9 +307,7 @@ struct StoreTests {
         let log = Platform.Log.Recorder()
         try legacy.write(Data("left".utf8), account: "jwt_token")
 
-        let check = Session.Store.checkInstallAtLaunch(
-            isUnlockedSinceBoot: true, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
-        )
+        let check = Session.Store.checkInstallAtLaunch(probe: { .unlocked }, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults)
 
         #expect(check == .wipedLeftovers)
         #expect(legacy.contents.isEmpty)
@@ -323,9 +321,7 @@ struct StoreTests {
         try keychain.write(Data("kept".utf8), account: "session")
         try legacy.write(Data("kept".utf8), account: "jwt_token")
 
-        let check = Session.Store.checkInstallAtLaunch(
-            isUnlockedSinceBoot: false, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
-        )
+        let check = Session.Store.checkInstallAtLaunch(probe: { .locked }, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults)
 
         #expect(check == .deferredUntilUnlock)
         #expect(keychain.contents["session"] == Data("kept".utf8))
@@ -334,15 +330,76 @@ struct StoreTests {
         #expect(log.events == [.installChecked(.deferredUntilUnlock)])
     }
 
+    @Test("only errSecInteractionNotAllowed reads as locked; any other probe status logs installCheckFailed with that status")
+    func onlyInteractionNotAllowedReadsAsLocked() {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = Platform.Log.Recorder()
+        try? legacy.write(Data("left".utf8), account: "jwt_token")
+
+        let failed = Session.Store.checkInstallAtLaunch(
+            probe: { .failed(status: errSecMissingEntitlement) }, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
+        )
+
+        #expect(failed == nil)
+        #expect(log.events == [.installCheckFailed(status: errSecMissingEntitlement)])
+        #expect(legacy.contents["jwt_token"] == Data("left".utf8), "an unknown probe status never wipes")
+        #expect(defaults.object(forKey: Session.Store.installSentinelKey) == nil)
+    }
+
+    @Test("the unlock probe reads locked only on errSecInteractionNotAllowed")
+    func theUnlockProbeReadsLockedOnlyOnInteractionNotAllowed() {
+        #expect(keychain.probeUnlock() == .unlocked)
+        #expect(keychain.contents.isEmpty, "the probe leaves nothing behind")
+        keychain.failEveryCall(with: errSecInteractionNotAllowed)
+        #expect(keychain.probeUnlock() == .locked)
+        keychain.failEveryCall(with: errSecMissingEntitlement)
+        #expect(keychain.probeUnlock() == .failed(status: errSecMissingEntitlement))
+    }
+
+    @Test("the sentinel is read before the probe: an ordinary launch makes no Keychain call at all")
+    func theSentinelIsReadBeforeTheProbe() {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = Platform.Log.Recorder()
+        defaults.set(true, forKey: Session.Store.installSentinelKey)
+        keychain.failEveryCall(with: errSecInteractionNotAllowed)
+        legacy.failEveryCall(with: errSecInteractionNotAllowed)
+        let probed = Platform.Box(false)
+
+        let check = Session.Store.checkInstallAtLaunch(
+            probe: { probed.value = true; return .locked }, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
+        )
+
+        #expect(check == .alreadyDone)
+        #expect(!probed.value)
+        #expect(log.events == [.installChecked(.alreadyDone)])
+    }
+
+    @Test("a non-Keychain error in the launch check logs its own event, never status 0")
+    func aNonKeychainErrorLogsItsOwnEvent() {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        struct Odd: Error {}
+        final class Throwing: Session.KeychainBackend, @unchecked Sendable {
+            func read(_: String) throws -> Data? { throw Odd() }
+            func write(_: Data, account _: String) throws { throw Odd() }
+            func delete(_: String) throws { throw Odd() }
+            func deleteAll() throws { throw Odd() }
+        }
+        let log = Platform.Log.Recorder()
+
+        let check = Session.Store.checkInstallAtLaunch(probe: { .unlocked }, log: log, keychain: Throwing(), legacyKeychain: legacy, defaults: defaults)
+
+        #expect(check == nil)
+        #expect(log.events == [.installCheckErrored])
+        #expect(!log.events.contains(.installCheckFailed(status: 0)))
+    }
+
     @Test("a launch check that fails logs the Keychain status and doesn't throw")
     func aFailedLaunchCheckLogsTheStatus() {
         defer { defaults.removePersistentDomain(forName: suite) }
         let log = Platform.Log.Recorder()
         keychain.failEveryCall(with: errSecInteractionNotAllowed)
 
-        let check = Session.Store.checkInstallAtLaunch(
-            isUnlockedSinceBoot: true, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
-        )
+        let check = Session.Store.checkInstallAtLaunch(probe: { .unlocked }, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults)
 
         #expect(check == nil)
         #expect(log.events == [.installCheckFailed(status: errSecInteractionNotAllowed)])
