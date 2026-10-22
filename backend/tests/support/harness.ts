@@ -70,6 +70,7 @@ export async function startHarness(opts: {
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
   access?: AppDeps['access']; invites?: AppDeps['invites'];
+  versions?: AppDeps['versions'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -109,6 +110,7 @@ export async function startHarness(opts: {
     // Tests that use access or invites pass real stores (PGlite); anything else touching them fails loudly.
     access: opts.access ?? notConfigured('access'),
     invites: opts.invites ?? notConfigured('invites'),
+    ...(opts.versions ? { versions: opts.versions } : {}),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

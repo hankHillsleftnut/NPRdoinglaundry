@@ -376,12 +376,12 @@ Tests: the BE0.1 limiter tests run against both implementations (PGlite-free: a 
 
 ### BE0.10 · Minimum app version                                             size: S
 Place in the tree: platform › releases › version floor
-Repo · branch: backend · `be/BE0.10-version-floor`
+Repo · branch: backend · `be/BE0.10-meta`
 Needs: BE0.1      Unblocks: PL1.6, X07
 
-Spec: `MIN_APP_VERSION` (`1.0 (40)` format); the kit compares `X-App-Version` (build number) and returns 426 `update_required`; a missing header is allowed until `REQUIRE_APP_VERSION=true`; `GET /v2/meta` (public) returns `{ minVersion, latestVersion, serverTime, environment }` (contract 00 §5).
+Spec (as built): `MIN_APP_VERSION` (`1.0 (40)` format; default `1.0 (1)`), `LATEST_APP_VERSION` (the floor when unset), `REQUIRE_APP_VERSION` (`true` makes a missing or unreadable `X-App-Version` a refusal; off until every client sends one), `RETROSPECT_ENV` (`production | staging`; anything else is `local`). The door kit compares the header's **build number** (the bracketed part; a dotted build by its first number) with the floor's and answers `426 update_required` right after `unauthenticated` and before the access gate and the limit, on every signed-in `/v2` door; the floor is parsed once at start and a server with an unreadable one does not start. `GET /v2/meta` (public, mounted before the `/v2` auth, limited per address on the `read` bucket, `Cache-Control: no-store`, never behind the floor) returns `{ minVersion, latestVersion, serverTime, environment }` (contract 00 §5; fixture `fixtures/00/meta.json`). The sign-in doors (`/v2/auth/*`) are not gated: an old build can still sign in and meets the floor on its first door, and PL1.6 reads `meta` before that.
 
-Tests: `an old build gets update_required` · `a missing header passes until required` · `meta is public`.
+Tests (`backend/tests/meta.test.ts`): `meta is public and equals the contract fixture, whatever version asks` · `an old build gets update_required on every signed-in door; the floor and newer pass` (*) · `a missing or malformed version passes until the floor is required, then is update_required` · `meta is limited per address` · `versions parse as the contract writes them, and a server with an unreadable floor does not start`.
 
 ---
 
