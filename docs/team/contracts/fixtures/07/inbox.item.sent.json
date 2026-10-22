@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "clientEntryId": "5f0c2b1e-7a43-4c1d-9e2a-0b6d8f1a3c01",
+  "request": {
+    "clientEntryId": "5f0c2b1e-7a43-4c1d-9e2a-0b6d8f1a3c01",
+    "url": "https://example.com/essays/on-sleep",
+    "goalChoice": "none",
+    "sharedAt": "2026-10-21T13:02:11.410Z"
+  },
+  "createdAt": "2026-10-21T13:02:11.410Z",
+  "attempts": 1,
+  "sentByExtension": true
+}

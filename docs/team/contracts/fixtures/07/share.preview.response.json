@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "data": {
+    "thing": {
+      "url": "https://example.com/essays/on-sleep",
+      "kind": "page",
+      "title": "on sleep and memory",
+      "site": "example.com",
+      "length": {
+        "unit": "read",
+        "minutes": 12
+      }
+    },
+    "read": "a long essay on how sleep shapes what you remember.",
+    "goesWith": {
+      "goalId": "a1b2c3d4-0000-4000-8000-00000000a001",
+      "title": "sleep before midnight"
+    },
+    "reading": "ready"
+  }
+}
