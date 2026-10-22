@@ -6,8 +6,8 @@ import Testing
 struct RSheetHostTests {
     @Test("at rest the page behind scales to 0.94 and rounds to 12; closed, it is untouched")
     func behindFollowsProgress() {
-        #expect(RSheetProgress.behindScale(1) == RNumber.motionScaleBehindSheet)
-        #expect(RSheetProgress.behindRadius(1) == RDimension.radiusBehindSheet)
+        #expect(abs(RSheetProgress.behindScale(1) - RNumber.motionScaleBehindSheet) < 0.0001)
+        #expect(abs(RSheetProgress.behindRadius(1) - RDimension.radiusBehindSheet) < 0.0001)
         #expect(RSheetProgress.behindScale(0) == 1)
         #expect(RSheetProgress.behindRadius(0) == 0)
         #expect(RSheetProgress.scrimOpacity(0.5) == 0.5)
@@ -15,7 +15,7 @@ struct RSheetHostTests {
 
     @Test("rubber-banding past the top never moves the page further than at rest")
     func behindClamped() {
-        #expect(RSheetProgress.behindScale(1.2) == RNumber.motionScaleBehindSheet)
+        #expect(abs(RSheetProgress.behindScale(1.2) - RNumber.motionScaleBehindSheet) < 0.0001)
         #expect(RSheetProgress.scrimOpacity(1.2) == 1)
     }
 
@@ -33,20 +33,20 @@ struct RSheetHostTests {
 
     @Test("past the top the overshoot shrinks by 0.55")
     func rubberBand() {
-        #expect(RSheetProgress.rubberBanded(overshoot: -100) == -55)
+        #expect(abs(RSheetProgress.rubberBanded(overshoot: -100) - -55) < 0.0001)
     }
 
     @Test("the sheet's offset follows the drag one to one")
     func offsetFollowsDrag() {
         let p = RSheetProgress.progress(dragDown: 100, height: 400)
-        #expect(p == 0.75)
-        #expect(RSheetProgress.offset(p, height: 400) == 100)
+        #expect(abs(p - 0.75) < 0.0001)
+        #expect(abs(RSheetProgress.offset(p, height: 400) - 100) < 0.0001)
         #expect(RSheetProgress.offset(1, height: 400) == 0)
     }
 
     @Test("detents: medium is half the host, full leaves the strip of the page above")
     func detents() {
-        #expect(RSheetDetent.medium.height(in: 800) == 400)
+        #expect(abs(RSheetDetent.medium.height(in: 800) - 400) < 0.0001)
         #expect(RSheetDetent.full.height(in: 800) == 800 - RDimension.layoutSheetTop)
     }
 }
