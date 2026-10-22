@@ -73,8 +73,9 @@ const row = async (c: string) => (await db.query<Record<string, unknown>>(
 const memberInvites = async (owner: string) =>
   (await db.query<{ n: number }>(`SELECT count(*)::int n FROM invites WHERE owner_user_id = $1 AND kind = 'member'`, [owner])).rows[0]!.n;
 
-const KEY_A = '0f1e2d3c-4b5a-4697-8899-aabbccddeeff';
-const KEY_B = 'f0e1d2c3-b4a5-4968-9988-ffeeddccbbaa';
+/** Two tears' Idempotency-Keys: UUIDs the app would make at touch-down, obviously made up. */
+const TEAR_A = '11111111-2222-4333-8444-555555555555';
+const TEAR_B = '66666666-7777-4888-9999-aaaaaaaaaaaa';
 
 test('check answers the contract fixtures exactly: usable, yours, alreadyIn', async () => {
   const h = await harness();
@@ -206,18 +207,18 @@ test('redeeming twice as the same person returns the same serial and redeemedOn,
     await nextSerial(7);
     const c = await invite();
     const p = await person(h, 'waitlisted');
-    const first = await redeem(h, p, c, { 'Idempotency-Key': KEY_A, 'X-Time-Zone': 'Pacific/Honolulu' });
+    const first = await redeem(h, p, c, { 'Idempotency-Key': TEAR_A, 'X-Time-Zone': 'Pacific/Honolulu' });
     assert.equal(first.status, 200);
     assert.deepEqual(first.body, fixture('00', 'redeem.response.minimal.json'), 'a founder invite: the contract fixture exactly');
     h.clock.now += 24 * 60 * 60 * 1000;
     const again = [
-      await redeem(h, p, c, { 'Idempotency-Key': KEY_A, 'X-Time-Zone': 'Asia/Tokyo' }),
-      await redeem(h, p, c, { 'Idempotency-Key': KEY_B }),
+      await redeem(h, p, c, { 'Idempotency-Key': TEAR_A, 'X-Time-Zone': 'Asia/Tokyo' }),
+      await redeem(h, p, c, { 'Idempotency-Key': TEAR_B }),
       await redeem(h, p, c),
     ];
     for (const r of again) assert.deepEqual(r.body, first.body, 'the stored answer, a day later and from elsewhere');
     assert.equal(await memberInvites(p), 3);
-    assert.equal((await row(c)).redeem_key, KEY_A, 'the first key stays on the row');
+    assert.equal((await row(c)).redeem_key, TEAR_A, 'the first key stays on the row');
   } finally {
     await h.close();
   }
@@ -228,19 +229,19 @@ test('a replayed key with the same code is the same 200; the same key with anoth
   try {
     const [c1, c3] = [await invite(), await invite()];
     const a = await person(h, 'waitlisted');
-    const first = await redeem(h, a, c1, { 'Idempotency-Key': KEY_A });
+    const first = await redeem(h, a, c1, { 'Idempotency-Key': TEAR_A });
     assert.equal(first.status, 200);
-    assert.deepEqual((await redeem(h, a, c1, { 'Idempotency-Key': KEY_A })).body, first.body);
-    assert.deepEqual((await redeem(h, a, ` ${c1.toLowerCase()}`, { 'Idempotency-Key': KEY_A.toUpperCase() })).body, first.body, 'the code and the key compare normalised');
-    const clash = await redeem(h, a, c3, { 'Idempotency-Key': KEY_A });
+    assert.deepEqual((await redeem(h, a, c1, { 'Idempotency-Key': TEAR_A })).body, first.body);
+    assert.deepEqual((await redeem(h, a, ` ${c1.toLowerCase()}`, { 'Idempotency-Key': TEAR_A.toUpperCase() })).body, first.body, 'the code and the key compare normalised');
+    const clash = await redeem(h, a, c3, { 'Idempotency-Key': TEAR_A });
     assert.equal(clash.status, 409);
     assert.equal(code(clash.body), 'idempotency_mismatch');
     assert.equal((await row(c3)).used_by_user_id, null, 'the other code is untouched');
     assert.equal(await memberInvites(a), 3);
-    assert.equal((await redeem(h, a, c3, { 'Idempotency-Key': KEY_B })).status, 200, 'a new key: the usual answer (already in, nothing spent)');
+    assert.equal((await redeem(h, a, c3, { 'Idempotency-Key': TEAR_B })).status, 200, 'a new key: the usual answer (already in, nothing spent)');
     assert.equal((await row(c3)).used_by_user_id, null);
 
-    for (const bad of ['not-a-uuid', 'x'.repeat(65), KEY_A.slice(0, -1)]) {
+    for (const bad of ['not-a-uuid', 'x'.repeat(65), TEAR_A.slice(0, -1)]) {
       const res = await redeem(h, await person(h, 'waitlisted'), c3, { 'Idempotency-Key': bad });
       assert.equal(code(res.body), 'invalid_request', `key ${bad.length} chars`);
     }
@@ -255,17 +256,17 @@ test('another person\'s key is theirs alone (*)', async () => {
   try {
     const [c1, c2] = [await invite(), await invite()];
     const [a, b] = [await person(h, 'waitlisted'), await person(h, 'waitlisted')];
-    const mine = await redeem(h, a, c1, { 'Idempotency-Key': KEY_A });
+    const mine = await redeem(h, a, c1, { 'Idempotency-Key': TEAR_A });
     assert.equal(mine.status, 200);
-    const spent = await redeem(h, b, c1, { 'Idempotency-Key': KEY_A });
+    const spent = await redeem(h, b, c1, { 'Idempotency-Key': TEAR_A });
     assert.equal(code(spent.body), 'invite_used', 'B with A\'s key and A\'s code: B\'s own outcome, never A\'s body');
-    const own = await redeem(h, b, c2, { 'Idempotency-Key': KEY_A });
+    const own = await redeem(h, b, c2, { 'Idempotency-Key': TEAR_A });
     assert.equal(own.status, 200);
     assert.notEqual(data<{ invite: { serial: number } }>(own.body).invite.serial, data<{ invite: { serial: number } }>(mine.body).invite.serial);
-    assert.deepEqual([(await row(c1)).redeem_key, (await row(c2)).redeem_key], [KEY_A, KEY_A], 'the same key on two people\'s rows');
-    assert.deepEqual((await redeem(h, a, c1, { 'Idempotency-Key': KEY_A })).body, mine.body, 'A\'s replay is still A\'s');
-    assert.deepEqual((await redeem(h, b, c2, { 'Idempotency-Key': KEY_A })).body, own.body);
-    assert.equal(code((await redeem(h, b, c1, { 'Idempotency-Key': KEY_A })).body), 'idempotency_mismatch', 'B\'s key now names c2, so c1 under it is B\'s own mismatch, never A\'s answer');
+    assert.deepEqual([(await row(c1)).redeem_key, (await row(c2)).redeem_key], [TEAR_A, TEAR_A], 'the same key on two people\'s rows');
+    assert.deepEqual((await redeem(h, a, c1, { 'Idempotency-Key': TEAR_A })).body, mine.body, 'A\'s replay is still A\'s');
+    assert.deepEqual((await redeem(h, b, c2, { 'Idempotency-Key': TEAR_A })).body, own.body);
+    assert.equal(code((await redeem(h, b, c1, { 'Idempotency-Key': TEAR_A })).body), 'idempotency_mismatch', 'B\'s key now names c2, so c1 under it is B\'s own mismatch, never A\'s answer');
   } finally {
     await h.close();
   }
@@ -293,7 +294,7 @@ test('already_in returns invite null and spends nothing', async () => {
   try {
     const c = await invite();
     const m = await person(h, 'member');
-    const res = await redeem(h, m, c, { 'Idempotency-Key': KEY_A });
+    const res = await redeem(h, m, c, { 'Idempotency-Key': TEAR_A });
     assert.equal(res.status, 200);
     assert.deepEqual(res.body, fixture('00', 'redeem.response.alreadyin.json'));
     assert.deepEqual(await row(c).then((r) => [r.used_by_user_id, r.redeem_key, r.redeemed_on]), [null, null, null]);
