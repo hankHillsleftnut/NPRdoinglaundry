@@ -14,6 +14,7 @@ enum RLabPage: String, CaseIterable, Identifiable {
     case motion, foundation, parts, artwork, toast
     case offline
     case evidence
+    case guess
 
     var id: String {
         rawValue
@@ -53,6 +54,7 @@ struct RDesignLab: View {
             case .toast: RToastGallery()
             case .offline: ROfflineLineGallery()
             case .evidence: REvidenceRowGallery()
+            case .guess: RGuessCardGallery()
             }
         }
         .background(RColor.backgroundCanvas)

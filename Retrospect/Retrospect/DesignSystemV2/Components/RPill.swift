@@ -15,12 +15,20 @@ struct RPill: View {
     var style: Style = .neutral
     /// Says why it can't be used; the pill dims and reads the reason aloud.
     var disabledReason: String?
+    /// The pill's action is on its way: a turning ring leads the words and the pill can't be
+    /// pressed again, without dimming (it's busy, not unavailable).
+    var pending = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: RDimension.space1) {
-                if let symbol, style != .action {
+                if pending {
+                    // a 12 ring in the 16 glyph slot, so the words don't move
+                    RSpinner(diameter: RDimension.sizeIconSmall - 2 * RDimension.sizeBorderRing)
+                        .frame(width: RDimension.sizeIconSmall, height: RDimension.sizeIconSmall)
+                        .accessibilityHidden(true)
+                } else if let symbol, style != .action {
                     RSymbol(name: symbol, size: .small)
                 }
                 Text(title)
@@ -29,8 +37,9 @@ struct RPill: View {
                     .lineLimit(1)
             }
         }
-        .buttonStyle(RPillStyle(style: style, leadingIcon: symbol != nil && style != .action))
-        .disabled(disabledReason != nil)
+        .buttonStyle(RPillStyle(style: style, leadingIcon: pending || (symbol != nil && style != .action)))
+        .disabled(disabledReason != nil || pending)
+        .accessibilityValue(pending ? "busy" : "")
         .opacity(disabledReason == nil ? 1 : RNumber.opacityDisabled)
         .accessibilityHint(disabledReason ?? "")
     }
