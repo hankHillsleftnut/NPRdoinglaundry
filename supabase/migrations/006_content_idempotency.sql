@@ -130,7 +130,8 @@ $$;
 -- STALE CLAIM RECOVERY
 -- ============================================
 -- A process that dies mid-ingest (redeploy, OOM, SIGTERM) leaves a row in
--- 'processing' forever. The iOS client has already been told 202 and will never
+-- 'processing' forever, or in 'pending' if it died before claiming. The iOS client
+-- may already have been told 202 and will never
 -- POST that note again, so nothing would re-trigger the claim. This returns those
 -- abandoned rows so a later request can heal them opportunistically — the note
 -- itself was never at risk, but without this it never becomes observations.
@@ -145,7 +146,7 @@ AS $$
     SELECT id
     FROM raw_content
     WHERE user_id = p_user_id
-      AND processing_status = 'processing'
+      AND COALESCE(processing_status, 'pending') IN ('pending', 'processing')
       AND COALESCE(ingest_claimed_at, created_at) < NOW() - p_stale_after
     ORDER BY created_at
     LIMIT p_limit;
@@ -154,9 +155,9 @@ $$;
 -- These functions take p_user_id / a bare row id and are meant for the service
 -- role only. Keep them off the anon and authenticated roles so they cannot be
 -- called directly to read or write rows against another user's account.
-REVOKE ALL ON FUNCTION upsert_raw_content(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB, UUID) FROM PUBLIC;
-REVOKE ALL ON FUNCTION claim_raw_content_ingest(UUID, BOOLEAN, INTERVAL) FROM PUBLIC;
-REVOKE ALL ON FUNCTION stale_raw_content_ingests(UUID, INT, INTERVAL) FROM PUBLIC;
+REVOKE ALL ON FUNCTION upsert_raw_content(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION claim_raw_content_ingest(UUID, BOOLEAN, INTERVAL) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION stale_raw_content_ingests(UUID, INT, INTERVAL) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION upsert_raw_content(UUID, UUID, TEXT, TEXT, TIMESTAMPTZ, JSONB, UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION claim_raw_content_ingest(UUID, BOOLEAN, INTERVAL) TO service_role;
 GRANT EXECUTE ON FUNCTION stale_raw_content_ingests(UUID, INT, INTERVAL) TO service_role;

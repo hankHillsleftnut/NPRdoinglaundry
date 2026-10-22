@@ -126,26 +126,23 @@ class EntryManager: ObservableObject {
     
     /// Hand an entry to the durable note queue for the observation/insight pipeline.
     ///
-    /// Deliberately no `isAuthenticated` guard: a note written while signed out
-    /// used to be dropped on the floor. The queue parks it on disk instead and
-    /// sends it when a session exists. `entry.id` doubles as the backend's
-    /// idempotency key, so repeated sends collapse onto one row.
+    /// Signed-out captures stay on disk, unowned and excluded from uploads.
+    /// `entry.id` doubles as the backend's idempotency key, so repeated sends
+    /// collapse onto one row.
     private func syncEntryToBackend(_ entry: Entry) {
         guard !entry.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             print("⚠️ Skipping backend sync — empty content for \(entry.id)")
             return
         }
-        Task { @MainActor in
-            do {
-                try NoteSyncQueue.shared.capture(
-                    id: entry.id,
-                    content: entry.content,
-                    contentType: entry.type.backendContentType,
-                    capturedAt: entry.date
-                )
-            } catch {
-                print("❌ Could not queue entry \(entry.id) for sync: \(error.localizedDescription)")
-            }
+        do {
+            try NoteSyncQueue.shared.capture(
+                id: entry.id,
+                content: entry.content,
+                contentType: entry.type.backendContentType,
+                capturedAt: entry.date
+            )
+        } catch {
+            print("❌ Could not queue entry \(entry.id) for sync: \(error.localizedDescription)")
         }
     }
     
@@ -160,25 +157,23 @@ class EntryManager: ObservableObject {
         let validEntries = entries.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         print("🔄 Queueing \(validEntries.count) entries for backend resync...")
 
-        Task { @MainActor in
-            var queuedCount = 0
+        var queuedCount = 0
 
-            for entry in validEntries {
-                do {
-                    try NoteSyncQueue.shared.capture(
-                        id: entry.id,
-                        content: entry.content,
-                        contentType: entry.type.backendContentType,
-                        capturedAt: entry.date
-                    )
-                    queuedCount += 1
-                } catch {
-                    print("❌ Could not queue entry \(entry.id): \(error.localizedDescription)")
-                }
+        for entry in validEntries {
+            do {
+                try NoteSyncQueue.shared.capture(
+                    id: entry.id,
+                    content: entry.content,
+                    contentType: entry.type.backendContentType,
+                    capturedAt: entry.date
+                )
+                queuedCount += 1
+            } catch {
+                print("❌ Could not queue entry \(entry.id): \(error.localizedDescription)")
             }
-
-            print("🔄 Resync queued: \(queuedCount) of \(validEntries.count) entries")
         }
+
+        print("🔄 Resync queued: \(queuedCount) of \(validEntries.count) entries")
     }
     
     func getAllEntries() -> [Entry] {
@@ -202,25 +197,19 @@ class EntryManager: ObservableObject {
     }
     
     func deleteEntry(withId id: UUID) {
-        entries.removeAll { $0.id == id }
-        
         do {
+            try CapturedNoteStore.shared.discard(id: id)
             try fileStorage.deleteEntry(id: id)
-        print("🗑️ Deleted entry: \(id)")
+            entries.removeAll { $0.id == id }
+            print("🗑️ Deleted entry: \(id)")
         } catch {
             print("❌ Failed to delete entry: \(error.localizedDescription)")
         }
     }
     
     func deleteEntries(withIds ids: [UUID]) {
-        entries.removeAll { ids.contains($0.id) }
-        
         for id in ids {
-            do {
-                try fileStorage.deleteEntry(id: id)
-            } catch {
-                print("❌ Failed to delete entry \(id): \(error.localizedDescription)")
-            }
+            deleteEntry(withId: id)
         }
         
         print("🗑️ Deleted \(ids.count) entries")
@@ -254,17 +243,7 @@ class EntryManager: ObservableObject {
     }
     
     func clearAllEntries() {
-        let entryIds = entries.map { $0.id }
-        
-        entries.removeAll()
-        
-        for id in entryIds {
-            do {
-                try fileStorage.deleteEntry(id: id)
-            } catch {
-                print("❌ Failed to delete entry \(id): \(error.localizedDescription)")
-            }
-        }
+        deleteEntries(withIds: entries.map { $0.id })
         
         print("🗑️ Cleared all entries")
     }
@@ -324,4 +303,3 @@ class EntryManager: ObservableObject {
         }
     }
 }
-

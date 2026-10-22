@@ -34,6 +34,7 @@ interface CaptureInput {
 const MISSING_FUNCTION_CODE = '42883';
 
 class SchemaCacheError extends Error {}
+class IngestClaimError extends Error {}
 
 /**
  * Idempotent capture. Delegates to the upsert_raw_content function because the
@@ -118,21 +119,16 @@ async function claimForIngest(rawContentId: string, force = false): Promise<bool
       return true;
     }
     console.error('Ingestion claim error:', error);
-    return false;
+    throw new IngestClaimError('Could not claim content for ingestion; retry shortly');
   }
 
   return data === true;
 }
 
 /**
- * Claim a row and run the agent over it, recording the outcome. Safe to call for
- * any row: an unclaimable one (in flight, or already completed) is a no-op.
+ * Run the agent over a row already claimed by this request, recording the outcome.
  */
 async function ingestClaimed(userId: string, rawContentId: string, notes?: string): Promise<void> {
-  if (!(await claimForIngest(rawContentId))) {
-    return;
-  }
-
   try {
     await runAgentIngest({ userId, rawContentIds: [rawContentId], notes });
     await supabaseAdmin
@@ -150,7 +146,7 @@ async function ingestClaimed(userId: string, rawContentId: string, notes?: strin
 }
 
 /**
- * Heal rows abandoned mid-ingest by a process that died (redeploy, OOM, SIGTERM).
+ * Heal rows abandoned before or during ingestion by a process that died.
  * The client was already told 202 and will never resend, so nothing else would
  * pick these up. Piggy-backing on the next capture keeps the recovery free of a
  * cron or a server-lifecycle hook.
@@ -170,7 +166,9 @@ async function recoverStaleIngests(userId: string): Promise<void> {
   const stale = (data as Array<{ raw_content_id: string }> | null) || [];
   for (const row of stale) {
     console.warn(`Recovering stale ingest for raw_content ${row.raw_content_id}`);
-    await ingestClaimed(userId, row.raw_content_id, 'Recovered after an abandoned ingest');
+    if (await claimForIngest(row.raw_content_id)) {
+      await ingestClaimed(userId, row.raw_content_id, 'Recovered after an abandoned ingest');
+    }
   }
 }
 
@@ -261,7 +259,11 @@ contentRouter.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Return immediately — agent ingestion runs in the background.
+    // Resolve the claim before acknowledging so RPC failures leave the client
+    // retrying its durable copy. A legitimate false claim is still a success.
+    const claimed = await claimForIngest(rawContentId);
+
+    // Agent ingestion runs in the background after the claim completes.
     // iOS does not need to wait for extraction to finish before proceeding.
     res.status(202).json({
       success: true,
@@ -283,14 +285,19 @@ contentRouter.post('/', async (req: Request, res: Response) => {
     });
 
     // Fire-and-forget: agent turns raw content into observations/insights.
-    // The claim inside ingestClaimed is what keeps retries honest — only the
-    // caller that moves the row out of 'pending' actually ingests it.
+    // Only the caller that won the claim actually ingests this capture.
     setImmediate(async () => {
-      await ingestClaimed(user.id, rawContentId);
-      await recoverStaleIngests(user.id);
+      try {
+        if (claimed) {
+          await ingestClaimed(user.id, rawContentId);
+        }
+        await recoverStaleIngests(user.id);
+      } catch (error) {
+        console.error('Background ingestion recovery error:', error);
+      }
     });
   } catch (error) {
-    if (error instanceof SchemaCacheError) {
+    if (error instanceof SchemaCacheError || error instanceof IngestClaimError) {
       // 503 so the client's queue keeps the note and retries it.
       res.status(503).json({
         success: false,
@@ -480,9 +487,9 @@ contentRouter.post('/:id/reprocess', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Reprocess content error:', error);
-    res.status(500).json({
+    res.status(error instanceof IngestClaimError ? 503 : 500).json({
       success: false,
-      error: 'Failed to reprocess content',
+      error: error instanceof IngestClaimError ? error.message : 'Failed to reprocess content',
     });
   }
 });

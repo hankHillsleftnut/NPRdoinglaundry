@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// A note exactly as the user typed it, plus everything needed to get it to the
 /// server later. The `id` doubles as the backend idempotency key (`clientUuid`),
@@ -15,6 +16,8 @@ struct CapturedNote: Codable, Identifiable, Equatable {
     }
 
     let id: UUID
+    /// Missing on older files and signed-out captures; never assigned on sign-in.
+    let ownerUserId: String?
     let contentType: String
     let content: String
     let capturedAt: Date
@@ -53,6 +56,7 @@ final class CapturedNoteStore: ObservableObject {
     // MARK: - Directory Structure
 
     private let fileManager = FileManager.default
+    private let directory: URL?
 
     private var documentsDirectory: URL {
         fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -63,7 +67,7 @@ final class CapturedNoteStore: ObservableObject {
     }
 
     private var notesDirectory: URL {
-        retrospectDataDirectory.appendingPathComponent("Notes", isDirectory: true)
+        directory ?? retrospectDataDirectory.appendingPathComponent("Notes", isDirectory: true)
     }
 
     // `.complete` protection would make the file unreadable while the device is
@@ -72,7 +76,8 @@ final class CapturedNoteStore: ObservableObject {
 
     // MARK: - Initialization
 
-    private init() {
+    init(directory: URL? = nil) {
+        self.directory = directory
         setupDirectory()
         loadNotes()
     }
@@ -102,7 +107,8 @@ final class CapturedNoteStore: ObservableObject {
         content: String,
         contentType: String,
         capturedAt: Date = Date(),
-        metadata: [String: String]? = nil
+        metadata: [String: String]? = nil,
+        ownerUserId: String? = nil
     ) throws -> CapturedNote {
         if let existing = note(id: id) {
             return existing
@@ -110,6 +116,7 @@ final class CapturedNoteStore: ObservableObject {
 
         let note = CapturedNote(
             id: id,
+            ownerUserId: ownerUserId,
             contentType: contentType,
             content: content,
             capturedAt: capturedAt,
@@ -130,9 +137,11 @@ final class CapturedNoteStore: ObservableObject {
 
     // MARK: - Queries
 
-    /// Notes still owed to the server, oldest first so capture order is preserved.
-    func pendingNotes() -> [CapturedNote] {
-        notes.filter { $0.isPending }.sorted { $0.capturedAt < $1.capturedAt }
+    /// Notes owed to this account, oldest first. Unowned notes remain local.
+    func pendingNotes(ownerUserId: String?) -> [CapturedNote] {
+        guard let ownerUserId else { return [] }
+        return notes.filter { $0.isPending && $0.ownerUserId == ownerUserId }
+            .sorted { $0.capturedAt < $1.capturedAt }
     }
 
     func note(id: UUID) -> CapturedNote? {
@@ -141,6 +150,17 @@ final class CapturedNoteStore: ObservableObject {
 
     var pendingCount: Int {
         notes.reduce(into: 0) { $0 += $1.isPending ? 1 : 0 }
+    }
+
+    /// Explicit user deletion removes the durable copy before forgetting it in
+    /// memory. A failed removal leaves the note intact and is reported to the caller.
+    func discard(id: UUID) throws {
+        do {
+            try fileManager.removeItem(at: fileURL(for: id))
+        } catch CocoaError.fileNoSuchFile {
+            // Already absent on disk; still remove any in-memory copy.
+        }
+        notes.removeAll { $0.id == id }
     }
 
     // MARK: - Sync Bookkeeping

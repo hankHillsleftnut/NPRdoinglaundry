@@ -5,9 +5,9 @@ import UIKit
 /// Drains locally captured notes to the backend, forever if it has to.
 ///
 /// The contract this type exists to keep: once `capture` returns, the note is on
-/// disk and will reach the user's second brain eventually. Nothing here can drop
-/// a note — the worst outcome is that it stays pending across launches until the
-/// device is online and signed in.
+/// disk. Owned notes are uploaded only while their account is signed in;
+/// signed-out captures remain unowned and local. Explicit deletion removes notes
+/// from the store, while sync outcomes always preserve the local copy.
 ///
 /// Safe to retry because the backend upserts on (user_id, client_uuid), so a note
 /// that was actually stored but whose response never arrived collapses onto the
@@ -43,10 +43,10 @@ final class NoteSyncQueue: ObservableObject {
     // Defaults are resolved in the body rather than in the parameter list:
     // default argument expressions are evaluated nonisolated, which cannot touch
     // a @MainActor singleton (an error under the Swift 6 language mode).
-    private init(store: CapturedNoteStore? = nil, uploader: NoteUploading? = nil) {
+    init(store: CapturedNoteStore? = nil, uploader: NoteUploading? = nil, observesLifecycle: Bool = true) {
         self.store = store ?? CapturedNoteStore.shared
         self.uploader = uploader ?? RetrospectAPIClient.shared
-        observeLifecycle()
+        if observesLifecycle { observeLifecycle() }
         refreshPendingCount()
     }
 
@@ -82,7 +82,8 @@ final class NoteSyncQueue: ObservableObject {
             content: content,
             contentType: contentType,
             capturedAt: capturedAt,
-            metadata: metadata
+            metadata: metadata,
+            ownerUserId: uploader.canUpload ? uploader.currentUserId : nil
         )
         refreshPendingCount()
         drainSoon()
@@ -105,7 +106,7 @@ final class NoteSyncQueue: ObservableObject {
 
     // MARK: - Drain Loop
 
-    private func drain() async {
+    func drain() async {
         // Coalesce rather than drop. A note captured while a drain is in flight
         // would otherwise get no attempt and no scheduled retry, and with a 480s
         // request timeout that window is not small.
@@ -138,7 +139,15 @@ final class NoteSyncQueue: ObservableObject {
             drainRequested = false
             let now = Date()
 
-            for note in store.pendingNotes() {
+            for note in store.pendingNotes(ownerUserId: uploader.currentUserId) {
+                // An earlier upload can suspend while an entry is deleted or the
+                // account changes. Recheck the live store and auth before sending.
+                guard uploader.canUpload,
+                      let currentUserId = uploader.currentUserId,
+                      let current = store.note(id: note.id),
+                      current.isPending,
+                      current.ownerUserId == currentUserId else { continue }
+
                 let readyAt = nextAttemptDate(for: note)
                 guard readyAt <= now else {
                     nextReadyAt = [nextReadyAt, readyAt].compactMap { $0 }.min()
@@ -223,12 +232,19 @@ final class NoteSyncQueue: ObservableObject {
     }
 
     private func refreshPendingCount() {
-        pendingCount = store.pendingCount
+        pendingCount = uploader.canUpload
+            ? store.pendingNotes(ownerUserId: uploader.currentUserId).count
+            : 0
     }
 
     // MARK: - Lifecycle Triggers
 
     private func observeLifecycle() {
+        store.$notes
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshPendingCount() }
+            .store(in: &cancellables)
+
         // Coming back to the foreground is the most reliable moment to retry:
         // connectivity has usually recovered and the app has fresh runtime.
         NotificationCenter.default
@@ -244,12 +260,17 @@ final class NoteSyncQueue: ObservableObject {
             .sink { [weak self] _ in self?.reloadAndDrain() }
             .store(in: &cancellables)
 
-        // Sign-in (or a token refresh) releases anything parked on auth.
-        RetrospectAPIClient.shared.$isAuthenticated
-            .removeDuplicates()
-            .filter { $0 }
+        // Account changes release only work owned by the active account.
+        Publishers.CombineLatest(
+            RetrospectAPIClient.shared.$isAuthenticated,
+            RetrospectAPIClient.shared.$currentUserId
+        )
+            .removeDuplicates { $0.0 == $1.0 && $0.1 == $1.1 }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.drainSoon() }
+            .sink { [weak self] _ in
+                self?.refreshPendingCount()
+                self?.drainSoon()
+            }
             .store(in: &cancellables)
     }
 }

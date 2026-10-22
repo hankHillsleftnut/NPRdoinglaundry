@@ -5,11 +5,13 @@ import Foundation
 /// The queue is written against this protocol rather than `RetrospectAPIClient`
 /// directly so the drain loop can be exercised against a stub, and so the client
 /// keeps owning transport concerns (base URL, keychain token, 401 handling).
+@MainActor
 protocol NoteUploading {
     /// True when a request would carry a usable bearer token. The queue checks
     /// this before draining so a signed-out user parks work instead of burning
     /// retry attempts on requests that cannot succeed.
     var canUpload: Bool { get }
+    var currentUserId: String? { get }
 
     /// Upload one captured note. `clientUuid` is the idempotency key: the backend
     /// upserts on (user_id, client_uuid), so the same note may be sent any number
