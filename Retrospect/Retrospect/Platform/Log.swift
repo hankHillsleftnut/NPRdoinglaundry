@@ -69,12 +69,14 @@ extension Platform.Log {
         private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+            case .diagnostics: logger.info("request /v2/diagnostics: status \(status), \(ms) ms")
             }
         }
 
         private func recordUnknownErrorCode(_ path: Backend.PathTemplate) {
             switch path {
             case .meta: logger.error("unknown error code from /v2/meta")
+            case .diagnostics: logger.error("unknown error code from /v2/diagnostics")
             }
         }
 

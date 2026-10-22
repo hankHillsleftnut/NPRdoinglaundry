@@ -198,17 +198,7 @@ extension ContractFixtureTests {
         let code: String
     }
 
-    // Diagnostics (DG.1): mirrors until DG.5 lands the real report builder.
-
-    struct DiagnosticsReceipt: Decodable {
-        let reference: String
-    }
-
-    struct DiagnosticsReport: Decodable {
-        let reportId: UUID
-        let createdAt: Date
-        let note: String?
-    }
+    // Diagnostics (DG.1): the report and receipt are the real types (DG.5); the id lists stay a mirror.
 
     struct DiagnosticsIds: Decodable {
         let routes: [String]
