@@ -108,6 +108,13 @@ extension Session {
                 for await state in session.states() {
                     guard let self else { return }
                     apply(state)
+                    // A code from a link opened before sign-in is checked as soon as the
+                    // session is signed in, not when some screen happens to ask. Never
+                    // while a tear is in flight, and never in the loop itself: a slow
+                    // check must not hold up the next state (a sign-out).
+                    if case .signedIn = state, tearing == nil {
+                        Task { [weak self] in await self?.afterSignIn() }
+                    }
                 }
             }
         }
@@ -127,6 +134,7 @@ extension Session {
                 ticket = .refused(nil, .invalid)
                 return
             }
+            await noteCode(code)
             do {
                 try await store.setPendingInviteCode(code)
             } catch {
@@ -147,6 +155,7 @@ extension Session {
             }
             let outcome = await check(code)
             if case .printing = outcome {
+                await noteCode(code)
                 do {
                     try await store.setPendingInviteCode(code)
                 } catch {
@@ -233,32 +242,42 @@ extension Session {
 
         private func checkPending() async {
             await sync()
-            let pending: String?
-            do {
-                pending = try await store.pendingInviteCode()
-            } catch {
-                log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
-                return
-            }
-            guard let pending else {
-                if case .waiting = ticket {
-                    ticket = .none
+            while true {
+                let pending: String?
+                do {
+                    pending = try await store.pendingInviteCode()
+                } catch {
+                    log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
+                    return
+                }
+                guard let pending else {
+                    if case .waiting = ticket {
+                        ticket = .none
+                    }
+                    return
+                }
+                // Every pending code is checked, whatever the access state: the server
+                // decides (and answers "yours" before "already in", so a relaunch after
+                // the tear whose clear failed still shows you're in). An unknown or
+                // suspended state fails closed: the code is kept and checked like a
+                // waitlisted person's.
+                let outcome = await check(pending)
+                // A newer code arrived while this one was being checked: the answer is
+                // about a code nobody holds any more. It must neither show nor clear
+                // anything; the newer code is checked instead.
+                if let latest = try? await store.pendingInviteCode(), latest != pending {
+                    continue
+                }
+                ticket = outcome
+                switch ticket {
+                case .refused, .none:
+                    await clearPending()
+                case let .youreIn(youreIn) where !youreIn.animate:
+                    await clearPending()
+                default:
+                    break
                 }
                 return
-            }
-            // Every pending code is checked, whatever the access state: the server
-            // decides (and answers "yours" before "already in", so a relaunch after
-            // the tear whose clear failed still shows you're in). An unknown or
-            // suspended state fails closed: the code is kept and checked like a
-            // waitlisted person's.
-            ticket = await check(pending)
-            switch ticket {
-            case .refused, .none:
-                await clearPending()
-            case let .youreIn(youreIn) where !youreIn.animate:
-                await clearPending()
-            default:
-                break
             }
         }
 
@@ -365,6 +384,15 @@ extension Session {
                 tearKey = nil
                 log.record(.inviteTorn(.failed))
                 return .failed
+            }
+        }
+
+        /// A different code is a different tear: the key made for the old one must
+        /// not travel with the new one (the server would answer a mismatch).
+        private func noteCode(_ code: String) async {
+            let previous = try? await store.pendingInviteCode()
+            if previous != code {
+                tearKey = nil
             }
         }
 

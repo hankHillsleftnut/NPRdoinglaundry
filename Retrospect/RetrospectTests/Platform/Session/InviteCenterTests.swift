@@ -61,10 +61,12 @@ struct InviteCenterTests {
 
         await center.received(code: "7kq2-m9xd-4rta-b")
         #expect(h.recorder.events.contains(.inviteReceived))
+        // A real code is checked whatever the access state: the server decides.
+        let before = h.requests(to: "/v2/invites/check").count
 
         await center.received(code: "nonsense")
         #expect(center.ticket == .refused(nil, .invalid))
-        #expect(h.requests(to: "/v2/invites/check").isEmpty)
+        #expect(h.requests(to: "/v2/invites/check").count == before, "a string that isn't a code sends nothing")
     }
 
     // MARK: Check after sign-in
@@ -341,6 +343,65 @@ struct InviteCenterTests {
         }
         let keys = h.requests(to: "/v2/invites/redeem").map { $0.value(forHTTPHeaderField: "Idempotency-Key") }
         #expect(keys == [Self.key.uuidString.lowercased(), Self.secondKey.uuidString.lowercased()])
+    }
+
+    @Test("a pending code is checked as soon as the session is signed in, without a screen asking")
+    func theCheckRunsByItself() async throws {
+        let (h, center) = try harness()
+        let usable = try fixture("01", "invite.check.usable")
+        h.serve(["/v2/invites/check": { _, _ in (200, usable) }])
+
+        center.start()
+        for _ in 0 ..< 200 where center.ticket == .none {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(center.ticket == .printing(face))
+        #expect(h.requests(to: "/v2/invites/redeem").isEmpty, "checked, never redeemed")
+    }
+
+    @Test("a newer code arriving during a check is not wiped by the older code's answer")
+    func aNewerCodeSurvivesAnOlderCheck() async throws {
+        let (h, center) = try harness()
+        let first = Self.code
+        let newer = "8MR3N5YE6SVCD"
+        let keychain = h.keychain
+        let used = try fixture("00", "error.invite_used")
+        let usable = try fixture("01", "invite.check.usable")
+        h.serve(["/v2/invites/check": { _, request in
+            let sent = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }?["code"] as? String
+            if sent == first {
+                // A second link arrives while the first code's check is in flight.
+                try keychain.write(Data(newer.utf8), account: "pending_invite_code")
+                return (400, used)
+            }
+            return (200, usable)
+        }])
+
+        await center.afterSignIn()
+
+        #expect(pending(h) == newer, "the older answer didn't clear the newer code")
+        #expect(center.ticket == .printing(face))
+        #expect(h.bodies(to: "/v2/invites/check").compactMap { $0["code"] as? String } == [first, newer])
+    }
+
+    @Test("a new code gets a new tear key: the key made for the old code is not sent with it")
+    func aNewCodeGetsANewKey() async throws {
+        let (h, center) = try harness()
+        let usable = try fixture("01", "invite.check.usable")
+        let redeemed = try fixture("00", "redeem.response")
+        h.serve(["/v2/invites/check": { _, _ in (200, usable) }, "/v2/invites/redeem": { _, _ in (200, redeemed) }])
+        center.beginTear()
+        h.reachability.set(online: false)
+        _ = await center.tear()
+        h.reachability.set(online: true)
+
+        await center.received(code: "8MR3N5YE6SVCD")
+        center.beginTear()
+        _ = await center.tear()
+
+        let keys = h.requests(to: "/v2/invites/redeem").map { $0.value(forHTTPHeaderField: "Idempotency-Key") }
+        #expect(keys == [Self.secondKey.uuidString.lowercased()], "the new code goes with a new key")
     }
 
     @Test("a code typed by A follows the phone: after A signs out and B signs in, B's check and tear use B's session")
