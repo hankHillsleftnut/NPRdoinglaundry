@@ -176,15 +176,27 @@ struct OutboxTests {
         #expect(try await outbox.unsentCount() == 3)
     }
 
+    /// A row written by a later build, with an operation this one doesn't know. Synchronous, see above.
+    private func insertRow(id: String, operation: String, status: Store.OutboxStatus) throws {
+        try database.writer.write { db in
+            try db.execute(
+                sql: """
+                INSERT INTO outbox (id, operation, entity_id, payload, attempts, next_attempt_at, status, created_at)
+                VALUES (?, ?, ?, X'7B7D', 4, '2026-10-21T08:00:04.200Z', ?, '2026-10-21T08:00:04.200Z')
+                """,
+                arguments: [id, operation, id, status.rawValue]
+            )
+        }
+    }
+
+    private func storedOperation(_ id: String) throws -> String? {
+        try database.writer.read { try String.fetchOne($0, sql: "SELECT operation FROM outbox WHERE id = ?", arguments: [id]) }
+    }
+
     @Test("an outbox row with an operation this build doesn't know reads as unknown and still counts as unsent")
     func anUnknownOperationReadsAsUnknownAndCounts() async throws {
         let outbox = outbox()
-        try database.writer.write { db in
-            try db.execute(sql: """
-            INSERT INTO outbox (id, operation, entity_id, payload, attempts, next_attempt_at, status, created_at)
-            VALUES ('later', 'entry.edit', 'later', X'7B7D', 0, '2026-10-21T08:00:04.200Z', 'pending', '2026-10-21T08:00:04.200Z')
-            """)
-        }
+        try insertRow(id: "later", operation: "entry.edit", status: .pending)
 
         let item = try #require(try outboxRow("later"))
 
@@ -195,22 +207,13 @@ struct OutboxTests {
     @Test("retry keeps the stored operation of a row this build reads as unknown")
     func retryKeepsAnUnknownOperation() async throws {
         let outbox = outbox()
-        try database.writer.write { db in
-            try db.execute(sql: """
-            INSERT INTO outbox (id, operation, entity_id, payload, attempts, next_attempt_at, status, created_at)
-            VALUES (?, 'entry.edit', ?, X'7B7D', 4, '2026-10-21T08:00:04.200Z', 'dead', '2026-10-21T08:00:04.200Z')
-            """, arguments: [id.uuidString.lowercased(), id.uuidString.lowercased()])
-        }
+        let key = id.uuidString.lowercased()
+        try insertRow(id: key, operation: "entry.edit", status: .dead)
 
         try await outbox.retry(entityID: id)
 
-        let stored = try database.writer.read { try String.fetchOne(
-            $0,
-            sql: "SELECT operation FROM outbox WHERE id = ?",
-            arguments: [id.uuidString.lowercased()]
-        ) }
-        #expect(stored == "entry.edit")
-        #expect(try #require(try outboxRow(id.uuidString.lowercased())).status == .pending)
+        #expect(try storedOperation(key) == "entry.edit")
+        #expect(try #require(try outboxRow(key)).status == .pending)
     }
 
     @Test("retry moves a dead item back to pending and its entry back to local")
