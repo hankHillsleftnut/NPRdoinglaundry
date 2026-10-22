@@ -165,6 +165,7 @@ extension View {
 private struct RMessageMenuSource: ViewModifier {
     @Binding var isPresented: Bool
     let rows: [RMenuRow]
+    @State private var id = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The press that opens the menu (title-menu.md: the haptic fires at the threshold).
@@ -191,7 +192,7 @@ private struct RMessageMenuSource: ViewModifier {
                 isPresented = true
             }
             .anchorPreference(key: RMenuRequestKey.self, value: .bounds) { anchor in
-                isPresented ? [RMenuRequest(id: UUID(), isPresented: $isPresented, kind: .message, rows: rows, anchor: anchor)] : []
+                isPresented ? [RMenuRequest(id: id, isPresented: $isPresented, kind: .message, rows: rows, anchor: anchor)] : []
             }
     }
 }
@@ -206,6 +207,10 @@ private struct RMenuHost: ViewModifier {
     /// The menu grows on popover after the source has dimmed (a 140 fade under Reduce Motion).
     private var grow: Animation {
         reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.popover.delay(RNumber.motionDurationSourceDim)
+    }
+
+    private var exit: Animation {
+        reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.exit(RNumber.motionDurationPopoverExit)
     }
 
     func body(content: Content) -> some View {
@@ -227,7 +232,7 @@ private struct RMenuHost: ViewModifier {
                                 : .modifier(active: RMenuGrow(grown: false), identity: RMenuGrow(grown: true)))
                         }
                     }
-                    .animation(grow, value: requests.first?.id)
+                    .animation(requests.isEmpty ? exit : grow, value: requests.first?.id)
                 }
             }
             // `select` as the menu settles, and on each row the finger slides onto
@@ -355,6 +360,7 @@ private struct RMenuPanel: View {
         DragGesture(minimumDistance: RDimension.space0, coordinateSpace: .local)
             .onChanged { value in
                 let index = RMenuPlacement.row(at: value.location.y - RDimension.space1, rowHeight: kind.rowHeight, count: request.rows.count)
+                    .flatMap { request.rows[$0].disabledReason == nil ? $0 : nil }
                 if index != highlighted {
                     highlighted = index
                     if index != nil {
@@ -363,7 +369,9 @@ private struct RMenuPanel: View {
                 }
             }
             .onEnded { value in
-                if let index = RMenuPlacement.row(at: value.location.y - RDimension.space1, rowHeight: kind.rowHeight, count: request.rows.count) {
+                let index = RMenuPlacement.row(at: value.location.y - RDimension.space1, rowHeight: kind.rowHeight, count: request.rows.count)
+                    .flatMap { request.rows[$0].disabledReason == nil ? $0 : nil }
+                if let index {
                     choose(index)
                 } else {
                     highlighted = nil
