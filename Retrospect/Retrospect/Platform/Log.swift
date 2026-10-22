@@ -26,6 +26,8 @@ extension Platform.Log {
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
+        /// A launch argument was ignored (debug builds only).
+        case launchOptionIgnored(Platform.LaunchOptions.Problem)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -49,6 +51,20 @@ extension Platform.Log {
                 switch path {
                 case .meta: logger.error("unknown error code from /v2/meta")
                 }
+            case let .launchOptionIgnored(problem):
+                record(problem)
+            }
+        }
+
+        private func record(_ problem: Platform.LaunchOptions.Problem) {
+            switch problem {
+            case .unknownValue(.data): logger.error("launch option -Data: unknown value, using live")
+            case .unknownValue(.environment): logger.error("launch option -Environment: unknown value, using production")
+            case .unknownValue(.account): logger.error("launch option -Account: unknown value, ignored")
+            case .missingValue(.data): logger.error("launch option -Data: no value, using live")
+            case .missingValue(.environment): logger.error("launch option -Environment: no value, using production")
+            case .missingValue(.account): logger.error("launch option -Account: no value, ignored")
+            case .accountNeedsStaging: logger.error("launch option -Account needs -Environment local or staging, ignored")
             }
         }
     }

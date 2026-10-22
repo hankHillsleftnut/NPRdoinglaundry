@@ -79,12 +79,13 @@ extension Platform.Log.Event {
             case .outboxDrained: .outboxDrained(sent: 3, failed: 1)
             case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
             case .unknownErrorCode: .unknownErrorCode(path: .meta)
+            case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained, requestSent, unknownErrorCode
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored
     }
 
     fileprivate var kind: Kind {
@@ -93,6 +94,7 @@ extension Platform.Log.Event {
         case .outboxDrained: .outboxDrained
         case .requestSent: .requestSent
         case .unknownErrorCode: .unknownErrorCode
+        case .launchOptionIgnored: .launchOptionIgnored
         }
     }
 }
