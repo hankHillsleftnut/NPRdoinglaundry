@@ -94,11 +94,13 @@ struct RBriefCard: View {
         }
     }
 
-    private var isMaking: Bool {
-        if case .making = state {
+    /// A control sits under the words: the play at accessibility sizes, the retry on an error.
+    private var controlsUnderWords: Bool {
+        guard !collapsed else { return false }
+        if case .error = state {
             return true
         }
-        return false
+        return accessibilitySize && Self.hasPlay(state)
     }
 
     private var accessibilitySize: Bool {
@@ -127,6 +129,8 @@ struct RBriefCard: View {
                 words
             }
             .padding(RDimension.space2)
+            // room under the words for the play (accessibility sizes) or the try-again pill (error)
+            .padding(.bottom, controlsUnderWords ? RDimension.sizeControlDefault + RDimension.space2 : RDimension.space0)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(shape)
             // inside the label, so the press scales the card with its shadows and the shadows
@@ -136,17 +140,31 @@ struct RBriefCard: View {
             .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
         }
         .buttonStyle(RCardPressStyle())
-        .overlay(alignment: collapsed ? .trailing : .topTrailing) {
+        .overlay(alignment: collapsed ? .trailing : (accessibilitySize ? .bottomTrailing : .topTrailing)) {
             // one play instance: on the seam, beside the words when collapsed, under them at accessibility sizes
             playWell
                 .padding(.trailing, collapsed ? RDimension.space2 : RDimension.space2 + RDimension.space4)
+                .padding(.bottom, accessibilitySize && !collapsed ? RDimension.space2 + RDimension.space2 : RDimension.space0)
                 .offset(y: collapsed || accessibilitySize ? RDimension.space0 : RDimension.space2 + panelHeight - Self.playOverhang)
         }
-        .padding(.bottom, accessibilitySize && !collapsed && Self.hasPlay(state) ? RDimension.sizeControlDefault + RDimension.space2 : RDimension.space0)
+        // the retry is its own control, never nested in the card's button
+        .overlay(alignment: .bottomLeading) {
+            if case let .error = state, !collapsed {
+                RPill(title: "try again", symbol: "arrow.clockwise", action: retry)
+                    .padding(.leading, RDimension.space2 + RDimension.space2)
+                    .padding(.bottom, RDimension.space2 + RDimension.space2)
+                    .accessibilityIdentifier("brief.tryAgain")
+            }
+        }
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.sheet, value: collapsed)
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.reveal, value: state)
         // the brief becoming ready: once, as making ends (motion-moments "becoming ready")
-        .sensoryFeedback(RHaptic.reveal, trigger: isMaking) { old, new in old && !new }
+        .sensoryFeedback(RHaptic.reveal, trigger: state) { old, new in
+            if case .making = old {
+                return Self.hasPlay(new)
+            }
+            return false
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Self.spoken(length: length, headline: headline, state: state))
         .accessibilityHint("double tap to open")
@@ -212,8 +230,6 @@ struct RBriefCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             case let .error(message):
                 headlineText(message, colour: RColor.statusDangerText, style: .briefLabel)
-                RPill(title: "try again", symbol: "arrow.clockwise", action: retry)
-                    .accessibilityIdentifier("brief.tryAgain")
             case .offline:
                 headlineText("it'll be here when you're back online", colour: RColor.textLabel, style: .briefLabel)
             case .rest, .starting, .played, .quiet:
