@@ -497,6 +497,8 @@ export interface AuthUser {
   id: string;
   appleUserId: string;
   email?: string;
+  /** users.token_version (migration 005); a new access token must carry it. */
+  tokenVersion?: number;
 }
 
 export interface JWTPayload {

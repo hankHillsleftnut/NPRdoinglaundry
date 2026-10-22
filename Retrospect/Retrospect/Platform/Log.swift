@@ -20,6 +20,12 @@ extension Platform.Log {
         case refreshed
         /// One outbox drain finished.
         case outboxDrained(sent: Int, failed: Int)
+        /// One request finished: its door, the HTTP status (0 when nothing came
+        /// back) and how long it took.
+        case requestSent(path: Backend.PathTemplate, status: Int, ms: Int)
+        /// A door answered with an error code outside the contract's list. The
+        /// code itself is never logged.
+        case unknownErrorCode(path: Backend.PathTemplate)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -35,6 +41,14 @@ extension Platform.Log {
                 logger.info("session refreshed")
             case let .outboxDrained(sent, failed):
                 logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .requestSent(path, status, ms):
+                switch path {
+                case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+                }
+            case let .unknownErrorCode(path):
+                switch path {
+                case .meta: logger.error("unknown error code from /v2/meta")
+                }
             }
         }
     }
