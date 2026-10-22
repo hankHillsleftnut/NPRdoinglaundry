@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**566 tokens** · 490 semantic · 277 marked *to set*
+**577 tokens** · 501 semantic · 276 marked *to set*
 
 ## palette
 
@@ -110,6 +110,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.surface.wash` | A translucent flat tint for wash-level components: it lets the page show through, so it reads as part of the page, not on it. | rgba(40,36,30,0.06) | rgba(255,255,255,0.08) | to set: surface ladder (founder, 20 Oct) |
 | `color.surface.washPressed` | A wash-level component while pressed, and sunken fills (search, recesses): a shade over the parent, darker than it in both modes. | rgba(40,36,30,0.11) | rgba(0,0,0,0.30) | to set: surface ladder (founder, 20 Oct) |
 | `color.surface.lifted` | A paper surface lifted off a tinted or raised parent: the pills and cards inside a wash card, a sheet or a control. The canvas colour in light; one step up the ladder in dark, so it never reads as a hole. | {palette.paper.100} | {palette.night.750} | M12 dark recalibration, 20 Oct (these were background.canvas, the darkest surface in dark) |
+| `color.surface.skeletonContrast` | Skeleton bars with Increase Contrast on: the control surface, one step stronger than surface.skeleton. | {palette.paper.200} | {palette.night.750} | integrator lean (C39.1), surface.control |
 | `color.text.primary` | Headlines and the words people read. | {palette.paper.950} | {palette.night.100} | to set: #121212 vs #1E1E1E |
 | `color.text.secondary` | Supporting sentences under a headline. (AA: 5.8:1 light, 7.5:1 dark.) | {palette.paper.680} | {palette.night.300} | to set |
 | `color.text.label` | Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.) | {palette.paper.620} | {palette.night.300} | paywall |
@@ -395,6 +396,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.icon.small` | Inline icons. | 16pt |  | to set |
 | `size.icon.default` | Standard icons. | 20pt |  | to set |
 | `size.icon.large` | Transport and primary icons. | 24pt |  | paywall |
+| `size.icon.inWell` | A glyph inside a 32 icon well (evidence and source rows). | 18pt |  | Paper 1FYW-0 (evidence row glyph 18) |
+| `size.icon.chevron` | The › at the end of a row. | 14pt |  | Paper 1FYW-0 (chevron 14) |
 | `size.artwork.row` | Artwork in a list row. | 40pt |  | to set |
 | `size.artwork.card` | Artwork in a card or on the player header. | 64pt |  | to set |
 | `size.artwork.player` | A show or episode page. | 120pt |  | to set |
@@ -449,6 +452,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.switch.height` | The switch track's height. | 31pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
 | `size.switch.thumb` | The switch thumb (track height − 2 × size.border.ring). | 27pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
 | `size.switch.thumbHeld` | The thumb's width while held: it stretches toward its travel. | 33pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.skeleton.bar` | Height of one skeleton bar. | 18pt |  | Paper 20M-0 (bars 20P-0, 20Q-0: 18 tall) |
+| `size.skeleton.gap` | Space between skeleton bars: an 18 bar on a 27 line pitch. | 9pt |  | Paper 20O-0 (gap 9) |
+| `size.emptyMark` | The raised mark above an empty state line. | 52pt |  | Paper G7Y-0 / G8F-0 (52 × 52, radius.control) |
 
 ## radius
 
@@ -495,6 +501,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.duration.scrubPreview` | The time bubble appearing above the thumb while scrubbing. | 120ms |  | to set: choreography |
 | `motion.duration.popoverExit` | A menu closing back into its source: faster than it opened, ease-in. | 110ms |  | to set: from the title-menu recording (20 Oct) |
 | `motion.duration.sourceDim` | The tapped title dims before the menu appears, so the press registers first. | 66ms |  | to set: from the title-menu recording (20 Oct) |
+| `motion.duration.skeletonDelay` | How long loading waits before a skeleton shows, so quick loads never flash one. | 400ms |  | ui/C39.md C39.1 (skeleton appears only after 400ms) |
+| `motion.duration.stillWorking` | How long a skeleton waits before "still working" appears under it. | 8000ms |  | ui/C39.md C39.1 (still working after 8s) |
 | `motion.curve.standard` | Things arriving. | [0.16,1,0.3,1] |  | lime |
 | `motion.curve.exit` | Things leaving. | [0.4,0,1,1] |  | lime |
 | `motion.curve.reveal` | SwiftUI .smooth with a whisper of bounce: the paywall reveal. | {"kind":"smooth","extraBounce":0.02} |  | paywall |
@@ -594,7 +602,6 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `layout.popoverMax` | The widest a popover gets. | 320pt |  | lime |
 | `layout.focusOffset` | Gap between an element and its focus ring. | 2pt |  | lime |
 | `layout.focusWidth` | Focus ring thickness. | 2pt |  | lime |
-| `layout.dialogWidth` | Width of a centred dialog. | 300pt |  | to set: Lime coverage |
 | `layout.toastMaxWidth` | Widest a toast may grow. | 340pt |  | to set: Lime coverage |
 | `layout.sheetMaxWidth` | Widest a sheet may grow (larger phones, iPad later). | 560pt |  | to set: Lime coverage |
 | `layout.sheetDetent.medium` | A half-height sheet, as a share of the screen. | 0.5 |  | to set: app need |
@@ -602,6 +609,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `layout.messageMaxWidth` | Widest a message may be, as a share of the screen. | 0.78 |  | to set: app need |
 | `layout.widget.padding` | Content padding inside a widget. | 16pt |  | to set: app need |
 | `layout.compactHeight` | A screen shorter than this (iPhone SE, 667) takes the compact layout: smaller bands and tighter rhythm, decided by the container's height, never the device model. | 700pt |  | to set: the founder's small-screens rule (SE is 667pt tall); 700 splits SE from every other supported iPhone |
+| `layout.sheet.top` | Space above the grabber inside a sheet. | 10pt |  | Paper B9C-0 (padding-top 10) |
+| `layout.sheet.grabberGap` | Space between the grabber and the sheet content. | 18pt |  | Paper BB4-0 (padding-bottom 18) |
+| `layout.sheet.inset` | Side inset of sheet content. | 28pt |  | Paper B9C-0 (padding-inline 28) |
 
 ## opacity
 
@@ -612,6 +622,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `opacity.dimmed` | Things not related to what you selected (the map). | 0.25 |  | to set: app need |
 | `opacity.sourcePressed` | A tappable title while pressed. | 0.7 |  | to set: from the title-menu recording (20 Oct) |
 | `opacity.pending` | Something of yours on its way: a message sending, a save in flight. Same value as opacity.pressed, different meaning. | 0.7 |  | message.md states (sending at 70%), M3 20 Oct |
+| `opacity.skeletonPulseFloor` | With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine. | 0.6 |  | ui/C39.md C39.1 Reduce Motion (pulse 1 → 0.6 → 1) |
 
 ## icon
 
