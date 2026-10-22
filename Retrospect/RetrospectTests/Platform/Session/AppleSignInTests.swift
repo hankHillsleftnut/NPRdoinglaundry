@@ -104,7 +104,7 @@ struct AppleSignInTests {
     }
 
     /// A sign-in whose nonce is the fixture's, so bodies compare to the fixtures.
-    private func fixtureSignIn(installer: any Session.Installing? = nil) -> Session.AppleSignIn {
+    private func fixtureSignIn(installer: (any Session.Installing)? = nil) -> Session.AppleSignIn {
         let raw = fixtureRaw
         return signIn(installer: installer ?? self.installer) { Session.Nonce(raw: raw) }
     }
@@ -119,7 +119,8 @@ struct AppleSignInTests {
 
     private func sentBody() throws -> [String: Any] {
         let sent = try #require(StubProtocol.requests(on: session).first)
-        return try #require(try JSONSerialization.jsonObject(with: #require(sent.httpBody)) as? [String: Any])
+        let body = try #require(sent.httpBody)
+        return try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
     }
 
     /// A sign-in answer with the given access state.
@@ -188,9 +189,11 @@ struct AppleSignInTests {
         _ = try await signIn.signIn(with: later)
         let laterBody = try sentBody()
 
-        #expect(firstBody as NSDictionary == fixtureObject("auth-apple.request") as NSDictionary)
+        let firstFixture = try fixtureObject("auth-apple.request")
+        let laterFixture = try fixtureObject("auth-apple.request.minimal")
+        #expect(firstBody as NSDictionary == firstFixture as NSDictionary)
         #expect(Set(firstBody.keys) == ["identityToken", "authorizationCode", "rawNonce", "fullName", "email"])
-        #expect(laterBody as NSDictionary == fixtureObject("auth-apple.request.minimal") as NSDictionary)
+        #expect(laterBody as NSDictionary == laterFixture as NSDictionary)
         #expect(Set(laterBody.keys) == ["identityToken", "authorizationCode", "rawNonce"])
     }
 
