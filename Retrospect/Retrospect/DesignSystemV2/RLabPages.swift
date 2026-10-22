@@ -32,6 +32,7 @@ struct RLabPage: Identifiable {
         RLabPage("retro") { RRetroLineGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
+        RLabPage("voice") { RVoiceBubbleGallery() },
     ]
 
     /// The page the lab opens on: `-DesignLabToast`, else `-DesignLabPage <name>`, else motion.
