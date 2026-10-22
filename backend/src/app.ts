@@ -13,7 +13,7 @@ import { mountAdmin } from './routes/admin-mount.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
 import { claudeRouter } from './routes/claude.js';
-import { speechRouter } from './routes/speech.js';
+import { createSpeechRouter, speechSynthFromConfig, type SpeechRouteDeps } from './routes/speech.js';
 import { integrationOauthCallbackRouter, integrationsRouter } from './routes/integrations.js';
 import { graphRouter } from './routes/graph.js';
 import { globalLimiter, trustRenderProxy } from './server-settings.js';
@@ -36,6 +36,8 @@ export interface AppDeps {
   now: () => number;
   users: UserLookup;
   log?: { door(line: DoorLogLine): void };
+  /** Text-to-speech settings; from config by default (tests pass a fake provider). */
+  speechSynth?: SpeechRouteDeps['synth'];
   /** Builds the /v2 router from the door kit; the real one by default. */
   v2Router?: (door: DoorFactory) => Router;
 }
@@ -92,7 +94,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use('/podcasts', legacyAuth, podcastsRouter);
   app.use('/profile', legacyAuth, profileRouter);
   app.use('/claude', legacyAuth, claudeRouter);
-  app.use('/speech', legacyAuth, speechRouter);
+  app.use('/speech', legacyAuth, createSpeechRouter({ limiter, now: deps.now, synth: deps.speechSynth ?? speechSynthFromConfig() }));
   app.use('/integrations', legacyAuth, integrationsRouter);
   app.use('/graph', legacyAuth, graphRouter);
 

@@ -15,6 +15,7 @@ enum RLabPage: String, CaseIterable, Identifiable {
     case offline
     case evidence
     case error
+    case entryrow
 
     var id: String {
         rawValue
@@ -55,6 +56,7 @@ struct RDesignLab: View {
             case .offline: ROfflineLineGallery()
             case .evidence: REvidenceRowGallery()
             case .error: RErrorStateGallery()
+            case .entryrow: REntryRowGallery()
             }
         }
         .background(RColor.backgroundCanvas)
