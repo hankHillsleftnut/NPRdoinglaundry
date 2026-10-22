@@ -21,8 +21,11 @@
  * `invitePage`: the link page (GET /i/:code), 60 per 10 minutes per address;
  * over it the page is still served, as the neutral page, never a 429, so the
  * only public route that reaches the database can't be used to walk codes.
+ * `inviteCheck` / `inviteCheckAddress`: looking at a code before the tear
+ * (POST /v2/invites/check), 20 per 10 minutes per person and 60 per address,
+ * its own buckets so checking never eats the tear's five.
  */
-export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist' | 'invitePage';
+export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist' | 'invitePage' | 'inviteCheck' | 'inviteCheckAddress';
 
 export type TakeResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
@@ -57,6 +60,8 @@ export const DOOR_LIMITS = {
     redeemAddress: [{ windowMs: 10 * MINUTE, max: 20 }],
     publicWaitlist: [{ windowMs: HOUR, max: 5 }],
     invitePage: [{ windowMs: 10 * MINUTE, max: 60 }],
+    inviteCheck: [{ windowMs: 10 * MINUTE, max: 20 }],
+    inviteCheckAddress: [{ windowMs: 10 * MINUTE, max: 60 }],
   } satisfies Record<LimitBucket, readonly LimitWindow[]>,
   /** Rolling window for model spend. */
   spendWindowMs: DAY,

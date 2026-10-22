@@ -81,6 +81,7 @@ struct ContractFixtureTests {
         "public-waitlist.response": decodes(Received.self),
         "redeem.response": decodes(Redeem.self),
         "redeem.response.minimal": decodes(Redeem.self),
+        "redeem.response.alreadyin": decodes(Redeem.self),
         "invites-mine": decodes(InvitesMine.self),
         "meta": decodes(Meta.self),
         "diagnostics.response": decodes(DiagnosticsReceipt.self),
