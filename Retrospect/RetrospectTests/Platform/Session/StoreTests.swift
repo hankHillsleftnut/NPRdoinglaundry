@@ -72,17 +72,30 @@ struct StoreTests {
         #expect(try await store().credentials() == nil)
     }
 
-    @Test("a save that fails leaves the previous session exactly as it was")
-    func aFailedSaveLeavesThePreviousSession() async throws {
+    @Test("a save that fails on any Keychain call leaves the previous session exactly as it was", arguments: 1 ... 4)
+    func aFailedSaveLeavesThePreviousSession(_ failingCall: Int) async throws {
         let store = store()
-        keychain.failCall(2, with: errSecInteractionNotAllowed)
         try await store.save(credentials)
         let before = keychain.contents
+        keychain.failCall(failingCall, with: errSecInteractionNotAllowed)
 
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.save(newer) }
+        let saved: Bool
+        do {
+            try await store.save(newer)
+            saved = true
+        } catch {
+            #expect(error as? Session.KeychainError == Session.KeychainError(status: errSecInteractionNotAllowed))
+            saved = false
+        }
 
-        #expect(keychain.contents == before)
-        #expect(try await store.credentials() == credentials)
+        // Read the item directly: a store read would count as a Keychain call.
+        let stored = keychain.contents["session"].flatMap(Session.Store.decode)
+        if saved {
+            #expect(stored == newer)
+        } else {
+            #expect(keychain.contents == before)
+            #expect(stored == credentials)
+        }
     }
 
     @Test("a later save replaces the whole session")

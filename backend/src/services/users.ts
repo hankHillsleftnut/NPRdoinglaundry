@@ -70,3 +70,33 @@ export async function getOrCreateUserWith(
   }
   throw new Error('Failed to create user');
 }
+
+/**
+ * The account for a sign-in with Apple (BE0.4c): found by the Apple subject,
+ * or created with the name and email Apple sends only on the first
+ * authorisation. An existing account's name and email are never changed here.
+ * Race-safe like getOrCreateUserWith; `isNew` is true only for the caller whose
+ * insert created the row.
+ */
+export async function findOrCreateAppleAccount(
+  db: UsersClient,
+  table: string,
+  appleUserId: string,
+  profile: { email?: string; firstName?: string },
+): Promise<{ userId: string; isNew: boolean }> {
+  const existing = await findByApple(db, table, appleUserId);
+  if (existing) return { userId: existing.id, isNew: false };
+
+  const { data: created, error } = await db
+    .from(table)
+    .insert({ apple_user_id: appleUserId, email: profile.email ?? null, first_name: profile.firstName ?? null })
+    .select(USER_COLUMNS)
+    .single();
+  if (created) return { userId: created.id, isNew: true };
+
+  if (error?.code === UNIQUE_VIOLATION) {
+    const winner = await findByApple(db, table, appleUserId);
+    if (winner) return { userId: winner.id, isNew: false };
+  }
+  throw new Error('Failed to create user');
+}

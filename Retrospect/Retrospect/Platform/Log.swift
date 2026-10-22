@@ -31,6 +31,8 @@ extension Platform.Log {
         /// The launch install check failed with this Keychain status; the next
         /// launch tries again.
         case installCheckFailed(status: OSStatus)
+        /// A launch argument was ignored (debug builds only).
+        case launchOptionIgnored(Platform.LaunchOptions.Problem)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -54,15 +56,33 @@ extension Platform.Log {
                 switch path {
                 case .meta: logger.error("unknown error code from /v2/meta")
                 }
+            case let .launchOptionIgnored(problem):
+                record(problem)
             case let .installChecked(check):
-                switch check {
-                case .alreadyDone: logger.debug("install check: already done")
-                case .wipedLeftovers: logger.info("install check: fresh install, leftovers wiped")
-                case .keptUpdate: logger.info("install check: update from the old app, nothing wiped")
-                case .deferredUntilUnlock: logger.info("install check: deferred until the phone is unlocked")
-                }
+                record(check)
             case let .installCheckFailed(status):
                 logger.error("install check failed: keychain status \(status)")
+            }
+        }
+
+        private func record(_ check: Session.InstallCheck) {
+            switch check {
+            case .alreadyDone: logger.debug("install check: already done")
+            case .wipedLeftovers: logger.info("install check: fresh install, leftovers wiped")
+            case .keptUpdate: logger.info("install check: update from the old app, nothing wiped")
+            case .deferredUntilUnlock: logger.info("install check: deferred until the phone is unlocked")
+            }
+        }
+
+        private func record(_ problem: Platform.LaunchOptions.Problem) {
+            switch problem {
+            case .unknownValue(.data): logger.error("launch option -Data: unknown value, using live")
+            case .unknownValue(.environment): logger.error("launch option -Environment: unknown value, using production")
+            case .unknownValue(.account): logger.error("launch option -Account: unknown value, ignored")
+            case .missingValue(.data): logger.error("launch option -Data: no value, using live")
+            case .missingValue(.environment): logger.error("launch option -Environment: no value, using production")
+            case .missingValue(.account): logger.error("launch option -Account: no value, ignored")
+            case .accountNeedsStaging: logger.error("launch option -Account needs -Environment local or staging, ignored")
             }
         }
     }
