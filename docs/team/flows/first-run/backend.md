@@ -25,6 +25,7 @@ Spec (as built):
 - Normalise as redeem does; **the lookup always runs** (a string that can't be a code looks up its own hash, which no row has), so timing says nothing. **Live** = exists, unused, not revoked, not expired → `{ live: true, face: { from, kind, serial, issuedOn } }`: `from` = the owner's first name (null for founder and review invites until `INVITE_FOUNDER_NAME` exists: founder Q10, BE2.0b Q4); `issuedOn` = the UTC date of `created_at` until `users.time_zone` is written (BE2.0b Q5).
 - Not live (used, revoked, expired, unknown, malformed) → the identical `200 { live: false, face: null }`. `Cache-Control: no-store`, no cookies.
 - Logging: the door log line `invites.preview` with status only; never the code, the name or the address.
+- Accepted (review of #135): a database failure during the lookup answers `500 internal`, the one case beyond the contract's `rate_limited`; the link page's pre-existing skip of the lookup for a malformed code is on the polish list.
 
 Acceptance: a live code returns its face; used, revoked, expired, unknown and malformed codes all return the identical body.
 

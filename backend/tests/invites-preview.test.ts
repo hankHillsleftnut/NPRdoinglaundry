@@ -86,8 +86,11 @@ test('a live invite previews its inviter, serial and date: the contract fixture 
   }
 });
 
-test('a used, revoked, expired, unknown or malformed code all answer the same body (*)', async () => {
-  const h = await harness();
+test('a used, revoked, expired, unknown or malformed code all answer the same body, and every one is looked up (*)', async () => {
+  // A counting store: "the lookup always runs" must bite, including for strings that can't be a code.
+  let lookups = 0;
+  const counting: InviteStore = { ...invites, face: (...a) => { lookups++; return invites.face(...a); } };
+  const h = await startHarness({ access, invites: counting, now: T0 });
   try {
     const owner = await person(h, 'priya');
     const neutral = fixture('invite.preview.notlive.json');
@@ -106,9 +109,12 @@ test('a used, revoked, expired, unknown or malformed code all answer the same bo
       const res = await preview(h, code);
       assert.equal(res.status, 200, label);
       assert.deepEqual(res.body, neutral, label);
+      assert.equal(res.headers.get('cache-control'), 'no-store', label);
     }
+    assert.equal(lookups, cases.length, 'every case, even one that can never be a code, cost one lookup');
     assert.equal(JSON.stringify(h.logLines).includes('priya'), false);
-    assert.equal((await preview(h, await invite({ kind: 'member', owner, expiresAt: new Date(T0 + 60_000).toISOString() }))).body && true, true);
+    const soon = await preview(h, await invite({ kind: 'member', owner, expiresAt: new Date(T0 + 60_000).toISOString() }));
+    assert.equal((soon.body as { data: { live: boolean } }).data.live, true, 'sixty seconds of life left is still live');
     assert.equal((fixture('invite.preview.notlive.json').data as { live: boolean }).live, false);
   } finally {
     await h.close();

@@ -109,7 +109,7 @@ tear         ──▶ POST /v2/invites/redeem     (contract 00 §4: spends it; 
 
 ### 2.1 Preview (public, before sign-in)
 
-`GET /public/invites/:code` — public, no token, bucket `public` (per IP: 30 a minute), no model call (BE2.0a)
+`GET /public/invites/:code` — public, no token, bucket `invitePreview` (per IP: 30 a minute), no model call (BE2.0a)
 
 → `200`
 ```json
