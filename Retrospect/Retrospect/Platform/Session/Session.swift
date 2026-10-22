@@ -104,6 +104,8 @@ extension Session {
         /// The pair in memory is newer than the one on disk: save again later.
         private var pendingSave = false
         private var signingOut = false
+        /// False after a mirror write failed: the old client's token is stale.
+        private var mirrorInSync = true
 
         init(
             store: Store,
@@ -293,8 +295,13 @@ extension Session {
                 outcome = .signedOut
             } else {
                 do {
-                    _ = try await refresh()
-                    outcome = .refreshed
+                    let fresh = try await refresh()
+                    // A retry with a stale mirrored token would 401 again and sign a
+                    // good session out: the old client retries only when the mirror holds it.
+                    if !mirrorInSync {
+                        write(mirrorFor: fresh)
+                    }
+                    outcome = mirrorInSync ? .refreshed : .unavailable
                 } catch let failure as Backend.Failure where failure.kind == .sessionRevoked {
                     outcome = .signedOut
                 } catch {
@@ -454,9 +461,12 @@ extension Session {
         private func write(mirrorFor credentials: Credentials) {
             do {
                 try mirror.write(accessToken: credentials.accessToken, userID: credentials.userID, appleUserID: credentials.appleUserID)
+                mirrorInSync = true
             } catch let error as KeychainError {
+                mirrorInSync = false
                 log.record(.keychainWriteFailed(.mirror, status: error.status))
             } catch {
+                mirrorInSync = false
                 log.record(.keychainWriteFailed(.mirror, status: errSecInternalError))
             }
         }

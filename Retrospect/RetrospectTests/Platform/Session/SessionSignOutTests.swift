@@ -307,6 +307,22 @@ struct SessionSignOutTests {
         }.count == 4)
     }
 
+    @Test("the old client's 401 says unavailable when the refreshed token couldn't be mirrored, so a stale retry never signs a good session out")
+    func theBridgeSaysUnavailableWhenTheMirrorFailed() async throws {
+        let h = try SessionHarness()
+        h.serve(["/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer()) }])
+        h.legacy.failEveryCall(with: errSecIO)
+
+        #expect(await h.manager.refreshForLegacy() == .unavailable)
+
+        #expect(h.stored()?.accessToken == "a2", "the new session is kept")
+        #expect(h.recorder.events.contains(.keychainWriteFailed(.mirror, status: errSecIO)))
+        h.legacy.failEveryCall(with: nil)
+        h.serve(["/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer(access: "a3", refresh: "r3")) }])
+        #expect(await h.manager.refreshForLegacy() == .refreshed)
+        #expect(h.mirror()["jwt_token"] == "a3")
+    }
+
     // MARK: Apple revocation and the active scene
 
     @Test("on an active scene an Apple session asks Apple; revoked signs out, authorized or unknown changes nothing")
