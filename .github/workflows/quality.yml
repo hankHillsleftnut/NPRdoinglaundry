@@ -27,7 +27,8 @@ jobs:
 
   changes:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
-    # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained).
+    # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained). Contract
+    # fixtures count as app changes: the app's tests decode every one of them.
     runs-on: [self-hosted, light]
     outputs:
       app: ${{ steps.changed.outputs.app }}
@@ -38,7 +39,7 @@ jobs:
       - id: changed
         run: |
           base="${{ github.event.pull_request.base.sha }}"
-          if [ -z "$base" ] || git diff --name-only "$base" HEAD | grep -qE '^(Retrospect/|\.github/workflows/quality\.yml)'; then
+          if [ -z "$base" ] || git diff --name-only "$base" HEAD | grep -qE '^(Retrospect/|docs/team/contracts/fixtures/|\.github/workflows/quality\.yml)'; then
             echo "app=true" >> "$GITHUB_OUTPUT"
           else
             echo "app=false" >> "$GITHUB_OUTPUT"
