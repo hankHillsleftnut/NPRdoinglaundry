@@ -31,6 +31,7 @@ async function harness(mount: (door: ReturnType<typeof createDoorKit>, router: e
   const bugs: string[] = [];
   const door = createDoorKit({
     agent: opts.agent ?? noAgent, limiter, log: createLog((l) => lines.push(l)), now: () => clock.now,
+    versions: { minVersion: '1.0 (1)', requireVersion: false },
     reportBug: (_err, name) => {
       bugs.push(name);
       if (opts.reportThrows) throw new Error('Sentry is down');

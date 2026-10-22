@@ -19,6 +19,8 @@ import { graphRouter } from './routes/graph.js';
 import { globalLimiter, trustRenderProxy } from './server-settings.js';
 import type { AgentDoorClient } from './doors/agent.js';
 import { createDoorKit, type DoorFactory } from './doors/door.js';
+import { createMetaRouter } from './doors/meta.js';
+import { environmentOf, type AppVersions } from './doors/versions.js';
 import { v2ErrorHandler } from './doors/errors.js';
 import { MemoryLimiter, type Limiter } from './doors/limits.js';
 import { createV2Router, MAX_REPORT_BYTES, type V2RouterDeps } from './doors/router.js';
@@ -67,6 +69,8 @@ export interface AppDeps {
   briefs?: BriefStore;
   /** Signs a link to a brief's audio (BE1.3b); Supabase Storage by default, tests pass a fake. */
   signAudio?: SignAudio;
+  /** The version floor, the newest version and the environment (BE0.10); from config by default. */
+  versions?: AppVersions;
 }
 
 /**
@@ -146,13 +150,22 @@ export function createApp(deps: AppDeps): express.Express {
   app.use('/graph', legacyAuth, graphRouter);
 
   // The new app's doors (src/doors). Public /v2 routes (sign-in) are mounted before the /v2 auth.
+  const versions: AppVersions = deps.versions ?? {
+    minVersion: config.app.minVersion,
+    latestVersion: config.app.latestVersion,
+    requireVersion: config.app.requireVersion,
+    environment: environmentOf(config.app.retrospectEnv, config.server.nodeEnv),
+  };
   const door = createDoorKit({
     agent: deps.agent,
     limiter,
     log: deps.log ?? log,
     now: deps.now,
     reportBug: (err, name) => captureException(err, { door: name }),
+    versions,
   });
+  // GET /v2/meta (BE0.10): public, before the /v2 auth, and never behind the version floor.
+  app.use('/v2/meta', createMetaRouter({ versions, limiter, now: deps.now, log: deps.log ?? log }));
   const v2Auth = makeAuthMiddleware(deps.users, { envelope: true, now: deps.now });
   // Sign-in and sessions: public (refresh) or checked inside (signout), so before the /v2 auth.
   app.use('/v2/auth', createSessionRouter({
