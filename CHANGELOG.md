@@ -2,6 +2,15 @@
 
 What changed, in plain words, newest first. Every merged PR that changes what the app, the backend or the team does gets a line here, in the same PR or the integrator's next one. Big changes get a short paragraph: what a person will notice, and what to watch. (Founder, 22 Oct: "always have a changelog for every massive change".)
 
+## 22 Oct 2026 · afternoon (integrator on Fable)
+
+- **Faster, with the same gates.** The founder reset usage, so the team went to five engineers (two Platform, two backend, views) plus a short high-effort "contract pass" before every integration piece and a fresh reviewer the moment a risky PR opens. Nothing merges without the same four gates as before. Details in `docs/team/prototype-mode.md` ("Team shape").
+- **Contract passes caught real problems before any code:** sign-in (the app never refreshed on a 401; a dropped refresh cost a sign-in; a planned "upgrade" door doesn't exist and is dropped for Beta 1), invites check (no shared idempotency store existed; the card's check order made "this is yours" unreachable), journal entries (a duplicate send could create two entries; the card's date bounds would silently lose month-old offline entries).
+- **Invites, follow-up:** someone the founder has approved but who hasn't opened their link yet still reads as "on the list" (migration 020); the public link page is limited per address and answers the neutral page, never an error; rotating the invite key can't break "your invites" (#118).
+- **The brain:** `/runs` and `/integrations` only answer about the person asking; the developer's local dashboard keeps its view across people (brain #135).
+- **Effort by phase** written down (#117).
+- **CI:** stale runs on a PR are cancelled when a newer push arrives; a push to main only builds the app when the app changed (#116). iOS builds are incremental (derived data kept between runs) and can run on any Mac with a simulator named `ci`, so a second laptop can take them (#116, #120).
+
 ## 22 Oct 2026 · morning (new integrator)
 
 - **Sign in with Apple** on the new server: Apple's token is checked (our app, Apple's keys, a one-time code), your name and email are kept only from the first sign-in, and only what Apple vouches for (#109). A test of the real check found that some forged tokens caused a server error instead of a refusal; fixed before merge.

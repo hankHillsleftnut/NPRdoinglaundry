@@ -47,6 +47,16 @@ Every **integration piece** runs in three phases, each at its own reasoning effo
 
 The integrator sets this with `effort` on each agent it starts. Engineers run at medium, phase 1 and phase 3 agents at high.
 
+## Team shape (founder, 22 Oct, afternoon: "fly through this faster, built intentionally")
+
+Usage is no longer the limit; the Mac's one iOS build lane and dependency order are. So:
+
+- **Five engineers at once, all on Fable at medium:** Platform A (diagnostics DG.3 → DG.4 → DG.5, then the drainer PL2.2b), Platform B (sign-in PL1.4a → PL1.5), backend A (invites BE2.0b, then the journal doors BE1.x), backend B (brain-side BEA.4 → BEA.7 → BEA.8), views (C39.1, C30.1, C30.3, C26, then C39.2, C19, C20, DG.6). Two engineers never touch the same files; each has its own worktree and, for iOS, shares the one-build-at-a-time lock.
+- **A contract pass stays one byte ahead** of every integration piece (phase 1 above), written to `/Users/shauryanarang/Projects/retrospect-handover/contracts/<byte>.md`, so no engineer builds to a guess. The integrator decides each open question on the pass's lean and records it in the engineer's brief.
+- **A fresh reviewer the moment a risky PR opens**, not batched per tick. UI PRs: green CI plus the integrator's read.
+- **CI off the critical path:** incremental builds, stale runs cancelled, a second Mac as an iOS runner (`docs/team/ci.md` once it lands).
+- **What doesn't change:** the four gates (contract pass where it applies, fresh reviewer where the risky list says, the integrator's own read of every diff, green CI); one PR per whole component, page or route; the strict list above. Speed comes from parallelism and preparation, never from skipping a gate.
+
 ## What this doesn't change
 
 - **The Beta 1 scope** (`first-ship.md`). Same features, same diagnostics.
@@ -59,6 +69,8 @@ The integrator sets this with `effort` on each agent it starts. Engineers run at
 When Beta 1 is on TestFlight, the integrator proposes which light checks come back before the App Store: the polish list, full Paper matching on every screen, and a reviewer on every PR. The founder decides.
 
 ## Change log for this doc
+
+- 22 Oct (afternoon): team shape added (five engineers, contract passes one byte ahead, reviewers on open).
 
 - 22 Oct: effort by phase added (founder instruction, relayed).
 
