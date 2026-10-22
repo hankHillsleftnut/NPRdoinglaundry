@@ -91,7 +91,7 @@ const limitField = z.preprocess(
 export const ListQuery = z.object({
   cursor: z.string().min(1).max(200).optional(),
   limit: limitField,
-  q: z.string().min(1).max(MAX_QUERY_UNITS).optional(),
+  q: z.string().min(1).max(MAX_QUERY_UNITS).refine((s) => !s.includes('\0')).optional(),
 }).strict();
 const EntryId = z.object({ id: z.string().regex(UUID) }).strict();
 
