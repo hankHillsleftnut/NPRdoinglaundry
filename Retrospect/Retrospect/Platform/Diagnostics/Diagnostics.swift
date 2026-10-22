@@ -9,6 +9,13 @@ extension Platform {
     enum Diagnostics {}
 }
 
+extension Platform.Diagnostics {
+    /// Where records go: the `Recorder` in the app, a spy in tests.
+    protocol Sink: Sendable {
+        func record(_ record: Record) async
+    }
+}
+
 // MARK: - The closed lists
 
 extension Platform.Diagnostics {
@@ -226,25 +233,37 @@ extension Platform.Diagnostics {
     }
 
     /// One request: its route template (`/v2/entries/:id`), never the URL.
+    /// Numbers are clamped to the door's ranges on the way in, so one odd
+    /// value can never make the door refuse a whole report.
     struct Request: Codable, Equatable, Sendable {
-        var method: Backend.Method
-        var route: Route
-        /// 0 when nothing came back.
-        var status: Int
-        var code: ErrorCode?
-        var ms: Int
-        var retries: Int
-        var idempotency: Idempotency?
+        let method: Backend.Method
+        let route: Route
+        /// 0 when nothing came back; 0...599.
+        let status: Int
+        let code: ErrorCode?
+        /// 0...86,400,000 (a day).
+        let ms: Int
+        /// Absent means 0 (DG.1); 0...20. Omitted until the drainer (PL2.2b) counts them.
+        let retries: Int?
+        /// Omitted until the door kit signals replays.
+        let idempotency: Idempotency?
 
-        init(method: Backend.Method, route: Route, status: Int, code: ErrorCode? = nil, ms: Int, retries: Int = 0, idempotency: Idempotency? = nil) {
+        init(method: Backend.Method, route: Route, status: Int, code: ErrorCode? = nil, ms: Int, retries: Int? = nil, idempotency: Idempotency? = nil) {
             self.method = method
             self.route = route
-            self.status = status
+            self.status = Limits.status.clamp(status)
             self.code = code
-            self.ms = ms
-            self.retries = retries
+            self.ms = Limits.ms.clamp(ms)
+            self.retries = retries.map(Limits.retries.clamp)
             self.idempotency = idempotency
         }
+    }
+
+    /// The door's ranges (DG.1's `schema.ts`).
+    enum Limits {
+        static let status = 0 ... 599
+        static let ms = 0 ... 86_400_000
+        static let retries = 0 ... 20
     }
 
     /// A failure a screen was told about; `screen` is nil for one in the background.
@@ -392,7 +411,7 @@ extension Platform.Diagnostics.Event: Codable {
             try container.encode(sheet, forKey: .sheet)
         case let .playbackStarted(itemID, positionMs), let .playbackPaused(itemID, positionMs), let .playbackEnded(itemID, positionMs):
             try container.encode(itemID.uuidString.lowercased(), forKey: .itemId)
-            try container.encode(positionMs, forKey: .positionMs)
+            try container.encode(Platform.Diagnostics.Limits.ms.clamp(positionMs), forKey: .positionMs)
         case let .permissionPrompted(permission):
             try container.encode(permission, forKey: .permission)
         case let .permissionAnswered(permission, granted):
@@ -453,5 +472,12 @@ extension Backend.Failure.Kind {
         case .inviteExpired: .inviteExpired
         case .offline, .timedOut, .decoding, .transport, .unknown: nil
         }
+    }
+}
+
+extension ClosedRange<Int> {
+    /// `value` pulled into the range.
+    func clamp(_ value: Int) -> Int {
+        Swift.min(Swift.max(value, lowerBound), upperBound)
     }
 }

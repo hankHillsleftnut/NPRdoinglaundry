@@ -242,6 +242,10 @@ struct RetrospectApp: App {
             .environmentObject(themeManager)
             .environment(platform)
             .animatedThemeTransition()
+            .task {
+                // Bridge (DG.4): the launch event and MetricKit crash markers.
+                platform.didLaunch()
+            }
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
                 if !faceIDEnabled {
@@ -352,6 +356,8 @@ struct RetrospectApp: App {
                 }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
+                // Bridge (DG.4): foreground and background land in the diagnostics rings.
+                platform.scenePhaseChanged(to: newPhase)
                 // If recording is active and app goes to background, keep it recording
                 if newPhase == .background {
                     print("📱 App moved to background - recording continues")

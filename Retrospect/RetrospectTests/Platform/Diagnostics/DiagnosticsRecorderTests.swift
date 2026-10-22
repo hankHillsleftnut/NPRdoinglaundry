@@ -37,8 +37,8 @@ struct DiagnosticsRecorderTests {
     }
 
     /// Synchronous reads: in an async test, `writer.read` picks GRDB's async overload.
-    private func rows(_ ring: Diagnostics.Ring) throws -> [Store.DiagnosticRow] {
-        try database.writer.read { try Store.DiagnosticRow.inRing(ring).fetchAll($0) }
+    private func rows(_ ring: Diagnostics.Ring, in database: Store.LocalDatabase? = nil) throws -> [Store.DiagnosticRow] {
+        try (database ?? self.database).writer.read { try Store.DiagnosticRow.inRing(ring).fetchAll($0) }
     }
 
     private func count(_ ring: Diagnostics.Ring) throws -> Int {
@@ -211,8 +211,8 @@ struct DiagnosticsRecorderTests {
 
     // MARK: Failures
 
-    @Test("a write that fails is logged as a count and its batch dropped; recording goes on")
-    func aFailedWriteIsLoggedAndDropped() async throws {
+    @Test("a write that fails is logged as a count and its batch kept for the next flush, in order")
+    func aFailedWriteIsLoggedAndRetried() async throws {
         let recorder = recorder()
         try execute("DROP TABLE diagnostics")
 
@@ -223,7 +223,84 @@ struct DiagnosticsRecorderTests {
         try execute("CREATE TABLE diagnostics (id INTEGER PRIMARY KEY AUTOINCREMENT, ring TEXT NOT NULL, at TEXT NOT NULL, payload BLOB NOT NULL)")
         await recorder.record(.event(.appForeground))
         await recorder.flush()
-        #expect(try rows(.events).map(\.payload) == [event(.appForeground)])
+        #expect(try rows(.events).map(\.payload) == [event(.appLaunch), event(.appForeground)])
+        #expect(log.events == [.diagnosticsWriteFailed])
+    }
+
+    @Test("a batch kept after a failed write is bounded like the queue: the newest pendingCap")
+    func aKeptBatchIsBounded() async throws {
+        let recorder = recorder()
+        try execute("DROP TABLE diagnostics")
+        await recorder.record(.event(.appLaunch))
+        await recorder.flush()
+
+        for _ in 0 ..< Recorder.pendingCap {
+            await recorder.record(.event(.appForeground))
+        }
+        try execute("CREATE TABLE diagnostics (id INTEGER PRIMARY KEY AUTOINCREMENT, ring TEXT NOT NULL, at TEXT NOT NULL, payload BLOB NOT NULL)")
+        await recorder.flush()
+
+        #expect(try count(.events) == Diagnostics.Ring.events.cap)
+        #expect(try !rows(.events).map(\.payload).contains(event(.appLaunch)), "the oldest was dropped from memory")
+    }
+
+    // MARK: Sign-out
+
+    @Test("a record made before sign-out never lands in the next person's rings")
+    func aRecordBeforeSignOutNeverReachesTheNextPerson() async throws {
+        let recorder = recorder()
+        let next = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        await recorder.record(.event(.screenShown(.journal)))
+
+        await recorder.detach()
+        await recorder.record(.event(.appBackground))
+        await recorder.attach(next)
+        await recorder.flush()
+
+        #expect(try rows(.events).map(\.payload) == [event(.screenShown(.journal))], "this person's row landed in their own database")
+        #expect(try rows(.events, in: next).map(\.payload) == [event(.appBackground)], "only what happened after sign-out reaches the next person")
+        #expect(try await recorder.rows(in: .events).map(\.payload) == [event(.appBackground)])
+    }
+
+    @Test("a record that couldn't be written before sign-out is forgotten, never carried to the next person")
+    func anUnwrittenRecordBeforeSignOutIsForgotten() async throws {
+        let recorder = recorder()
+        let next = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        try execute("DROP TABLE diagnostics")
+        await recorder.record(.event(.screenShown(.journal)))
+
+        await recorder.detach()
+        await recorder.attach(next)
+        await recorder.flush()
+
+        #expect(log.events == [.diagnosticsWriteFailed])
+        #expect(try rows(.events, in: next).isEmpty)
+    }
+
+    @Test("after detach nothing is written anywhere until the next attach")
+    func afterDetachNothingIsWritten() async throws {
+        let recorder = recorder()
+        await recorder.detach()
+
+        await recorder.record(.event(.appLaunch))
+        await recorder.flush()
+
+        #expect(try count(.events) == 0)
+        #expect(clock.pendingSleeps == 0)
+    }
+
+    // MARK: Reading
+
+    @Test("rows after seven days with nothing pending returns none, so a quiet recorder never hands over old rows")
+    func rowsAfterSevenDaysWithNothingPendingReturnsNone() async throws {
+        let recorder = recorder()
+        await recorder.record(.event(.appLaunch))
+        await recorder.flush()
+
+        now.advance(seconds: Recorder.retention + 1)
+
+        #expect(try await recorder.rows(in: .events).isEmpty)
+        #expect(try count(.events) == 1, "the row stays until the next write prunes it; it just isn't handed over")
     }
 
     @Test("erase empties the rings with everything else")

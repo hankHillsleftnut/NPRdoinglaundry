@@ -48,6 +48,23 @@ struct AppEnvironmentTests {
         #expect(recorder.events == [.launchOptionIgnored(.unknownValue(.data)), .launchOptionIgnored(.accountNeedsStaging)])
     }
 
+    @Test("the scene going active and to the background lands as foreground and background events")
+    func scenePhasesLandAsEvents() async throws {
+        let environment = Platform.AppEnvironment.preview()
+        let database = try Store.LocalDatabase.inMemory()
+        await environment.diagnostics.attach(database)
+
+        environment.scenePhaseChanged(to: .active)
+        environment.scenePhaseChanged(to: .inactive)
+        environment.scenePhaseChanged(to: .background)
+        await Task.yield()
+
+        let events = try await environment.diagnostics.rows(in: .events).map(\.payload)
+        #expect(try events.contains(Platform.Diagnostics.Recorder.encode(.event(.appForeground))))
+        #expect(try events.contains(Platform.Diagnostics.Recorder.encode(.event(.appBackground))))
+        #expect(events.count == 2)
+    }
+
     @Test("the preview environment points at local staging and reads no bundle")
     func thePreviewEnvironmentPointsAtLocalStaging() {
         let configuration = Platform.AppEnvironment.preview().configuration

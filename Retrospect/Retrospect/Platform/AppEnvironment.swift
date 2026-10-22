@@ -1,4 +1,5 @@
 import Observation
+import SwiftUI
 
 extension Platform {
     /// Everything new code depends on, built once at launch and handed down
@@ -20,6 +21,11 @@ extension Platform {
         /// Which server, and the version every request reports.
         let configuration: Backend.Configuration
         let log: any Platform.LogSink
+        /// What the app did, for "send a report" (DG.3). No database until
+        /// the store opens after sign-in (`attach`); until then it keeps the
+        /// newest records in memory.
+        let diagnostics: Platform.Diagnostics.Recorder
+        private let crashReporter: Platform.Diagnostics.CrashReporter
 
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
@@ -28,6 +34,8 @@ extension Platform {
             self.launch = launch
             self.configuration = configuration
             self.log = log
+            diagnostics = Platform.Diagnostics.Recorder(log: log)
+            crashReporter = Platform.Diagnostics.CrashReporter(sink: diagnostics)
         }
 
         /// The app's environment, set by this launch's options (always live
@@ -42,6 +50,34 @@ extension Platform {
         /// kept in memory.
         static func preview() -> AppEnvironment {
             AppEnvironment(configuration: .resolve(.local, info: [:]), log: Log.Recorder())
+        }
+
+        /// Once, when the app's first scene is up: records the launch and
+        /// starts listening for crash and hang diagnostics. Not called by the
+        /// test host or previews, so neither subscribes to MetricKit.
+        func didLaunch() {
+            crashReporter.start()
+            let diagnostics = diagnostics
+            Task { await diagnostics.record(.event(.appLaunch)) }
+        }
+
+        /// Records foreground and background, and lands what's waiting when the
+        /// app goes to the background (it may not come back).
+        func scenePhaseChanged(to phase: ScenePhase) {
+            let diagnostics = diagnostics
+            switch phase {
+            case .active:
+                Task { await diagnostics.record(.event(.appForeground)) }
+            case .background:
+                Task {
+                    await diagnostics.record(.event(.appBackground))
+                    await diagnostics.flush()
+                }
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }
