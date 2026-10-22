@@ -26,6 +26,11 @@ extension Platform.Log {
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
+        /// Someone signed in (PL1.4): which provider, and whether the account is new.
+        case signedIn(provider: Session.Provider, isNew: Bool)
+        /// The system couldn't make random bytes for a sign-in nonce (PL1.4), so
+        /// the sign-in was not sent; `status` is what `SecRandomCopyBytes` returned.
+        case nonceUnavailable(status: OSStatus)
         /// The launch install check ran (PL1.3): what it found.
         case installChecked(Session.InstallCheck)
         /// The launch install check failed with this Keychain status; the next
@@ -51,9 +56,13 @@ extension Platform.Log {
             case let .outboxDrained(sent, failed):
                 logger.info("outbox drained: sent \(sent), failed \(failed)")
             case let .requestSent(path, status, ms):
-                recordRequest(path, status: status, ms: ms)
+                record(sent: path, status: status, ms: ms)
             case let .unknownErrorCode(path):
-                recordUnknownErrorCode(path)
+                record(unknownCodeFrom: path)
+            case let .signedIn(provider, isNew):
+                record(signedInWith: provider, isNew: isNew)
+            case let .nonceUnavailable(status):
+                logger.error("sign-in nonce unavailable: random status \(status)")
             case let .launchOptionIgnored(problem):
                 record(problem)
             case let .installChecked(check):
@@ -66,15 +75,29 @@ extension Platform.Log {
         }
 
         /// One fixed line per door: the template is never interpolated.
-        private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
+        private func record(sent path: Backend.PathTemplate, status: Int, ms: Int) {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+            case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
+            case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
+            case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
             }
         }
 
-        private func recordUnknownErrorCode(_ path: Backend.PathTemplate) {
+        private func record(unknownCodeFrom path: Backend.PathTemplate) {
             switch path {
             case .meta: logger.error("unknown error code from /v2/meta")
+            case .authApple: logger.error("unknown error code from /v2/auth/apple")
+            case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
+            case .authSignout: logger.error("unknown error code from /v2/auth/signout")
+            }
+        }
+
+        private func record(signedInWith provider: Session.Provider, isNew: Bool) {
+            switch provider {
+            case .apple: logger.info("signed in with apple, new account: \(isNew)")
+            case .google: logger.info("signed in with google, new account: \(isNew)")
+            case .unknown: logger.info("signed in with an unknown provider, new account: \(isNew)")
             }
         }
 

@@ -73,6 +73,8 @@ extension Platform.Log.Event {
             case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
             case .unknownErrorCode: .unknownErrorCode(path: .meta)
             case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
+            case .signedIn: .signedIn(provider: .apple, isNew: true)
+            case .nonceUnavailable: .nonceUnavailable(status: -4)
             case .installChecked: .installChecked(.wipedLeftovers)
             case .installCheckFailed: .installCheckFailed(status: -25308)
             case .diagnosticsWriteFailed: .diagnosticsWriteFailed
@@ -81,7 +83,8 @@ extension Platform.Log.Event {
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, installChecked, installCheckFailed, diagnosticsWriteFailed
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
+             installCheckFailed, diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
@@ -91,6 +94,8 @@ extension Platform.Log.Event {
         case .requestSent: .requestSent
         case .unknownErrorCode: .unknownErrorCode
         case .launchOptionIgnored: .launchOptionIgnored
+        case .signedIn: .signedIn
+        case .nonceUnavailable: .nonceUnavailable
         case .installChecked: .installChecked
         case .installCheckFailed: .installCheckFailed
         case .diagnosticsWriteFailed: .diagnosticsWriteFailed

@@ -1,12 +1,40 @@
 import Foundation
 
 extension Session {
-    /// Who's signed in: the tokens from contract 00 §3 and the user's id.
+    /// Who's signed in: the tokens from contract 00 §3, the user's id, and
+    /// what the gate and the old screens need offline at launch (their access
+    /// state, first name, which provider signed them in, and Apple's id for
+    /// the revocation check).
     struct Credentials: Sendable, Equatable {
         let accessToken: String
         let accessTokenExpiresAt: Date
         let refreshToken: String
         let userID: String
+        let access: AccessState
+        let firstName: String?
+        let provider: Provider
+        /// `ASAuthorizationAppleIDCredential.user`; nil for other providers.
+        let appleUserID: String?
+
+        init(
+            accessToken: String,
+            accessTokenExpiresAt: Date,
+            refreshToken: String,
+            userID: String,
+            access: AccessState = .unknown,
+            firstName: String? = nil,
+            provider: Provider = .unknown,
+            appleUserID: String? = nil
+        ) {
+            self.accessToken = accessToken
+            self.accessTokenExpiresAt = accessTokenExpiresAt
+            self.refreshToken = refreshToken
+            self.userID = userID
+            self.access = access
+            self.firstName = firstName
+            self.provider = provider
+            self.appleUserID = appleUserID
+        }
     }
 
     /// What the launch check found. Carries no values, so it can be logged.
@@ -30,7 +58,7 @@ extension Session {
     /// either lands whole or leaves the previous session exactly as it was.
     /// "Signed in before" and a pending invite are items of their own: they
     /// outlive the session.
-    actor Store {
+    actor Store: Installing {
         /// The new session's Keychain service.
         static let service = "com.retrospect.session"
         /// The old client's service, wiped with ours on a fresh install.
@@ -81,6 +109,14 @@ extension Session {
         /// Sign-out: the session goes; `hasSignedInBefore` and a pending invite stay.
         func clearCredentials() throws {
             try keychain.delete(Account.session.rawValue)
+        }
+
+        /// A sign-in's session: saved whole, then marked as signed in before.
+        /// The session manager (PL1.5) takes this over, adding the old
+        /// screens' mirror between the two and publishing the state.
+        func install(_ credentials: Credentials) throws {
+            try save(credentials)
+            try markSignedInBefore()
         }
 
         // MARK: Flags
@@ -171,19 +207,29 @@ extension Session {
 
         // MARK: The session item
 
-        /// The session as stored. The expiry is kept as text and read leniently,
-        /// so a bad expiry never costs the tokens beside it.
+        /// The session as stored. Only the tokens and the user id are required;
+        /// the expiry and the fields added after PL1.3 are read leniently, so a
+        /// bad value never costs the tokens beside it and an item written by an
+        /// earlier build still reads (as `unknown` and nil).
         private struct Saved: Codable {
             let accessToken: String
             let accessTokenExpiresAt: String?
             let refreshToken: String
             let userID: String
+            let access: String?
+            let firstName: String?
+            let provider: String?
+            let appleUserID: String?
 
             init(_ credentials: Credentials) {
                 accessToken = credentials.accessToken
                 accessTokenExpiresAt = Backend.Coding.timestamp(credentials.accessTokenExpiresAt)
                 refreshToken = credentials.refreshToken
                 userID = credentials.userID
+                access = credentials.access.rawValue
+                firstName = credentials.firstName
+                provider = credentials.provider.rawValue
+                appleUserID = credentials.appleUserID
             }
 
             init(from decoder: any Decoder) throws {
@@ -192,6 +238,10 @@ extension Session {
                 accessTokenExpiresAt = try? container.decodeIfPresent(String.self, forKey: .accessTokenExpiresAt)
                 refreshToken = try container.decode(String.self, forKey: .refreshToken)
                 userID = try container.decode(String.self, forKey: .userID)
+                access = try? container.decodeIfPresent(String.self, forKey: .access)
+                firstName = try? container.decodeIfPresent(String.self, forKey: .firstName)
+                provider = try? container.decodeIfPresent(String.self, forKey: .provider)
+                appleUserID = try? container.decodeIfPresent(String.self, forKey: .appleUserID)
             }
         }
 
@@ -207,7 +257,11 @@ extension Session {
                 accessToken: saved.accessToken,
                 accessTokenExpiresAt: expiry(saved.accessTokenExpiresAt),
                 refreshToken: saved.refreshToken,
-                userID: saved.userID
+                userID: saved.userID,
+                access: saved.access.flatMap(AccessState.init(rawValue:)) ?? .unknown,
+                firstName: saved.firstName,
+                provider: saved.provider.flatMap(Provider.init(rawValue:)) ?? .unknown,
+                appleUserID: saved.appleUserID
             )
         }
 

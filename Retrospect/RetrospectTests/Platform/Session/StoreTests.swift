@@ -47,6 +47,65 @@ struct StoreTests {
         #expect(try await store.credentials() == credentials)
     }
 
+    @Test("the access state, name, provider and Apple id are kept in the one item and read back")
+    func theAddedFieldsRoundTrip() async throws {
+        let store = store()
+        let full = Session.Credentials(
+            accessToken: "a", accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_570_500), refreshToken: "r", userID: "u",
+            access: .waitlisted, firstName: "sam", provider: .apple, appleUserID: "001234.invented"
+        )
+
+        try await store.save(full)
+
+        #expect(try await store.credentials() == full)
+        #expect(Array(keychain.contents.keys) == ["session"])
+    }
+
+    @Test("an item saved before the added fields existed reads as unknown and nil, keeping its tokens")
+    func anOlderItemReadsLeniently() async throws {
+        try keychain.write(
+            json(["accessToken": "a", "accessTokenExpiresAt": "2026-10-21T08:00:04.000Z", "refreshToken": "r", "userID": "u"]),
+            account: "session"
+        )
+
+        let read = try #require(try await store().credentials())
+
+        #expect(read.access == .unknown)
+        #expect(read.provider == .unknown)
+        #expect(read.firstName == nil)
+        #expect(read.appleUserID == nil)
+        #expect(read.refreshToken == "r")
+    }
+
+    @Test("an added field with a bad value reads as unknown, never costing the tokens", arguments: [
+        ["access": 7, "provider": true], ["access": "brand_new", "provider": "other"], ["firstName": 3, "appleUserID": ["x"]],
+    ] as [[String: Any]])
+    func aBadAddedFieldReadsAsUnknown(_ extra: [String: Any]) async throws {
+        let item = ["accessToken": "a", "refreshToken": "r", "userID": "u"].merging(extra) { old, _ in old }
+        try keychain.write(json(item), account: "session")
+
+        let read = try #require(try await store().credentials())
+
+        #expect(read.accessToken == "a")
+        #expect(read.access == .unknown)
+        #expect(read.provider == .unknown)
+    }
+
+    @Test("install saves the session, then marks signed in before; a failed save marks nothing")
+    func installSavesThenMarks() async throws {
+        let store = store()
+
+        try await store.install(credentials)
+        #expect(try await store.credentials() == credentials)
+        #expect(try await store.hasSignedInBefore)
+
+        let second = Session.MemoryKeychain()
+        second.failCall(1, with: errSecInteractionNotAllowed)
+        let failing = Session.Store(keychain: second, legacyKeychain: legacy, defaults: defaults)
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await failing.install(credentials) }
+        #expect(second.contents.isEmpty)
+    }
+
     @Test("the whole session is one Keychain item")
     func theWholeSessionIsOneItem() async throws {
         try await store().save(credentials)
