@@ -83,6 +83,7 @@ struct ContractFixtureTests {
         "redeem.response.minimal": decodes(Redeem.self),
         "invites-mine": decodes(InvitesMine.self),
         "meta": decodes(Meta.self),
+        "diagnostics.response": decodes(DiagnosticsReceipt.self),
     ]
 
     static let platformRequests: [String: (Data) throws -> Void] = [
@@ -94,6 +95,16 @@ struct ContractFixtureTests {
         "waitlist.request": request(WaitlistReason.self, required: [], optional: ["reason"]),
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
         "redeem.request": request(RedeemRequest.self, required: ["code"]),
+        "diagnostics.request": request(
+            DiagnosticsReport.self,
+            required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
+        ),
+        "diagnostics.request.minimal": request(
+            DiagnosticsReport.self,
+            required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
+        ),
+        // The closed id lists the report may carry, shared with the backend (DG.1, DG.4).
+        "diagnostics.ids": request(DiagnosticsIds.self, required: ["routes", "screens", "sheets", "controls", "failures"]),
     ]
 
     @Test("every contract 02 fixture is mapped, and each one decodes or matches its request shape")
@@ -104,6 +115,14 @@ struct ContractFixtureTests {
     @Test("every contract 00 fixture is mapped, and each one decodes or matches its request shape")
     func platformFixtures() throws {
         try checkFolder("00", responses: Self.platformResponses, requests: Self.platformRequests)
+    }
+
+    @Test("every door the app calls is in the diagnostics route list, so a report can name it")
+    func pathTemplatesAreDiagnosticRoutes() throws {
+        let ids = try JSONDecoder.contract.decode(DiagnosticsIds.self, from: data("00", "diagnostics.ids"))
+        for path in Backend.PathTemplate.allCases {
+            #expect(ids.routes.contains(path.rawValue), "\(path.rawValue) is missing from fixtures/00/diagnostics.ids.json")
+        }
     }
 
     @Test("every error fixture is a failure envelope with a plain message, named for its code")
