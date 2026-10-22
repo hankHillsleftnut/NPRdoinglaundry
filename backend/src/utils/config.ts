@@ -79,6 +79,14 @@ export const config = {
     appUrl: process.env.INVITE_APP_URL || null,
   },
 
+  // Briefs (BE1.3). DAILY_BRIEF_UTC_TIME ("HH:MM") is when the agent's daily
+  // brief cron runs, set only where briefs run (local staging: 08:00) and unset
+  // in production (D10: no production briefs), so `nextAt` is null there.
+  // BE6.1a replaces it with each person's own time.
+  briefs: {
+    runTimeUtc: /^\d{2}:\d{2}$/.test(process.env.DAILY_BRIEF_UTC_TIME ?? '') ? process.env.DAILY_BRIEF_UTC_TIME! : null,
+  },
+
   // Admin
   admin: {
     // No default: without ADMIN_SECRET the admin routes are not mounted.

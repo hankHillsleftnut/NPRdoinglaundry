@@ -40,6 +40,7 @@ struct ContractFixtureTests {
         "brief.latest.quiet": decodes(LatestBrief.self),
         "brief.latest.none": decodes(LatestBrief.self),
         "brief.latest.off": decodes(LatestBrief.self),
+        "brief.latest.making": decodes(LatestBrief.self),
         "briefs.list": decodes(BriefPage.self),
         "briefs.list.last": decodes(BriefPage.self),
         "briefs.enabled.response": decodes(Enabled.self),
@@ -48,6 +49,7 @@ struct ContractFixtureTests {
         "guesses.silent": decodes(Guesses.self),
         "guess.answer": decodes(Answer.self),
         "guess.answer.declined": decodes(Answer.self),
+        "guess.answer.expired": decodes(Answer.self),
         "guess.why": decodes(Journal.Guess.self),
         "took": decodes(Journal.Took.self),
         "took.waiting": decodes(Journal.Took.self),
@@ -155,6 +157,10 @@ struct ContractFixtureTests {
         #expect(v2.brief?.audio?.durationSeconds == 74.2)
         #expect(v2.brief?.parts.last?.startSeconds == 41.5)
         #expect(try envelope(LatestBrief.self, "02", "brief.latest.off").enabled == false)
+        let making = try envelope(LatestBrief.self, "02", "brief.latest.making")
+        #expect(making.brief == nil && making.enabled && making.nextAt != nil)
+        #expect(try envelope(LatestBrief.self, "02", "brief.latest.none").nextAt == nil)
+        #expect(try envelope(Answer.self, "02", "guess.answer.expired").status == .expired)
         let briefs = try envelope(BriefPage.self, "02", "briefs.list").briefs
         #expect(briefs.map(\.date) == ["2026-10-21", "2026-10-20"], "briefs are newest first")
         #expect(briefs[0].createdAt > briefs[1].createdAt)

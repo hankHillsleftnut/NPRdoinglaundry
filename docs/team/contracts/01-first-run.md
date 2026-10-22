@@ -109,7 +109,7 @@ tear         ──▶ POST /v2/invites/redeem     (contract 00 §4: spends it; 
 
 ### 2.1 Preview (public, before sign-in)
 
-`GET /public/invites/:code` — public, no token, bucket `public` (per IP: 30 a minute), no model call (BE2.0a)
+`GET /public/invites/:code` — public, no token, bucket `invitePreview` (per IP: 30 a minute), no model call (BE2.0a)
 
 → `200`
 ```json
@@ -121,7 +121,7 @@ or, for a code that is unknown, used, revoked or expired, **the same 200 with no
 ```
 - The code is normalised as the redeem door does (case-insensitive, dashes and spaces ignored, Crockford `O→0`, `I/L→1`); a string that can't be 13 Crockford characters is `{ live: false }`, not `invalid_request`.
 - The app shows the name only when `live` is true ("priya kept a place for you."); otherwise the neutral line ("a place, kept for you."). It never tells a signed-out person that a code is used.
-- Same rule as the link page (`GET /i/:code`, BE0.12): the inviter's first name appears only for a live code. Errors: `rate_limited` only.
+- Same rule as the link page (`GET /i/:code`, BE0.12): the inviter's first name appears only for a live code. Errors: `rate_limited` only (bucket `invitePreview`, 30 a minute per address). `face.issuedOn` is the UTC date the invite was made until `users.time_zone` is written; `from` is null on founder and review invites until the founder's display name is configured (BE2.0a).
 
 ### 2.2 Check (signed in, before spending)
 

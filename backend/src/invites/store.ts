@@ -50,8 +50,8 @@ export interface InviteStore {
   /** Looks at a code without spending it (migration 021's invite_check: never reads the sealed code). */
   check(input: { userId: string; codeHash: string; nowIso: string }): Promise<CheckOutcome>;
   mine(userId: string): Promise<MyInviteRow[]>;
-  /** For the link page: whether the code is live, and the inviter's first name if so. */
-  face(codeHash: string, nowIso: string): Promise<{ live: boolean; from: string | null }>;
+  /** For the link page and the preview: whether the code is live, and the ticket's face if so (never the sealed code). */
+  face(codeHash: string, nowIso: string): Promise<{ live: false } | { live: true; face: InviteFace }>;
   joinPublicWaitlist(input: { email: string; name: string | null; reason: string | null; nowIso: string }): Promise<void>;
   // Admin.
   waitlist(status: WaitlistRow['status'] | null): Promise<WaitlistRow[]>;
@@ -121,7 +121,11 @@ export function supabaseInviteStore(db: AccessRpcClient): InviteStore {
     },
     async face(codeHash, nowIso) {
       const raw = await call<Record<string, unknown>>('invite_face', { p_code_hash: codeHash, p_now: nowIso });
-      return { live: raw?.live === true, from: raw?.live === true ? str(raw.from) : null };
+      if (raw?.live !== true) return { live: false };
+      return {
+        live: true,
+        face: { from: str(raw.from), kind: raw.kind as InviteFace['kind'], serial: serial('invite_face', raw.serial), createdAt: new Date(String(raw.created_at)).toISOString() },
+      };
     },
     async joinPublicWaitlist({ email, name, reason, nowIso }) {
       await call('join_public_waitlist', { p_email: email, p_name: name, p_reason: reason, p_now: nowIso });
