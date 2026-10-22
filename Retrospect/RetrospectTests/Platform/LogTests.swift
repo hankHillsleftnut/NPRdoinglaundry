@@ -2,6 +2,7 @@ import Foundation
 @testable import Retrospect
 import Testing
 
+@Suite(.timeLimit(.minutes(1)))
 struct LogTests {
     @Test("a log event has no string payload")
     func aLogEventHasNoStringPayload() {
