@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "spend_limited",
+    "message": "i've done all i can today; this comes back tomorrow.",
+    "retryAfterSeconds": 36000
+  }
+}

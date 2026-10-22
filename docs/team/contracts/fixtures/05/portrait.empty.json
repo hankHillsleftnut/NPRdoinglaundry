@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "portrait": {
+      "builtAt": "2026-10-21T08:00:04.200Z",
+      "sections": [],
+      "empty": [
+        "goals",
+        "state",
+        "tensions",
+        "people",
+        "threads",
+        "selfTalk",
+        "changed"
+      ]
+    }
+  }
+}

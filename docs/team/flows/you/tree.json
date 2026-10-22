@@ -1,0 +1,819 @@
+{
+ "nodes": [
+  {
+   "id": "you",
+   "parent": null,
+   "title": "You (contract 05)",
+   "plain": "see what Retro knows about your life, ask it anything, and fix what's wrong",
+   "size": "45 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.glance",
+   "parent": "you",
+   "title": "flow: you, at a glance",
+   "plain": "a living map of the people, themes and goals in your life",
+   "size": "16 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.search",
+   "parent": "you",
+   "title": "flow: search your life",
+   "plain": "ask anything and get a written answer with every source underneath",
+   "size": "11 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.node",
+   "parent": "you",
+   "title": "flow: one thing Retro believes",
+   "plain": "tap anything to see how sure Retro is and why, and say if it's right",
+   "size": "8 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.knows",
+   "parent": "you",
+   "title": "flow: what Retro knows about you",
+   "plain": "everything Retro has concluded, area by area, each one fixable",
+   "size": "6 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.whole",
+   "parent": "you",
+   "title": "flow: the whole of You",
+   "plain": "sample data, the wire, links into You, and one test of all of it",
+   "size": "4 PRs",
+   "side": "platform",
+   "needs": []
+  },
+  {
+   "id": "you.yo1",
+   "parent": "you.glance",
+   "title": "page: YO-1 you",
+   "plain": "you at a glance: the map, search and what Retro knows",
+   "size": "13 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.list",
+   "parent": "you.glance",
+   "title": "page: YO-1 list view (the portrait)",
+   "plain": "the same picture as the map, as a few honest lines",
+   "size": "3 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo2",
+   "parent": "you.search",
+   "title": "page: YO-2 search",
+   "plain": "what Retro found, in words, with numbered sources",
+   "size": "9 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo3",
+   "parent": "you.search",
+   "title": "page: YO-3 a source",
+   "plain": "open a calendar event, email or saved link search used",
+   "size": "2 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo4",
+   "parent": "you.node",
+   "title": "page: YO-4 a node",
+   "plain": "one person, theme, goal or belief, with its evidence",
+   "size": "8 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo5",
+   "parent": "you.knows",
+   "title": "page: YO-5 what i know about you",
+   "plain": "eight areas of your life, each answer with how sure Retro is",
+   "size": "6 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo1.topbar",
+   "parent": "you.yo1",
+   "title": "component: top bar, You variant",
+   "plain": "the tab title with your list view and settings beside it",
+   "size": "1 PR",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo1.field",
+   "parent": "you.yo1",
+   "title": "component: search field",
+   "plain": "type or say a question about your life",
+   "size": "1 PR",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo1.map",
+   "parent": "you.yo1",
+   "title": "component: the you map (C38)",
+   "plain": "you in the middle, the people and themes around you",
+   "size": "6 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo1.data",
+   "parent": "you.yo1",
+   "title": "component: map data",
+   "plain": "the map is built from what the brain really holds",
+   "size": "4 PRs",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "you.list.data",
+   "parent": "you.list",
+   "title": "component: portrait data",
+   "plain": "every portrait line traces back to something real",
+   "size": "2 PRs",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "you.yo2.answer",
+   "parent": "you.yo2",
+   "title": "component: the answer card",
+   "plain": "what Retro found, with citation numbers and guesses marked",
+   "size": "3 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo2.sources",
+   "parent": "you.yo2",
+   "title": "component: numbered sources",
+   "plain": "each source numbered to its citation, your words highlighted",
+   "size": "1 PR",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo2.data",
+   "parent": "you.yo2",
+   "title": "component: search data",
+   "plain": "search knows which sentences are sure, and never pays twice",
+   "size": "3 PRs",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "you.yo4.claim",
+   "parent": "you.yo4",
+   "title": "component: linked chips (the claim is reused from podcasts)",
+   "plain": "what this belief connects to, one tap away",
+   "size": "1 PR",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo4.data",
+   "parent": "you.yo4",
+   "title": "component: node data and still true",
+   "plain": "one consistent read of any belief, and saying it's right",
+   "size": "4 PRs",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "you.yo4.question",
+   "parent": "you.yo4",
+   "title": "component: same person?",
+   "plain": "Retro asks once whether two names are one person",
+   "size": "1 PR",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "you.yo5.row",
+   "parent": "you.yo5",
+   "title": "component: answer row",
+   "plain": "one answer with its question and how sure Retro is",
+   "size": "2 PRs",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "you.yo5.data",
+   "parent": "you.yo5",
+   "title": "component: understanding data",
+   "plain": "the areas, in your words, from the brain's own read",
+   "size": "3 PRs",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE5.0",
+   "parent": "you.yo4.data",
+   "title": "BE5.0 claim reader (agent)",
+   "plain": "any belief comes back with its text, sureness and evidence",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE5.1a",
+   "parent": "you.yo4.data",
+   "title": "BE5.1a people ranked and one person (agent)",
+   "plain": "the people who matter most come first, including ones you meet",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BE5.0"
+   ]
+  },
+  {
+   "id": "BE5.1b",
+   "parent": "you.yo4.question",
+   "title": "BE5.1b same-person doors",
+   "plain": "answer 'same person?' once and it sticks",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2",
+    "BE0.12",
+    "BEA.2",
+    "BE5.1a"
+   ]
+  },
+  {
+   "id": "BE5.2a",
+   "parent": "you.list.data",
+   "title": "BE5.2a portrait from live rows (agent)",
+   "plain": "a short picture of you where empty beats stale",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.0",
+    "BE5.1a"
+   ]
+  },
+  {
+   "id": "BE5.2b",
+   "parent": "you.list.data",
+   "title": "BE5.2b portrait door",
+   "plain": "the portrait reaches the app with a link on every line",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE5.2a",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE5.3a",
+   "parent": "you.yo5.data",
+   "title": "BE5.3a understanding in your words (agent)",
+   "plain": "Retro's questions about you are phrased to you",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE5.3b",
+   "parent": "you.yo4.data",
+   "title": "BE5.3b still true for answers and facts (agent)",
+   "plain": "say 'still true' and Retro becomes more sure",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.1",
+    "BEA.2",
+    "BE5.0"
+   ]
+  },
+  {
+   "id": "BE5.3c",
+   "parent": "you.yo5.data",
+   "title": "BE5.3c understanding and verdict doors",
+   "plain": "what Retro knows and 'still true' reach the app",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.3a",
+    "BE5.3b",
+    "BE1.6",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE5.5a",
+   "parent": "you.yo1.data",
+   "title": "BE5.5a map nodes (agent)",
+   "plain": "the map shows what really matters, never decoration",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.1a",
+    "BE5.3a"
+   ]
+  },
+  {
+   "id": "BE5.5b",
+   "parent": "you.yo1.data",
+   "title": "BE5.5b map lines (agent)",
+   "plain": "a line means two things really share moments",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.5a",
+    "BE5.0"
+   ]
+  },
+  {
+   "id": "BE5.5c",
+   "parent": "you.yo1.data",
+   "title": "BE5.5c map and node doors",
+   "plain": "the map and any node reach the app safely",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.5b",
+    "BE5.1a",
+    "BE5.0",
+    "BE1.6",
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE5.4a",
+   "parent": "you.yo2.data",
+   "title": "BE5.4a search sentence sureness (agent)",
+   "plain": "search marks anything less than certain as a guess",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2",
+    "BEA.4",
+    "BE5.0"
+   ]
+  },
+  {
+   "id": "BE5.4b",
+   "parent": "you.yo2.data",
+   "title": "BE5.4b search and source doors",
+   "plain": "search reaches the app, and a retry never pays twice",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE5.4a",
+    "BE0.0",
+    "BE0.1",
+    "BE0.2",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "PL3.6a",
+   "parent": "you.whole",
+   "title": "PL3.6a You wire models and cached reads",
+   "plain": "You opens instantly with what you saw last",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL2.4",
+    "PL1.1",
+    "contract-05",
+    "Platform/Flows/You.swift"
+   ]
+  },
+  {
+   "id": "PL3.6b",
+   "parent": "you.yo1.data",
+   "title": "PL3.6b map and portrait live",
+   "plain": "your map is real, and new things bloom in once",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.6a",
+    "BE5.5c",
+    "BE5.2b"
+   ]
+  },
+  {
+   "id": "PL3.6c",
+   "parent": "you.yo4.data",
+   "title": "PL3.6c node, still true, same person live",
+   "plain": "still true and same person save once, even offline",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.6a",
+    "PL2.2",
+    "PL3.1e",
+    "BE5.5c",
+    "BE5.3c",
+    "BE5.1b"
+   ]
+  },
+  {
+   "id": "PL3.6d",
+   "parent": "you.yo5.data",
+   "title": "PL3.6d understanding live",
+   "plain": "what Retro knows opens instantly and stays current",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.6a",
+    "BE5.3c"
+   ]
+  },
+  {
+   "id": "PL3.6e",
+   "parent": "you.yo2.data",
+   "title": "PL3.6e search live",
+   "plain": "ask once, get the answer, never pay twice for a retry",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.6a",
+    "BE5.4b"
+   ]
+  },
+  {
+   "id": "PL3.6f",
+   "parent": "you.whole",
+   "title": "PL3.6f routes into You",
+   "plain": "a notification question opens exactly that question",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL5.2"
+   ]
+  },
+  {
+   "id": "UI5.0",
+   "parent": "you.whole",
+   "title": "UI5.0 SampleYouData and ledger",
+   "plain": "every You screen can be built and tested before the server",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "Platform/Flows/You.swift",
+    "PL3.6a"
+   ]
+  },
+  {
+   "id": "C17-y",
+   "parent": "you.yo1.topbar",
+   "title": "C17-y top bar, You variant",
+   "plain": "the list view and your settings one tap away",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C17",
+    "C17-t",
+    "#45"
+   ]
+  },
+  {
+   "id": "C12-y",
+   "parent": "you.yo1.field",
+   "title": "C12-y search field, You variant",
+   "plain": "ask by typing or talking",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#53",
+    "#44"
+   ]
+  },
+  {
+   "id": "C38.1",
+   "parent": "you.yo1.map",
+   "title": "C38.1 map canvas, orbits, slot table",
+   "plain": "the founder's hand-made map with your data placed in it",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "C38.2",
+   "parent": "you.yo1.map",
+   "title": "C38.2 map orb",
+   "plain": "each thing a glass sphere sized by how much it matters",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.1"
+   ]
+  },
+  {
+   "id": "C38.3",
+   "parent": "you.yo1.map",
+   "title": "C38.3 map threads",
+   "plain": "straight lines whose weight says how strong a link is",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C38.1"
+   ]
+  },
+  {
+   "id": "C38.4",
+   "parent": "you.yo1.map",
+   "title": "C38.4 map touch, states, VoiceOver list",
+   "plain": "tap anything; the map reads as a list too",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.2",
+    "C38.3",
+    "C39.1",
+    "C39.2",
+    "C39.4",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "C38.5",
+   "parent": "you.yo1.map",
+   "title": "C38.5 map life and opening",
+   "plain": "the map gently breathes and opens with you first",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.4"
+   ]
+  },
+  {
+   "id": "M12",
+   "parent": "you.yo1.map",
+   "title": "M12 a new thing blooms into the map",
+   "plain": "when Retro learns something new, you see it arrive",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.5",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "P18",
+   "parent": "you.yo1",
+   "title": "P18 YO-1 you",
+   "plain": "you, at a glance",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C17-y",
+    "C12-y",
+    "C38.4",
+    "C38.5",
+    "C18",
+    "C39",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "UI6.7",
+   "parent": "you.list",
+   "title": "UI6.7 the portrait list view",
+   "plain": "the map as a few honest lines (needs a Paper drawing)",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "Paper drawing",
+    "UI5.0",
+    "C39.2"
+   ]
+  },
+  {
+   "id": "C32-n",
+   "parent": "you.yo2.sources",
+   "title": "C32-n numbered source row",
+   "plain": "sources numbered to the citations, your words highlighted",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C32"
+   ]
+  },
+  {
+   "id": "UI6.1a",
+   "parent": "you.yo2.answer",
+   "title": "UI6.1a answer card shell and states",
+   "plain": "what Retro found on top, or a plain 'nothing here'",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T01",
+    "C39.1",
+    "C39.4",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "UI6.1b",
+   "parent": "you.yo2.answer",
+   "title": "UI6.1b citation chips",
+   "plain": "tap a number to see the source it rests on",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "UI6.1a",
+    "C32-n"
+   ]
+  },
+  {
+   "id": "UI6.1c",
+   "parent": "you.yo2.answer",
+   "title": "UI6.1c guess sentences and only-certain switch",
+   "plain": "a guess never reads like a fact; hide guesses if you like",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "UI6.1a",
+    "#50"
+   ]
+  },
+  {
+   "id": "P19.1",
+   "parent": "you.yo2",
+   "title": "P19.1 YO-2 search in place",
+   "plain": "ask and read the answer with every source",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P18",
+    "C12-y",
+    "UI6.1a",
+    "UI6.1c",
+    "C32-n",
+    "C39"
+   ]
+  },
+  {
+   "id": "P19.2",
+   "parent": "you.yo2",
+   "title": "P19.2 citations and opening sources",
+   "plain": "every source opens where it belongs",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P19.1",
+    "UI6.1b",
+    "P20",
+    "P21.1",
+    "P12",
+    "UI6.6"
+   ]
+  },
+  {
+   "id": "UI6.6",
+   "parent": "you.yo3",
+   "title": "UI6.6 this supports (YO-3 merged into JR-4)",
+   "plain": "your own words from search show what they back up",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P12",
+    "C32",
+    "founder Q4"
+   ]
+  },
+  {
+   "id": "P20",
+   "parent": "you.yo3",
+   "title": "P20 YO-3 a source",
+   "plain": "read the record or saved link search used",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C17",
+    "UI5.0",
+    "founder Q4"
+   ]
+  },
+  {
+   "id": "UI6.3",
+   "parent": "you.yo5.row",
+   "title": "UI6.3 sureness word and dots",
+   "plain": "how sure Retro is, in a word and four dots",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "UI6.4",
+   "parent": "you.yo4.claim",
+   "title": "UI6.4 link chips",
+   "plain": "what this connects to, one tap away",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "P21.1",
+   "parent": "you.yo4",
+   "title": "P21.1 YO-4 node sheet",
+   "plain": "one belief, its evidence, still true or not right",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C19.1",
+    "claim component (podcasts plan)",
+    "UI6.4",
+    "C32",
+    "#45",
+    "UI5.0",
+    "P18"
+   ]
+  },
+  {
+   "id": "P21.2",
+   "parent": "you.yo4",
+   "title": "P21.2 YO-4 the question state",
+   "plain": "one honest question, asked once",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P21.1",
+    "C28"
+   ]
+  },
+  {
+   "id": "UI6.5",
+   "parent": "you.yo5.row",
+   "title": "UI6.5 answer row",
+   "plain": "one answer, its question and how sure",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "UI6.3",
+    "T01"
+   ]
+  },
+  {
+   "id": "P22",
+   "parent": "you.yo5",
+   "title": "P22 YO-5 what i know about you",
+   "plain": "everything Retro concluded, area by area",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C17",
+    "UI6.5",
+    "C39",
+    "UI5.0"
+   ]
+  },
+  {
+   "id": "T05c",
+   "parent": "you.whole",
+   "title": "T05c the You flow test",
+   "plain": "one test proves all of You works end to end",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P18",
+    "P19.1",
+    "P19.2",
+    "P20",
+    "P21.1",
+    "P21.2",
+    "P22",
+    "UI6.6",
+    "PL3.6f"
+   ]
+  }
+ ]
+}

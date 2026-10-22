@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "data": {
+    "node": {
+      "ref": {
+        "kind": "unknown",
+        "id": "00000000-0000-4000-8000-000000000701"
+      },
+      "kindLabel": "belief",
+      "name": "what's weighing on you",
+      "claim": {
+        "ref": {
+          "kind": "answer",
+          "id": "00000000-0000-4000-8000-000000000701"
+        },
+        "text": "the job decision",
+        "sureness": "just a hunch",
+        "isGuess": true,
+        "sourceCount": 2,
+        "movedAt": "2026-10-18T21:00:00.000Z",
+        "confirmed": false,
+        "canConfirm": true
+      },
+      "evidence": [
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000603"
+          },
+          "via": "voice",
+          "date": "2026-10-02",
+          "excerpt": "my sister priya thinks i should take the job",
+          "stance": "supports"
+        },
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000607"
+          },
+          "via": "journal",
+          "date": "2026-10-18",
+          "excerpt": "can't stop thinking about the offer",
+          "stance": "supports"
+        }
+      ],
+      "evidenceTotal": 2,
+      "linked": [],
+      "question": null
+    }
+  }
+}

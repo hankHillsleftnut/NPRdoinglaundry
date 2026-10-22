@@ -1,0 +1,47 @@
+{
+  "success": true,
+  "data": {
+    "search": {
+      "id": "00000000-0000-4000-8000-000000000802",
+      "query": "dinner with priya",
+      "outcome": "found",
+      "sentences": [
+        {
+          "text": "you had dinner with priya on 11 october.",
+          "cites": [
+            1
+          ],
+          "sure": "certain"
+        }
+      ],
+      "guessCount": 0,
+      "abstain": null,
+      "sources": [
+        {
+          "n": 1,
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000602"
+          },
+          "via": "calendar",
+          "date": "2026-10-11",
+          "snippet": "dinner with priya",
+          "matches": [
+            {
+              "start": 0,
+              "length": 6
+            },
+            {
+              "start": 7,
+              "length": 4
+            },
+            {
+              "start": 12,
+              "length": 5
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

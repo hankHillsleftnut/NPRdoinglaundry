@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "data": {
+    "search": {
+      "id": "00000000-0000-4000-8000-000000000804",
+      "query": "am i burned out",
+      "outcome": "abstained",
+      "sentences": [],
+      "guessCount": 0,
+      "abstain": {
+        "reason": "ownWordsOnly",
+        "why": "nothing in your own words says how you feel about work lately; the sources show long days."
+      },
+      "sources": [
+        {
+          "n": 1,
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000605"
+          },
+          "via": "calendar",
+          "date": "2026-10-20",
+          "snippet": "board prep until 8",
+          "matches": []
+        }
+      ]
+    }
+  }
+}
