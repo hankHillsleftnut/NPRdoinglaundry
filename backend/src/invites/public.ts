@@ -4,18 +4,21 @@ import { DoorError, sendError } from '../doors/errors.js';
 import type { Limiter } from '../doors/limits.js';
 import type { DoorLogLine } from '../utils/log.js';
 import { displayCode, hashCode, normaliseCode } from './codes.js';
+import { toFace, TicketFace } from './doors.js';
 import type { InviteStore } from './store.js';
 
 /**
- * The public side of invites (BE0.12, contract 00 §4), no token:
+ * The public side of invites (BE0.12 and BE2.0a, contract 00 §4 and 01 §2.1), no token:
  *   POST /public/waitlist                     the website's form; always { received: true }
  *   GET  /i/:code                             the link page (60 per 10 minutes per address; over it, the neutral page)
+ *   GET  /public/invites/:code                the preview: the ticket's face for a live code, nothing otherwise (30 a minute per address)
  *   GET  /.well-known/apple-app-site-association   so /i/* opens the app
  *
  * Nothing here says whether an email is known or a code is valid: the form
- * answers the same either way, and the link page shows the inviter's first
- * name only for a live code, otherwise the same neutral page. No cookies.
- * Never log an email, a code or a link.
+ * answers the same either way, the link page shows the inviter's first name
+ * only for a live code, otherwise the same neutral page, and the preview
+ * answers the same { live: false } for a used, revoked, expired, unknown or
+ * malformed code. No cookies. Never log an email, a code or a link.
  */
 export interface PublicInviteDeps {
   invites: InviteStore;
@@ -37,6 +40,13 @@ const PublicWaitlistBody = z.object({
   /** A honeypot: people never see it, so anything in it is a bot. */
   website: z.string().max(200).optional(),
 }).strict();
+
+/** Contract 01 §2.1: the preview's answer; the 01 fixtures are checked against it. */
+export const PreviewResponse = z.union([
+  z.object({ live: z.literal(true), face: TicketFace }).strict(),
+  z.object({ live: z.literal(false), face: z.null() }).strict(),
+]);
+export type PreviewResponse = z.infer<typeof PreviewResponse>;
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
@@ -102,12 +112,39 @@ export function createPublicInviteRouter(deps: PublicInviteDeps): Router {
       return;
     }
     void (async () => {
-      const face = code ? await deps.invites.face(hashCode(code), new Date(deps.now()).toISOString()) : { live: false, from: null };
-      res.status(200).send(linkPage({ code, from: face.live ? face.from : null, appUrl: deps.appUrl }));
+      const face = code ? await deps.invites.face(hashCode(code), new Date(deps.now()).toISOString()) : { live: false as const };
+      res.status(200).send(linkPage({ code, from: face.live ? face.face.from : null, appUrl: deps.appUrl }));
     })().catch((err: unknown) => {
       try { deps.reportBug(err, 'invites.page'); } catch { /* still answer */ }
       // A lookup failure looks like any other code: the neutral page.
       res.status(200).send(linkPage({ code, from: null, appUrl: deps.appUrl }));
+    });
+  });
+
+  // The preview (BE2.0a): what the ticket's promise says before sign-in. The
+  // lookup always runs, even for a string that can't be a code (its hash is
+  // looked up and never found), so a sweep learns nothing from timing; every
+  // non-live case is the identical body. Over the limit is the one error.
+  router.get('/public/invites/:code', (req: Request, res: Response) => {
+    const started = deps.now();
+    const done = (status: number, code?: DoorLogLine['code']) =>
+      deps.log.door({ door: 'invites.preview', userId: null, status, ...(code ? { code } : {}), ms: deps.now() - started });
+    res.setHeader('Cache-Control', 'no-store');
+    void (async () => {
+      const taken = deps.limiter.take(`ip:${req.ip ?? 'unknown'}`, 'invitePreview', started);
+      if (!taken.ok) throw new DoorError('rate_limited', { retryAfterSeconds: taken.retryAfterSeconds });
+      const raw = String(req.params.code ?? '');
+      const code = normaliseCode(raw);
+      const face = await deps.invites.face(hashCode(code ?? raw.slice(0, 64)), new Date(started).toISOString());
+      const data: PreviewResponse = face.live ? { live: true, face: toFace(face.face) } : { live: false, face: null };
+      res.status(200).json({ success: true, data });
+      done(200);
+    })().catch((err: unknown) => {
+      if (!(err instanceof DoorError)) {
+        try { deps.reportBug(err, 'invites.preview'); } catch { /* the client still gets its envelope */ }
+      }
+      const sent = sendError(res, err);
+      done(sent.status, sent.code);
     });
   });
 

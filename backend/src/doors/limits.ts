@@ -23,9 +23,10 @@
  * only public route that reaches the database can't be used to walk codes.
  * `inviteCheck` / `inviteCheckAddress`: looking at a code before the tear
  * (POST /v2/invites/check), 20 per 10 minutes per person and 60 per address,
- * its own buckets so checking never eats the tear's five.
+ * its own buckets so checking never eats the tear's five. `invitePreview`:
+ * the signed-out preview (GET /public/invites/:code), 30 a minute per address.
  */
-export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist' | 'invitePage' | 'inviteCheck' | 'inviteCheckAddress';
+export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist' | 'invitePage' | 'inviteCheck' | 'inviteCheckAddress' | 'invitePreview';
 
 export type TakeResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
@@ -62,6 +63,7 @@ export const DOOR_LIMITS = {
     invitePage: [{ windowMs: 10 * MINUTE, max: 60 }],
     inviteCheck: [{ windowMs: 10 * MINUTE, max: 20 }],
     inviteCheckAddress: [{ windowMs: 10 * MINUTE, max: 60 }],
+    invitePreview: [{ windowMs: MINUTE, max: 30 }],
   } satisfies Record<LimitBucket, readonly LimitWindow[]>,
   /** Rolling window for model spend. */
   spendWindowMs: DAY,
