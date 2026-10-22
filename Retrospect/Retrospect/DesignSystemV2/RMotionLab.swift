@@ -9,62 +9,6 @@ import SwiftUI
 #if DEBUG
 // A debug lab: (name, animation, values) rows read better as tuples here.
 // swiftlint:disable large_tuple
-/// The lab's pages. `-DesignLabPage parts` opens one directly (for screenshots and recordings).
-enum RLabPage: String, CaseIterable, Identifiable {
-    case motion, foundation, parts, artwork, toast
-    case offline
-    case evidence
-    case entryrow
-    case journaldata
-
-    var id: String {
-        rawValue
-    }
-
-    /// `-DesignLabToast` still opens straight on the toast page (for testing on a phone).
-    static var launch: RLabPage {
-        if ProcessInfo.processInfo.arguments.contains("-DesignLabToast") {
-            return .toast
-        }
-        return UserDefaults.standard.string(forKey: "DesignLabPage").flatMap(RLabPage.init(rawValue:)) ?? .motion
-    }
-}
-
-struct RDesignLab: View {
-    @State private var page = RLabPage.launch
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Picker("lab", selection: $page) {
-                ForEach(RLabPage.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, RDimension.spaceScreenMargin)
-            .padding(.vertical, RDimension.space2)
-            switch page {
-            case .motion: RMotionLab()
-            case .foundation: RFoundationGallery()
-            case .parts:
-                ScrollView {
-                    VStack(alignment: .leading, spacing: RDimension.space8) {
-                        RParts1Gallery()
-                        RParts2Gallery()
-                    }
-                }
-            case .artwork: RArtworkLab()
-            case .toast: RToastGallery()
-            case .offline: ROfflineLineGallery()
-            case .evidence: REvidenceRowGallery()
-            case .entryrow: REntryRowGallery()
-            case .journaldata: SampleJournalGallery()
-            }
-        }
-        .background(RColor.backgroundCanvas)
-        .rLifeHost()
-        .rReadsScreenHeight()
-    }
-}
-
 struct RMotionLab: View {
     /// Toggled by "run": every track moves from left to right (and back on the next run).
     @State private var forward = false

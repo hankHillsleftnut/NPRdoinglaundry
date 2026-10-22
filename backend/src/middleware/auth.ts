@@ -45,7 +45,7 @@ export interface UserRowsClient {
 export function userLookupWith(db: UserRowsClient): UserLookup {
   return async (userId) => {
     const read = (columns: string) => db.from(Tables.USERS).select(columns).eq('id', userId).maybeSingle();
-    let { data, error } = await read('id, apple_user_id, email, token_version');
+    let { data, error } = await read('id, apple_user_id, email, token_version, first_name');
     if (error?.code === UNDEFINED_COLUMN) {
       if (!warnedNoTokenVersion) {
         warnedNoTokenVersion = true;
@@ -55,12 +55,13 @@ export function userLookupWith(db: UserRowsClient): UserLookup {
     }
     if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
     if (!data) return null;
-    const row = data as unknown as { id: string; apple_user_id: string; email: string | null; token_version?: number };
+    const row = data as unknown as { id: string; apple_user_id: string; email: string | null; token_version?: number; first_name?: string | null };
     return {
       id: row.id,
       appleUserId: row.apple_user_id,
       email: row.email ?? undefined,
       ...(typeof row.token_version === 'number' ? { tokenVersion: row.token_version } : {}),
+      ...(typeof row.first_name === 'string' ? { firstName: row.first_name } : {}),
     };
   };
 }
