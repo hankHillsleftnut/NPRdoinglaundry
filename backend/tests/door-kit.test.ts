@@ -23,7 +23,7 @@ const noAgent: AgentDoorClient = {
 
 /** A tiny app: a fake auth middleware (x-test-user), the kit, the v2 error handler. */
 async function harness(mount: (door: ReturnType<typeof createDoorKit>, router: express.Router) => void, opts: {
-  agent?: AgentDoorClient; limiter?: MemoryLimiter; clock?: { now: number };
+  agent?: AgentDoorClient; limiter?: MemoryLimiter; clock?: { now: number }; reportThrows?: boolean;
 } = {}) {
   const clock = opts.clock ?? { now: T0 };
   const limiter = opts.limiter ?? new MemoryLimiter();
@@ -31,7 +31,10 @@ async function harness(mount: (door: ReturnType<typeof createDoorKit>, router: e
   const bugs: string[] = [];
   const door = createDoorKit({
     agent: opts.agent ?? noAgent, limiter, log: createLog((l) => lines.push(l)), now: () => clock.now,
-    reportBug: (_err, name) => bugs.push(name),
+    reportBug: (_err, name) => {
+      bugs.push(name);
+      if (opts.reportThrows) throw new Error('Sentry is down');
+    },
   });
   const router = express.Router();
   mount(door, router);
@@ -239,6 +242,45 @@ test('the time zone header is used only when it names a real zone', async () => 
     await h.request('GET', '/tz', { user: ALICE, headers: { 'X-Time-Zone': 'Not/AZone' } });
     await h.request('GET', '/tz', { user: ALICE });
     assert.deepEqual(seen, ['America/Los_Angeles', null, null]);
+  } finally {
+    await h.close();
+  }
+});
+
+// Integrator review of #79: a failing bug report must not break the answer.
+test('a door still answers its envelope when reporting the bug fails', async () => {
+  const h = await harness((door, router) => router.get('/boom', door({
+    name: 'boom', bucket: 'read', request: z.object({}).strict(),
+    call: async () => { throw new Error('boom'); }, map: () => ({}),
+  })), { reportThrows: true });
+  try {
+    const res = await h.request('GET', '/boom', { user: ALICE });
+    assert.equal(res.status, 500);
+    assert.equal(errorCode(res.body), 'internal');
+    assert.equal(h.lines.length, 1, 'and the log line is still written');
+  } finally {
+    await h.close();
+  }
+});
+
+// Integrator review of #79: every client-side body failure is the request's fault.
+test('a body in an unsupported charset is invalid_request, not a 500', async () => {
+  const h = await harness((door, router) => router.use(createV2Router(door)));
+  try {
+    const res = await h.request('POST', '/ping', { user: ALICE, body: '{}', headers: { 'Content-Type': 'application/json; charset=latin1' } });
+    assert.equal(res.status, 400);
+    assert.equal(errorCode(res.body), 'invalid_request');
+  } finally {
+    await h.close();
+  }
+});
+
+test('an unknown /v2 path is the envelope\'s 404', async () => {
+  const h = await harness((door, router) => router.use(createV2Router(door)));
+  try {
+    const res = await h.request('GET', '/nothing-here', { user: ALICE });
+    assert.equal(res.status, 404);
+    assert.equal(errorCode(res.body), 'not_found');
   } finally {
     await h.close();
   }

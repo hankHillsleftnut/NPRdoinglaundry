@@ -12,7 +12,7 @@ import { doorSuite } from './support/door-suite.js';
  */
 const owners = new Map<string, string>();
 function withSampleDoor(door: DoorFactory): Router {
-  const router = createV2Router(door);
+  const router = Router();
   router.get('/samples/:id', door({
     name: 'samples.get',
     bucket: 'read',
@@ -21,6 +21,7 @@ function withSampleDoor(door: DoorFactory): Router {
     call: (ctx, req) => ctx.agent.get<{ title: string }>(`/samples/${ctx.userId}/${req.id}`, { timeoutMs: 100, retry: 'read' }),
     map: (r) => ({ title: r.title }),
   }));
+  router.use(createV2Router(door));
   return router;
 }
 

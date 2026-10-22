@@ -106,6 +106,15 @@ export function createDoorKit(deps: DoorKitDeps) {
         }
       }
 
+      // Reporting a bug must never itself break the answer.
+      const report = (err: unknown) => {
+        try {
+          deps.reportBug(err, spec.name);
+        } catch {
+          // Nowhere left to report to; the client still gets its envelope.
+        }
+      };
+
       const userId = req.user?.id ?? null;
       const appVersion = req.header('X-App-Version');
       let costUsd: number | undefined;
@@ -145,7 +154,7 @@ export function createDoorKit(deps: DoorKitDeps) {
         } catch (err) {
           if (err instanceof DoorError) throw err;
           const mapped = fromAgentError(err);
-          if (mapped.isBug) deps.reportBug(err, spec.name);
+          if (mapped.isBug) report(err);
           throw mapped.error;
         }
         const reported = spec.cost?.(result);
@@ -160,11 +169,11 @@ export function createDoorKit(deps: DoorKitDeps) {
 
       run().catch((err: unknown) => {
         if (res.headersSent) {
-          deps.reportBug(err, spec.name);
+          report(err);
           finish(res.statusCode, 'internal');
           return;
         }
-        if (!(err instanceof DoorError)) deps.reportBug(err, spec.name);
+        if (!(err instanceof DoorError)) report(err);
         const sent = sendError(res, err);
         finish(sent.status, sent.code);
       });

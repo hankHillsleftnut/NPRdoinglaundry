@@ -20,7 +20,7 @@ import { globalLimiter, trustRenderProxy } from './server-settings.js';
 import type { AgentDoorClient } from './doors/agent.js';
 import { createDoorKit, type DoorFactory } from './doors/door.js';
 import { v2ErrorHandler } from './doors/errors.js';
-import type { Limiter } from './doors/limits.js';
+import { MemoryLimiter, type Limiter } from './doors/limits.js';
 import { createV2Router } from './doors/router.js';
 import { log, type DoorLogLine } from './utils/log.js';
 
@@ -31,7 +31,8 @@ import { log, type DoorLogLine } from './utils/log.js';
  */
 export interface AppDeps {
   agent: AgentDoorClient;
-  limiter: Limiter;
+  /** The one per-user limiter every limited route shares; built here unless a test passes its own. */
+  limiter?: Limiter;
   now: () => number;
   users: UserLookup;
   log?: { door(line: DoorLogLine): void };
@@ -46,6 +47,7 @@ export interface AppDeps {
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
   const legacyAuth = makeAuthMiddleware(deps.users);
+  const limiter = deps.limiter ?? new MemoryLimiter();
   trustRenderProxy(app);
 
   // Security middleware — relax CSP for the admin dashboard's inline scripts
@@ -97,7 +99,7 @@ export function createApp(deps: AppDeps): express.Express {
   // The new app's doors (src/doors). Public /v2 routes are mounted before this in later bytes.
   const door = createDoorKit({
     agent: deps.agent,
-    limiter: deps.limiter,
+    limiter,
     log: deps.log ?? log,
     now: deps.now,
     reportBug: (err, name) => captureException(err, { door: name }),

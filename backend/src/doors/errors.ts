@@ -123,7 +123,9 @@ export function v2ErrorHandler(err: unknown, _req: Request, res: Response, next:
     next(err);
     return;
   }
-  const type = (err as { type?: unknown } | null)?.type;
-  const clientFault = type === 'entity.parse.failed' || type === 'entity.too.large' || type === 'encoding.unsupported';
-  sendError(res, clientFault ? new DoorError('invalid_request') : err);
+  // body-parser marks the client's mistakes (bad JSON, too large, wrong
+  // charset or encoding) with a 4xx status; those are the request's fault.
+  const status = (err as { status?: unknown; statusCode?: unknown } | null);
+  const code = typeof status?.status === 'number' ? status.status : typeof status?.statusCode === 'number' ? status.statusCode : 500;
+  sendError(res, code < 500 ? new DoorError('invalid_request') : err);
 }

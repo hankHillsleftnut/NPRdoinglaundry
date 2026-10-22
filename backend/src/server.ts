@@ -4,12 +4,10 @@ import { config } from './utils/config.js';
 import { supabaseUserLookup } from './middleware/auth.js';
 import { applyServerTimeouts } from './server-settings.js';
 import { createAgentDoorClient } from './doors/agent.js';
-import { MemoryLimiter } from './doors/limits.js';
 
 /** The real server: real dependencies, then listen. `npm start` reaches this through index.ts. */
 const app = createApp({
   agent: createAgentDoorClient({ baseUrl: config.agent.serviceUrl, internalSecret: config.agent.internalSecret }),
-  limiter: new MemoryLimiter(),
   now: Date.now,
   users: supabaseUserLookup,
 });
