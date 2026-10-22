@@ -11,7 +11,7 @@ For the **Platform engineer** and the **views engineer**. This collects what the
 | Product, decisions, hard rules | `docs/team/context.md` |
 | How mistakes become checks | `docs/team/trust-ladder.md` |
 | Testing standard | `docs/team/testing.md` |
-| What reviewers caught (check before every first push) | `/private/tmp/claude-501/-Users-shauryanarang-Projects-retrospect-main/fa81fd21-82ce-4e36-8766-e74f842ffa6e/scratchpad/first-push-checklist.md` |
+| What reviewers caught (check before every first push) | `docs/team/first-push-checklist.md (on origin/main)` |
 | Journal cards (Beta 1) | `docs/team/ui-engineer.md` + `docs/team/ui/*.md` (views); `docs/team/app-plumbing-engineer.md` + `docs/team/plumbing/*.md` (Platform) |
 | Every later area, to PR level | `docs/team/flows/<area>/` for first-run, podcasts, goals, you, settings, outside |
 | Cross-plan fixes: component owners, renumbered ids, migration numbers, duplicates | `docs/team/plans-consistency.md` (**read §1 and §4 before building any shared component**) |
