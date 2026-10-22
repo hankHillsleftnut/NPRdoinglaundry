@@ -5,8 +5,9 @@
 //  `Repositories.Journal`, writes through the outbox. Today is shown from the store at once
 //  (the rows written here, plus the last list the server gave) and refreshed from the server;
 //  delivery comes only from watching the rows, so a bubble's state is whatever the drainer
-//  wrote, never the seam's guess. The brief, guesses, the drawer and "what Retro took" are
-//  PL3.1b to e; until then they answer as "nothing yet" and never throw.
+//  wrote, never the seam's guess. The brief (PL3.1b) is worked out from the last answer at the
+//  person's day, and looked for again while it's being made. Guesses, the drawer and "what Retro
+//  took" are PL3.1c to e; until then they answer as "nothing yet" and never throw.
 //
 import Foundation
 import Observation
@@ -29,6 +30,9 @@ final class LiveJournalData: Flows.JournalData {
     @ObservationIgnored private let reachability: any Backend.Reachability
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let timeZone: @Sendable () -> TimeZone
+    @ObservationIgnored private let clock: any Clock<Duration>
+    @ObservationIgnored private var latest: Backend.Endpoints.BriefLatest.Latest?
+    @ObservationIgnored private var briefPoll: Task<Void, Never>?
     @ObservationIgnored private var server: [Journal.Entry]?
     @ObservationIgnored private var rows: [Store.EntryRow] = []
     @ObservationIgnored private var acknowledgements: [String: String] = [:]
@@ -41,8 +45,10 @@ final class LiveJournalData: Flows.JournalData {
         outbox: Store.Outbox,
         reachability: any Backend.Reachability,
         now: @escaping @Sendable () -> Date = { Date() },
-        timeZone: @escaping @Sendable () -> TimeZone = { .current }
+        timeZone: @escaping @Sendable () -> TimeZone = { .current },
+        clock: any Clock<Duration> = ContinuousClock()
     ) {
+        self.clock = clock
         self.repository = repository
         self.outbox = outbox
         self.reachability = reachability
@@ -54,6 +60,8 @@ final class LiveJournalData: Flows.JournalData {
     func stop() {
         observing?.cancel()
         watchingReachability?.cancel()
+        briefPoll?.cancel()
+        briefPoll = nil
         observing = nil
         watchingReachability = nil
     }
@@ -68,7 +76,6 @@ final class LiveJournalData: Flows.JournalData {
             server = cached
             publish()
         }
-        brief = .loaded(.off)
         do {
             server = try await repository.refreshToday(day: loadDay)
             publish()
@@ -83,6 +90,86 @@ final class LiveJournalData: Flows.JournalData {
                 publish()
             }
         }
+        await loadBrief(day: loadDay)
+    }
+
+    // MARK: The brief (PL3.1b)
+
+    /// When to look again while a brief is being made: at the time it is due, then 2, 5, 10 and 15 minutes
+    /// after. Then it stops until the next load (the app coming to the front).
+    static let pollOffsets: [Duration] = [.zero, .seconds(120), .seconds(300), .seconds(600), .seconds(900)]
+
+    private func loadBrief(day: String) async {
+        if latest == nil, let cached = await repository.cachedBrief() {
+            latest = cached
+            publishBrief(day: day)
+        }
+        do {
+            latest = try await repository.refreshBrief()
+            publishBrief(day: day)
+        } catch is CancellationError {
+            return
+        } catch {
+            // A kept brief is still true; with nothing kept the card says it couldn't load.
+            if latest == nil {
+                brief = .failed((error as? Backend.Failure)?.flowFailure ?? Flows.Failure(.unknown))
+            } else {
+                publishBrief(day: day)
+            }
+        }
+    }
+
+    /// The card's slot from what is known, at the person's day now; starts or ends the wait for a brief being made.
+    private func publishBrief(day: String) {
+        guard let latest else { return }
+        let slot = Journal.BriefSlot.derive(from: latest, today: day)
+        brief = .loaded(slot)
+        if case let .making(readyBy?) = slot {
+            watchForBrief(readyBy: readyBy, day: day)
+        } else {
+            briefPoll?.cancel()
+            briefPoll = nil
+        }
+    }
+
+    private func watchForBrief(readyBy: Date, day: String) {
+        guard briefPoll == nil else { return }
+        briefPoll = Task { [weak self] in
+            for offset in Self.pollOffsets {
+                guard let self, !Task.isCancelled else { return }
+                let wait = readyBy.addingTimeInterval(offset.seconds).timeIntervalSince(now())
+                guard wait > 0 else { continue }
+                do {
+                    try await clock.sleep(for: .seconds(wait))
+                } catch {
+                    return
+                }
+                if await refreshWhileMaking(day: day) {
+                    return
+                }
+            }
+            briefPoll = nil
+        }
+    }
+
+    /// One look while waiting; true when the wait is over (the brief came, or the server asks us to stop).
+    private func refreshWhileMaking(day: String) async -> Bool {
+        do {
+            latest = try await repository.refreshBrief()
+        } catch let failure as Backend.Failure {
+            if case .rateLimited = failure.kind {
+                briefPoll = nil
+                return true
+            }
+            return false
+        } catch {
+            return true
+        }
+        publishBrief(day: day)
+        if case .making = brief.value {
+            return false
+        }
+        return true
     }
 
     private func startObserving(day newDay: String) async {
@@ -233,5 +320,11 @@ final class LiveJournalData: Flows.JournalData {
 
     func confirm(_: Journal.ClaimRef, mode _: Journal.CorrectionMode, note _: String?) async -> Journal.CorrectionOutcome {
         .failed(Flows.Failure(.unknown))
+    }
+}
+
+private extension Duration {
+    var seconds: TimeInterval {
+        TimeInterval(components.seconds) + TimeInterval(components.attoseconds) / 1e18
     }
 }
