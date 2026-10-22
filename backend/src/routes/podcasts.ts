@@ -13,6 +13,13 @@ import {
 import { generateAgentPodcast } from '../services/agent-client.js';
 import { captureException } from '../services/telemetry.js';
 
+/** A failure's code or name for the log; its message (raw database or agent text) goes to Sentry only. */
+function failureCode(err: unknown): string {
+  const code = (err as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(code)) return code;
+  return err instanceof Error && /^[A-Za-z]{1,40}$/.test(err.name) ? err.name : 'unknown';
+}
+
 export interface PodcastRouteDeps {
   listPodcastEpisodes: typeof listPodcastEpisodes;
   getPodcastEpisode: typeof getPodcastEpisode;
@@ -49,7 +56,7 @@ export function createPodcastsRouter(deps: PodcastRouteDeps): Router {
         },
       });
     } catch (err) {
-      console.error('[Podcasts] List error:', err);
+      console.error(`[Podcasts] List failed (${failureCode(err)})`);
       deps.report(err, { route: 'podcasts.list' });
       res.status(500).json({
         success: false,
@@ -77,7 +84,7 @@ export function createPodcastsRouter(deps: PodcastRouteDeps): Router {
 
       res.json({ success: true, data: episode });
     } catch (err) {
-      console.error('[Podcasts] Latest error:', err);
+      console.error(`[Podcasts] Latest failed (${failureCode(err)})`);
       deps.report(err, { route: 'podcasts.latest' });
       res.status(500).json({
         success: false,
@@ -107,7 +114,7 @@ export function createPodcastsRouter(deps: PodcastRouteDeps): Router {
 
       res.json({ success: true, data: episode });
     } catch (err) {
-      console.error('[Podcasts] Get error:', err);
+      console.error(`[Podcasts] Get failed (${failureCode(err)})`);
       deps.report(err, { route: 'podcasts.get' });
       res.status(500).json({
         success: false,
@@ -143,7 +150,7 @@ export function createPodcastsRouter(deps: PodcastRouteDeps): Router {
 
       res.json({ success: true, data: episode });
     } catch (err) {
-      console.error('[Podcasts] Generate error:', err);
+      console.error(`[Podcasts] Generate failed (${failureCode(err)})`);
       deps.report(err, { route: 'podcasts.generate' });
       res.status(500).json({
         success: false,

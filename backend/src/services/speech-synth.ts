@@ -7,6 +7,8 @@
  *   original order whatever order the chunks finish in.
  * - Each chunk has its own timeout covering the whole exchange, so a hung
  *   provider call ends instead of holding the request open.
+ * - After the first chunk fails, the chunks still in flight are aborted and no
+ *   new one starts: each is a paid call, and the request has already failed.
  * - A provider failure throws SpeechProviderError with the provider's status
  *   only; what the provider said is kept for the server log, never for the
  *   client.
@@ -20,19 +22,30 @@ export interface SynthOptions {
   timeoutMs: number;
   concurrency: number;
   fetch?: typeof fetch;
+  /** Starts the per-chunk timeout; returns a cancel. Injected by tests so they use no real clock. */
+  setTimer?: (fire: () => void, ms: number) => () => void;
 }
+
+const realTimer = (fire: () => void, ms: number) => {
+  const t = setTimeout(fire, ms);
+  return () => clearTimeout(t);
+};
 
 export const SPEECH_DEFAULTS = { timeoutMs: 60_000, concurrency: 3 } as const;
 
 const TTS_URL_BASE = 'https://api.elevenlabs.io/v1/text-to-speech';
 
+export type SpeechFailureKind = 'http' | 'timeout' | 'network' | 'cancelled';
+
 export class SpeechProviderError extends Error {
+  readonly kind: SpeechFailureKind;
   readonly status: number | null;
-  /** For the server log only; never sent to the client. */
+  /** What the provider said; for Sentry only, never the client or the log. */
   readonly detail: string;
-  constructor(status: number | null, detail: string) {
-    super(status === null ? 'speech provider unreachable or timed out' : `speech provider answered ${status}`);
+  constructor(kind: SpeechFailureKind, status: number | null, detail: string) {
+    super(kind === 'http' ? `speech provider answered ${status}` : `speech provider ${kind}`);
     this.name = 'SpeechProviderError';
+    this.kind = kind;
     this.status = status;
     this.detail = detail;
   }
@@ -66,11 +79,15 @@ export function chunkScript(text: string, maxChars: number): string[] {
   return chunks;
 }
 
-async function synthesizeChunk(text: string, opts: SynthOptions): Promise<Buffer> {
+async function synthesizeChunk(text: string, opts: SynthOptions, group: AbortSignal): Promise<Buffer> {
   const doFetch = opts.fetch ?? fetch;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
+  let timedOut = false;
+  const cancelTimer = (opts.setTimer ?? realTimer)(() => { timedOut = true; controller.abort(); }, opts.timeoutMs);
+  const onGroupAbort = () => controller.abort();
+  group.addEventListener('abort', onGroupAbort);
   try {
+    if (group.aborted) throw new SpeechProviderError('cancelled', null, 'another chunk failed first');
     const response = await doFetch(`${TTS_URL_BASE}/${opts.voiceId}`, {
       method: 'POST',
       headers: { 'xi-api-key': opts.apiKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
@@ -83,14 +100,17 @@ async function synthesizeChunk(text: string, opts: SynthOptions): Promise<Buffer
     });
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      throw new SpeechProviderError(response.status, errorText.slice(0, 300));
+      throw new SpeechProviderError('http', response.status, errorText.slice(0, 300));
     }
     return Buffer.from(await response.arrayBuffer());
   } catch (err) {
     if (err instanceof SpeechProviderError) throw err;
-    throw new SpeechProviderError(null, controller.signal.aborted ? `timed out after ${opts.timeoutMs} ms` : 'network error');
+    if (timedOut) throw new SpeechProviderError('timeout', null, `no answer within ${opts.timeoutMs} ms`);
+    if (group.aborted) throw new SpeechProviderError('cancelled', null, 'another chunk failed first');
+    throw new SpeechProviderError('network', null, err instanceof Error ? err.name : 'unknown');
   } finally {
-    clearTimeout(timer);
+    cancelTimer();
+    group.removeEventListener('abort', onGroupAbort);
   }
 }
 
@@ -119,6 +139,12 @@ export async function mapWithConcurrency<T, R>(items: T[], limit: number, work: 
 
 export async function synthesizeSpeech(text: string, opts: SynthOptions): Promise<Buffer> {
   const chunks = chunkScript(text, opts.maxCharsPerRequest);
-  const buffers = await mapWithConcurrency(chunks, opts.concurrency, (chunk) => synthesizeChunk(chunk, opts));
-  return Buffer.concat(buffers);
+  const group = new AbortController();
+  try {
+    const buffers = await mapWithConcurrency(chunks, opts.concurrency, (chunk) => synthesizeChunk(chunk, opts, group.signal));
+    return Buffer.concat(buffers);
+  } catch (err) {
+    group.abort();
+    throw err;
+  }
 }

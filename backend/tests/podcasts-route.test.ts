@@ -26,7 +26,8 @@ test('podcast route failures answer a generic message and report the detail', as
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));
   const { port } = server.address() as AddressInfo;
   const error = console.error;
-  console.error = () => undefined;
+  const logged: string[] = [];
+  console.error = (...args: unknown[]) => { logged.push(args.map(String).join(' ')); };
   try {
     for (const [method, path, message] of [
       ['GET', '/podcasts', 'Failed to list episodes'],
@@ -39,6 +40,13 @@ test('podcast route failures answer a generic message and report the detail', as
       assert.deepEqual(await res.json(), { success: false, error: message }, path);
     }
     assert.equal(reported.length, 4);
+    assert.ok((reported[0] as Error).message.includes('summary_embedding'), 'the full error goes to Sentry');
+    assert.equal(logged.length, 4);
+    for (const line of logged) {
+      assert.equal(line.includes('walk'), false, 'no words in the log');
+      assert.equal(line.includes('summary_embedding'), false, 'no database text in the log');
+    }
+    assert.equal(logged[0], '[Podcasts] List failed (Error)');
   } finally {
     console.error = error;
     await new Promise<void>((resolve) => server.close(() => resolve()));

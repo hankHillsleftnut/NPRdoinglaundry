@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import express from 'express';
 import { MemoryLimiter, DOOR_LIMITS } from '../src/doors/limits.js';
-import { chunkScript, mapWithConcurrency, SpeechProviderError, synthesizeSpeech, type SynthOptions } from '../src/services/speech-synth.js';
+import { chunkScript, mapWithConcurrency, SPEECH_DEFAULTS, SpeechProviderError, synthesizeSpeech, type SynthOptions } from '../src/services/speech-synth.js';
 
 // The route module reads config at import, so env is set before importing it
 // (dynamic import below); these placeholders are never real keys.
@@ -59,8 +59,9 @@ test('chunks are concatenated in order with concurrency 3', async () => {
 
 test('a hung chunk times out instead of holding the request', async () => {
   const provider = fakeProvider({ hang: () => true });
-  await assert.rejects(synthesizeSpeech('Hello.', opts(provider.fake, { timeoutMs: 30 })),
-    (e: unknown) => e instanceof SpeechProviderError && e.status === null && e.detail.startsWith('timed out'));
+  // The injected timer fires at once: no real clock in the test.
+  await assert.rejects(synthesizeSpeech('Hello.', opts(provider.fake, { setTimer: (fire) => { setImmediate(fire); return () => undefined; } })),
+    (e: unknown) => e instanceof SpeechProviderError && e.kind === 'timeout');
 });
 
 test('a provider failure keeps its detail out of the error message, and stops new chunks', async () => {
@@ -86,22 +87,26 @@ test('mapWithConcurrency never runs more than the limit and keeps order', async 
   assert.equal(peak, 2);
 });
 
-async function speechApp(provider: typeof fetch, limiter = new MemoryLimiter(), clock = { now: T0 }, apiKey: string | null = 'test-only-not-a-key') {
+async function speechApp(provider: typeof fetch, limiter = new MemoryLimiter(), clock = { now: T0 }, apiKey: string | null = 'test-only-not-a-key', userHeader = true, setTimer?: SynthOptions['setTimer']) {
   const { createSpeechRouter } = await import('../src/routes/speech.js');
   const reported: unknown[] = [];
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.user = { id: 'user-1', appleUserId: 'apple-1' }; next(); });
+  app.use((req, _res, next) => {
+    const id = userHeader ? (req.header('x-test-user') ?? 'user-1') : 'user-1';
+    req.user = { id, appleUserId: `apple-${id}` };
+    next();
+  });
   app.use('/speech', createSpeechRouter({
     limiter, now: () => clock.now, report: (e) => reported.push(e),
-    synth: { apiKey, voiceId: 'voice', model: 'model', maxCharsPerRequest: 20, timeoutMs: 30, concurrency: 3, fetch: provider },
+    synth: { apiKey, voiceId: 'voice', model: 'model', maxCharsPerRequest: 20, timeoutMs: 30, concurrency: 3, fetch: provider, ...(setTimer ? { setTimer } : {}) },
   }));
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));
   const { port } = server.address() as AddressInfo;
-  const say = async (text = 'Hello there.') => {
+  const say = async (text = 'Hello there.', user = 'user-1') => {
     const res = await fetch(`http://127.0.0.1:${port}/speech/synthesize`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-user': user }, body: JSON.stringify({ text }),
     });
     const body = res.headers.get('content-type')?.includes('json') ? await res.json() : await res.text();
     return { status: res.status, retryAfter: res.headers.get('retry-after'), body };
@@ -143,7 +148,8 @@ test('speech is limited per user: the 11th request in a minute is a 429', quiet(
 }));
 
 test('a hung provider call ends the request with the generic error', quiet(async () => {
-  const app = await speechApp(fakeProvider({ hang: () => true }).fake);
+  const fireAtOnce: SynthOptions['setTimer'] = (fire) => { setImmediate(fire); return () => undefined; };
+  const app = await speechApp(fakeProvider({ hang: () => true }).fake, new MemoryLimiter(), { now: T0 }, 'test-only-not-a-key', true, fireAtOnce);
   try {
     const res = await app.say();
     assert.equal(res.status, 500);
@@ -181,3 +187,59 @@ test('the request checks answer before any paid call: no key 503, empty or overs
     await app.close();
   }
 }));
+
+test('one user over the speech limit never limits another', quiet(async () => {
+  const app = await speechApp(fakeProvider().fake);
+  try {
+    const max = DOOR_LIMITS.buckets.expensive[0]!.max;
+    for (let i = 0; i < max; i++) await app.say('Hello.', 'user-a');
+    assert.equal((await app.say('Hello.', 'user-a')).status, 429);
+    assert.equal((await app.say('Hello.', 'user-b')).status, 200, 'user b is untouched');
+  } finally {
+    await app.close();
+  }
+}));
+
+test('each chunk gets the 60 s default timeout', async () => {
+  const delays: number[] = [];
+  const provider = fakeProvider();
+  await synthesizeSpeech(script, opts(provider.fake, { ...SPEECH_DEFAULTS, setTimer: (_fire, ms) => { delays.push(ms); return () => undefined; } }));
+  assert.equal(SPEECH_DEFAULTS.timeoutMs, 60_000);
+  assert.equal(delays.length, chunkScript(script, 20).length);
+  assert.ok(delays.every((ms) => ms === 60_000));
+});
+
+// Integrator review of #80: chunks already in flight are paid calls too.
+test('after the first failure, chunks still in flight are aborted', async () => {
+  const chunks = chunkScript(script, 20);
+  let aborted = 0;
+  const fake = (async (_u: string | URL | Request, init?: RequestInit) => {
+    const text = (JSON.parse(String(init?.body)) as { text: string }).text;
+    if (text === chunks[0]) {
+      await new Promise((r) => setImmediate(r));
+      return new Response(PROVIDER_SECRET_TEXT, { status: 500 });
+    }
+    return new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener('abort', () => { aborted++; reject(new Error('aborted')); }));
+  }) as typeof fetch;
+  const err = await synthesizeSpeech(script, opts(fake)).catch((e: unknown) => e);
+  assert.ok(err instanceof SpeechProviderError && err.kind === 'http' && err.status === 500);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(aborted, 2, 'the two other chunks in flight were cancelled');
+});
+
+test('the speech log carries the failure kind and status, never the provider\'s words', async () => {
+  const lines: string[] = [];
+  const error = console.error;
+  console.error = (...args: unknown[]) => { lines.push(args.map(String).join(' ')); };
+  try {
+    const app = await speechApp(fakeProvider({ fail: () => 429 }).fake);
+    try {
+      await app.say();
+    } finally {
+      await app.close();
+    }
+  } finally {
+    console.error = error;
+  }
+  assert.deepEqual(lines, ['[speech] synthesis failed (http, status 429)']);
+});

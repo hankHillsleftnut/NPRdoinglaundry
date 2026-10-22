@@ -57,8 +57,9 @@ export function createSpeechRouter(deps: SpeechRouteDeps): Router {
       res.setHeader('Content-Length', String(audio.length));
       res.send(audio);
     } catch (err) {
-      const status = err instanceof SpeechProviderError ? err.status : null;
-      console.error(`[speech] synthesis failed (provider status ${status ?? 'none'})`);
+      // Status and kind only: the provider's words (which can echo the text) go to Sentry.
+      const failure = err instanceof SpeechProviderError ? `${err.kind}, status ${err.status ?? 'none'}` : `unexpected ${err instanceof Error ? err.name : 'error'}`;
+      console.error(`[speech] synthesis failed (${failure})`);
       (deps.report ?? captureException)(err);
       res.status(500).json({ success: false, error: 'Speech synthesis failed' });
     }
