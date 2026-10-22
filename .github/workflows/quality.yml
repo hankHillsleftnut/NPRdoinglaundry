@@ -50,4 +50,9 @@ jobs:
     runs-on: [self-hosted, macOS, retrospect]  # the first runner only: one iOS build at a time
     steps:
       - uses: actions/checkout@v4
-      - run: xcodebuild -project Retrospect/Retrospect.xcodeproj -scheme Retrospect -sdk iphonesimulator -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build
+      # Builds the app and runs the Platform test plan (contract fixtures, Platform units) on
+      # CI's own simulator: the engineers keep agent-a and agent-b. CI doesn't create simulators.
+      - run: >-
+          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect
+          -testPlan Platform -destination 'platform=iOS Simulator,id=2E876B5C-E345-44BC-A7D5-236837088B31'
+          -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO
