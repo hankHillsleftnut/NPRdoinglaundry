@@ -100,45 +100,8 @@ extension ContractFixtureTests {
 
     // Contract 00 responses (mirrors, until PL1.7's invite types land)
 
-    struct AccessState: Decodable {
-        let state: String
-    }
-
-    struct Access: Decodable {
-        let state: String
-        let onWaitlist: Bool
-    }
-
-    struct OnWaitlist: Decodable {
-        let onWaitlist: Bool
-    }
-
     struct Received: Decodable {
         let received: Bool
-    }
-
-    struct Redeem: Decodable {
-        let access: AccessState
-        let invitedBy: String?
-        /// The spent invite's number and the tear's date (contract 01 §2.3); null when no code was spent.
-        let invite: RedeemedInvite?
-    }
-
-    struct RedeemedInvite: Decodable {
-        let serial: Int
-        let redeemedOn: String
-    }
-
-    struct Invite: Decodable {
-        let id: String
-        let link: URL?
-        let createdAt: Date
-        let state: String
-        let usedBy: String?
-    }
-
-    struct InvitesMine: Decodable {
-        let invites: [Invite]
     }
 
     struct Meta: Decodable {
@@ -155,19 +118,11 @@ extension ContractFixtureTests {
         let rawNonce: String
     }
 
-    struct WaitlistReason: Decodable {
-        let reason: String?
-    }
-
     struct PublicWaitlist: Decodable {
         let email: String
         let name: String
         let reason: String?
         let website: String
-    }
-
-    struct RedeemRequest: Decodable {
-        let code: String
     }
 
     // Diagnostics (DG.1): mirrors until DG.5 lands the real report builder.

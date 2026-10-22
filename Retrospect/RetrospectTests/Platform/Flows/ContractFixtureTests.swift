@@ -75,14 +75,14 @@ struct ContractFixtureTests {
         "auth.response": decodes(Backend.AuthResponse.self),
         "auth.response.waitlisted": decodes(Backend.AuthResponse.self),
         "signout.response": decodes(Backend.SignedOut.self),
-        "access.waitlisted": decodes(Access.self),
-        "access.member": decodes(Access.self),
-        "waitlist.response": decodes(OnWaitlist.self),
+        "access.waitlisted": decodes(Session.AccessInfo.self),
+        "access.member": decodes(Session.AccessInfo.self),
+        "waitlist.response": decodes(Session.OnWaitlist.self),
         "public-waitlist.response": decodes(Received.self),
-        "redeem.response": decodes(Redeem.self),
-        "redeem.response.minimal": decodes(Redeem.self),
-        "redeem.response.alreadyin": decodes(Redeem.self),
-        "invites-mine": decodes(InvitesMine.self),
+        "redeem.response": decodes(Session.Redeemed.self),
+        "redeem.response.minimal": decodes(Session.Redeemed.self),
+        "redeem.response.alreadyin": decodes(Session.Redeemed.self),
+        "invites-mine": decodes(Session.InvitesMine.self),
         "meta": decodes(Meta.self),
         "diagnostics.response": decodes(DiagnosticsReceipt.self),
     ]
@@ -93,9 +93,9 @@ struct ContractFixtureTests {
         "auth-google.request": request(GoogleSignIn.self, required: ["idToken", "rawNonce"]),
         "refresh.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
         "signout.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
-        "waitlist.request": request(WaitlistReason.self, required: [], optional: ["reason"]),
+        "waitlist.request": request(Backend.WaitlistBody.self, required: [], optional: ["reason"]),
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
-        "redeem.request": request(RedeemRequest.self, required: ["code"]),
+        "redeem.request": request(Backend.InviteCodeBody.self, required: ["code"]),
         "diagnostics.request": request(
             DiagnosticsReport.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
@@ -196,6 +196,32 @@ struct ContractFixtureTests {
         let later = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request.minimal"))
         #expect(later.firstAuthorization == nil)
         #expect(try envelope(Backend.SignedOut.self, "00", "signout.response").signedOut)
+    }
+
+    @Test("the invite fixtures decode into the session's own types: the stub, the face, the three invites")
+    func inviteValues() throws {
+        let redeemed = try envelope(Session.Redeemed.self, "00", "redeem.response")
+        #expect(redeemed.access.state == .approved)
+        #expect(redeemed.invitedBy == "priya")
+        #expect(redeemed.invite == Session.Stub(serial: 412, redeemedOn: "2026-10-21"))
+        #expect(try envelope(Session.Redeemed.self, "00", "redeem.response.alreadyin").invite == nil)
+        #expect(try envelope(Session.AccessInfo.self, "00", "access.waitlisted") == Session.AccessInfo(state: .waitlisted, onWaitlist: true))
+
+        let mine = try envelope(Session.InvitesMine.self, "00", "invites-mine").invites
+        #expect(mine.count == 3)
+        #expect(mine.map(\.state) == [.used, .unused, .unused])
+        #expect(mine[0].link == nil && mine[1].link != nil)
+
+        let usable = try envelope(Session.InviteCheck.self, "01", "invite.check.usable")
+        #expect(usable.usable && usable.reason == nil)
+        #expect(usable.face == Session.TicketFace(from: "priya", kind: .member, serial: 412, issuedOn: "2026-10-19"))
+        let yours = try envelope(Session.InviteCheck.self, "01", "invite.check.yours")
+        #expect(!yours.usable && yours.reason == .yours && yours.face != nil)
+        let alreadyIn = try envelope(Session.InviteCheck.self, "01", "invite.check.alreadyin")
+        #expect(!alreadyIn.usable && alreadyIn.reason == .alreadyIn && alreadyIn.face == nil)
+        _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.check.request"))
+        _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.redeem.request"))
+        #expect(try envelope(Session.Redeemed.self, "01", "invite.redeem.response").invite?.serial == 412)
     }
 
     @Test("an enum value the app doesn't know decodes as unknown, never failing the response")

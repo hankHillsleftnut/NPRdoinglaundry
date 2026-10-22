@@ -13,6 +13,11 @@ extension Backend {
         case authApple = "/v2/auth/apple"
         case authRefresh = "/v2/auth/refresh"
         case authSignout = "/v2/auth/signout"
+        case access = "/v2/access"
+        case waitlist = "/v2/waitlist"
+        case invitesCheck = "/v2/invites/check"
+        case invitesRedeem = "/v2/invites/redeem"
+        case invitesMine = "/v2/invites/mine"
     }
 
     /// The body of a request that sends none.

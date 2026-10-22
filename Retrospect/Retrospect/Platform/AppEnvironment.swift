@@ -26,6 +26,8 @@ extension Platform {
         /// The one client for the `/v2` doors.
         let client: Backend.Client
         let reachability: any Backend.Reachability
+        /// The invite: a pending code, its check after sign-in, the tear (PL1.7).
+        let invites: Session.InviteCenter
 
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
@@ -36,7 +38,8 @@ extension Platform {
             log: any Platform.LogSink,
             session: Session.Manager,
             client: Backend.Client,
-            reachability: any Backend.Reachability
+            reachability: any Backend.Reachability,
+            invites: Session.InviteCenter
         ) {
             self.launch = launch
             self.configuration = configuration
@@ -44,6 +47,7 @@ extension Platform {
             self.session = session
             self.client = client
             self.reachability = reachability
+            self.invites = invites
         }
 
         /// The app's environment, set by this launch's options (always live
@@ -60,8 +64,9 @@ extension Platform {
             if launch.environment == .staging, configuration.environment == .local {
                 log.record(.stagingResolvedToLocal)
             }
+            let store = Session.Store()
             let session = Session.Manager(
-                store: Session.Store(),
+                store: store,
                 mirror: Session.LegacyMirror(
                     keychain: Session.SystemKeychain(service: Session.Store.legacyService),
                     stateChanged: { Bridges.legacyStateChanged(userID: $0) }
@@ -76,8 +81,11 @@ extension Platform {
             session.connect(client)
             Bridges.refreshLegacy = { await session.refreshForLegacy() }
             Bridges.legacySignedOut = { _ = await session.signOut(force: true) }
+            let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
+            invites.start()
             return AppEnvironment(
-                launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability
+                launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
+                invites: invites
             )
         }
 
@@ -87,8 +95,9 @@ extension Platform {
         static func preview() -> AppEnvironment {
             let log = Log.Recorder()
             let configuration = Backend.Configuration.resolve(.local, info: [:])
+            let store = Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults())
             let session = Session.Manager(
-                store: Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults()),
+                store: store,
                 mirror: Session.LegacyMirror(keychain: Session.MemoryKeychain(), stateChanged: { _ in }),
                 log: log,
                 launchCheck: .alreadyDone,
@@ -99,7 +108,10 @@ extension Platform {
             let reachability = Backend.PathReachability(monitor: nil)
             let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
             session.connect(client)
-            return AppEnvironment(configuration: configuration, log: log, session: session, client: client, reachability: reachability)
+            let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
+            return AppEnvironment(
+                configuration: configuration, log: log, session: session, client: client, reachability: reachability, invites: invites
+            )
         }
 
         /// Sign in with Apple, wired to this environment's client and session.
@@ -110,7 +122,10 @@ extension Platform {
         /// The scene became active: the session finishes a deferred launch
         /// check, reads, checks Apple, saves what it couldn't, and renews.
         func becameActive() {
-            Task { await session.becameActive() }
+            Task {
+                await session.becameActive()
+                await invites.retryIfWaiting()
+            }
         }
     }
 }

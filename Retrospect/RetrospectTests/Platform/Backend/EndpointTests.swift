@@ -35,6 +35,22 @@ struct EndpointTests {
         #expect([apple.idempotencyKey, refresh.idempotencyKey, signOut.idempotencyKey].allSatisfy { $0 == nil }, "sign-in and refresh are sent once")
     }
 
+    @Test("the invite doors: check and redeem are authenticated POSTs with the code; only redeem carries the tear's key")
+    func theInviteDoors() {
+        let key = UUID()
+        let check = Backend.Endpoints.InviteCheck(code: "7KQ2M9XD4RTAB")
+        let redeem = Backend.Endpoints.InviteRedeem(code: "7KQ2M9XD4RTAB", key: key)
+
+        #expect(check.method == .post && check.path.rawValue == "/v2/invites/check" && check.requiresAuth)
+        #expect(check.idempotencyKey == nil, "a check is sent once and spends nothing")
+        #expect(redeem.method == .post && redeem.path.rawValue == "/v2/invites/redeem" && redeem.requiresAuth)
+        #expect(redeem.idempotencyKey == key)
+        #expect(redeem.body == Backend.InviteCodeBody(code: "7KQ2M9XD4RTAB"))
+        #expect(Backend.Endpoints.Access().path.rawValue == "/v2/access")
+        #expect(Backend.Endpoints.JoinWaitlist(reason: nil).body == Backend.WaitlistBody(reason: nil))
+        #expect(Backend.Endpoints.InvitesMine().method == .get)
+    }
+
     @Test("every path template is a /v2 path")
     func everyPathTemplateIsAV2Path() {
         #expect(Backend.PathTemplate.allCases.allSatisfy { $0.rawValue.hasPrefix("/v2/") })

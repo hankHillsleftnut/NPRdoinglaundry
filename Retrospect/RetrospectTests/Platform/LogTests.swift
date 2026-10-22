@@ -96,6 +96,9 @@ extension Platform.Log.Event {
             case .appleCredentialRevoked: .appleCredentialRevoked
             case .legacyRefresh: .legacyRefresh(.refreshed)
             case .stagingResolvedToLocal: .stagingResolvedToLocal
+            case .inviteReceived: .inviteReceived
+            case .inviteChecked: .inviteChecked(.usable)
+            case .inviteTorn: .inviteTorn(.yours)
             }
         }
     }
@@ -103,7 +106,8 @@ extension Platform.Log.Event {
     fileprivate enum Kind: CaseIterable {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
-             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal
+             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
+             inviteReceived, inviteChecked, inviteTorn
     }
 
     fileprivate var kind: Kind {
@@ -129,6 +133,9 @@ extension Platform.Log.Event {
         case .appleCredentialRevoked: .appleCredentialRevoked
         case .legacyRefresh: .legacyRefresh
         case .stagingResolvedToLocal: .stagingResolvedToLocal
+        case .inviteReceived: .inviteReceived
+        case .inviteChecked: .inviteChecked
+        case .inviteTorn: .inviteTorn
         }
     }
 }

@@ -63,6 +63,12 @@ extension Platform.Log {
         case legacyRefresh(Platform.Bridges.LegacyRefresh)
         /// `-Environment staging` resolved to the backend on this Mac (no Render staging yet).
         case stagingResolvedToLocal
+        /// An invite code arrived (a link or a typed code) and was kept. Never the code.
+        case inviteReceived
+        /// A pending code was checked (PL1.7d): what came back.
+        case inviteChecked(Session.InviteCheckOutcome)
+        /// A tear redeemed, or didn't.
+        case inviteTorn(Session.InviteTearOutcome)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
     }
@@ -95,6 +101,12 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal:
                 recordDevice(event)
+            case .inviteReceived:
+                logger.info("invite code received")
+            case let .inviteChecked(outcome):
+                record(checked: outcome)
+            case let .inviteTorn(outcome):
+                record(torn: outcome)
             }
         }
 
@@ -148,6 +160,18 @@ extension Platform.Log {
             case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(sentInvite: path, status: status, ms: ms)
+            }
+        }
+
+        private func record(sentInvite path: Backend.PathTemplate, status: Int, ms: Int) {
+            switch path {
+            case .access: logger.info("request /v2/access: status \(status), \(ms) ms")
+            case .waitlist: logger.info("request /v2/waitlist: status \(status), \(ms) ms")
+            case .invitesCheck: logger.info("request /v2/invites/check: status \(status), \(ms) ms")
+            case .invitesRedeem: logger.info("request /v2/invites/redeem: status \(status), \(ms) ms")
+            case .invitesMine: logger.info("request /v2/invites/mine: status \(status), \(ms) ms")
+            default: break
             }
         }
 
@@ -157,6 +181,44 @@ extension Platform.Log {
             case .authApple: logger.error("unknown error code from /v2/auth/apple")
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(unknownCodeFromInvite: path)
+            }
+        }
+
+        private func record(unknownCodeFromInvite path: Backend.PathTemplate) {
+            switch path {
+            case .access: logger.error("unknown error code from /v2/access")
+            case .waitlist: logger.error("unknown error code from /v2/waitlist")
+            case .invitesCheck: logger.error("unknown error code from /v2/invites/check")
+            case .invitesRedeem: logger.error("unknown error code from /v2/invites/redeem")
+            case .invitesMine: logger.error("unknown error code from /v2/invites/mine")
+            default: break
+            }
+        }
+
+        private func record(checked outcome: Session.InviteCheckOutcome) {
+            switch outcome {
+            case .usable: logger.info("invite check: usable")
+            case .yours: logger.info("invite check: yours")
+            case .alreadyIn: logger.info("invite check: already in")
+            case .used: logger.info("invite check: used")
+            case .expired: logger.info("invite check: expired")
+            case .invalid: logger.info("invite check: invalid")
+            case .offline: logger.info("invite check: offline, code kept")
+            case .rateLimited: logger.info("invite check: rate limited, code kept")
+            case .failed: logger.error("invite check: failed, code kept")
+            case .unreadable: logger.error("invite check: unreadable answer, code kept")
+            }
+        }
+
+        private func record(torn outcome: Session.InviteTearOutcome) {
+            switch outcome {
+            case .yours: logger.info("invite tear: yours")
+            case .used: logger.info("invite tear: used by someone else")
+            case .refused: logger.info("invite tear: refused, code dropped")
+            case .offline: logger.info("invite tear: offline, code kept")
+            case .rateLimited: logger.info("invite tear: rate limited, code kept")
+            case .failed: logger.error("invite tear: failed, code kept")
             }
         }
 
@@ -194,6 +256,11 @@ extension Platform.Log {
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
+            case .access: logger.info("401 on /v2/access: refreshed and replayed once")
+            case .waitlist: logger.info("401 on /v2/waitlist: refreshed and replayed once")
+            case .invitesCheck: logger.info("401 on /v2/invites/check: refreshed and replayed once")
+            case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
+            case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
             }
         }
 
@@ -203,6 +270,7 @@ extension Platform.Log {
             case .signedInBefore: logger.error("signed-in-before flag write failed: keychain status \(status)")
             case .mirror: logger.error("old client mirror write failed: keychain status \(status)")
             case .sessionClear: logger.error("session item delete failed: keychain status \(status)")
+            case .pendingInvite: logger.error("pending invite item write failed: keychain status \(status)")
             }
         }
 
