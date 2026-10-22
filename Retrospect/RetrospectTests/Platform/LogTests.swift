@@ -104,7 +104,7 @@ extension Platform.Log.Event {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
-             inviteReceived, inviteChecked, inviteTorn, outboxEnqueued, diagnosticsWriteFailed
+             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, outboxEnqueued, diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
