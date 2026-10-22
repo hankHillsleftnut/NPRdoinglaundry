@@ -44,6 +44,8 @@ extension ContractFixtureTests {
     struct LatestBrief: Decodable {
         let brief: Journal.Brief?
         let enabled: Bool
+        /// When the next brief runs; nil when none is scheduled (BE1.3).
+        let nextAt: Date?
     }
 
     struct BriefPage: Decodable {
