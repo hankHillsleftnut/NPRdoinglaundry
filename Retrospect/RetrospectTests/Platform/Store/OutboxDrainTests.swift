@@ -31,7 +31,7 @@ struct OutboxDrainTests {
     }
 
     /// Full jitter is replaced by its ceiling, so delays are exact.
-    private func outbox(reachability: ManualReachability? = nil) -> Store.Outbox {
+    private func outbox(reachability: (any Backend.Reachability)? = nil) -> Store.Outbox {
         let now = now
         return Store.Outbox(
             database: database, sender: sender, reachability: reachability, now: { now.value }, timeZone: { .gmt }, jitter: { $0 }, log: recorder
@@ -49,6 +49,10 @@ struct OutboxDrainTests {
     /// Synchronous reads: in an async test, `writer.read` picks GRDB's async overload.
     private func item(_ id: UUID) throws -> Store.OutboxRow {
         try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: key(id)) })
+    }
+
+    private func rowByID(_ id: String) throws -> Store.OutboxRow {
+        try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: id) })
     }
 
     private func entry(_ id: UUID) throws -> Store.EntryRow {
@@ -284,8 +288,6 @@ struct OutboxDrainTests {
 
         let row = try item(a)
         #expect(row.status == .done, "the row the sender saw is the stored one; after the send it's done")
-        let inFlight = try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: key(a)) })
-        #expect(inFlight.status == .done)
         #expect(try #require(seen.status) == .inFlight)
         #expect(try #require(seen.entryState) == .sending)
         #expect(try #require(seen.deadline).timeIntervalSince(now.value) == Store.Outbox.crashedSendAfter)
@@ -374,7 +376,7 @@ struct OutboxDrainTests {
         await outbox.drain(reason: .manual)
 
         #expect(sender.sends.map(\.id) == [key(a), key(b)], "a's later item waits behind its refused one; b goes")
-        #expect(try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: later) }).status == .pending)
+        #expect(try rowByID(later).status == .pending)
     }
 
     @Test("an entity's second item goes in the next pass once its first has landed")
@@ -423,7 +425,7 @@ struct OutboxDrainTests {
         await outbox.drain(reason: .manual)
 
         #expect(sender.sends.map(\.id) == [key(a)])
-        let row = try #require(try database.writer.read { try Store.OutboxRow.fetchOne($0, key: "later") })
+        let row = try rowByID("later")
         #expect(row.status == .pending)
         #expect(row.attempts == 0)
     }
