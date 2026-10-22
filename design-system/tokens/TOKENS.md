@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**548 tokens** · 472 semantic · 276 marked *to set*
+**566 tokens** · 490 semantic · 276 marked *to set*
 
 ## palette
 
@@ -529,6 +529,28 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.scrollLag.maxTilt` | Most a tile tilts, in degrees, while the list moves. | 1.5 |  | founder 21 Oct: motion-system.md |
 | `motion.staggerMax` | Stagger at most this many items; the rest arrive together. | 6 |  | founder 21 Oct: motion-system.md |
 
+## blur
+
+| Token | Purpose | Light | Dark | Source |
+|---|---|---|---|---|
+| `blur.tab.band` | Tab screens: the blur band above the tab bar. | 70pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.tab.bandCompact` | Tab screens on short phones (SE): the band above the tab bar. | 60pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.tab.max` | Tab screens: blur at the band's outer edge. | 14pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.tab.saturation` | Tab screens: colour boost under the blur, so the edge never greys. | 1.5 |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.tab.tint` | Tab screens: the canvas tint covers only this much of the band, at the bottom. | 56pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.journalTop.band` | Journal: the top band's full height; it grows with scroll from 0. | 80pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.journalTop.max` | Journal: blur at the top band's outer edge. | 8pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptTop.band` | Player transcript: the top band. | 96pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptTop.bandCompact` | Player transcript on short phones: the top band. | 64pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptTop.max` | Player transcript: blur at the top band's outer edge. | 8pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptTop.tint` | Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band. | 0.3 |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptBottom.band` | Player transcript: the bottom band, into the transport. | 140pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptBottom.bandCompact` | Player transcript on short phones: the bottom band. | 80pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptBottom.max` | Player transcript: blur at the bottom band's outer edge. | 8pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.transcriptBottom.tint` | Player transcript, bottom: the sheet tint is solid over this fraction of the band. | 0.15 |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.drawerFoot.band` | Drawer: the band under the foot. | 56pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+| `blur.drawerFoot.max` | Drawer: blur at the foot band's outer edge. | 6pt |  | docs/design/progressive-blur.md (founder, 20 Oct; tab band c-81biud) |
+
 ## haptic
 
 | Token | Purpose | Light | Dark | Source |
@@ -579,6 +601,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `layout.dynamicType.max` | The largest text size every screen must still work at. | accessibility3 |  | to set: app need |
 | `layout.messageMaxWidth` | Widest a message may be, as a share of the screen. | 0.78 |  | to set: app need |
 | `layout.widget.padding` | Content padding inside a widget. | 16pt |  | to set: app need |
+| `layout.compactHeight` | A screen shorter than this (iPhone SE, 667) takes the compact layout: smaller bands and tighter rhythm, decided by the container's height, never the device model. | 700pt |  | small-screens-adapt rule (founder); progressive-blur.md SE values |
 
 ## opacity
 
