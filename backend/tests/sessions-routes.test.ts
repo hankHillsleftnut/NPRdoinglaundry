@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import test, { before } from 'node:test';
 import { asServiceRole, freshDatabase, insertUser, type PGlite } from './support/database.js';
 import { pgliteRpc } from './support/pglite-rpc.js';
+import { AuthResponse } from '../src/sessions/routes.js';
 import { startHarness, type Harness } from './support/harness.js';
 import { startSession, supabaseSessionStore, type SessionStore } from '../src/sessions/store.js';
 
@@ -44,6 +45,7 @@ test('refresh rotates and the old token stops working', async () => {
     assert.notEqual(next.refreshToken, first.refreshToken);
     assert.deepEqual(next.user, { id: userId, firstName: 'Test', isNew: false });
     assert.deepEqual(next.access, { state: 'member' });
+    assert.equal(AuthResponse.safeParse(next).success, true, 'the answer matches the contract');
     const ping = await h.request('GET', '/v2/ping', undefined, { Authorization: `Bearer ${next.accessToken}` });
     assert.equal(ping.status, 200, 'the new access token works');
 
