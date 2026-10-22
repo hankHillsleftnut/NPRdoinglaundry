@@ -72,7 +72,9 @@ test('a retry with the just-rotated token within 30 seconds gets the same succes
   }
 });
 
-test('two refreshes at once for one family produce one successor', async () => {
+// The row lock itself is proven on a real two-connection Postgres (sessions-lock.test.ts);
+// PGlite has one connection, so here the two requests only interleave over HTTP.
+test('two refreshes sent together over HTTP both get the one successor', async () => {
   const { h, userId, first } = await signedIn();
   try {
     const [x, y] = await Promise.all([refresh(h, first.refreshToken), refresh(h, first.refreshToken)]);
@@ -155,14 +157,14 @@ test("signout can't end another person's session, and needs a signed-in user", a
 });
 
 test('the session log carries no token', async () => {
-  const { h, first } = await signedIn();
+  const { h, userId, first } = await signedIn();
   try {
     const next = data((await refresh(h, first.refreshToken)).body);
     const all = h.logLines.join('\n');
     for (const secret of [first.refreshToken, next.refreshToken, next.accessToken]) assert.equal(all.includes(secret), false);
     const line = JSON.parse(h.logLines.find((l) => l.includes('auth.refresh'))!) as Record<string, unknown>;
     assert.deepEqual(Object.keys(line).sort(), ['door', 'ms', 'status', 'userId']);
-    assert.equal(line.userId, null);
+    assert.equal(line.userId, userId, "the token's owner, looked up by its hash");
   } finally {
     await h.close();
   }
@@ -175,6 +177,20 @@ test('a database failure during refresh is internal, never a sign-out', async ()
     const res = await refresh(h, 'some-token');
     assert.equal(res.status, 500);
     assert.equal(code(res.body), 'internal', 'not session_revoked: the app would sign the person out');
+  } finally {
+    await h.close();
+  }
+});
+
+test('a reused refresh token is logged with its owner and a reuse flag, and nothing else about it', async () => {
+  const { h, userId, first } = await signedIn();
+  try {
+    data((await refresh(h, first.refreshToken)).body);
+    h.clock.now += DAY;
+    await refresh(h, first.refreshToken);
+    const lines = h.logLines.map((l) => JSON.parse(l) as Record<string, unknown>).filter((l) => l.door === 'auth.refresh');
+    assert.deepEqual(lines.map((l) => [l.userId, l.status, l.reuse]), [[userId, 200, undefined], [userId, 401, true]]);
+    assert.equal(h.logLines.join('').includes(first.refreshToken), false);
   } finally {
     await h.close();
   }

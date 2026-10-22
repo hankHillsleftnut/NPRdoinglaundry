@@ -160,12 +160,43 @@ test('a malformed sign-in is invalid_request', async () => {
       { ...good, rawNonce: 'short' },
       { ...good, userId: 'someone-else' },
       { ...good, identityToken: 'x'.repeat(8193) },
-      { ...good, email: 'not-an-email' },
     ]) {
       const res = await signIn(h, JSON.parse(JSON.stringify(bad)) as Record<string, unknown>);
       assert.equal(res.status, 400, JSON.stringify(Object.keys(bad)));
       assert.equal(code(res.body), 'invalid_request');
     }
+  } finally {
+    await h.close();
+  }
+});
+
+test('an odd optional name or email never blocks a sign-in', async () => {
+  const { h, profiles } = await harness();
+  try {
+    for (const [i, extra] of [
+      { email: 'not-an-email' },
+      { fullName: { givenName: 'Sam', middleName: 'J', nickname: 'S' } },
+      { fullName: { givenName: 'x'.repeat(101) } },
+      { fullName: 'Sam' },
+    ].entries()) {
+      const raw = rawNonce();
+      const res = await signIn(h, { identityToken: tokenFor(`sub-odd-${i}`, raw), authorizationCode: 'c', rawNonce: raw, ...extra });
+      assert.equal(res.status, 200, JSON.stringify(extra));
+    }
+    const names = [...profiles.values()].map((p) => p.firstName);
+    assert.deepEqual(names, [undefined, 'Sam', undefined, undefined], 'unknown name parts dropped; a name that does not fit is no name');
+  } finally {
+    await h.close();
+  }
+});
+
+test("only Apple's verified email is stored, never the copy the app sends", async () => {
+  const { h, profiles } = await harness();
+  try {
+    const raw = rawNonce();
+    const res = await signIn(h, { identityToken: tokenFor('sub-mail', raw), authorizationCode: 'c', rawNonce: raw, email: 'someone.else@example.com' });
+    const { user } = (res.body as { data: { user: { id: string } } }).data;
+    assert.equal(profiles.get(user.id)?.email, 'sub-mail@privaterelay.example');
   } finally {
     await h.close();
   }

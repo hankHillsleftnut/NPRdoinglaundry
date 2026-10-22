@@ -43,11 +43,14 @@ export const AppleBody = z.object({
   // Kept for Apple token revocation (BE0.5); required now so the app always sends it.
   authorizationCode: z.string().min(1).max(1024),
   rawNonce: z.string().min(16).max(128),
+  // Cosmetic and optional: never a reason to refuse a sign-in. Unknown name
+  // parts are dropped, and a name that doesn't fit is treated as no name.
   fullName: z.object({
     givenName: z.string().max(100).nullable().optional(),
     familyName: z.string().max(100).nullable().optional(),
-  }).strict().nullable().optional(),
-  email: z.string().email().max(320).nullable().optional(),
+  }).strip().nullable().optional().catch(null),
+  // Accepted and ignored: only the email inside Apple's verified token is stored.
+  email: z.unknown().optional(),
 }).strict();
 
 /** The contract's sign-in and refresh answer (contract 00 §3). */
@@ -65,7 +68,7 @@ export const RefreshBody = z.object({ refreshToken: z.string().min(1).max(128) }
 export function createSessionRouter(deps: SessionRouteDeps): Router {
   const router = Router();
 
-  const respond = (name: string, userId: string | null, started: number) => ({
+  const respond = (name: string, userId: string | null, started: number, reuse = false) => ({
     ok(res: Response, data: unknown) {
       res.status(200).json({ success: true, data });
       deps.log.door({ door: name, userId, status: 200, ms: deps.now() - started });
@@ -79,7 +82,9 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
         }
       }
       const sent = sendError(res, err);
-      deps.log.door({ door: name, userId, status: sent.status, code: sent.code as DoorErrorCode, ms: deps.now() - started });
+      deps.log.door({
+        door: name, userId, status: sent.status, code: sent.code as DoorErrorCode, ms: deps.now() - started, ...(reuse ? { reuse: true } : {}),
+      });
     },
   });
 
@@ -111,8 +116,8 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       if (!verified.nonce || verified.nonce !== hashNonce(body.rawNonce)) throw new DoorError('invalid_credentials');
       if (!(await deps.store.useNonce(verified.nonce, new Date(started).toISOString()))) throw new DoorError('invalid_credentials');
 
-      // Apple's own email claim wins over the one the app passes along.
-      const email = verified.email ?? body.email ?? undefined;
+      // Only Apple's verified email; the copy the app passes along is unverified.
+      const email = verified.email;
       const firstName = body.fullName?.givenName ?? undefined;
       const account = await deps.accounts.findOrCreateApple(verified.appleUserId, {
         ...(email ? { email } : {}),
@@ -134,7 +139,9 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
 
   router.post('/refresh', (req: Request, res: Response) => {
     const started = deps.now();
-    const out = respond('auth.refresh', null, started);
+    let ownerId: string | null = null;
+    let reuse = false;
+    const out = () => respond('auth.refresh', ownerId, started, reuse);
     void (async () => {
       // Public: limited per address (behind Render's one trusted proxy).
       const taken = deps.limiter.take(`ip:${req.ip ?? 'unknown'}`, 'write', started);
@@ -144,7 +151,7 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       if (!parsed.success) throw new DoorError('invalid_request');
       const tokenHash = hashRefreshToken(parsed.data.refreshToken);
 
-      const ownerId = await deps.store.ownerOf(tokenHash);
+      ownerId = await deps.store.ownerOf(tokenHash);
       if (!ownerId) throw new DoorError('session_revoked');
       const user = await deps.users(ownerId);
       if (!user || user.tokenVersion === undefined) throw new DoorError('session_revoked');
@@ -153,20 +160,24 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       const result = await deps.store.rotate({
         tokenHash, newHash: next.hash, nowIso: new Date(started).toISOString(), refreshCiphertext: sealGrace(next.plain, deps.secret),
       });
-      if (result.outcome === 'revoked') throw new DoorError('session_revoked');
+      if (result.outcome === 'revoked') {
+        // A refresh token used again after its grace window: someone else may hold a copy.
+        reuse = result.reuse === true;
+        throw new DoorError('session_revoked');
+      }
 
       // A retry inside the grace window gets the same successor refresh token;
       // either way the access token is freshly issued (none is ever stored).
       const refreshToken = result.outcome === 'rotated' ? next.plain : openGrace(result.refreshCiphertext, deps.secret);
       const access = issueAccessToken({ userId: user.id, tokenVersion: user.tokenVersion }, deps.secret, started);
       const pair = { accessToken: access.token, refreshToken, accessTokenExpiresAt: access.expiresAt };
-      out.ok(res, {
+      out().ok(res, {
         ...pair,
         user: { id: user.id, firstName: user.firstName ?? null, isNew: false },
         // Access states arrive with invites (BE0.12); until then everyone signed in is a member.
         access: { state: 'member' },
       });
-    })().catch((err: unknown) => out.fail(res, err));
+    })().catch((err: unknown) => out().fail(res, err));
   });
 
   router.post('/signout', deps.auth, (req: Request, res: Response) => {
