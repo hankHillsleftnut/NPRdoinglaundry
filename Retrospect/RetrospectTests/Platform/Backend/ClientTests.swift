@@ -297,14 +297,16 @@ struct ClientTests {
         #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
     }
 
-    @Test("a door's error is recorded with its status and contract code")
+    @Test("a door's error is recorded with its status and contract code, one row per attempt")
     func aDoorsErrorIsRecordedWithItsCode() async throws {
         defer { StubProtocol.clear(session) }
         try serve(status: 504, Fixtures.data("00", "error.upstream_timeout"))
 
         _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
 
-        #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 504, code: .upstreamTimeout, ms: 0))])
+        // A read retries a 504 three times (PL1.2); each attempt is its own request row.
+        let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 504, code: .upstreamTimeout, ms: 0))
+        #expect(await diagnostics.records == [attempt, attempt, attempt])
     }
 
     @Test("an error code outside the contract is recorded with no code, so its text never leaves the phone")
@@ -318,14 +320,15 @@ struct ClientTests {
         #expect(await ContentCheck.values(in: diagnostics.records).isEmpty)
     }
 
-    @Test("a request that never reached the server is recorded with status 0 and no code")
+    @Test("a request that never reached the server is recorded with status 0 and no code, one row per attempt")
     func anUnreachedRequestIsRecordedWithStatusZero() async {
         defer { StubProtocol.clear(session) }
         StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
 
         _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
 
-        #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 0, ms: 0))])
+        let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 0, ms: 0))
+        #expect(await diagnostics.records == [attempt, attempt, attempt])
     }
 
     @Test("a client without a diagnostics sink still works")
