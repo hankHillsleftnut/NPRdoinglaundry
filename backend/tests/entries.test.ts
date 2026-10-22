@@ -215,6 +215,10 @@ test('today follows X-Time-Zone, not UTC, and stores the zone on the person for 
     assert.deepEqual(utc, { date: '2026-10-22', entries: [] }, 'nothing known: UTC');
     await db.query(`UPDATE users SET time_zone = 'Mars/Olympus' WHERE id = $1`, [fresh]);
     assert.equal(data<{ date: string }>((await today(h, fresh)).body).date, '2026-10-22', 'a remembered name that is not a zone falls back to UTC, not a 500');
+    // A header Postgres doesn't know (the door's Intl check can accept an alias Postgres dropped) is never remembered.
+    const probe = await db.query<{ z: string }>(`SELECT resolve_zone($1, 'Mars/Phobos') AS z`, [sam]);
+    assert.equal(probe.rows[0]!.z, 'America/Anchorage', 'the remembered zone answers');
+    assert.equal((await db.query<{ tz: string }>(`SELECT time_zone AS tz FROM users WHERE id = $1`, [sam])).rows[0]!.tz, 'America/Anchorage', 'and stays remembered');
     // East of UTC: 10:30Z on the 21st is 00:30 on the 22nd in Kiritimati (UTC+14).
     h.clock.now = Date.parse('2026-10-21T10:30:00.000Z');
     const east = await person(h);
