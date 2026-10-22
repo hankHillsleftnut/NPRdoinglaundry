@@ -102,7 +102,8 @@ struct RVoiceBubble: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("you: voice note, \(Self.spokenLength(seconds: durationSeconds))")
         .accessibilityValue(accessibilityValue)
-        .accessibilityAction(named: Text(isPlaying ? "pause" : "play"), play)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.default, play)
     }
 
     private var accessibilityValue: String {
