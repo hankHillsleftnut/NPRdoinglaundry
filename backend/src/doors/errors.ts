@@ -96,6 +96,12 @@ export class AgentCallError extends Error {
  * to the app and `isBug` for the log. The agent's own message is never used.
  */
 export function fromAgentError(err: unknown): { error: DoorError; isBug: boolean } {
+  // The old client's spend refusal (services/agent-client.ts, BE0.11): the agent's own wait, never retried.
+  // Matched by shape, not class, so this module never imports the client that imports it.
+  const spend = err as { code?: unknown; retryAfterSeconds?: unknown } | null;
+  if (err instanceof Error && spend?.code === 'spend_limited' && typeof spend.retryAfterSeconds === 'number') {
+    return { error: new DoorError('spend_limited', { retryAfterSeconds: spend.retryAfterSeconds }), isBug: false };
+  }
   if (!(err instanceof AgentCallError)) return { error: new DoorError('internal'), isBug: true };
   const f = err.failure;
   if (f.kind === 'timeout') return { error: new DoorError('upstream_timeout'), isBug: false };
