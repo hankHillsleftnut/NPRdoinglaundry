@@ -56,15 +56,22 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: [self-hosted, macOS, retrospect]  # the first runner only: one iOS build at a time
+    # Any Mac runner labelled `retrospect`: each one has its own simulator named `ci`, its own
+    # derived data, and runs one iOS build at a time.
+    runs-on: [self-hosted, macOS, retrospect]
     steps:
       - uses: actions/checkout@v4
+      # Packages come from Package.resolved (pinned). On a fresh machine this fills the derived
+      # data's SourcePackages once; after that it's a no-op, and the test step never resolves.
+      - run: >-
+          xcodebuild -resolvePackageDependencies -project Retrospect/Retrospect.xcodeproj
+          -scheme Retrospect -derivedDataPath "$HOME/actions-runner/dd-ci"
       # Builds the app and runs the Platform test plan (contract fixtures, Platform units) on
-      # CI's own simulator: the engineers keep agent-a and agent-b. CI doesn't create simulators.
-      # Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so each run is an
-      # incremental build, not a clean one. Delete the folder by hand if a build ever goes stale.
+      # the runner's own simulator, `ci` (the engineers keep agent-a and agent-b; CI doesn't create
+      # simulators). Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so
+      # each run is an incremental build. Delete the folder by hand if a build ever goes stale.
       - run: >-
           xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect
-          -testPlan Platform -destination 'platform=iOS Simulator,id=2E876B5C-E345-44BC-A7D5-236837088B31'
+          -testPlan Platform -destination 'platform=iOS Simulator,name=ci'
           -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution
-          CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+          COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
