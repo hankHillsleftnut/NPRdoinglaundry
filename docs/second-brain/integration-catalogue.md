@@ -277,3 +277,19 @@ burden.
 **Read-only, all of them, for the entire plan.** Goal 17 is last, so no connector
 needs write access to anything. That removes the largest security surface from
 every PR before it.
+
+## Data downloads (GDPR / data-protection exports), founder idea, 22 Oct
+
+**The idea.** Most services must hand you a full export of your data on request, e.g. Google Takeout, Spotify ("download your data"), Instagram, Facebook, Netflix, Amazon, Apple, LinkedIn and Uber. Retro can use those exports as a deep, historical context source, often years of data that no live API exposes.
+
+**How:**
+- **Computer use does the tedious part.** With the person watching and approving, it opens the service's export page, requests the export and comes back when it's ready. The person signs in themselves; Retro never handles passwords.
+- **Download and import.** It downloads the archive, and a per-service importer normalises it into the brain's raw content with its true dates and source.
+
+**Privacy and honesty:**
+- Every import is opt-in per service.
+- The archive is deleted after import.
+- Facts carry their source ("from your spotify export").
+- Delete my data removes them.
+
+**When:** after Beta 1, as its own connector family with one PR per service importer. It needs its own plan, with a contract, the brain-side normaliser and the consent screens.

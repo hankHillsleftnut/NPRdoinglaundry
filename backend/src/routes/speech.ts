@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { config } from '../utils/config.js';
 import { captureException } from '../services/telemetry.js';
-import { MemoryLimiter, type Limiter } from '../doors/limits.js';
+import type { Limiter } from '../doors/limits.js';
 import { SPEECH_DEFAULTS, SpeechProviderError, synthesizeSpeech, type SynthOptions } from '../services/speech-synth.js';
 
 // Bounds the spend a single authenticated request can trigger on the provider.
@@ -67,14 +67,13 @@ export function createSpeechRouter(deps: SpeechRouteDeps): Router {
   return router;
 }
 
-export const speechRouter = createSpeechRouter({
-  limiter: new MemoryLimiter(),
-  now: Date.now,
-  synth: {
+/** The ElevenLabs settings from config; the app factory builds the router with the shared limiter. */
+export function speechSynthFromConfig(): SpeechRouteDeps['synth'] {
+  return {
     apiKey: config.elevenlabs.apiKey || null,
     voiceId: config.elevenlabs.voiceId,
     model: config.elevenlabs.model,
     maxCharsPerRequest: config.elevenlabs.maxCharsPerRequest,
     ...SPEECH_DEFAULTS,
-  },
-});
+  };
+}

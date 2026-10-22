@@ -54,4 +54,4 @@ A sheet holds a short task on top of a page; a dialog asks one question that mus
 - Keyboard up in a sheet → sheet rises with it; never covers the field.
 
 ## Tokens
-`radius.sheet/panel`, `size.grabber.width/height`, `layout.sheetDetent.medium`, `layout.sheetMaxWidth/dialogWidth`, `background.raised/scrim`, `layer.sheet/dialog`, `motion.spring.sheet/sheetDismiss`, `status.dangerText`, `border.control`, `haptic.sheetSnap/error`.
+`radius.sheet/panel`, `size.grabber.width/height`, `layout.sheetDetent.medium`, `layout.sheetMaxWidth` (dialogs are screen width minus the margins), `background.raised/scrim`, `layer.sheet/dialog`, `motion.spring.sheet/sheetDismiss`, `status.dangerText`, `border.control`, `haptic.sheetSnap/error`.

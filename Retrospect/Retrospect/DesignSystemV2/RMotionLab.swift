@@ -14,6 +14,7 @@ enum RLabPage: String, CaseIterable, Identifiable {
     case motion, foundation, parts, artwork, toast
     case offline
     case evidence
+    case entryrow
     case journaldata
 
     var id: String {
@@ -54,11 +55,13 @@ struct RDesignLab: View {
             case .toast: RToastGallery()
             case .offline: ROfflineLineGallery()
             case .evidence: REvidenceRowGallery()
+            case .entryrow: REntryRowGallery()
             case .journaldata: SampleJournalGallery()
             }
         }
         .background(RColor.backgroundCanvas)
         .rLifeHost()
+        .rReadsScreenHeight()
     }
 }
 
