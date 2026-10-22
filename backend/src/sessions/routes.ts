@@ -17,7 +17,9 @@ import { hashNonce, hashRefreshToken, issueAccessToken, newRefreshToken, openGra
  * retry of the same token within 30 seconds gets the same pair (a dropped
  * response must not sign the person out); reuse after that ends the device's
  * whole session (someone else has a copy). Anything that isn't a live session
- * is `session_revoked`, and the app signs out.
+ * is `session_revoked`, and the app signs out. A family issued under an older
+ * users.token_version than the person's current one is ended the same way:
+ * bumping the version is the kill switch for every token, access and refresh.
  *
  * Neither the refresh token nor its hash is ever logged.
  */
@@ -151,10 +153,16 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       if (!parsed.success) throw new DoorError('invalid_request');
       const tokenHash = hashRefreshToken(parsed.data.refreshToken);
 
-      ownerId = await deps.store.ownerOf(tokenHash);
-      if (!ownerId) throw new DoorError('session_revoked');
+      const owner = await deps.store.ownerOf(tokenHash);
+      if (!owner) throw new DoorError('session_revoked');
+      ownerId = owner.userId;
       const user = await deps.users(ownerId);
       if (!user || user.tokenVersion === undefined) throw new DoorError('session_revoked');
+      // The kill switch: a bumped token_version ends this family before any successor is minted.
+      if (owner.tokenVersion < user.tokenVersion) {
+        await deps.store.revoke(tokenHash, new Date(started).toISOString());
+        throw new DoorError('session_revoked');
+      }
 
       const next = newRefreshToken();
       const result = await deps.store.rotate({
@@ -192,9 +200,9 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       if (!parsed.success) throw new DoorError('invalid_request');
       const tokenHash = hashRefreshToken(parsed.data.refreshToken);
       // Only your own device: another person's session is not found, never ended.
-      const ownerId = await deps.store.ownerOf(tokenHash);
-      if (ownerId !== null && ownerId !== userId) throw new DoorError('not_found');
-      if (ownerId) await deps.store.revoke(tokenHash, new Date(started).toISOString());
+      const owner = await deps.store.ownerOf(tokenHash);
+      if (owner !== null && owner.userId !== userId) throw new DoorError('not_found');
+      if (owner) await deps.store.revoke(tokenHash, new Date(started).toISOString());
       // Signing out a session that's already gone is still "signed out".
       out.ok(res, { signedOut: true });
     })().catch((err: unknown) => out.fail(res, err));

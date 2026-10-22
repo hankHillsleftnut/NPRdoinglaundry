@@ -12,7 +12,7 @@ import { routeList } from './support/route-list.js';
 // routes (/public/waitlist, /i/:code, the app-link file; BE0.12).
 test('the route list is unchanged by the refactor', async () => {
   const { createApp } = await import('../src/app.js');
-  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never, access: {} as never, invites: {} as never });
+  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never, access: {} as never, invites: {} as never, entries: {} as never });
   assert.deepEqual(routeList(app), [
     'use * query',
     'use * expressInit',
@@ -43,6 +43,7 @@ test('the route list is unchanged by the refactor', async () => {
     'use /integrations router',
     'use /graph authMiddleware',
     'use /graph router',
+    'use /v2/meta router',
     'use /v2/auth router',
     'use /v2 authMiddleware',
     'use /v2 router',
