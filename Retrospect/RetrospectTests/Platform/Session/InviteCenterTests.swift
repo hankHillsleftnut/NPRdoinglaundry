@@ -8,6 +8,7 @@ import Testing
 struct InviteCenterTests {
     private static let code = "7KQ2M9XD4RTAB"
     private static let key = UUID(uuidString: "00000000-0000-4000-8000-00000000c0de") ?? UUID()
+    private static let secondKey = UUID(uuidString: "00000000-0000-4000-8000-00000000c0df") ?? UUID()
 
     /// A waitlisted session, unless `access` says otherwise.
     private func harness(
@@ -23,8 +24,11 @@ struct InviteCenterTests {
         if let pending {
             try h.keychain.write(Data(pending.utf8), account: "pending_invite_code")
         }
-        let key = Self.key
-        let center = Session.InviteCenter(store: h.store, client: h.client, session: h.manager, log: h.recorder, makeKey: { key })
+        let made = Platform.Box(0)
+        let center = Session.InviteCenter(store: h.store, client: h.client, session: h.manager, log: h.recorder, makeKey: {
+            made.value += 1
+            return made.value == 1 ? Self.key : Self.secondKey
+        })
         return (h, center)
     }
 
@@ -94,35 +98,55 @@ struct InviteCenterTests {
         #expect(pending(h) == nil)
     }
 
-    @Test("a relaunch after the tear shows you're in without animating, and drops the code")
+    @Test("a relaunch after the tear (approved, the code's clear failed) asks the server, gets yours, shows you're in without animating, and drops the code")
     func aRelaunchAfterTheTearShowsYoureIn() async throws {
         let (h, center) = try harness(access: .approved)
         let yours = try fixture("01", "invite.check.yours")
         h.serve(["/v2/invites/check": { _, _ in (200, yours) }])
-        // The redeemer is approved after the tear; the check still runs because a code is pending and access says waitlisted.
-        let (hw, waitlisted) = try harness()
-        hw.serve(["/v2/invites/check": { _, _ in (200, yours) }])
 
-        await waitlisted.afterSignIn()
+        await center.afterSignIn()
 
-        #expect(waitlisted.ticket == .youreIn(Session.YoureIn(invitedBy: "priya", serial: 412, redeemedOn: nil, animate: false)))
-        #expect(pending(hw) == nil)
-        _ = h
-        _ = center
+        #expect(center.ticket == .youreIn(Session.YoureIn(invitedBy: "priya", serial: 412, redeemedOn: nil, animate: false)))
+        #expect(h.requests(to: "/v2/invites/check").count == 1, "the server decides, not the access state")
+        #expect(h.requests(to: "/v2/invites/redeem").isEmpty)
+        #expect(pending(h) == nil)
+        #expect(h.recorder.events.contains(.inviteChecked(.yours)))
     }
 
-    @Test("someone already in drops a leftover code without a request and shows nothing", arguments: [
+    @Test("someone already in (the server's answer) drops the leftover code and shows nothing", arguments: [
         Session.AccessState.approved, .member, .staff,
     ])
     func someoneAlreadyInDropsTheCode(_ access: Session.AccessState) async throws {
         let (h, center) = try harness(access: access)
+        let alreadyIn = try fixture("01", "invite.check.alreadyin")
+        h.serve(["/v2/invites/check": { _, _ in (200, alreadyIn) }])
 
         await center.afterSignIn()
 
         #expect(center.ticket == .none)
         #expect(pending(h) == nil)
-        #expect(h.requests(to: "/v2/invites/check").isEmpty)
+        #expect(h.requests(to: "/v2/invites/check").count == 1)
         #expect(h.recorder.events.contains(.inviteChecked(.alreadyIn)))
+    }
+
+    @Test("an unknown or suspended access state fails closed: the code is kept and checked like a waitlisted person's", arguments: [
+        Session.AccessState.unknown, .suspended,
+    ])
+    func unknownAccessFailsClosed(_ access: Session.AccessState) async throws {
+        let (h, center) = try harness(access: access)
+        h.reachability.set(online: false)
+
+        await center.afterSignIn()
+        #expect(center.ticket == .waiting(.offline))
+        #expect(pending(h) == Self.code, "nothing dropped on an unknown state")
+        #expect(!h.recorder.events.contains(.inviteChecked(.alreadyIn)))
+
+        let usable = try fixture("01", "invite.check.usable")
+        h.reachability.set(online: true)
+        h.serve(["/v2/invites/check": { _, _ in (200, usable) }])
+        await center.retryIfWaiting()
+        #expect(center.ticket == .printing(face))
+        #expect(pending(h) == Self.code)
     }
 
     @Test("the server's alreadyIn answer shows nothing and keeps nothing")
@@ -301,10 +325,60 @@ struct InviteCenterTests {
     func aMismatchedKeyIsABugState() async throws {
         let (h, center) = try harness()
         let mismatch = try fixture("00", "error.idempotency_mismatch")
-        h.serve(["/v2/invites/redeem": { _, _ in (409, mismatch) }])
+        let redeemed = try fixture("00", "redeem.response")
+        h.serve(["/v2/invites/redeem": { count, _ in count == 0 ? (409, mismatch) : (200, redeemed) }])
+        center.beginTear()
 
         #expect(await center.tear() == .failed)
+        #expect(pending(h) == Self.code, "the code is kept")
+        #expect(center.ticket != .youreIn(Session.YoureIn(invitedBy: "priya", serial: 412, redeemedOn: "2026-10-21", animate: true)))
+
+        // The next touch-down makes a fresh key (BE2.0b §3); the tear then succeeds.
+        center.beginTear()
+        guard case .yours = await center.tear() else {
+            Issue.record("expected yours on the second tear")
+            return
+        }
+        let keys = h.requests(to: "/v2/invites/redeem").map { $0.value(forHTTPHeaderField: "Idempotency-Key") }
+        #expect(keys == [Self.key.uuidString.lowercased(), Self.secondKey.uuidString.lowercased()])
+    }
+
+    @Test("a code typed by A follows the phone: after A signs out and B signs in, B's check and tear use B's session")
+    func aTypedCodeFollowsThePhone() async throws {
+        let (h, center) = try harness(pending: nil)
+        center.start()
+        let usable = try fixture("01", "invite.check.usable")
+        let redeemed = try fixture("00", "redeem.response")
+        h.serve(["/v2/invites/check": { _, _ in (200, usable) }, "/v2/invites/redeem": { _, _ in (200, redeemed) }])
+        await center.type(code: "7kq2-m9xd-4rta-b")
         #expect(pending(h) == Self.code)
+
+        h.reachability.set(online: false)
+        _ = await h.manager.signOut(force: true)
+        h.reachability.set(online: true)
+        for _ in 0 ..< 20 where center.ticket != .none {
+            await Task.yield()
+        }
+        #expect(center.ticket == .none)
+        #expect(pending(h) == Self.code, "the pending code survives sign-out (PL1.3)")
+
+        let b = Session.Credentials(
+            accessToken: "b-access", accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_570_500), refreshToken: "b-refresh", userID: "user-b",
+            access: .waitlisted, firstName: nil, provider: .apple, appleUserID: "009"
+        )
+        try await h.manager.install(b)
+        await center.afterSignIn()
+        #expect(center.ticket == .printing(face))
+        #expect(h.requests(to: "/v2/invites/check").last?.value(forHTTPHeaderField: "Authorization") == "Bearer b-access")
+
+        center.beginTear()
+        guard case .yours = await center.tear() else {
+            Issue.record("expected yours")
+            return
+        }
+        #expect(h.requests(to: "/v2/invites/redeem").last?.value(forHTTPHeaderField: "Authorization") == "Bearer b-access")
+        #expect(pending(h) == nil)
+        #expect(h.stored()?.userID == "user-b" && h.stored()?.access == .approved)
     }
 
     // MARK: Access, the waitlist, your invites

@@ -157,8 +157,8 @@ extension Session {
         }
 
         /// After sign-in (and on every active scene while waiting): a pending
-        /// code is checked, never redeemed. Someone already in has nothing to
-        /// redeem, so a leftover code is dropped.
+        /// code is checked, never redeemed. The server says whether the person
+        /// is already in (then the leftover code is dropped) or already redeemed it.
         func afterSignIn() async {
             if let checking {
                 await checking.value
@@ -246,18 +246,19 @@ extension Session {
                 }
                 return
             }
-            guard access == .waitlisted else {
-                await clearPending()
-                ticket = .none
-                log.record(.inviteChecked(.alreadyIn))
-                return
-            }
+            // Every pending code is checked, whatever the access state: the server
+            // decides (and answers "yours" before "already in", so a relaunch after
+            // the tear whose clear failed still shows you're in). An unknown or
+            // suspended state fails closed: the code is kept and checked like a
+            // waitlisted person's.
             ticket = await check(pending)
-            if case .refused = ticket {
+            switch ticket {
+            case .refused, .none:
                 await clearPending()
-            }
-            if case let .youreIn(youreIn) = ticket, !youreIn.animate {
+            case let .youreIn(youreIn) where !youreIn.animate:
                 await clearPending()
+            default:
+                break
             }
         }
 
@@ -359,6 +360,9 @@ extension Session {
                 log.record(.inviteTorn(.rateLimited))
                 return .rateLimited(retryAfterSeconds: retryAfter.map { Int($0.components.seconds) })
             default:
+                // A bug state (a mismatched key) or a server failure: the code is
+                // kept, and the next touch-down makes a fresh key.
+                tearKey = nil
                 log.record(.inviteTorn(.failed))
                 return .failed
             }
