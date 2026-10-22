@@ -33,6 +33,8 @@ extension Platform.Log {
         case installCheckFailed(status: OSStatus)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
+        /// A batch of diagnostics couldn't be written; it was dropped.
+        case diagnosticsWriteFailed
     }
 
     enum Outbox: Equatable, Sendable {
@@ -71,6 +73,8 @@ extension Platform.Log {
                 record(check)
             case let .installCheckFailed(status):
                 logger.error("install check failed: keychain status \(status)")
+            case .diagnosticsWriteFailed:
+                logger.error("diagnostics: a batch couldn't be written, dropped")
             }
         }
 
