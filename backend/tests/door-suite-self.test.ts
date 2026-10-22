@@ -18,7 +18,10 @@ function withSampleDoor(door: DoorFactory): Router {
     bucket: 'read',
     request: z.object({ id: z.string().regex(/^s-[a-z0-9]+$/) }).strict(),
     owns: async (ctx, req) => owners.get(req.id) === ctx.userId,
-    call: (ctx, req) => ctx.agent.get<{ title: string }>(`/samples/${ctx.userId}/${req.id}`, { timeoutMs: 100, retry: 'read' }),
+    // 1 s, not 100 ms: the fake agent is a real local server, and on a busy CI
+    // runner one of the limit test's 120 calls took over 100 ms (a false 504).
+    // The timeout test's hanging agent still proves the 504 path.
+    call: (ctx, req) => ctx.agent.get<{ title: string }>(`/samples/${ctx.userId}/${req.id}`, { timeoutMs: 1000, retry: 'read' }),
     map: (r) => ({ title: r.title }),
   }));
   router.use(createV2Router(door));
