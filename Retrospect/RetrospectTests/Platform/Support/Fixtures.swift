@@ -1,6 +1,7 @@
 import Foundation
 
-/// The shared contract fixtures in `docs/team/contracts/fixtures/<contract>/<name>.json`,
+/// The shared contract fixtures in `docs/team/contracts/fixtures/<contract>/<name>.json`
+/// (`<contract>` is the number: `00`, `02`),
 /// the same files the backend's zod schemas check. Read straight from the repo:
 /// the simulator runs on the Mac and can see it.
 enum Fixtures {
