@@ -558,4 +558,11 @@ extension Store.Outbox {
                 .min()
         }
     }
+
+    #if DEBUG
+    /// Delivers a receipt to the listeners, as the drainer does after a send. For tests.
+    func publishForTests(_ receipt: ReportReceipt) {
+        publish(receipt)
+    }
+    #endif
 }

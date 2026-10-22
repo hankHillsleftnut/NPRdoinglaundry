@@ -35,6 +35,7 @@ struct RLabPage: Identifiable {
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
+        RLabPage("report") { SendReportGallery() },
         RLabPage("retro") { RRetroLineGallery() },
         RLabPage("sheet") { RSheetHostGallery() },
         RLabPage("skeleton") { RSkeletonGallery() },
