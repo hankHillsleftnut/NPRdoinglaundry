@@ -123,7 +123,7 @@ type DataExport = {
   url: string | null;                     // signed, 24 hours, only while ready; refetch for a fresh one
 };
 ```
-**`POST /v2/account/export`** (Idempotency-Key: a client UUID) → `{ "export": DataExport }`. One export at a time: while one is `preparing`, asking again returns it. At most one new export per 24 hours (`rate_limited` with `retryAfterSeconds`). Bucket `expensive` (it reads everything, no model calls).
+**`POST /v2/account/export`** (Idempotency-Key: a client UUID) → `{ "export": DataExport }`. One export at a time: while one is `preparing`, asking again returns it. At most one new export per 24 hours (`rate_limited` with `retryAfterSeconds`). Bucket `expensive` (it reads everything, no model calls). The error's `message` is contract 00's, the same for every door; the page writes its own copy ("you can download your data once a day") and takes the timing from `retryAfterSeconds` (integrator, 22 Oct).
 **`GET /v2/account/export/latest`** → `{ "export": DataExport | null }`.
 - The file is a zip: one JSON file per kind of thing (entries, facts and their evidence, answers, goals, briefs, episodes with their scripts, guesses, sources and what they read, settings), plus the person's own audio (voice notes, episode and brief audio). No embeddings, no internal bookkeeping, no other person's data (BE6.3a).
 - When it's ready, the outside plan's writer and sender notify the person (written for them, like every notification; contract 07), if notifications are allowed. The export kind is part of the account, not one of the switchable kinds.
