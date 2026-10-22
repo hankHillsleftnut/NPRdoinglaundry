@@ -14,7 +14,8 @@
 --   entry_fields_json  one entry from named columns (never the whole row: the
 --                      agent's migrations add a 3,072-float embedding to
 --                      raw_content, which nothing here should read)
---   entries_today      022's function, now reading named columns (same signature)
+--   entries_today      022's function, now reading named columns (same signature;
+--                      over the limit the oldest fall off the thread)
 --   entries_list       own words, newest first, keyset after (p_before_us,
 --                      p_before_id), optional ILIKE over the text (the door
 --                      escapes % _ \), at most p_limit
@@ -29,7 +30,7 @@ CREATE OR REPLACE FUNCTION entry_fields_json(
 )
 RETURNS JSONB
 LANGUAGE sql
-IMMUTABLE
+STABLE
 AS $$
     SELECT jsonb_build_object(
         'id', p_id,
@@ -66,7 +67,7 @@ BEGIN
           SELECT id, content_type, content, content_date, created_at, processing_status, metadata FROM raw_content
            WHERE user_id = p_user AND content_type = ANY(p_types)
              AND (COALESCE(content_date, created_at) AT TIME ZONE v_zone)::date = v_day
-           ORDER BY COALESCE(content_date, created_at), id
+           ORDER BY COALESCE(content_date, created_at) DESC, id DESC
            LIMIT p_limit
       ) r;
     RETURN jsonb_build_object('date', v_day, 'entries', v_entries);
