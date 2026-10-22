@@ -108,6 +108,31 @@ struct AppEnvironmentTests {
         #expect(tasks.ended == 1)
     }
 
+    @Test("signing in builds the journal stack on that person's store; signing out stops it and erases it, and the next person starts empty")
+    func theJournalStackFollowsTheSession() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        #expect(environment.journalData == nil)
+        #expect(environment.outbox == nil)
+
+        await environment.sessionDidChange(to: "user-a").value
+        let outbox = try #require(environment.outbox)
+        #expect(environment.journalData != nil)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "private words", createdAt: Date())))
+        #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 1)
+
+        await environment.sessionWillChange().value
+
+        #expect(environment.journalData == nil)
+        #expect(environment.outbox == nil)
+        #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "the store is erased")
+        #expect(try await database.writer.read { try Store.OutboxRow.fetchCount($0) } == 0)
+
+        await environment.sessionDidChange(to: "user-b").value
+        #expect(environment.journalData != nil)
+        #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "the next person starts empty")
+    }
+
     @Test("opening the authenticated store lands waiting diagnostics in that user's database")
     func openingTheStoreAttachesDiagnostics() async throws {
         let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")

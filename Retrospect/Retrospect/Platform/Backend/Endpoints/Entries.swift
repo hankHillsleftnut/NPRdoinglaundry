@@ -53,3 +53,25 @@ extension Backend.Endpoints {
         }
     }
 }
+
+extension Backend.Endpoints {
+    /// `GET /v2/entries/today` (contract 02 §2): today's entries in the person's
+    /// own day (from `X-Time-Zone`), oldest first.
+    struct EntriesToday: Backend.Endpoint {
+        struct Today: Decodable, Sendable {
+            /// The person's local day, `YYYY-MM-DD`.
+            let date: String
+            let entries: [Flows.Journal.Entry]
+        }
+
+        typealias Response = Today
+
+        var method: Backend.Method {
+            .get
+        }
+
+        var path: Backend.PathTemplate {
+            .entriesToday
+        }
+    }
+}

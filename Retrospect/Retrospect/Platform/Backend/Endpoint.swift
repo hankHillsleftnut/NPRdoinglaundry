@@ -12,6 +12,7 @@ extension Backend {
         case meta = "/v2/meta"
         case diagnostics = "/v2/diagnostics"
         case entries = "/v2/entries"
+        case entriesToday = "/v2/entries/today"
         case authApple = "/v2/auth/apple"
         case authRefresh = "/v2/auth/refresh"
         case authSignout = "/v2/auth/signout"

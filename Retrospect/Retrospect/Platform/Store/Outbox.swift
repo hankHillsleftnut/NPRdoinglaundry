@@ -62,6 +62,7 @@ extension Store {
         private var isDraining = false
         private var needsAnotherPass = false
         private var started = false
+        fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
 
         /// Without a sender the outbox only queues (previews, the queue's own
@@ -228,7 +229,7 @@ extension Store {
         /// a call during a drain adds one more pass at its end, never a second
         /// drainer. Returns when the drain is over (or was cancelled).
         func drain(reason _: DrainReason) async {
-            guard sender != nil else { return }
+            guard sender != nil, !stopped else { return }
             if isDraining {
                 needsAnotherPass = true
                 return
@@ -250,7 +251,7 @@ extension Store {
         private func pass() async {
             guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return }
             var tally = Tally()
-            for queued in due where !Task.isCancelled {
+            for queued in due where !Task.isCancelled && !stopped {
                 guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
@@ -504,5 +505,17 @@ extension Store {
             let parts = calendar.dateComponents([.year, .month, .day], from: date)
             return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
         }
+    }
+}
+
+// MARK: Stopping (PL3.1a)
+
+extension Store.Outbox {
+    /// The person signed out: no trigger starts another drain, and a pass in flight stops at its next item.
+    /// The outbox is not used again; the next person gets a new one on a new store.
+    func stop() {
+        stopped = true
+        reachabilityWatch?.cancel()
+        reachabilityWatch = nil
     }
 }
