@@ -169,15 +169,15 @@ extension Session.KeychainBackend {
     /// a probe item that holds no data. Only `errSecInteractionNotAllowed`
     /// means locked; any other status is a failure of its own (a build
     /// without the Keychain entitlement, say), never a reason to wait.
-    func probeUnlock() -> UnlockProbe {
+    func probeUnlock() -> Session.UnlockProbe {
         let account = "unlock_probe"
         do {
             try write(Data(), account: account)
             try? delete(account)
             return .unlocked
-        } catch let error as KeychainError where error.status == errSecInteractionNotAllowed {
+        } catch let error as Session.KeychainError where error.status == errSecInteractionNotAllowed {
             return .locked
-        } catch let error as KeychainError {
+        } catch let error as Session.KeychainError {
             return .failed(status: error.status)
         } catch {
             return .failed(status: errSecInternalError)
