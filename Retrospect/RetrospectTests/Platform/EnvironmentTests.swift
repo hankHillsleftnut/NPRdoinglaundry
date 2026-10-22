@@ -2,6 +2,7 @@
 import Testing
 
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct EnvironmentTests {
     @Test("the preview environment builds without network, disk or Keychain, logging to memory")
     func thePreviewEnvironmentLogsToMemory() throws {
