@@ -15,6 +15,7 @@ const PLACEHOLDERS: Record<string, string> = {
   JWT_SECRET: 'test-only-not-a-key',
   AGENT_SERVICE_URL: 'http://127.0.0.1:9',
   INTERNAL_API_SECRET: 'test-only-not-a-key',
+  INVITE_CODE_KEY: 'test-only-not-a-key',
   // Integration providers, so their contract tests see configured providers.
   GOOGLE_OAUTH_CLIENT_ID: 'test-google-client', GOOGLE_OAUTH_CLIENT_SECRET: 'test-google-secret',
   SPOTIFY_CLIENT_ID: 'test-spotify-client', SPOTIFY_CLIENT_SECRET: 'test-spotify-secret',
