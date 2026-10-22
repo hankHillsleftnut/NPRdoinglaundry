@@ -12,32 +12,30 @@ The backend engineer's cards for first run: the doors in `backend/` and the brai
 
 ### BE2.0a · Invite preview (public)                                                 size: S
 Place in the tree: first run › the invite › preview › `GET /public/invites/:code`
-Repo · branch: backend · `be/BE2.0a-invite-preview`
-Needs: BE0.12 (invites table, code hashing, the link page)        Unblocks: PL1.7d (preview), PI1 · T1 live
+Repo · branch: backend · `be/BE2.0a-invite-preview` (stacked on BE2.0b: the serial)
+Needs: BE0.12, BE2.0b (the serial)        Unblocks: PL1.7d (preview), PI1 · T1 live
 
 Why: when you open a friend's link before signing in, the screen can say "priya kept a place for you." without spending anything or telling a stranger whether a code works.
 
-Inputs: contract 01 §2.1, fixtures `invite.preview.live.json`, `invite.preview.notlive.json`, `error.rate_limited.json`; BE0.12 (`invites`, `code_hash`, `GET /i/:code`'s rule: the inviter's first name only for a valid, unused code).
+Inputs: contract 01 §2.1, fixtures `invite.preview.live.json`, `invite.preview.notlive.json`, `error.rate_limited.json`; BE0.12 (`invites`, `code_hash`, `GET /i/:code`'s rule: the inviter's first name only for a valid, unused code); BE2.0b's `TicketFace`.
 
-Spec:
-- Public route on the backend (outside `/v2`, beside BE0.12's `/i/:code` and `/public/waitlist`), no token.
-- Normalise the code as redeem does; a string that can't be 13 Crockford characters → `{ live: false, face: null }` (never `invalid_request`).
-- Look up by `sha256(normalised)`; **live** = exists, unused, not revoked, not expired. Live → `face: { from, kind, serial, issuedOn }`: `from` = the owner's first name (`users.first_name`, or the founder's configured first name for `founder` invites, `null` for `review`); `serial` from BE2.0b's column (until it exists: omit the field: BE2.0a may merge first only if BE2.0b's migration is merged; lean: build after BE2.0b's migration lands, in the same week); `issuedOn` = `created_at` as a date in the owner's time zone.
-- Not live → the identical `200 { live: false, face: null }`, with the same response time profile (a constant-time-ish path: always do the lookup, never short-circuit before it).
-- Limits: per IP 30 a minute (BE0.0's trust proxy must be set; the limiter keys on the real client IP); `rate_limited` with `retryAfterSeconds`.
-- Logging: `invite.preview` with `live: true|false` only; never the code, the name or the IP.
+Spec (as built):
+- Migration `024_invite_preview.sql`: `invite_face(p_code_hash, p_now)` keeps its signature and, for a live code only, also returns `kind`, `serial` (021) and `created_at`; never `code_ciphertext`. The link page keeps working on the same function.
+- Public route on the backend (`backend/src/invites/public.ts`, beside `/i/:code` and `/public/waitlist`), no token. Bucket `invitePreview`: 30 a minute per address (`DOOR_LIMITS.buckets`); over it `rate_limited` with `retryAfterSeconds` and `Retry-After`, the one error.
+- Normalise as redeem does; **the lookup always runs** (a string that can't be a code looks up its own hash, which no row has), so timing says nothing. **Live** = exists, unused, not revoked, not expired → `{ live: true, face: { from, kind, serial, issuedOn } }`: `from` = the owner's first name (null for founder and review invites until `INVITE_FOUNDER_NAME` exists: founder Q10, BE2.0b Q4); `issuedOn` = the UTC date of `created_at` until `users.time_zone` is written (BE2.0b Q5).
+- Not live (used, revoked, expired, unknown, malformed) → the identical `200 { live: false, face: null }`. `Cache-Control: no-store`, no cookies.
+- Logging: the door log line `invites.preview` with status only; never the code, the name or the address.
 
 Acceptance: a live code returns its face; used, revoked, expired, unknown and malformed codes all return the identical body.
 
-Tests (door suite where it applies, plus):
-- `a live invite previews its inviter, serial and date`
-- `a used, revoked, expired, unknown or malformed code all answer the same`
-- `a review invite previews with no name`
-- `preview is rate-limited per IP`
-- `no log line contains the code or the name`
-- fixtures validate.
+Tests (`backend/tests/invites-preview.test.ts`; * = fails when its rule is removed):
+- `a live invite previews its inviter, serial and date: the contract fixture exactly` (and a review invite with no name)
+- `a used, revoked, expired, unknown or malformed code all answer the same body` *
+- `the preview never opens the sealed code` *
+- `the preview is rate-limited per address, with the contract envelope` (its own bucket; the link page's is separate)
+- fixtures validate against `PreviewResponse`.
 
-Proof in the PR: test output; a local-staging curl of both answers (codes redacted).
+Proof in the PR: test output; one safety test shown failing with its rule removed.
 
 Watch out: this is a public enumeration surface; 65-bit codes make guessing hopeless, but the IP limit and the identical answers are still required.
 
