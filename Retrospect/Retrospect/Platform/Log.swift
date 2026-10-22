@@ -51,26 +51,39 @@ extension Platform.Log {
             case let .outboxDrained(sent, failed):
                 logger.info("outbox drained: sent \(sent), failed \(failed)")
             case let .requestSent(path, status, ms):
-                switch path {
-                case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
-                case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
-                }
+                recordRequest(path, status: status, ms: ms)
             case let .unknownErrorCode(path):
-                switch path {
-                case .meta: logger.error("unknown error code from /v2/meta")
-                case .entries: logger.error("unknown error code from /v2/entries")
-                }
+                recordUnknownErrorCode(path)
             case let .outboxEnqueued(operation):
-                switch operation {
-                case .entryCreate: logger.info("outbox: entry.create queued")
-                case .unknown: logger.info("outbox: unknown operation queued")
-                }
+                record(operation)
             case let .launchOptionIgnored(problem):
                 record(problem)
             case let .installChecked(check):
                 record(check)
             case let .installCheckFailed(status):
                 logger.error("install check failed: keychain status \(status)")
+            }
+        }
+
+        /// One fixed line per door: the template is never interpolated.
+        private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
+            switch path {
+            case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+            case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
+            }
+        }
+
+        private func recordUnknownErrorCode(_ path: Backend.PathTemplate) {
+            switch path {
+            case .meta: logger.error("unknown error code from /v2/meta")
+            case .entries: logger.error("unknown error code from /v2/entries")
+            }
+        }
+
+        private func record(_ operation: Store.OutboxOperation) {
+            switch operation {
+            case .entryCreate: logger.info("outbox: entry.create queued")
+            case .unknown: logger.info("outbox: unknown operation queued")
             }
         }
 

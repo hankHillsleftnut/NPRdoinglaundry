@@ -68,6 +68,7 @@ extension Store {
                 Backend.Endpoints.CreateEntry.Body(text: draft.text, kind: draft.kind, clientEntryID: draft.id, createdAt: draft.createdAt)
             )
             let id = draft.id.uuidString.lowercased()
+            let queuedAt = now()
             let entry = EntryRow(
                 localID: id, serverID: nil, kind: EntryKind(rawValue: draft.kind.rawValue) ?? .unknown, text: draft.text,
                 createdAt: draft.createdAt, day: Self.day(of: draft.createdAt, in: timeZone()), mediaPath: draft.mediaPath,
@@ -75,7 +76,7 @@ extension Store {
             )
             let item = OutboxRow(
                 id: id, operation: .entryCreate, entityID: id, payload: payload, attempts: 0,
-                nextAttemptAt: now(), status: .pending, lastErrorCode: nil, createdAt: now()
+                nextAttemptAt: queuedAt, status: .pending, lastErrorCode: nil, createdAt: queuedAt
             )
             try database.writer.write { db in
                 try entry.insert(db)
@@ -106,12 +107,17 @@ extension Store {
                     .filter(Column(OutboxRow.CodingKeys.entityID) == id && Column(OutboxRow.CodingKeys.status) == OutboxStatus.dead.rawValue)
                     .fetchAll(db)
                 guard !dead.isEmpty else { throw NothingToRetry() }
+                // Only the four fields that change: a row whose operation this
+                // build reads as `unknown` keeps its stored operation.
                 for var item in dead {
                     item.status = .pending
                     item.attempts = 0
                     item.nextAttemptAt = due
                     item.lastErrorCode = nil
-                    try item.update(db)
+                    try item.update(db, columns: [
+                        Column(OutboxRow.CodingKeys.status), Column(OutboxRow.CodingKeys.attempts),
+                        Column(OutboxRow.CodingKeys.nextAttemptAt), Column(OutboxRow.CodingKeys.lastErrorCode),
+                    ])
                 }
                 if var entry = try EntryRow.fetchOne(db, key: id), entry.syncState == .failed {
                     entry.syncState = .local
