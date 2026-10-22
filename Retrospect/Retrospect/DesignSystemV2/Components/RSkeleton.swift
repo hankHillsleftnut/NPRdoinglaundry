@@ -106,13 +106,13 @@ final class RLoadingTimer {
 
     /// Both deadlines are measured from the load's start, so a late wake never pushes
     /// "still working" past motion.duration.stillWorking.
-    func run(on clock: any Clock<Duration>) async {
+    func run<C: Clock>(on clock: C) async where C.Duration == Duration {
         phase = .waiting
         let start = clock.now
         do {
-            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationSkeletonDelay)))
+            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationSkeletonDelay)), tolerance: nil)
             phase = .skeleton
-            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationStillWorking)))
+            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationStillWorking)), tolerance: nil)
             phase = .stillWorking
         } catch {
             return
