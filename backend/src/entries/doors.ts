@@ -88,10 +88,12 @@ const limitField = z.preprocess(
   z.number().int().min(1).max(LIST_LIMIT.max).optional(),
 );
 /** Fixture 02/entries.list.json's query shape; strict, so a client-sent userId is invalid_request. */
+/** Postgres text can't hold NUL; a query or cursor carrying one is the client's mistake, not a server error. */
+const noNul = (s: string) => !s.includes('\u0000');
 export const ListQuery = z.object({
-  cursor: z.string().min(1).max(200).optional(),
+  cursor: z.string().min(1).max(200).refine(noNul).optional(),
   limit: limitField,
-  q: z.string().min(1).max(MAX_QUERY_UNITS).optional(),
+  q: z.string().min(1).max(MAX_QUERY_UNITS).refine(noNul).optional(),
 }).strict();
 const EntryId = z.object({ id: z.string().regex(UUID) }).strict();
 

@@ -148,7 +148,7 @@ test('a malformed cursor, limit or q is invalid_request; the default page is 50 
   const h = await harness();
   try {
     const sam = await person(h);
-    for (const bad of ['cursor=not-base64-of-anything', `cursor=${Buffer.from('12|not-a-uuid').toString('base64url')}`, 'limit=0', 'limit=101', 'limit=abc', 'limit=1.5', 'q=', `q=${'x'.repeat(MAX_QUERY_UNITS + 1)}`, 'userId=x']) {
+    for (const bad of ['q=%00', 'q=a%00b', 'cursor=%00', 'cursor=not-base64-of-anything', `cursor=${Buffer.from('12|not-a-uuid').toString('base64url')}`, 'limit=0', 'limit=101', 'limit=abc', 'limit=1.5', 'q=', `q=${'x'.repeat(MAX_QUERY_UNITS + 1)}`, 'userId=x']) {
       assert.equal(code((await list(h, sam, bad)).body), 'invalid_request', bad);
     }
     assert.equal(decodeCursor(Buffer.from('99999999999999999999|11111111-1111-4111-8111-111111111111').toString('base64url')), null, 'a moment past the safe range');
