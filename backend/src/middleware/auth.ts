@@ -6,6 +6,7 @@ import type { AuthUser, JWTPayload } from '../types/index.js';
 import { getOrCreateUserWith, type UsersClient } from '../services/users.js';
 import { DoorError, sendError } from '../doors/errors.js';
 import { verifyAccessToken } from '../sessions/tokens.js';
+import { ACCESS_STATES, type AccessState } from '../access/store.js';
 
 // Extend Express Request type to include user
 declare global {
@@ -21,16 +22,33 @@ export type UserLookup = (userId: string) => Promise<AuthUser | null>;
 
 /** Postgres: the column being read does not exist. */
 const UNDEFINED_COLUMN = '42703';
-let warnedNoTokenVersion = false;
 
 /**
  * The real lookup: one round trip to the users table per authenticated request.
  *
- * Reads users.token_version (migration 005). If the server reaches production
- * before 005 does, the column is missing: the lookup falls back to the old
- * columns and logs once, so old sign-ins keep working. New access tokens are
- * then refused (no version to check them against), which is the safe side.
+ * Reads users.access (migration 007) and users.token_version (005). If the
+ * server reaches production before a migration does, its column is missing:
+ * the lookup falls back to the columns that exist and logs once, so sign-ins
+ * keep working. Before 005, new access tokens are refused (no version to check
+ * them against), the safe side. Before 007 there is no access state, and the
+ * gate lets everyone through as before (everyone was grandfathered as a member).
  */
+const COLUMN_SETS = [
+  'id, apple_user_id, email, token_version, first_name, access',
+  'id, apple_user_id, email, token_version, first_name',
+  'id, apple_user_id, email',
+] as const;
+const FALLBACK_WARNINGS = [
+  '[auth] users.access is missing: migration 007 is not applied. Everyone passes the invite gate.',
+  '[auth] users.token_version is missing: migration 005 is not applied. Only old tokens can sign in.',
+];
+const warned = new Set<number>();
+function warnOnce(i: number): void {
+  if (warned.has(i)) return;
+  warned.add(i);
+  console.warn(FALLBACK_WARNINGS[i]);
+}
+
 /** The slice of supabase-js the lookup uses. */
 export interface UserRowsClient {
   from(table: string): {
@@ -45,23 +63,27 @@ export interface UserRowsClient {
 export function userLookupWith(db: UserRowsClient): UserLookup {
   return async (userId) => {
     const read = (columns: string) => db.from(Tables.USERS).select(columns).eq('id', userId).maybeSingle();
-    let { data, error } = await read('id, apple_user_id, email, token_version, first_name');
-    if (error?.code === UNDEFINED_COLUMN) {
-      if (!warnedNoTokenVersion) {
-        warnedNoTokenVersion = true;
-        console.warn('[auth] users.token_version is missing: migration 005 is not applied. Only old tokens can sign in.');
-      }
-      ({ data, error } = await read('id, apple_user_id, email'));
+    // Newest schema first; each fallback is a migration not yet applied.
+    let found: { data: unknown; error: { code?: string } | null } | null = null;
+    for (const [i, columns] of COLUMN_SETS.entries()) {
+      found = await read(columns);
+      if (found.error?.code !== UNDEFINED_COLUMN || i === COLUMN_SETS.length - 1) break;
+      warnOnce(i);
     }
+    const { data, error } = found!;
     if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
     if (!data) return null;
-    const row = data as unknown as { id: string; apple_user_id: string; email: string | null; token_version?: number; first_name?: string | null };
+    const row = data as unknown as {
+      id: string; apple_user_id: string; email: string | null; token_version?: number; first_name?: string | null; access?: string;
+    };
     return {
       id: row.id,
       appleUserId: row.apple_user_id,
       email: row.email ?? undefined,
       ...(typeof row.token_version === 'number' ? { tokenVersion: row.token_version } : {}),
       ...(typeof row.first_name === 'string' ? { firstName: row.first_name } : {}),
+      // An unknown value is the strictest state, never a way in.
+      ...(typeof row.access === 'string' ? { access: (ACCESS_STATES as readonly string[]).includes(row.access) ? row.access as AccessState : 'suspended' } : {}),
     };
   };
 }

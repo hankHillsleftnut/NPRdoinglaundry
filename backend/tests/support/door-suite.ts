@@ -43,6 +43,10 @@ export interface DoorSuiteSpec {
   v2Router?: AppDeps['v2Router'];
   /** Headers every request carries (e.g. an Idempotency-Key the door requires). */
   headers?: Record<string, string>;
+  /** Doors a waitlisted person may use (access, waitlist, redeem). */
+  openToWaitlisted?: boolean;
+  /** Stores the door needs (e.g. access and invites on a test database). */
+  stores?: () => Pick<NonNullable<Parameters<typeof startHarness>[0]>, 'access' | 'invites'>;
 }
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -53,6 +57,7 @@ async function withHarness(spec: DoorSuiteSpec, fn: (h: Harness, auth: Record<st
     ...(spec.agent ? { agentRoutes: { [spec.agent.route]: spec.agent.ok } } : {}),
     ...(spec.v2Router ? { v2Router: spec.v2Router } : {}),
     ...(spec.diagnostics ? { diagnostics: spec.diagnostics() } : {}),
+    ...(spec.stores ? spec.stores() : {}),
   });
   try {
     const auth = { Authorization: `Bearer ${h.asUser(USER)}` };
@@ -91,7 +96,30 @@ export function doorSuite(spec: DoorSuiteSpec): void {
     assert.equal(h.agentCalls.length, 0);
   }));
 
-  test(`${name}: a waitlisted user is a 403`, { todo: 'the waitlist gate arrives with BE0.12' }, () => undefined);
+  if (spec.openToWaitlisted) {
+    test(`${name}: a waitlisted user may use this door`, () => withHarness(spec, async (h, auth) => {
+      h.users.set(USER, { ...h.users.get(USER)!, access: 'waitlisted' });
+      const res = await send(h, auth);
+      assert.notEqual(code(res.body), 'invite_required');
+      assert.ok(res.status < 400, `status ${res.status}`);
+    }));
+  } else {
+    test(`${name}: a waitlisted user is a 403`, () => withHarness(spec, async (h, auth) => {
+      h.users.set(USER, { ...h.users.get(USER)!, access: 'waitlisted' });
+      const res = await send(h, auth);
+      assert.equal(res.status, 403);
+      assert.equal(code(res.body), 'invite_required');
+      assert.equal(h.agentCalls.length, 0);
+    }));
+  }
+
+  test(`${name}: a suspended user is a 403`, () => withHarness(spec, async (h, auth) => {
+    h.users.set(USER, { ...h.users.get(USER)!, access: 'suspended' });
+    const res = await send(h, auth);
+    assert.equal(res.status, 403);
+    assert.equal(code(res.body), 'suspended');
+    assert.equal(h.agentCalls.length, 0);
+  }));
 
   if (spec.otherUsersThing) {
     const otherUsersThing = spec.otherUsersThing;

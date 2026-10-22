@@ -195,3 +195,13 @@ test('a reused refresh token is logged with its owner and a reuse flag, and noth
     await h.close();
   }
 });
+
+test("refresh answers with the person's access state (contract 00 §4)", async () => {
+  const { h, userId, first } = await signedIn();
+  try {
+    h.users.set(userId, { ...h.users.get(userId)!, access: 'waitlisted' });
+    assert.deepEqual(data((await refresh(h, first.refreshToken)).body).access, { state: 'waitlisted' });
+  } finally {
+    await h.close();
+  }
+});

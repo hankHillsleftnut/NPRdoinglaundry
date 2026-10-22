@@ -33,6 +33,20 @@ This overrides the matching parts of `README.md` §4 and §7, `testing.md`, `int
 | Every reviewer nit fixed before merge | **Only real problems** (correctness, safety, accessibility blockers, Paper mismatches on the strict list) block a merge. Nits go to `docs/team/polish-list.md` and are batched before the App Store. | fix rounds |
 | Full card detail for every later area before it starts | Later areas keep their existing plans; no further planning work until Beta 1 ships | planning usage |
 
+## Effort by phase (founder, 22 Oct)
+
+Every **integration piece** runs in three phases, each at its own reasoning effort. An integration piece wires a screen to live data, a door to the brain, or the app to a door: PL3.1x live data, the BE1.x journal doors, PL1.4/PL1.5 sign-in wiring, PL1.7/BE0.12 invites.
+
+| Phase | Effort | Who | What it produces |
+|---|---|---|---|
+| 1. Contract and edge cases | **high** | one short agent, before any code | Both sides inspected. The agreed shapes, errors, states and timing. The edge-case list: offline, retry, expired session, empty, partial failure, races. Written into the card or the PR body. |
+| 2. Build | **medium** | the engineer | The wiring, built to that contract. |
+| 3. Combined-flow review | **high** | a fresh reviewer (Fable) | Both sides together, every edge case on the list, and contract fixtures passing on both sides. |
+
+**Pure UI components and simple bytes run at medium throughout**, with a reviewer only where this doc's risky list says.
+
+The integrator sets this with `effort` on each agent it starts. Engineers run at medium, phase 1 and phase 3 agents at high.
+
 ## What this doesn't change
 
 - **The Beta 1 scope** (`first-ship.md`). Same features, same diagnostics.
@@ -45,5 +59,7 @@ This overrides the matching parts of `README.md` §4 and §7, `testing.md`, `int
 When Beta 1 is on TestFlight, the integrator proposes which light checks come back before the App Store: the polish list, full Paper matching on every screen, and a reviewer on every PR. The founder decides.
 
 ## Change log for this doc
+
+- 22 Oct: effort by phase added (founder instruction, relayed).
 
 - 22 Oct: created. The previous integrator session wrote it and sent it to the current integrator to apply.

@@ -8,9 +8,12 @@ import { createDiagnosticsStore } from './diagnostics/store.js';
 import { supabaseDiagnosticsBackend } from './diagnostics/supabase-backend.js';
 import { startDiagnosticsPurge } from './diagnostics/purge.js';
 import { captureException } from './services/telemetry.js';
+import { supabaseAccessStore, type AccessRpcClient } from './access/store.js';
+import { supabaseInviteStore } from './invites/store.js';
 import { supabaseAdmin } from './utils/supabase.js';
 
 const diagnostics = createDiagnosticsStore(supabaseDiagnosticsBackend(supabaseAdmin));
+const rpc = supabaseAdmin as unknown as AccessRpcClient;
 
 /** The real server: real dependencies, then listen. `npm start` reaches this through index.ts. */
 const app = createApp({
@@ -18,6 +21,8 @@ const app = createApp({
   now: Date.now,
   users: supabaseUserLookup,
   diagnostics,
+  access: supabaseAccessStore(rpc),
+  invites: supabaseInviteStore(rpc),
 });
 
 console.log('Legacy backend crons are disabled. Agent crons own ingestion and podcasts.');

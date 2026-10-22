@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "invite_used",
-    "message": "this invitation has already been used."
+    "message": "That invite has already been used."
   }
 }
