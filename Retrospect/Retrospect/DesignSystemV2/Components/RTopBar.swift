@@ -57,7 +57,6 @@ struct RTopBar: View {
         content
             .frame(maxWidth: .infinity, minHeight: RDimension.sizeNavBar)
             .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: isCollapsed)
-            .animation(RMotion.standard(RNumber.motionDurationBase), value: isEditing)
     }
 
     @ViewBuilder private var content: some View {
@@ -91,7 +90,7 @@ struct RTopBar: View {
                     .padding(.horizontal, RDimension.space2)
             }
             .padding(.horizontal, RDimension.space4)
-            .transition(.blurReplace)
+            .rBlurReplace()
         case let .entry(.editing(canSave, cancel, save)):
             HStack(spacing: RDimension.space2) {
                 Button("cancel", action: cancel)
@@ -109,7 +108,7 @@ struct RTopBar: View {
                     .animation(RMotion.standard(RNumber.motionDurationFast), value: canSave)
             }
             .padding(.horizontal, RDimension.space6)
-            .transition(.blurReplace)
+            .rBlurReplace()
         }
     }
 
@@ -139,13 +138,6 @@ struct RTopBar: View {
         }
         return false
     }
-
-    private var isEditing: Bool {
-        if case .entry(.editing) = variant {
-            return true
-        }
-        return false
-    }
 }
 
 /// The journal's title in both places at once: the inky title at the leading edge and the small
@@ -160,9 +152,11 @@ private struct RJournalTitle: View {
     @State private var smallCenter: CGPoint = .zero
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// How much smaller the small name is than the inky title (from their two text sizes).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// How much smaller the small name is than the inky title, at the sizes they're drawn at now.
     private var ratio: CGFloat {
-        RTextStyle.barTitle.size / RTextStyle.inkTitle.size
+        RTextStyle.barTitle.scaledSize(at: dynamicTypeSize) / RTextStyle.inkTitle.scaledSize(at: dynamicTypeSize)
     }
 
     private var travel: CGSize {
@@ -182,6 +176,9 @@ private struct RJournalTitle: View {
                 .accessibilityHidden(collapsed)
                 .accessibilityAddTraits(.isHeader)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // collapsed, the hidden title gives up its height, so the bar is the small name's
+                // (it matters at large text sizes); the bar's spring animates it with the move
+                .frame(height: collapsed ? RDimension.space0 : nil)
             // the small name sits on the bar's centre: the same 44 slot is kept on the right
             HStack(spacing: RDimension.space2) {
                 RBarSmallTitle(title: title)
@@ -241,7 +238,7 @@ private struct RBarTextStyle: ButtonStyle {
                 RMotion.standard(configuration.isPressed ? RNumber.motionDurationPressIn : RNumber.motionDurationPressOut),
                 value: configuration.isPressed
             )
-            .frame(minHeight: RDimension.sizeTouchTarget)
+            .frame(minWidth: RDimension.sizeTouchTarget, minHeight: RDimension.sizeTouchTarget)
             .contentShape(Rectangle())
     }
 }
