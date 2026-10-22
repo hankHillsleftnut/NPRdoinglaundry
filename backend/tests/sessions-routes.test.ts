@@ -4,11 +4,12 @@
  */
 import assert from 'node:assert/strict';
 import test, { before } from 'node:test';
-import { asServiceRole, freshDatabase, insertUser, type PGlite } from './support/database.js';
+import { applyMigration, asServiceRole, freshDatabase, insertUser, type PGlite } from './support/database.js';
 import { pgliteRpc } from './support/pglite-rpc.js';
 import { AuthResponse } from '../src/sessions/routes.js';
 import { startHarness, type Harness } from './support/harness.js';
 import { startSession, supabaseSessionStore, type SessionStore } from '../src/sessions/store.js';
+import { hashRefreshToken } from '../src/sessions/tokens.js';
 
 const SECRET = process.env.JWT_SECRET ?? '';
 const DAY = 24 * 60 * 60 * 1000;
@@ -193,6 +194,44 @@ test('a reused refresh token is logged with its owner and a reuse flag, and noth
     assert.equal(h.logLines.join('').includes(first.refreshToken), false);
   } finally {
     await h.close();
+  }
+});
+
+test('a bumped token_version ends the family: refresh is session_revoked and stays so (*)', async () => {
+  const { h, userId, first } = await signedIn();
+  try {
+    // The founder's kill switch: the version moves on the user, in the database and in the token check.
+    await db.query(`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, [userId]);
+    h.users.set(userId, { ...h.users.get(userId)!, tokenVersion: 1 });
+    const res = await refresh(h, first.refreshToken);
+    assert.equal(res.status, 401);
+    assert.equal(code(res.body), 'session_revoked');
+    const { rows } = await db.query<{ revoked: boolean; n: number }>(
+      `SELECT bool_and(revoked_at IS NOT NULL) AS revoked, count(*)::int AS n FROM refresh_tokens WHERE user_id = $1`, [userId]);
+    assert.deepEqual(rows[0], { revoked: true, n: 1 }, 'the family is ended and no successor was minted');
+    h.clock.now += 1000;
+    assert.equal(code((await refresh(h, first.refreshToken)).body), 'session_revoked', 'and stays ended');
+    // A session started after the bump carries the new version and refreshes as usual.
+    const again = await startSession(store, { userId, tokenVersion: 1 }, SECRET, h.clock.now);
+    assert.equal((await refresh(h, again.refreshToken)).status, 200);
+    assert.equal((await db.query<{ v: number }>(`SELECT token_version AS v FROM refresh_tokens WHERE token_hash = $1`, [hashRefreshToken(data((await refresh(h, again.refreshToken)).body).refreshToken)])).rows[0]?.v ?? 1, 1, 'successors inherit the version');
+  } finally {
+    await h.close();
+  }
+});
+
+test('migration 025 gives existing sessions their user\'s version and keeps them refreshing', async () => {
+  const old = await freshDatabase({ before: '025_refresh_token_version.sql' });
+  try {
+    const user = await insertUser(old);
+    await old.query(`UPDATE users SET token_version = 2 WHERE id = $1`, [user]);
+    await old.query(`SELECT issue_session($1, 'hash-before-025', now(), NULL)`, [user]);
+    await applyMigration(old, '025_refresh_token_version.sql');
+    const { rows } = await old.query<{ v: number }>(`SELECT token_version AS v FROM refresh_tokens WHERE token_hash = 'hash-before-025'`);
+    assert.equal(rows[0]!.v, 2, "backfilled from the user's current version, so the bump that matters is the next one");
+    assert.equal((await old.query<{ n: number }>(`SELECT count(*)::int n FROM pg_proc WHERE proname = 'issue_session'`)).rows[0]!.n, 1, 'one issue_session');
+  } finally {
+    await old.close();
   }
 });
 

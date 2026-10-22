@@ -43,6 +43,7 @@ test('the route list is unchanged by the refactor', async () => {
     'use /integrations router',
     'use /graph authMiddleware',
     'use /graph router',
+    'use /v2/meta router',
     'use /v2/auth router',
     'use /v2 authMiddleware',
     'use /v2 router',

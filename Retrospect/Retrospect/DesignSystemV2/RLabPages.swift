@@ -31,6 +31,7 @@ struct RLabPage: Identifiable {
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("retro") { RRetroLineGallery() },
+        RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
     ]
