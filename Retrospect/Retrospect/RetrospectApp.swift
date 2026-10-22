@@ -412,6 +412,8 @@ struct RetrospectApp: App {
                     IntegrationsSyncService.shared.syncIfNeeded()
                 }
             }
+            // Short screens (SE) take compact layouts, decided once from the window height (UI0.1).
+            .rReadsScreenHeight()
         }
     }
     
