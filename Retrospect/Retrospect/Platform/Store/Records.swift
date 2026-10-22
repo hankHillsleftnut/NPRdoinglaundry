@@ -44,7 +44,7 @@ extension Store {
     /// A failure as the outbox stores it (`last_error_code`, `failure_code`)
     /// and the log carries it: a contract 00 code when the server answered,
     /// else the phone's own kind. A closed list, never a message.
-    enum FailureCode: String, Flows.ContractEnum {
+    enum FailureCode: String, Flows.ContractEnum, CaseIterable {
         case invalidRequest = "invalid_request"
         case invalidCredentials = "invalid_credentials"
         case unauthenticated

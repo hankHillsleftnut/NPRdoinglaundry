@@ -147,8 +147,8 @@ struct FailureCodeTests {
     func everyStoredCodeRoundTrips() {
         for stored in Store.FailureCode.allCases {
             let kind = Backend.Failure.Kind(code: stored.rawValue)
-            #expect(kind?.code == stored.rawValue, "\(stored.rawValue)")
-            #expect(kind?.storedCode == stored, "\(stored.rawValue)")
+            #expect(kind?.code == stored.rawValue)
+            #expect(kind?.storedCode == stored)
         }
         #expect(Backend.Failure.Kind(code: "brand_new") == nil)
         #expect(Backend.Failure.Kind(code: "") == nil)
