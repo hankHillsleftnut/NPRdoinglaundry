@@ -87,8 +87,12 @@ struct RDialog: View {
         .sensoryFeedback(RHaptic.error, trigger: isError) { old, new in !old && new }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Self.spoken(title: title, line: line))
-        .accessibilityAddTraits(.isModal)
-        .accessibilityAction(.escape, cancel)
+        // the way out, unless the confirming action is running (the same rule as the cancel button)
+        .accessibilityAction(.escape) {
+            if !isPending {
+                cancel()
+            }
+        }
         .accessibilityIdentifier("dialog")
     }
 
@@ -104,6 +108,8 @@ struct RDialog: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // the container speaks these words once; the actions stay reachable
+        .accessibilityHidden(true)
     }
 
     /// The one destructive lit button in the app: 48, rLitDanger; the `warning` haptic on
@@ -207,6 +213,8 @@ private struct RDialogModifier<Dialog: View>: ViewModifier {
                             .accessibilityHidden(true)
                         dialog()
                             .padding(RDimension.spaceScreenMargin)
+                            // modal only while presented: a dialog drawn in place (the lab) isn't one
+                            .accessibilityAddTraits(.isModal)
                             .transition(reduceMotion
                                 ? .opacity
                                 : .scale(scale: RNumber.motionScaleEnter).combined(with: .opacity))
