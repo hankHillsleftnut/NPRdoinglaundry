@@ -18,8 +18,11 @@
  * guessing should still be slow). `redeemAddress`: 20 per 10 minutes per
  * address, looser, so a household or a café on one Wi-Fi isn't locked out by
  * one person's typos. `publicWaitlist`: the website's form, 5 an hour per address.
+ * `inviteCheck` / `inviteCheckAddress`: looking at a code before the tear
+ * (POST /v2/invites/check), 20 per 10 minutes per person and 60 per address,
+ * its own buckets so checking never eats the tear's five.
  */
-export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist';
+export type LimitBucket = 'read' | 'write' | 'expensive' | 'redeem' | 'redeemAddress' | 'publicWaitlist' | 'inviteCheck' | 'inviteCheckAddress';
 
 export type TakeResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
@@ -53,6 +56,8 @@ export const DOOR_LIMITS = {
     redeem: [{ windowMs: 10 * MINUTE, max: 5 }],
     redeemAddress: [{ windowMs: 10 * MINUTE, max: 20 }],
     publicWaitlist: [{ windowMs: HOUR, max: 5 }],
+    inviteCheck: [{ windowMs: 10 * MINUTE, max: 20 }],
+    inviteCheckAddress: [{ windowMs: 10 * MINUTE, max: 60 }],
   } satisfies Record<LimitBucket, readonly LimitWindow[]>,
   /** Rolling window for model spend. */
   spendWindowMs: DAY,

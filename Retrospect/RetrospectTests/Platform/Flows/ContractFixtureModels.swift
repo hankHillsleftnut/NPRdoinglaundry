@@ -138,6 +138,13 @@ extension ContractFixtureTests {
     struct Redeem: Decodable {
         let access: AccessState
         let invitedBy: String?
+        /// The spent invite's number and the tear's date (contract 01 §2.3); null when no code was spent.
+        let invite: RedeemedInvite?
+    }
+
+    struct RedeemedInvite: Decodable {
+        let serial: Int
+        let redeemedOn: String
     }
 
     struct Invite: Decodable {

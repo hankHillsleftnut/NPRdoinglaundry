@@ -7,9 +7,21 @@ import type { AccessState } from '../access/store.js';
  * never sees a plain code. Errors carry the database code only.
  */
 export type RedeemOutcome =
-  | { outcome: 'redeemed'; invitedBy: string | null }
+  | { outcome: 'redeemed'; invitedBy: string | null; serial: number; redeemedOn: string }
   | { outcome: 'already_in'; access: AccessState }
-  | { outcome: 'invalid' | 'used' | 'expired' | 'no_user' };
+  | { outcome: 'invalid' | 'used' | 'expired' | 'no_user' | 'mismatch' };
+
+/** What the ticket prints (contract 01 §1), with the day it was made as an instant; the door turns that into a date. */
+export interface InviteFace {
+  from: string | null;
+  kind: 'founder' | 'member' | 'review';
+  serial: number;
+  createdAt: string;
+}
+
+export type CheckOutcome =
+  | { outcome: 'usable' | 'yours'; face: InviteFace }
+  | { outcome: 'already_in' | 'invalid' | 'used' | 'expired' | 'no_user' };
 
 export interface MyInviteRow {
   id: string;
@@ -31,7 +43,12 @@ export interface InviteRow {
 }
 
 export interface InviteStore {
-  redeem(input: { userId: string; codeHash: string; nowIso: string; newHashes: string[]; newSealed: string[] }): Promise<RedeemOutcome>;
+  /** `redeemKey` is the request's Idempotency-Key (null when none); `redeemedOn` the tear's date in the redeemer's zone. */
+  redeem(input: {
+    userId: string; codeHash: string; nowIso: string; newHashes: string[]; newSealed: string[]; redeemKey: string | null; redeemedOn: string;
+  }): Promise<RedeemOutcome>;
+  /** Looks at a code without spending it (migration 021's invite_check: never reads the sealed code). */
+  check(input: { userId: string; codeHash: string; nowIso: string }): Promise<CheckOutcome>;
   mine(userId: string): Promise<MyInviteRow[]>;
   /** For the link page: whether the code is live, and the inviter's first name if so. */
   face(codeHash: string, nowIso: string): Promise<{ live: boolean; from: string | null }>;
@@ -53,16 +70,46 @@ function data<T>(fn: string, r: { data: unknown; error: { code?: string } | null
 
 const str = (v: unknown) => (typeof v === 'string' ? v : null);
 
+/** A serial is a positive integer; anything else means the migration (021) isn't applied, which is our fault, not the client's. */
+function serial(fn: string, v: unknown): number {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new Error(`${fn}: no serial`);
+  return v;
+}
+
+/** A date column comes back as YYYY-MM-DD. */
+function day(fn: string, v: unknown): string {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`${fn}: no date`);
+  return v;
+}
+
 export function supabaseInviteStore(db: AccessRpcClient): InviteStore {
   const call = async <T>(fn: string, args: Record<string, unknown>) => data<T>(fn, await db.rpc(fn, args));
   return {
-    async redeem({ userId, codeHash, nowIso, newHashes, newSealed }) {
+    async redeem({ userId, codeHash, nowIso, newHashes, newSealed, redeemKey, redeemedOn }) {
       const raw = await call<Record<string, unknown>>('redeem_invite', {
         p_user: userId, p_code_hash: codeHash, p_now: nowIso, p_new_hashes: newHashes, p_new_ciphertexts: newSealed,
+        p_redeem_key: redeemKey, p_redeemed_on: redeemedOn,
       });
-      if (raw.outcome === 'redeemed') return { outcome: 'redeemed', invitedBy: str(raw.invited_by) };
+      if (raw.outcome === 'redeemed') {
+        return { outcome: 'redeemed', invitedBy: str(raw.invited_by), serial: serial('redeem_invite', raw.serial), redeemedOn: day('redeem_invite', raw.redeemed_on) };
+      }
       if (raw.outcome === 'already_in') return { outcome: 'already_in', access: raw.access as AccessState };
-      if (raw.outcome === 'used' || raw.outcome === 'expired' || raw.outcome === 'no_user') return { outcome: raw.outcome };
+      if (raw.outcome === 'used' || raw.outcome === 'expired' || raw.outcome === 'no_user' || raw.outcome === 'mismatch') return { outcome: raw.outcome };
+      return { outcome: 'invalid' };
+    },
+    async check({ userId, codeHash, nowIso }) {
+      const raw = await call<Record<string, unknown>>('invite_check', { p_user: userId, p_code_hash: codeHash, p_now: nowIso });
+      if (raw.outcome === 'usable' || raw.outcome === 'yours') {
+        const face = raw.face as Record<string, unknown>;
+        return {
+          outcome: raw.outcome,
+          face: {
+            from: str(face.from), kind: face.kind as InviteFace['kind'], serial: serial('invite_check', face.serial),
+            createdAt: new Date(String(face.created_at)).toISOString(),
+          },
+        };
+      }
+      if (raw.outcome === 'already_in' || raw.outcome === 'used' || raw.outcome === 'expired' || raw.outcome === 'no_user') return { outcome: raw.outcome };
       return { outcome: 'invalid' };
     },
     async mine(userId) {

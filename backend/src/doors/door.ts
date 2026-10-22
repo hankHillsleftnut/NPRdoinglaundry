@@ -45,6 +45,8 @@ export interface DoorContext {
   agent: AgentDoorClient;
   /** The X-Time-Zone header when it names a real IANA zone; read only until users.time_zone exists (BE0.4). */
   timeZone: string | null;
+  /** The Idempotency-Key header as sent, or null without one; a door that marks a write idempotent checks its shape. */
+  idempotencyKey: string | null;
   now: number;
   /** The person's access state (contract 00 §4); `member` before migration 007, when everyone was one. */
   access: AccessState;
@@ -151,7 +153,8 @@ export function createDoorKit(deps: DoorKitDeps) {
         if (access === 'suspended') throw new DoorError('suspended');
         if (access === 'waitlisted' && !spec.openToWaitlisted) throw new DoorError('invite_required');
         const ctx: DoorContext = {
-          userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), now: started, access: access ?? 'member',
+          userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), idempotencyKey: req.header('Idempotency-Key') ?? null,
+          now: started, access: access ?? 'member',
         };
 
         const taken = deps.limiter.take(userId, spec.bucket, started);

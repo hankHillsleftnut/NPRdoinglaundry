@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "access": {
+      "state": "member"
+    },
+    "invitedBy": null,
+    "invite": null
+  }
+}

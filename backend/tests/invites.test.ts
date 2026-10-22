@@ -64,7 +64,7 @@ async function invite(opts: { kind?: 'founder' | 'member' | 'review'; owner?: st
 
 const harness = () => startHarness({ access, invites, now: T0 });
 const as = (h: Harness, id: string) => ({ Authorization: `Bearer ${h.asUser(id)}` });
-const redeem = (h: Harness, id: string, code: string) => h.request('POST', '/v2/invites/redeem', { code }, as(h, id));
+const redeem = (h: Harness, id: string, code: string, extra: Record<string, string> = {}) => h.request('POST', '/v2/invites/redeem', { code }, { ...as(h, id), ...extra });
 const code = (body: unknown) => (body as { error?: { code?: string } }).error?.code;
 const data = <T>(body: unknown) => (body as { data: T }).data;
 const memberInvites = async (owner: string) =>
@@ -91,6 +91,10 @@ test('a single-use invite works once, even with two redemptions at once', async 
     const results = await Promise.all([redeem(h, a, c), redeem(h, b, c)]);
     assert.deepEqual(results.map((r) => r.status).sort(), [200, 400]);
     assert.deepEqual(results.map((r) => code(r.body) ?? 'ok').sort(), ['invite_used', 'ok']);
+    const spent = await db.query<{ serial: number; n: number }>(`SELECT serial::int AS serial, count(*) OVER ()::int AS n FROM invites WHERE used_by_user_id IS NOT NULL`);
+    assert.equal(spent.rows[0]!.n, 1, 'one invite spent');
+    const winner = results.find((r) => r.status === 200)!;
+    assert.equal(data<{ invite: { serial: number } }>(winner.body).invite.serial, spent.rows[0]!.serial, 'and the winner holds its serial');
     const c2 = await invite();
     assert.equal((await redeem(h, a, c2)).status, 200, 'a second code for someone already in spends nothing');
     const third = await person(h, 'waitlisted');
@@ -104,13 +108,15 @@ test('redeeming gives exactly three invites, and a retried redeem never gives si
   const h = await harness();
   try {
     const owner = await person(h, 'member', 'priya');
+    await db.query(`SELECT setval('invite_serial_seq', 412, false)`);
     const c = await invite({ kind: 'member', owner });
     const sam = await person(h, 'waitlisted');
-    const first = await redeem(h, sam, c);
+    // 09:00Z on the 22nd is the evening of the 21st in Honolulu: the fixture's redeemedOn.
+    const first = await redeem(h, sam, c, { 'X-Time-Zone': 'Pacific/Honolulu' });
     assert.equal(first.status, 200);
     assert.deepEqual(data(first.body), fixture('redeem.response.json'), 'the contract fixture exactly');
     const retries = await Promise.all([redeem(h, sam, c), redeem(h, sam, c), redeem(h, sam, `${displayCode(c).toLowerCase()} `)]);
-    for (const r of retries) assert.deepEqual(data(r.body), { access: { state: 'approved' }, invitedBy: 'priya' }, 'the same answer');
+    for (const r of retries) assert.deepEqual(data(r.body), fixture('redeem.response.json'), 'the same answer, with the stored date, from any zone');
     assert.equal(await memberInvites(sam), 3);
     const other = await invite();
     await redeem(h, sam, other);

@@ -175,7 +175,7 @@ No plan uses `POST /notifications/generate`: goals dropped it, and outside retir
 
 | Repo | Number | File | Byte | Phase |
 |---|---|---|---|---|
-| backend | 013 | `013_invite_serial.sql` | BE2.0b | Beta 1 |
+| backend | ~~013~~ **021** | `021_invite_serial.sql` (013 was assigned here, but 019 and 020 were taken first; built as 021, 22 Oct) | BE2.0b | Beta 1 |
 | backend | 014 | `014_notification_preferences.sql` (with `check_ins` default false) | BE7.3 (built in phase 2) | 2 |
 | backend | 015 | `015_notification_log.sql` | BE7.4 (built in phase 2) | 2 |
 | backend | 016 | `016_notify_tokens.sql` | BE7.9b (built in phase 2) | 2 |
