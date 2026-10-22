@@ -5,6 +5,11 @@ on:
       - 'design-system/**'
       - 'Retrospect/Retrospect/DesignSystemV2/**'
       - 'Retrospect/Retrospect/Features/**'
+concurrency:
+  # A newer push to the same PR (or to main) cancels the older run: only the latest counts.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tokens-and-literals:
     runs-on: [self-hosted, light]
