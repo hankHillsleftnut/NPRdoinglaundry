@@ -57,7 +57,10 @@ extension Backend {
             lhs.kind == rhs.kind
         }
 
-        /// Whether sending the same request again can work.
+        /// Whether sending the same request again can work. `spendLimited` is
+        /// false on purpose: like `rateLimited` it carries a `retryAfter`, but it
+        /// means the day's budget is spent, and a screen tells the person rather
+        /// than the client trying again. `invalidCredentials` stays false too.
         var isRetryable: Bool {
             switch kind {
             case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .offline, .timedOut, .transport:
