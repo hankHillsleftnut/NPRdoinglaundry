@@ -25,6 +25,7 @@ struct RLabPage: Identifiable {
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("foundation") { RFoundationGallery() },
         RLabPage("guess") { RGuessCardGallery() },
+        RLabPage("message") { RMessageBubbleGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
