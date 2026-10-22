@@ -183,6 +183,64 @@ struct SessionSignOutTests {
         #expect(h.requests(to: "/v2/auth/signout").isEmpty)
     }
 
+    @Test("a sign-out whose Keychain delete fails stays signed out across a relaunch, and finishes the delete when the Keychain works again")
+    func aFailedClearStaysSignedOutAcrossRelaunch() async throws {
+        let h = try SessionHarness()
+        h.reachability.set(online: false)
+        _ = await h.manager.state
+        h.keychain.failEveryCall(with: errSecInteractionNotAllowed)
+
+        _ = await h.manager.signOut(force: true)
+
+        #expect(await h.manager.state == .signedOut(hasSignedInBefore: true, reason: .signedOut))
+        #expect(h.recorder.events.contains(.keychainWriteFailed(.sessionClear, status: errSecInteractionNotAllowed)))
+        #expect(h.defaults.object(forKey: Session.Store.sessionEndedKey) != nil)
+        #expect(h.keychain.contents["session"] != nil, "the item is still there: only the mark keeps it out")
+
+        // A relaunch while the Keychain still fails: locked, never signed in.
+        let stillFailing = Session.Manager(
+            store: Session.Store(keychain: h.keychain, legacyKeychain: h.legacy, defaults: h.defaults),
+            mirror: Session.LegacyMirror(keychain: h.legacy, stateChanged: { _ in }), log: h.recorder, launchCheck: .alreadyDone,
+            probeUnlock: { .unlocked }, clearGate: {}, appleCredentialState: { _ in .unknown }
+        )
+        #expect(await stillFailing.state == .locked)
+        await #expect(throws: Backend.Failure(.unauthenticated)) { _ = try await stillFailing.accessToken() }
+
+        // A relaunch once it works: the delete finishes, the mark goes, signed out.
+        h.keychain.failEveryCall(with: nil)
+        let relaunched = Session.Manager(
+            store: Session.Store(keychain: h.keychain, legacyKeychain: h.legacy, defaults: h.defaults),
+            mirror: Session.LegacyMirror(keychain: h.legacy, stateChanged: { _ in }), log: h.recorder, launchCheck: .alreadyDone,
+            probeUnlock: { .unlocked }, clearGate: {}, appleCredentialState: { _ in .unknown }
+        )
+        #expect(await relaunched.state == .signedOut(hasSignedInBefore: true, reason: .none))
+        #expect(h.keychain.contents["session"] == nil)
+        #expect(h.defaults.object(forKey: Session.Store.sessionEndedKey) == nil)
+    }
+
+    @Test("a clean sign-out leaves no sign-out mark behind")
+    func aCleanSignOutLeavesNoMark() async throws {
+        let h = try SessionHarness()
+        h.reachability.set(online: false)
+
+        _ = await h.manager.signOut(force: true)
+
+        #expect(h.defaults.object(forKey: Session.Store.sessionEndedKey) == nil)
+        #expect(h.keychain.contents["session"] == nil)
+    }
+
+    @Test("the Apple check answers unknown when Apple never answers, within the timeout, and takes a late answer only once")
+    func theAppleCheckTimesOut() async {
+        let timedOut = await Session.AppleRevocationCheck.first(timeout: .milliseconds(20)) { _ in }
+        #expect(timedOut == .unknown)
+
+        let answered = await Session.AppleRevocationCheck.first(timeout: .seconds(5)) { answer in
+            answer(.revoked)
+            answer(.authorized)
+        }
+        #expect(answered == .revoked)
+    }
+
     @Test("sign-out with two unsent entries returns hasUnsent(2) and changes nothing; forced, it signs out")
     func signOutWithUnsentEntries() async throws {
         let h = try SessionHarness()

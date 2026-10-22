@@ -328,9 +328,15 @@ extension Session {
             starting = nil
         }
 
-        /// The stored session, or why it can't be read yet.
+        /// The stored session, or why it can't be read yet. A sign-out whose
+        /// delete failed is finished here first: the item is never adopted
+        /// while the sign-out mark stands.
         private func read() async {
             do {
+                if await store.isSessionEnded {
+                    try await store.clearCredentials()
+                    await store.clearSessionEnded()
+                }
                 let stored = try await store.credentials()
                 hasSignedInBefore = try await store.hasSignedInBefore
                 credentials = stored
@@ -471,8 +477,10 @@ extension Session {
             credentials = nil
             pendingSave = false
             receivedAt = nil
+            await store.markSessionEnded()
             do {
                 try await store.clearCredentials()
+                await store.clearSessionEnded()
             } catch let error as KeychainError {
                 log.record(.keychainWriteFailed(.sessionClear, status: error.status))
             } catch {

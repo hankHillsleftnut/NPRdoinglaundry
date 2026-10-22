@@ -66,6 +66,10 @@ extension Session {
         /// Set in UserDefaults once launch hygiene has run. UserDefaults don't
         /// survive deleting the app; Keychain items do.
         static let installSentinelKey = "platform.installSentinel"
+        /// Set in UserDefaults the moment a sign-out begins and removed once the
+        /// session item is gone, so a Keychain delete that fails can't bring a
+        /// signed-out session back at the next launch.
+        static let sessionEndedKey = "platform.sessionEnded"
         /// The old app's UserDefaults: any of them means this is an update, not a new install.
         static let legacyDefaultsKeys = ["hasCompletedOnboarding", "onboardingSignedIn", "onboardingCurrentStep"]
 
@@ -109,6 +113,21 @@ extension Session {
         /// Sign-out: the session goes; `hasSignedInBefore` and a pending invite stay.
         func clearCredentials() throws {
             try keychain.delete(Account.session.rawValue)
+        }
+
+        /// Whether a sign-out began and its delete hasn't succeeded yet.
+        var isSessionEnded: Bool {
+            defaults.object(forKey: Self.sessionEndedKey) != nil
+        }
+
+        /// Sign-out begins: whatever the Keychain does next, the session is over.
+        func markSessionEnded() {
+            defaults.set(true, forKey: Self.sessionEndedKey)
+        }
+
+        /// The session item is gone: the mark has done its job.
+        func clearSessionEnded() {
+            defaults.removeObject(forKey: Self.sessionEndedKey)
         }
 
         // MARK: Flags
