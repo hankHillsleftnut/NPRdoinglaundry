@@ -21,6 +21,7 @@ struct RLabPage: Identifiable {
     static let all: [RLabPage] = [
         RLabPage("artwork") { RArtworkLab() },
         RLabPage("entryrow") { REntryRowGallery() },
+        RLabPage("error") { RErrorStateGallery() },
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("foundation") { RFoundationGallery() },
         RLabPage("motion") { RMotionLab() },

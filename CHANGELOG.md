@@ -38,3 +38,18 @@ What changed, in plain words, newest first. Every merged PR that changes what th
 **Watch**
 - Beta 1 progress: 12 of about 84 PRs merged.
 - The founder still has to: set `ADMIN_SECRET` on Render before the hygiene PR deploys, download Supabase's CA certificate for staging, and say yes or no to real AI keys on staging.
+
+## 22 Oct 2026 · later
+
+- **Staying signed in:** 15-minute access, 60-day rotating refresh, and a 30-second grace window for retries. Reuse of an old token signs every session out. The row lock is proven on a real two-connection Postgres (#89).
+- Error messages match the contract word for word, and a test keeps them matched (#92).
+- **The app's plumbing:**
+  - the app environment (#94);
+  - a typed contract client with every header, its failures mapped and nothing logged but path templates (#98, #100);
+  - the Platform folder with logs that can't carry text (#84).
+- **Journal parts:**
+  - the drawer's entry row, with emoji-safe search highlighting (#88);
+  - evidence-row icon tokens (#97);
+  - design tokens and depth recipes, so single lines match Paper's height (#85).
+- **CI:** Platform code is linted, Keychain tests run, and package versions are locked (#96).
+- **Changelog started; session diagnostics added to Beta 1** (#91).
