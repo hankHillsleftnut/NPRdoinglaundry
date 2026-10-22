@@ -10,8 +10,11 @@ extension Store {
         /// The server's `createdAt` (clamped if the phone's clock was ahead) and its `day`.
         var createdAt: Date?
         var day: String?
+        /// A report's short reference (`r-7KQ2`), for the "sent" toast.
+        var reference: String?
 
-        init(serverID: String? = nil, reading: Reading? = nil, createdAt: Date? = nil, day: String? = nil) {
+        init(serverID: String? = nil, reading: Reading? = nil, createdAt: Date? = nil, day: String? = nil, reference: String? = nil) {
+            self.reference = reference
             self.serverID = serverID
             self.reading = reading
             self.createdAt = createdAt
@@ -62,6 +65,17 @@ extension Store {
                 }
                 _ = try await client.send(Backend.Endpoints.AnswerGuess(guessID: item.entityID, content: body, key: key))
                 return OutboxSendResult()
+            case .diagnosticsSend:
+                let report: Platform.Diagnostics.Report
+                do {
+                    report = try Backend.Coding.decoder.decode(Platform.Diagnostics.Report.self, from: item.payload)
+                } catch {
+                    throw Backend.Failure(.invalidRequest)
+                }
+                // The door's key is the report's own id, which is also the row's id.
+                guard report.reportId.lowercased() == item.id else { throw Backend.Failure(.invalidRequest) }
+                let receipt = try await client.send(Backend.Endpoints.SendReport(report: report))
+                return OutboxSendResult(reference: receipt.reference)
             case .unknown:
                 // Written by a newer build; left in the queue for it.
                 throw Backend.Failure(.invalidRequest)
