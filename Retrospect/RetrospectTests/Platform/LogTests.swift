@@ -56,15 +56,8 @@ struct LogTests {
         }
     }
 
-    /// Every String, Substring, Character, URL or Data anywhere inside `value`,
-    /// through enums, structs, optionals and collections.
     private static func contentValues(in value: Any) -> [Any] {
-        switch value {
-        case is String, is Substring, is Character, is URL, is NSString, is NSURL, is Data, is NSData:
-            return [value]
-        default:
-            return Mirror(reflecting: value).children.flatMap { contentValues(in: $0.value) }
-        }
+        ContentCheck.values(in: value)
     }
 }
 
@@ -99,6 +92,7 @@ extension Platform.Log.Event {
             case .inviteReceived: .inviteReceived
             case .inviteChecked: .inviteChecked(.usable)
             case .inviteTorn: .inviteTorn(.yours)
+            case .diagnosticsWriteFailed: .diagnosticsWriteFailed
             }
         }
     }
@@ -108,6 +102,8 @@ extension Platform.Log.Event {
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
              inviteReceived, inviteChecked, inviteTorn
+             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal
+        installCheckFailed, diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
@@ -136,6 +132,7 @@ extension Platform.Log.Event {
         case .inviteReceived: .inviteReceived
         case .inviteChecked: .inviteChecked
         case .inviteTorn: .inviteTorn
+        case .diagnosticsWriteFailed: .diagnosticsWriteFailed
         }
     }
 }
