@@ -1,3 +1,6 @@
+# Fake APNs device token in a contract fixture, replaced in a later commit (21 Oct)
+cc79dc9ecf11f74b672771d308a7161c5d7b7370:docs/team/contracts/fixtures/01/device.register.request.json:generic-api-key:2
+cc79dc9ecf11f74b672771d308a7161c5d7b7370:docs/team/contracts/01-first-run.md:generic-api-key:276
 # Test constants (made-up Idempotency-Key UUIDs) in a superseded commit of PR #122; HEAD no longer carries them.
 51f0d8bdce9a95b01fd51be6b17b8dad45cc12a9:backend/tests/invites-doors.test.ts:generic-api-key:81
 51f0d8bdce9a95b01fd51be6b17b8dad45cc12a9:backend/tests/invites-check.test.ts:generic-api-key:76

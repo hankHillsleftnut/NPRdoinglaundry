@@ -28,6 +28,10 @@ extension Platform {
         /// The one client for the `/v2` doors.
         let client: Backend.Client
         let reachability: any Backend.Reachability
+        /// The invite: a pending code, its check after sign-in, the tear (PL1.7).
+        let invites: Session.InviteCenter
+        /// The version floor (PL1.6): whether this build must update.
+        let floor: Platform.VersionFloor
         /// What the app did, for "send a report" (DG.3). No database until
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
@@ -40,8 +44,10 @@ extension Platform {
         private var diagnosticsWork: Task<Void, Never>?
         private var sessionLifecycleBound = false
 
-        /// Set when the backend says this version is too old (PL1.6).
-        var updateRequired = false
+        /// True once the backend has said this version is too old (PL1.6); never false again.
+        var updateRequired: Bool {
+            floor.updateRequired
+        }
 
         init(
             launch: Platform.LaunchOptions = .standard,
@@ -50,6 +56,8 @@ extension Platform {
             session: Session.Manager,
             client: Backend.Client,
             reachability: any Backend.Reachability,
+            invites: Session.InviteCenter,
+            floor: Platform.VersionFloor,
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
         ) {
@@ -59,6 +67,8 @@ extension Platform {
             self.session = session
             self.client = client
             self.reachability = reachability
+            self.invites = invites
+            self.floor = floor
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -79,8 +89,9 @@ extension Platform {
             if launch.environment == .staging, configuration.environment == .local {
                 log.record(.stagingResolvedToLocal)
             }
+            let store = Session.Store()
             let session = Session.Manager(
-                store: Session.Store(),
+                store: store,
                 mirror: Session.LegacyMirror(
                     keychain: Session.SystemKeychain(service: Session.Store.legacyService),
                     stateChanged: { Bridges.legacyStateChanged(userID: $0) }
@@ -91,12 +102,19 @@ extension Platform {
                 clearGate: { Bridges.clearSignInGate() },
                 appleCredentialState: Session.AppleRevocationCheck.live
             )
-            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            let client = Backend.Client(
+                configuration: configuration, tokens: session, reachability: reachability, log: log,
+                onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
+            )
             session.connect(client)
             Bridges.refreshLegacy = { await session.refreshForLegacy() }
             Bridges.legacySignedOut = { _ = await session.signOut(force: true) }
+            let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
+            invites.start()
             return AppEnvironment(
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
+                invites: invites, floor: floor,
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
             )
         }
@@ -110,8 +128,9 @@ extension Platform {
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
         ) -> AppEnvironment {
             let configuration = Backend.Configuration.resolve(.local, info: [:])
+            let store = Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults())
             let session = Session.Manager(
-                store: Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults()),
+                store: store,
                 mirror: Session.LegacyMirror(keychain: Session.MemoryKeychain(), stateChanged: { _ in }),
                 log: log,
                 launchCheck: .alreadyDone,
@@ -120,11 +139,16 @@ extension Platform {
                 appleCredentialState: { _ in .unknown }
             )
             let reachability = Backend.PathReachability(monitor: nil)
-            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            let client = Backend.Client(
+                configuration: configuration, tokens: session, reachability: reachability, log: log,
+                onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
+            )
             session.connect(client)
+            let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
             return AppEnvironment(
                 configuration: configuration, log: log, session: session, client: client, reachability: reachability,
-                backgroundTasks: backgroundTasks, openDatabase: openDatabase
+                invites: invites, floor: floor, backgroundTasks: backgroundTasks, openDatabase: openDatabase
             )
         }
 
@@ -136,7 +160,13 @@ extension Platform {
         /// The scene became active: the session finishes a deferred launch
         /// check, reads, checks Apple, saves what it couldn't, and renews.
         func becameActive() {
-            Task { await session.becameActive() }
+            // The version check is its own task: renewal and the invite retry must not
+            // wait on its round trip, or on its retries over a bad connection.
+            Task { await floor.checkIfDue(using: client) }
+            Task {
+                await session.becameActive()
+                await invites.retryIfWaiting()
+            }
         }
 
         /// Bridge until the new session owns authentication: restore the signed-in
