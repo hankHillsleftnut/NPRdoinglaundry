@@ -63,19 +63,23 @@ private struct RTagBody: View {
                 // the dash sits inside the shape, so the tag is the same size either way (craft 3.4)
                 RShape.pill.strokeBorder(
                     RColor.inferenceBorder,
-                    style: StrokeStyle(lineWidth: RDimension.sizeBorderDefault, dash: [Self.evenDash(around: proxy.size)])
+                    style: StrokeStyle(lineWidth: RDimension.sizeBorderDefault, dash: [RInferenceEdge.dash(around: proxy.size, cornerRadius: .infinity)])
                 )
             }
         }
     }
+}
 
-    /// The nearest dash to size.inference.dash that fits a whole number of dash-gap pairs
-    /// around the capsule, so the pattern closes without a stub where it starts.
-    private static func evenDash(around size: CGSize) -> CGFloat {
-        // strokeBorder draws on a path inset by half the line
-        let line = RDimension.sizeBorderDefault
+/// A guess's dashed edge, shared by RTag and RGuessCard.
+enum RInferenceEdge {
+    /// The nearest dash to size.inference.dash that fits a whole number of dash-gap pairs around
+    /// a rounded rectangle (a capsule when the radius is half the height), so the pattern closes
+    /// without a stub where it starts. strokeBorder draws on a path inset by half the line.
+    static func dash(around size: CGSize, cornerRadius: CGFloat, line: CGFloat = RDimension.sizeBorderDefault) -> CGFloat {
+        let width = size.width - line
         let height = size.height - line
-        let perimeter = 2 * (size.width - line - height) + .pi * height
+        let radius = min(cornerRadius, min(width, height) / 2)
+        let perimeter = 2 * (width + height) - 2 * radius * (4 - .pi)
         let pairs = max(1, (perimeter / (2 * RDimension.sizeInferenceDash)).rounded())
         return perimeter / (2 * pairs)
     }

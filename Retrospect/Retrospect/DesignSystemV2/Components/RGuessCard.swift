@@ -33,16 +33,23 @@ struct RGuessCard: View {
     /// How sure Retro is: "fairly sure".
     let sureness: String
     let phase: Phase
-    let answer: (Verdict) -> Void
+    /// Sends the answer; the card sends one verdict at a time, until this returns.
+    let answer: (Verdict) async -> Void
     /// Opens "why": what it rests on.
     let openWhy: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var once = RAnswerOnce()
 
     private var isConfirmed: Bool {
         phase == .confirmed || phase == .savedOnPhone(.yes)
+    }
+
+    /// "not quite" landed (or is kept on the phone): the card steps back to opacity.declined.
+    private var isDeclined: Bool {
+        phase == .declined || phase == .savedOnPhone(.no)
     }
 
     private var showsPills: Bool {
@@ -71,7 +78,10 @@ struct RGuessCard: View {
         }
         .padding(RDimension.space4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(RGuessSurface(confirmed: isConfirmed))
+        .modifier(RGuessSurface(confirmed: isConfirmed, increasedContrast: contrast == .increased))
+        // one layer, so the surface and the words dim together
+        .compositingGroup()
+        .opacity(isDeclined ? RNumber.opacityDeclined : 1)
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.settle, value: isConfirmed)
         .animation(RMotion.standard(RNumber.motionDurationFast), value: phase)
         .sensoryFeedback(trigger: phase) { _, new in
@@ -85,13 +95,29 @@ struct RGuessCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .accessibilityActions {
+            // the same path as a tap: one verdict at a time
             if showsPills, !isPending {
-                Button("that's right") { answer(.yes) }
-                Button("not quite") { answer(.no) }
+                Button("that's right") { choose(.yes) }
+                Button("not quite") { choose(.no) }
             }
             Button("why", action: openWhy)
         }
+        .onChange(of: phase) { _, new in
+            // once per change, never on appearing
+            if let announcement = Self.announcement(for: new) {
+                AccessibilityNotification.Announcement(announcement).post()
+            }
+        }
         .rBlurReplace()
+    }
+
+    static func announcement(for phase: Phase) -> String? {
+        switch phase {
+        case .confirmed: "kept"
+        case .failed: "couldn't save that, try again"
+        case .savedOnPhone: "saved on this phone"
+        case .offered, .pending, .declined: nil
+        }
     }
 
     // MARK: - Parts
@@ -111,20 +137,22 @@ struct RGuessCard: View {
     /// "from … · … · fairly sure" (B7Y-0); confirmed, "kept · from …" (27U-0). Tapping it opens why.
     private var whyLine: some View {
         Button(action: openWhy) {
-            Group {
-                if isConfirmed {
-                    Text("kept · \(from)").foregroundStyle(RColor.textLabel)
-                } else {
-                    Text("\(from) · ").foregroundStyle(RColor.textLabel)
-                        + Text(sureness).foregroundStyle(contrast == .increased ? RColor.textPrimary : RColor.textLabel)
-                }
-            }
-            .rText(.metaLine)
-            .multilineTextAlignment(.leading)
-            // the line keeps Paper's 12 rhythm; its hit area reaches 44 beyond the words
-            .contentShape(Rectangle().inset(by: -(RDimension.sizeTouchTarget - RDimension.space4) / 2))
+            whyText
+                .rText(.metaLine)
+                .multilineTextAlignment(.leading)
+                // the line keeps Paper's 12 rhythm; its hit area reaches 44 beyond the words
+                .contentShape(Rectangle().inset(by: -(RDimension.sizeTouchTarget - RDimension.space4) / 2))
         }
         .buttonStyle(RDimPressStyle())
+    }
+
+    /// One Text whatever the phase, so confirming changes its words, not its identity.
+    private var whyText: Text {
+        if isConfirmed {
+            return Text("kept · \(from)").foregroundStyle(RColor.textLabel)
+        }
+        return Text("\(from) · ").foregroundStyle(RColor.textLabel)
+            + Text(sureness).foregroundStyle(contrast == .increased ? RColor.textPrimary : RColor.textLabel)
     }
 
     /// The line under the why line after an answer that didn't land as usual.
@@ -141,9 +169,9 @@ struct RGuessCard: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: RDimension.space2))
             : AnyLayout(HStackLayout(spacing: RDimension.space2))
         return layout {
-            RPill(title: "that's right", symbol: "checkmark", pending: phase == .pending(.yes)) { choose(.yes) }
+            RPill(title: "that's right", symbol: "checkmark", size: .medium, pending: phase == .pending(.yes)) { choose(.yes) }
                 .disabled(isPending)
-            RPill(title: "not quite", pending: phase == .pending(.no)) { choose(.no) }
+            RPill(title: "not quite", size: .medium, pending: phase == .pending(.no)) { choose(.no) }
                 .disabled(isPending)
         }
     }
@@ -158,15 +186,19 @@ struct RGuessCard: View {
     private func choose(_ verdict: Verdict) {
         // one verdict per answer: a second tap before the host moves to pending does nothing
         guard !isPending else { return }
-        answer(verdict)
+        Task { await once.send { await answer(verdict) } }
     }
 
-    private var accessibilityText: String {
+    /// What VoiceOver reads for the whole card (commas, not dots).
+    var accessibilityText: String {
         let source = from.replacingOccurrences(of: " · ", with: ", ")
+        // the question ends once, whether or not it came with its own stop
+        let sentence = question.last.map { ".?!".contains($0) } == true ? question : question + "."
         if isConfirmed {
-            return "kept: \(question). from \(source)."
+            // `from` already starts with "from"
+            return "kept: \(sentence) \(source)."
         }
-        var text = "a guess: \(question). \(sureness). from \(source)."
+        var text = "a guess: \(sentence) \(sureness). \(source)."
         if phase == .failed {
             text += " couldn't save that, try again."
         }
@@ -190,6 +222,12 @@ extension RTextStyle {
 /// raised card (background.raised, its strokes and shadows), so it reads as kept.
 private struct RGuessSurface: ViewModifier {
     let confirmed: Bool
+    /// Increase Contrast: the dash thickens to size.inference.edgeIncreased.
+    let increasedContrast: Bool
+
+    private var line: CGFloat {
+        increasedContrast ? RDimension.sizeInferenceEdgeIncreased : RDimension.sizeBorderDefault
+    }
 
     func body(content: Content) -> some View {
         // both surfaces stay in place and cross-fade, so confirming never re-creates the card
@@ -204,7 +242,10 @@ private struct RGuessSurface: ViewModifier {
                         GeometryReader { proxy in
                             RShape.rect(RDimension.radiusCard).strokeBorder(
                                 RColor.inferenceBorder,
-                                style: StrokeStyle(lineWidth: RDimension.sizeBorderDefault, dash: [Self.evenDash(around: proxy.size)])
+                                style: StrokeStyle(
+                                    lineWidth: line,
+                                    dash: [RInferenceEdge.dash(around: proxy.size, cornerRadius: RDimension.radiusCard, line: line)]
+                                )
                             )
                         }
                     }
@@ -212,16 +253,19 @@ private struct RGuessSurface: ViewModifier {
             }
         }
     }
+}
 
-    /// The nearest dash to size.inference.dash that closes evenly around the card (as RTag does).
-    private static func evenDash(around size: CGSize) -> CGFloat {
-        let line = RDimension.sizeBorderDefault
-        let width = size.width - line
-        let height = size.height - line
-        let radius = min(RDimension.radiusCard, min(width, height) / 2)
-        let perimeter = 2 * (width + height) - 2 * radius * (4 - .pi)
-        let pairs = max(1, (perimeter / (2 * RDimension.sizeInferenceDash)).rounded())
-        return perimeter / (2 * pairs)
+/// One answer in flight at a time: a second tap (or VoiceOver action) while the first is still
+/// being sent does nothing, even before the host has moved the card to pending.
+@MainActor
+final class RAnswerOnce {
+    private(set) var isSending = false
+
+    func send(_ action: () async -> Void) async {
+        guard !isSending else { return }
+        isSending = true
+        defer { isSending = false }
+        await action()
     }
 }
 
@@ -252,10 +296,8 @@ struct RGuessCardGallery: View {
                 caption("live")
                 card(live) { verdict in
                     live = .pending(verdict)
-                    Task {
-                        try? await Task.sleep(for: .seconds(1))
-                        live = verdict == .yes ? .confirmed : .declined
-                    }
+                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                    live = verdict == .yes ? .confirmed : .declined
                 }
                 RPill(title: "ask again", style: .raised) { live = .offered }
                 caption("offered")
@@ -282,7 +324,7 @@ struct RGuessCardGallery: View {
         }
     }
 
-    private func card(_ phase: RGuessCard.Phase, answer: @escaping (RGuessCard.Verdict) -> Void = { _ in }) -> some View {
+    private func card(_ phase: RGuessCard.Phase, answer: @escaping (RGuessCard.Verdict) async -> Void = { _ in }) -> some View {
         RGuessCard(question: question, from: from, sureness: "fairly sure", phase: phase, answer: answer) {}
     }
 
