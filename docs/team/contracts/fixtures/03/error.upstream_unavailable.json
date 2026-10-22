@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "upstream_unavailable",
-    "message": "retro couldn't be reached. try again."
+    "message": "Something's down on our side. Try again soon."
   }
 }

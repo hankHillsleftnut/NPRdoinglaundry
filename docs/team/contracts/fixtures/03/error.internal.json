@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "internal",
-    "message": "something went wrong. try again."
+    "message": "Something went wrong on our side."
   }
 }
