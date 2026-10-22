@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "suspended",
+    "message": "Your account is paused."
+  }
+}

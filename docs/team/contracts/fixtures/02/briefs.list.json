@@ -3,38 +3,6 @@
   "data": {
     "briefs": [
       {
-        "id": "00000000-0000-4000-8000-000000000204",
-        "date": "2026-10-20",
-        "kind": "brief",
-        "parts": [
-          {
-            "text": "a quieter start than usual. you've slept short most of this week, and the call at 10 is the one you've been preparing for.",
-            "sources": [
-              {
-                "kind": "pattern",
-                "id": "00000000-0000-4000-8000-000000000301"
-              },
-              {
-                "kind": "entry",
-                "id": "00000000-0000-4000-8000-000000000103"
-              }
-            ],
-            "startSeconds": 0
-          },
-          {
-            "text": "the walk by the canal keeps coming up on the days you say you felt lighter.",
-            "sources": [
-              {
-                "kind": "entry",
-                "id": "00000000-0000-4000-8000-000000000102"
-              }
-            ],
-            "startSeconds": 41.5
-          }
-        ],
-        "createdAt": "2026-10-21T07:58:00.000Z"
-      },
-      {
         "id": "00000000-0000-4000-8000-000000000201",
         "date": "2026-10-21",
         "kind": "brief",
@@ -74,6 +42,38 @@
           }
         ],
         "createdAt": "2026-10-21T07:58:00.000Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000204",
+        "date": "2026-10-20",
+        "kind": "brief",
+        "parts": [
+          {
+            "text": "a quieter start than usual. you've slept short most of this week, and the call at 10 is the one you've been preparing for.",
+            "sources": [
+              {
+                "kind": "pattern",
+                "id": "00000000-0000-4000-8000-000000000301"
+              },
+              {
+                "kind": "entry",
+                "id": "00000000-0000-4000-8000-000000000103"
+              }
+            ],
+            "startSeconds": 0
+          },
+          {
+            "text": "the walk by the canal keeps coming up on the days you say you felt lighter.",
+            "sources": [
+              {
+                "kind": "entry",
+                "id": "00000000-0000-4000-8000-000000000102"
+              }
+            ],
+            "startSeconds": 41.5
+          }
+        ],
+        "createdAt": "2026-10-20T07:58:00.000Z"
       }
     ],
     "nextCursor": "cursor-2"
