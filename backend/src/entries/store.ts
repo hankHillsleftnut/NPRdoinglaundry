@@ -16,7 +16,23 @@ export interface StoredEntry {
   day: string;
   processingStatus: string | null;
   clientEntryId: string | null;
+  /** The moment in microseconds since the epoch (exact; the list cursor), when the function gives it. */
+  atUs: number | null;
 }
+
+/** Where a page starts: strictly before this moment and id, newest first. */
+export interface ListCursor {
+  atUs: number;
+  id: string;
+}
+
+export type ListOutcome =
+  | { outcome: 'ok'; entries: StoredEntry[] }
+  | { outcome: 'no_user' };
+
+export type GetOutcome =
+  | { outcome: 'ok'; entry: StoredEntry | null }
+  | { outcome: 'no_user' };
 
 export type CreateOutcome =
   | { outcome: 'created'; entry: StoredEntry }
@@ -35,6 +51,10 @@ export interface EntryStore {
     requestHash: string; appVersion: string | null; zone: string | null; nowIso: string;
   }): Promise<CreateOutcome>;
   today(input: { userId: string; types: readonly string[]; zone: string | null; nowIso: string; limit: number }): Promise<TodayOutcome>;
+  /** Newest first, at most `limit`, before `cursor` when given; `pattern` is an ILIKE pattern with wildcards already escaped, or null. */
+  list(input: { userId: string; types: readonly string[]; zone: string | null; limit: number; cursor: ListCursor | null; pattern: string | null }): Promise<ListOutcome>;
+  /** The caller's own entry, or null. */
+  get(input: { userId: string; id: string; types: readonly string[]; zone: string | null }): Promise<GetOutcome>;
 }
 
 function data<T>(fn: string, r: { data: unknown; error: { code?: string } | null }): T {
@@ -54,6 +74,7 @@ function entry(fn: string, raw: unknown): StoredEntry {
   if (!id || !contentType || text === null || !at || !day) throw new Error(`${fn}: malformed entry`);
   return {
     id, contentType, text, at: new Date(at).toISOString(), day, processingStatus: str(r.processing_status), clientEntryId: str(r.client_entry_id),
+    atUs: typeof r.at_us === 'number' && Number.isSafeInteger(r.at_us) ? r.at_us : null,
   };
 }
 
@@ -75,6 +96,20 @@ export function supabaseEntryStore(db: AccessRpcClient): EntryStore {
       const date = str(raw.date);
       if (!date || !Array.isArray(raw.entries)) throw new Error('entries_today: malformed answer');
       return { outcome: 'ok', date, entries: raw.entries.map((e) => entry('entries_today', e)) };
+    },
+    async list({ userId, types, zone, limit, cursor, pattern }) {
+      const raw = await call<Record<string, unknown>>('entries_list', {
+        p_user: userId, p_types: [...types], p_zone: zone, p_limit: limit,
+        p_before_us: cursor?.atUs ?? null, p_before_id: cursor?.id ?? null, p_pattern: pattern,
+      });
+      if (raw.outcome === 'no_user') return { outcome: 'no_user' };
+      if (!Array.isArray(raw.entries)) throw new Error('entries_list: malformed answer');
+      return { outcome: 'ok', entries: raw.entries.map((e) => entry('entries_list', e)) };
+    },
+    async get({ userId, id, types, zone }) {
+      const raw = await call<Record<string, unknown>>('entry_get', { p_user: userId, p_id: id, p_types: [...types], p_zone: zone });
+      if (raw.outcome === 'no_user') return { outcome: 'no_user' };
+      return { outcome: 'ok', entry: raw.entry === null || raw.entry === undefined ? null : entry('entry_get', raw.entry) };
     },
   };
 }

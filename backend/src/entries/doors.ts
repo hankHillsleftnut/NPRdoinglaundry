@@ -3,15 +3,19 @@ import { z } from 'zod';
 import type { DoorFactory } from '../doors/door.js';
 import { DoorError } from '../doors/errors.js';
 import { requestHash } from '../services/content-insert.js';
-import type { EntryStore, StoredEntry } from './store.js';
+import type { EntryStore, ListCursor, StoredEntry } from './store.js';
 
 /**
- * The journal's sending doors (BE1.1, contract 02 §2 and §5):
+ * The journal's entry doors (BE1.1 and BE1.5, contract 02 §2 and §5):
  *   POST /v2/entries        send an entry into your bank, once (Idempotency-Key = clientEntryId)
  *   GET  /v2/entries/today  your entries on today's calendar day where you are, oldest first
- * Neither calls the brain while answering: a new row is handed to ingest after
+ *   GET  /v2/entries        the drawer: everything you sent, newest first, in keyed pages, with search
+ *   GET  /v2/entries/:id    one entry of yours; another person's id is not_found
+ * None calls the brain while answering: a new row is handed to ingest after
  * the response (startIngest), and if the brain can't be reached the row stays
  * pending for its next sweep. Nothing here is open to waitlisted people.
+ * Editing and deleting are BE1.5b (after Beta 1: a delete must take everything
+ * read from the entry with it, which needs the brain's forget route).
  */
 export interface EntryDoorDeps {
   entries: EntryStore;
@@ -58,6 +62,10 @@ export const MAX_ENTRY_UNITS = 20_000;
 export const CLOCK_SKEW_MS = 5 * 60_000;
 /** "today" never lists more than this; older ones stay in the drawer (BE1.5). */
 export const TODAY_LIMIT = 200;
+/** The drawer's page: default and ceiling (contract pass §1.5). */
+export const LIST_LIMIT = { default: 50, max: 100 } as const;
+/** A search is 1–100 characters. */
+export const MAX_QUERY_UNITS = 100;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,6 +82,19 @@ export type EntryCreateBody = z.infer<typeof EntryCreateBody>;
 
 const Empty = z.object({}).strict();
 
+/** Query strings arrive as text; a limit must read as a whole number. */
+const limitField = z.preprocess(
+  (v) => (typeof v === 'string' && /^\d{1,3}$/.test(v) ? Number(v) : v),
+  z.number().int().min(1).max(LIST_LIMIT.max).optional(),
+);
+/** Fixture 02/entries.list.json's query shape; strict, so a client-sent userId is invalid_request. */
+export const ListQuery = z.object({
+  cursor: z.string().min(1).max(200).optional(),
+  limit: limitField,
+  q: z.string().min(1).max(MAX_QUERY_UNITS).optional(),
+}).strict();
+const EntryId = z.object({ id: z.string().regex(UUID) }).strict();
+
 /** Contract 02 §5's Entry; `matches` only on search (BE1.5). The 02 fixtures are checked against these. */
 export const Entry = z.object({
   id: z.string().regex(UUID),
@@ -89,6 +110,55 @@ export type Entry = z.infer<typeof Entry>;
 export const EntryResponse = z.object({ entry: Entry }).strict();
 export const TodayResponse = z.object({ date: z.string().regex(DAY), entries: z.array(Entry) }).strict();
 export type TodayResponse = z.infer<typeof TodayResponse>;
+export const ListResponse = z.object({ entries: z.array(Entry), nextCursor: z.string().nullable() }).strict();
+export type ListResponse = z.infer<typeof ListResponse>;
+
+/**
+ * The page cursor: the last entry's moment in microseconds and its id, as
+ * opaque text (base64url of `<us>|<id>`). The app never reads inside it; a
+ * cursor that doesn't decode is invalid_request, and the app starts over.
+ */
+export function encodeCursor(c: ListCursor): string {
+  return Buffer.from(`${c.atUs}|${c.id}`, 'utf8').toString('base64url');
+}
+export function decodeCursor(text: string): ListCursor | null {
+  let decoded: string;
+  try {
+    decoded = Buffer.from(text, 'base64url').toString('utf8');
+  } catch {
+    return null;
+  }
+  const m = /^(\d{1,19})\|([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(decoded);
+  if (!m) return null;
+  const atUs = Number(m[1]);
+  if (!Number.isSafeInteger(atUs)) return null;
+  return { atUs, id: m[2]! };
+}
+
+/** `q` as an ILIKE pattern: the person's wildcards are letters, not wildcards. */
+export function likePattern(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/**
+ * Where `q` occurs in `text`, case-insensitively, as UTF-16 ranges (the unit
+ * Swift's NSRange and JavaScript strings share): every non-overlapping
+ * occurrence. Lower-casing can change a string's length for a few scripts
+ * (İ, ß); the app drops a range that runs past the end (PL3.1d).
+ */
+export function matchRanges(text: string, q: string): { start: number; length: number }[] {
+  const hay = text.toLowerCase();
+  const needle = q.toLowerCase();
+  const out: { start: number; length: number }[] = [];
+  if (needle.length === 0) return out;
+  let from = 0;
+  for (;;) {
+    const at = hay.indexOf(needle, from);
+    if (at < 0) return out;
+    out.push({ start: at, length: needle.length });
+    from = at + needle.length;
+  }
+}
 
 export function toEntry(e: StoredEntry): Entry {
   return {
@@ -114,6 +184,48 @@ export function mountEntryDoors(router: Router, door: DoorFactory, deps: EntryDo
       return r;
     },
     map: (r): TodayResponse => ({ date: r.date, entries: r.entries.map(toEntry) }),
+  }));
+
+  // The drawer: own words, newest first, keyed pages. A full page carries the
+  // cursor of its last entry; a short page is the end (so the page after the
+  // last full one may be empty, which the app treats as the end too).
+  router.get('/entries', door({
+    name: 'entries.list',
+    bucket: 'read',
+    request: ListQuery,
+    call: async (ctx, query) => {
+      const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor);
+      if (query.cursor !== undefined && cursor === null) throw new DoorError('invalid_request');
+      const limit = query.limit ?? LIST_LIMIT.default;
+      const r = await deps.entries.list({
+        userId: ctx.userId, types: SENT_TYPES, zone: ctx.timeZone, limit, cursor, pattern: query.q === undefined ? null : likePattern(query.q),
+      });
+      if (r.outcome === 'no_user') throw new DoorError('unauthenticated');
+      return { entries: r.entries, limit, q: query.q ?? null };
+    },
+    map: (r): ListResponse => {
+      const last = r.entries[r.entries.length - 1];
+      const nextCursor = r.entries.length === r.limit && last && last.atUs !== null ? encodeCursor({ atUs: last.atUs, id: last.id }) : null;
+      return {
+        entries: r.entries.map((e) => (r.q === null ? toEntry(e) : { ...toEntry(e), matches: matchRanges(e.text, r.q) })),
+        nextCursor,
+      };
+    },
+  }));
+
+  // One entry. The function filters by the caller, so another person's id and
+  // a missing one are the same not_found (door step 5: never forbidden).
+  router.get('/entries/:id', door({
+    name: 'entries.get',
+    bucket: 'read',
+    request: EntryId,
+    call: async (ctx, { id }) => {
+      const r = await deps.entries.get({ userId: ctx.userId, id, types: SENT_TYPES, zone: ctx.timeZone });
+      if (r.outcome === 'no_user') throw new DoorError('unauthenticated');
+      if (r.entry === null) throw new DoorError('not_found');
+      return r.entry;
+    },
+    map: (e) => ({ entry: toEntry(e) }),
   }));
 
   // The send. Once per clientEntryId: the key in the header must be the body's
