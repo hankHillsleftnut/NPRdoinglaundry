@@ -2,58 +2,44 @@
 //  RErrorState.swift
 //  M14 C39.3: what went wrong and "try again" (design-system/components/loading-and-empty.md,
 //  reference §C39; Paper legacy c5 "brief card / couldn't load" 20R-0). The message in Geist 12
-//  status.dangerText, then the neutral "try again" pill with the retry glyph. It blurs in, and
-//  the error haptic fires once, the first time it appears. The words are never written here:
-//  pass the failure's own plain message (contract 00: `error.message` is safe to show as is).
+//  status.dangerText, then the neutral "try again" pill with the retry glyph. It blurs in
+//  (`rBlurReplace`) and VoiceOver announces the message. The host fires the error haptic once
+//  per error with `.rErrorHaptic(isFailing:)`. The words are never written here: pass the
+//  failure's own plain message (contract 00: `error.message` is safe to show as is).
 //
 import SwiftUI
-
-extension RTextStyle {
-    /// The failure line: Geist 12, leading snug, no tracking (Paper 20R-0).
-    static let errorLine = RTextStyle(
-        family: .label,
-        size: RDimension.fontSizeSm,
-        weight: .regular,
-        tracking: RNumber.fontTrackingNone,
-        leading: RTextStyle.label.leading,
-        relativeTo: .caption
-    )
-}
 
 struct RErrorState: View {
     /// The failure's plain message, from `Backend.Failure`; never copy written in a view.
     let message: String
     let retry: () -> Void
 
-    @State private var shown = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        // the pill's 44 hit area adds 6 above its 32 body, so 8 reads as Paper's 14
-        VStack(alignment: .leading, spacing: RDimension.space2) {
+        // Paper's 14 between the words and the pill: 8 plus the 6 the pill's 44 hit area adds
+        // above its 32 body; at accessibility sizes the pill outgrows 44, so the gap is 16
+        VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? RDimension.space4 : RDimension.space2) {
             Text(message)
-                .rText(.errorLine)
+                .rText(.metaLine)
                 .foregroundStyle(RColor.statusDangerText)
                 .fixedSize(horizontal: false, vertical: true)
             RPill(title: "try again", symbol: "arrow.clockwise", action: retry)
                 .accessibilityIdentifier("error.tryAgain")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .transition(transition)
-        .onAppear { shown = true }
-        // once, when it first appears; a retry that fails again keeps this view, so no repeat
-        .sensoryFeedback(RHaptic.error, trigger: shown) { _, now in now }
+        .rBlurReplace()
+        // each time it appears (a retry that fails again included), VoiceOver hears why
+        .onAppear { AccessibilityNotification.Announcement(message).post() }
     }
+}
 
-    /// In on curve.standard 280 with a blur; out on curve.exit 200. Reduce Motion: a 140 fade.
-    private var transition: AnyTransition {
-        if reduceMotion {
-            return AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationFast))
-        }
-        return .asymmetric(
-            insertion: AnyTransition(.blurReplace).animation(RMotion.standard(RNumber.motionDurationSlow)),
-            removal: AnyTransition(.blurReplace).animation(RMotion.exit(RNumber.motionDurationBase))
-        )
+extension View {
+    /// The error haptic, once per error: it fires when `isFailing` turns true. The host keeps
+    /// `isFailing` true through retries that fail again and sets it false only on success, so a
+    /// person retrying a broken page doesn't get buzzed every time.
+    func rErrorHaptic(isFailing: Bool) -> some View {
+        sensoryFeedback(RHaptic.error, trigger: isFailing) { old, new in !old && new }
     }
 }
 
@@ -61,9 +47,12 @@ struct RErrorState: View {
 /// Lab page "error": the state inside a card, for a network and a server failure, and coming
 /// in after a retry. The messages are contract 00's fixtures; "couldn't load today's brief" is
 /// Paper's own line on 20R-0.
-/// `-DesignLabAutoplay` swaps it in and out, for recordings.
+/// `-DesignLabAutoplay` retries twice (both fail again), for recordings.
 struct RErrorStateGallery: View {
-    @State private var failed = true
+    /// The error episode: true from the first failure until a retry works.
+    @State private var failing = true
+    /// A retry in flight; in the lab every retry fails again.
+    @State private var retrying = false
 
     var body: some View {
         ScrollView {
@@ -76,26 +65,34 @@ struct RErrorStateGallery: View {
                 RErrorState(message: "something went wrong. try again.") {}
                     .padding(RDimension.space4)
                     .rRaised()
-                caption("coming in")
+                caption("coming in · retries fail again, one buzz")
                 VStack(alignment: .leading) {
-                    if failed {
-                        RErrorState(message: "couldn't load today's brief") { failed = false }
-                    } else {
-                        RPill(title: "fail again", style: .raised) { failed = true }
+                    if failing, !retrying {
+                        RErrorState(message: "couldn't load today's brief") { retry() }
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: RDimension.sizeBriefCardMinHeight, alignment: .topLeading)
                 .padding(RDimension.space4)
                 .rRaised()
+                .rErrorHaptic(isFailing: failing)
+                RPill(title: failing ? "it works now" : "break it", style: .raised) { failing.toggle() }
             }
             .padding(RDimension.spaceScreenMargin)
         }
         .task {
             guard ProcessInfo.processInfo.arguments.contains("-DesignLabAutoplay") else { return }
-            for _ in 0 ..< 4 {
+            for _ in 0 ..< 2 {
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
-                failed.toggle()
+                retry()
             }
+        }
+    }
+
+    private func retry() {
+        retrying = true
+        Task {
+            try? await Task.sleep(for: .seconds(RNumber.motionDurationSlow * 2))
+            retrying = false
         }
     }
 
