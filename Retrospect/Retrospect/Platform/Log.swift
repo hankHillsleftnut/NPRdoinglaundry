@@ -101,12 +101,22 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal:
                 recordDevice(event)
+            case .inviteReceived, .inviteChecked, .inviteTorn:
+                recordGate(event)
+            }
+        }
+
+        /// The invite's lines (PL1.7).
+        private func recordGate(_ event: Event) {
+            switch event {
             case .inviteReceived:
                 logger.info("invite code received")
             case let .inviteChecked(outcome):
                 record(checked: outcome)
             case let .inviteTorn(outcome):
                 record(torn: outcome)
+            default:
+                break
             }
         }
 

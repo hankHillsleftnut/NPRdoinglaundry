@@ -45,7 +45,7 @@ struct InviteCenterTests {
     @Test("codes normalise: dashes, spaces, lowercase, O/0, I/1, L/1; anything else isn't a code", arguments: [
         ("7KQ2-M9XD-4RTA-B", "7KQ2M9XD4RTAB"), ("7kq2 m9xd 4rta b", "7KQ2M9XD4RTAB"), ("7KQ2M9XD4RTAB", "7KQ2M9XD4RTAB"),
         ("7KQ2M9XD4RTAO", "7KQ2M9XD4RTA0"), ("7KQ2M9XD4RTAI", "7KQ2M9XD4RTA1"), ("7KQ2M9XD4RTAl", "7KQ2M9XD4RTA1"),
-        ("7KQ2M9XD4RTA", nil), ("7KQ2M9XD4RTABB", nil), ("7KQ2M9XD4RTAU", nil), ("", nil), ("not a code at all", nil),
+        ("7KQ2M9XD4RTA", nil), ("7KQ2M9XD4RTABB", nil), ("7KQ2M9XD4RTAU", nil), ("", nil), ("not a code", nil),
     ] as [(String, String?)])
     func codesNormalise(_ raw: String, _ expected: String?) {
         #expect(Session.InviteCode.normalise(raw) == expected)
@@ -247,6 +247,7 @@ struct InviteCenterTests {
     @Test("an offline tear changes nothing and keeps the code and the key")
     func anOfflineTearChangesNothing() async throws {
         let (h, center) = try harness()
+        await center.sync()
         h.reachability.set(online: false)
         center.beginTear()
 
