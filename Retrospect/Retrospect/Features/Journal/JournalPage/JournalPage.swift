@@ -112,8 +112,10 @@ struct JournalPage: View {
         .scrollDismissesKeyboard(.interactively)
         // the distance to the bottom anchor, in 8pt steps, so scrolling never re-renders per frame
         .onScrollGeometryChange(for: Int.self) { geometry in
-            let distance = geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height + geometry.contentInsets.bottom
-            return Int((distance / RDimension.space2).rounded(.down))
+            // at rest the thread sits on its bottom anchor: the composer's inset is already
+            // inside the offset, so it isn't added again
+            let distance = geometry.contentSize.height - geometry.contentOffset.y - geometry.containerSize.height
+            return Swift.max(0, Int((distance / RDimension.space2).rounded(.down)))
         } action: { _, steps in
             model.scrollSteps = steps
             withAnimation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy) {
@@ -195,6 +197,8 @@ struct JournalPage: View {
         RVoiceComposer(mode: $model.composerMode, text: $model.draft) { text in
             Task { await model.send(text) }
         }
+        // the inset proposes the scroll view's height; the bar keeps its own
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, margin)
         .padding(.bottom, RDimension.space2)
         .accessibilityIdentifier("journal.composer")
