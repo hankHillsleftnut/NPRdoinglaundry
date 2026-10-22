@@ -19,8 +19,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         SubscriptionManager.shared.configure()
         IntegrationBackgroundTasks.register()
         IntegrationBackgroundTasks.schedule()
+        // Bridge (PL2.2b): the outbox's background drain, registered before launch finishes.
+        backgroundDrain.register()
         return true
     }
+
+    /// The outbox's background task (PL2.2b). `RetrospectApp` points it at the
+    /// platform's outbox once there is one.
+    let backgroundDrain = Store.BackgroundDrain()
     
     // Handle notification when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
@@ -257,6 +263,8 @@ struct RetrospectApp: App {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
                 await platform.bindSessionLifecycle(to: apiClient)
+                // Bridge (PL2.2b): the background drain finds the outbox through the platform.
+                appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }
             }
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
@@ -370,6 +378,16 @@ struct RetrospectApp: App {
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 // Bridge (DG.4): foreground and background land in the diagnostics rings.
                 platform.scenePhaseChanged(to: newPhase)
+                // Bridge (PL2.2b): unsent entries go when the app comes back, and while it sleeps.
+                if newPhase == .active {
+                    Task { await platform.outbox?.drain(reason: .foreground) }
+                }
+                if newPhase == .background {
+                    Task {
+                        let unsent = (try? await platform.outbox?.unsentCount()) ?? 0
+                        appDelegate.backgroundDrain.scheduleIfNeeded(unsent: unsent)
+                    }
+                }
                 // If recording is active and app goes to background, keep it recording
                 if newPhase == .background {
                     print("📱 App moved to background - recording continues")

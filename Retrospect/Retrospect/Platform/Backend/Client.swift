@@ -72,6 +72,8 @@ extension Backend {
 
         /// The most any one send may take, whatever the endpoint asks for.
         static let longestTimeout: Duration = .seconds(60)
+        /// The least: a sub-second timeout would fail every real send.
+        static let shortestTimeout: Duration = .seconds(1)
 
         /// A duration between zero and `ceiling`, uniformly (full jitter).
         static let randomJitter: @Sendable (Duration) -> Duration = { ceiling in
@@ -162,7 +164,7 @@ extension Backend {
 
             var request = URLRequest(url: url)
             request.httpMethod = endpoint.method.rawValue
-            request.timeoutInterval = TimeInterval(min(endpoint.timeout, Self.longestTimeout).components.seconds)
+            request.timeoutInterval = TimeInterval(min(max(endpoint.timeout, Self.shortestTimeout), Self.longestTimeout).components.seconds)
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue(configuration.appVersion, forHTTPHeaderField: "X-App-Version")
             request.setValue(timeZone().identifier, forHTTPHeaderField: "X-Time-Zone")

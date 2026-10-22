@@ -34,7 +34,41 @@ extension Store {
 
     /// What an outbox row sends. Stored as its raw value.
     enum OutboxOperation: String, Flows.ContractEnum {
+        /// `POST /v2/entries`; the entity is the entry (`local_id`), the key is the entity's id.
         case entryCreate = "entry.create"
+        /// `POST /v2/guesses/:id`; the entity is the guess, the key is the row's own id (the door ignores it).
+        case guessAnswer = "guess.answer"
+        /// `POST /v2/diagnostics`; the entity and the key are the report's id. Not an entry: nothing is written back to `entries`.
+        case diagnosticsSend = "diagnostics.send"
+        case unknown
+    }
+
+    /// A failure as the outbox stores it (`last_error_code`, `failure_code`)
+    /// and the log carries it: a contract 00 code when the server answered,
+    /// else the phone's own kind. A closed list, never a message.
+    enum FailureCode: String, Flows.ContractEnum, CaseIterable {
+        case invalidRequest = "invalid_request"
+        case invalidCredentials = "invalid_credentials"
+        case unauthenticated
+        case sessionRevoked = "session_revoked"
+        case inviteRequired = "invite_required"
+        case suspended
+        case notFound = "not_found"
+        case idempotencyMismatch = "idempotency_mismatch"
+        case updateRequired = "update_required"
+        case rateLimited = "rate_limited"
+        case spendLimited = "spend_limited"
+        case upstreamTimeout = "upstream_timeout"
+        case upstreamUnavailable = "upstream_unavailable"
+        case `internal`
+        case inviteInvalid = "invite_invalid"
+        case inviteUsed = "invite_used"
+        case inviteExpired = "invite_expired"
+        /// Phone-side: no connection.
+        case offline
+        case timedOut = "timed_out"
+        case decoding
+        case transport
         case unknown
     }
 
@@ -66,10 +100,13 @@ extension Store {
         var attempts: Int = 0
         var reading: Reading?
         var origin: Origin
+        /// The line shown under the entry once it's sent ("got it."), chosen
+        /// once by the drainer and never changed. Nil until sent.
+        var acknowledgement: String?
 
         enum CodingKeys: String, CodingKey {
             case localID = "local_id", serverID = "server_id", kind, text, createdAt = "created_at", day
-            case mediaPath = "media_path", syncState = "sync_state", failureCode = "failure_code", attempts, reading, origin
+            case mediaPath = "media_path", syncState = "sync_state", failureCode = "failure_code", attempts, reading, origin, acknowledgement
         }
 
         /// One day's entries, oldest first (the `entries(day, created_at)` index).
@@ -221,5 +258,35 @@ extension Store {
 
         private static let withFraction = Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: .gmt)
         private static let wholeSeconds = Date.ISO8601FormatStyle(timeZone: .gmt)
+    }
+}
+
+extension Backend.Failure.Kind {
+    /// The code the outbox stores for this failure.
+    var storedCode: Store.FailureCode {
+        switch self {
+        case .invalidRequest: .invalidRequest
+        case .invalidCredentials: .invalidCredentials
+        case .unauthenticated: .unauthenticated
+        case .sessionRevoked: .sessionRevoked
+        case .inviteRequired: .inviteRequired
+        case .suspended: .suspended
+        case .notFound: .notFound
+        case .idempotencyMismatch: .idempotencyMismatch
+        case .updateRequired: .updateRequired
+        case .rateLimited: .rateLimited
+        case .spendLimited: .spendLimited
+        case .upstreamTimeout: .upstreamTimeout
+        case .upstreamUnavailable: .upstreamUnavailable
+        case .internal: .internal
+        case .inviteInvalid: .inviteInvalid
+        case .inviteUsed: .inviteUsed
+        case .inviteExpired: .inviteExpired
+        case .offline: .offline
+        case .timedOut: .timedOut
+        case .decoding: .decoding
+        case .transport: .transport
+        case .unknown: .unknown
+        }
     }
 }

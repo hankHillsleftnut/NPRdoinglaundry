@@ -13,6 +13,11 @@ extension Platform.Diagnostics {
 
         enum Network: String, CaseIterable, Codable, Sendable {
             case wifi, cellular, wired, none, unknown
+
+            /// Reachability knows only whether there is a route: offline is `none`, online is `unknown` (not guessed to be wifi).
+            init(isOnline: Bool) {
+                self = isOnline ? .unknown : .none
+            }
         }
 
         enum FreeDisk: String, CaseIterable, Codable, Sendable {
@@ -59,12 +64,21 @@ extension Platform.Diagnostics {
             var contentSize: UIContentSizeCategory
             var reduceMotion: Bool
             var voiceOver: Bool
-            /// Reachability (PL1.2) fills this in once it's merged; until then unknown.
+            /// From reachability (`Network(isOnline:)`): the phone says only whether there is a route, not what kind.
             var network: Network
             var freeDiskBytes: Int64?
 
-            /// The phone, read now. Main actor for the accessibility and content-size settings.
+            /// The phone, read now, with the network unknown. Main actor for the accessibility and content-size settings.
             @MainActor static var device: Sources {
+                device(network: .unknown)
+            }
+
+            /// The phone, read now, with the network as reachability (PL1.2) last said.
+            @MainActor static func device(isOnline: Bool) -> Sources {
+                device(network: Network(isOnline: isOnline))
+            }
+
+            @MainActor private static func device(network: Network) -> Sources {
                 Sources(
                     info: Bundle.main.infoDictionary,
                     osVersion: ProcessInfo.processInfo.operatingSystemVersion,
@@ -74,7 +88,7 @@ extension Platform.Diagnostics {
                     contentSize: UIApplication.shared.preferredContentSizeCategory,
                     reduceMotion: UIAccessibility.isReduceMotionEnabled,
                     voiceOver: UIAccessibility.isVoiceOverRunning,
-                    network: .unknown,
+                    network: network,
                     freeDiskBytes: freeDiskBytes()
                 )
             }
