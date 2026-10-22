@@ -35,7 +35,7 @@ extension Store {
     /// PL2.2a is the queue; the drainer and its triggers are PL2.2b.
     actor Outbox {
         enum DrainReason: String, Sendable {
-            case launch, foreground, reachability, afterWrite, backgroundTask, manual
+            case launch, foreground, reachability, afterWrite, backgroundTask, manual, retryTimer
         }
 
         /// An item still in flight this long after it was sent was lost to a
@@ -59,6 +59,9 @@ extension Store {
         /// Chooses an acknowledgement line: an index below its argument.
         private let pick: @Sendable (Int) -> Int
         private let log: any Platform.LogSink
+        /// Sleeps until a retry is due; replaceable so tests don't wait.
+        private let sleep: @Sendable (TimeInterval) async throws -> Void
+        private var retryWake: Task<Void, Never>?
         private var isDraining = false
         private var needsAnotherPass = false
         private var started = false
@@ -74,8 +77,10 @@ extension Store {
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
             jitter: @escaping @Sendable (Duration) -> Duration = Backend.Client.randomJitter,
             pick: @escaping @Sendable (Int) -> Int = { Int.random(in: 0 ..< max(1, $0)) },
+            sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
             log: any Platform.LogSink
         ) {
+            self.sleep = sleep
             self.database = database
             self.sender = sender
             self.reachability = reachability
@@ -88,6 +93,7 @@ extension Store {
 
         deinit {
             reachabilityWatch?.cancel()
+            retryWake?.cancel()
         }
 
         /// Saves the entry (`local`, from the new app) and its `entry.create`
@@ -144,7 +150,7 @@ extension Store {
         /// "you have unsent entries" (PL1.5).
         func unsentCount() throws -> Int {
             try database.writer.read { db in
-                try OutboxRow
+                try Store.OutboxRow
                     .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
                     .fetchCount(db)
             }
@@ -157,7 +163,7 @@ extension Store {
             let id = entityID.uuidString.lowercased()
             let due = now()
             try database.writer.write { db in
-                let dead = try OutboxRow
+                let dead = try Store.OutboxRow
                     .filter(Column(OutboxRow.CodingKeys.entityID) == id && Column(OutboxRow.CodingKeys.status) == OutboxStatus.dead.rawValue)
                     .fetchAll(db)
                 guard !dead.isEmpty else { throw NothingToRetry() }
@@ -235,10 +241,16 @@ extension Store {
             }
             isDraining = true
             defer { isDraining = false }
+            var paused = false
             repeat {
                 needsAnotherPass = false
-                await pass()
-            } while needsAnotherPass && !Task.isCancelled
+                paused = await pass()
+            } while needsAnotherPass && !paused && !Task.isCancelled
+            // A pause (offline, signed out) is ended by its own trigger:
+            // reachability, sign-in, foreground. Otherwise wake for the next retry.
+            if !paused, !Task.isCancelled {
+                scheduleRetryWake()
+            }
         }
 
         private struct Tally {
@@ -247,8 +259,10 @@ extension Store {
         }
 
         /// One pass over what's due, oldest first.
-        private func pass() async {
-            guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return }
+        /// Returns true when the pass paused (offline, signed out): no more passes.
+        private func pass() async -> Bool {
+            guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return false }
+            var paused = false
             var tally = Tally()
             for queued in due where !Task.isCancelled {
                 guard let item = try? markInFlight(queued) else { continue }
@@ -263,11 +277,13 @@ extension Store {
                     break
                 } catch {
                     if settle(error, item: item, tally: &tally) == .pause {
+                        paused = true
                         break
                     }
                 }
             }
             log.record(.outbox(.drained(sent: tally.sent, failed: tally.failed)))
+            return paused
         }
 
         /// Writes a failed send back: the item waits, is refused, or the pass pauses.
@@ -503,6 +519,33 @@ extension Store {
             calendar.timeZone = timeZone
             let parts = calendar.dateComponents([.year, .month, .day], from: date)
             return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        }
+    }
+}
+
+extension Store.Outbox {
+    /// One sleeping task, for the earliest pending item that isn't due yet.
+    private func scheduleRetryWake() {
+        retryWake?.cancel()
+        retryWake = nil
+        guard started, let next = try? earliestPendingAt() else { return }
+        let wait = max(0, next.timeIntervalSince(now()))
+        let sleep = sleep
+        retryWake = Task { [weak self] in
+            do { try await sleep(wait) } catch { return }
+            await self?.drain(reason: .retryTimer)
+        }
+    }
+
+    private func earliestPendingAt() throws -> Date? {
+        let current = now()
+        return try database.writer.read { db in
+            try Store.OutboxRow
+                .filter(Column(Store.OutboxRow.CodingKeys.status) == Store.OutboxStatus.pending.rawValue)
+                .fetchAll(db)
+                .map(\.nextAttemptAt)
+                .filter { $0 > current }
+                .min()
         }
     }
 }

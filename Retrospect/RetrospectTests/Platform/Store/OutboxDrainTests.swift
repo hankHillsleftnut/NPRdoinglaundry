@@ -32,12 +32,31 @@ struct OutboxDrainTests {
 
     /// Full jitter is replaced by its ceiling, so delays are exact; the
     /// acknowledgement picker always takes the first choice.
-    private func outbox(reachability: (any Backend.Reachability)? = nil) -> Store.Outbox {
+    private func outbox(
+        reachability: (any Backend.Reachability)? = nil,
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
+    ) -> Store.Outbox {
         let now = now
         return Store.Outbox(
             database: database, sender: sender, reachability: reachability, now: { now.value }, timeZone: { .gmt }, jitter: { $0 },
-            pick: { _ in 0 }, log: recorder
+            pick: { _ in 0 }, sleep: sleep, log: recorder
         )
+    }
+
+    /// Records each wait the drainer asks for and holds it until the test opens the gate.
+    private final class Waits: @unchecked Sendable {
+        private let lock = NSLock()
+        private var seen: [TimeInterval] = []
+        let gate = Gate()
+
+        var values: [TimeInterval] {
+            lock.withLock { seen }
+        }
+
+        func sleep(_ seconds: TimeInterval) async throws {
+            lock.withLock { seen.append(seconds) }
+            try await gate.wait()
+        }
     }
 
     private func draft(_ id: UUID) throws -> Store.EntryDraft {
@@ -384,6 +403,66 @@ struct OutboxDrainTests {
         #expect(try item(c).status == .pending)
         #expect(recorder.events.contains(.outbox(.paused(code: .unauthenticated))))
         #expect(drainedLines == [.outbox(.drained(sent: 1, failed: 0))])
+    }
+
+    @Test(
+        "a pause ends the drain even with two items for one entity: one send, no loop",
+        arguments: [Backend.Failure.Kind.offline, .unauthenticated, .sessionRevoked]
+    )
+    func aPauseWithTwoItemsForOneEntityDoesNotLoop(kind: Backend.Failure.Kind) async throws {
+        let outbox = outbox()
+        let first = try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .no)
+        try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .yes)
+        sender.script(first.uuidString.lowercased(), [.failure(Backend.Failure(kind))])
+
+        await outbox.drain(reason: .manual)
+
+        #expect(sender.sends.count == 1)
+        #expect(drainedLines.count == 1)
+        #expect(try item(first).status == .pending)
+        #expect(try item(first).attempts == 0)
+    }
+
+    // MARK: Retry timer
+
+    @Test("a failed send wakes the drainer when its backoff ends, with no other trigger")
+    func aRetryWakesTheDrainerWhenDue() async throws {
+        let waits = Waits()
+        let outbox = outbox(sleep: waits.sleep)
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.failure(Backend.Failure(.upstreamUnavailable))])
+
+        await outbox.start()
+        for _ in 0 ..< 500 where waits.values.isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(waits.values == [2])
+        #expect(try item(a).status == .pending)
+        #expect(sender.sends.count == 1)
+
+        now.advance(seconds: 2)
+        waits.gate.open()
+        for _ in 0 ..< 500 where try item(a).status != .done {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(try item(a).status == .done)
+        #expect(sender.sends.count == 2)
+    }
+
+    @Test("a pause sets no timer: the next trigger (reachability, sign-in, foreground) does it")
+    func aPauseSetsNoTimer() async throws {
+        let waits = Waits()
+        let outbox = outbox(sleep: waits.sleep)
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.failure(Backend.Failure(.offline))])
+
+        await outbox.start()
+        await outbox.drain(reason: .manual)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(waits.values.isEmpty)
     }
 
     // MARK: Crashes mid-send
