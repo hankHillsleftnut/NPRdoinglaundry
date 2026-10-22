@@ -13,7 +13,7 @@ struct JournalViewModelTests {
         return model
     }
 
-    @Test("full: a day label, every entry, Retro's line after each, and the guess after the last one")
+    @Test("full: a day label, every entry, Retro's line after each acknowledged one, and the guess after the last one")
     func full() async {
         let model = await model(.full)
         let items = model.thread
@@ -21,7 +21,8 @@ struct JournalViewModelTests {
         let mine = items.filter { if case .mine = $0 { return true } else { return false } }.count
         let retro = items.filter { if case .retro = $0 { return true } else { return false } }.count
         #expect(mine == SampleJournalContent.todayEntries.count)
-        #expect(retro == mine)
+        // an imported entry has no client id, so Retro has nothing to say after it yet
+        #expect(retro == SampleJournalContent.todayEntries.filter { $0.clientEntryId != nil }.count)
         if case .guess = items.last {} else {
             Issue.record("the guess sits after the last acknowledgement")
         }

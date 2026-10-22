@@ -12,7 +12,7 @@ struct LaunchArgumentsTests {
         #expect(parsed.state == "offline")
         #expect(parsed.appearance == .dark)
         #expect(parsed.contentSize == "UICTContentSizeCategoryAccessibilityXL")
-        #expect(parsed.dynamicTypeSize == .accessibility1)
+        #expect(parsed.dynamicTypeSize == .accessibility3)
         #expect(parsed.reduceMotion)
         #expect(parsed.unknown.isEmpty)
     }
