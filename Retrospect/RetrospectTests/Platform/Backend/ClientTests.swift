@@ -65,7 +65,9 @@ struct ClientTests {
             configuration: configuration,
             session: session,
             tokens: tokens,
+            reachability: ManualReachability(),
             clock: TestClock(),
+            jitter: { _ in .zero },
             log: recorder,
             timeZone: { TimeZone(identifier: "America/Los_Angeles") ?? .gmt },
             languages: { ["en-GB", "fr"] }
@@ -133,7 +135,7 @@ struct ClientTests {
 
     @Test("statuses without a contract body map to what they mean", arguments: [
         (400, Backend.Failure.Kind.invalidRequest), (401, .unauthenticated), (404, .notFound), (426, .updateRequired),
-        (429, .rateLimited(retryAfter: nil)), (502, .upstreamUnavailable), (503, .upstreamUnavailable), (504, .upstreamTimeout),
+        (408, .timedOut), (429, .rateLimited(retryAfter: nil)), (502, .upstreamUnavailable), (503, .upstreamUnavailable), (504, .upstreamTimeout),
         (500, .internal), (418, .unknown(code: "http_418")),
     ])
     func statusesWithoutAContractBody(_ status: Int, _ kind: Backend.Failure.Kind) async {
