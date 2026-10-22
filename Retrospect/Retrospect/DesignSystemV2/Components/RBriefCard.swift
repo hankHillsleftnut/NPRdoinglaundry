@@ -162,7 +162,7 @@ struct RBriefCard: View {
         return ZStack(alignment: .topLeading) {
             RShape.rect(corner)
                 .fill(panelFill)
-            RArtwork(recipe: .morning, width: width ?? RDimension.layoutReadingWidth, height: height, cornerRadius: corner)
+            RArtwork(recipe: RArtworkRecipes.morning, width: width ?? RDimension.layoutReadingWidth, height: height, cornerRadius: corner)
                 .opacity(showsArtwork ? 1 : 0)
                 .frame(maxWidth: .infinity)
                 .clipShape(RShape.rect(corner))
