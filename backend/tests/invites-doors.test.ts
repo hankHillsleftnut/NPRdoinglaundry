@@ -78,7 +78,7 @@ doorSuite({
   method: 'POST', path: '/v2/invites/redeem', bucket: 'redeem', openToWaitlisted: true,
   validBody: { code: CODE },
   invalid: { body: { code: 42 } },
-  headers: { ...HONOLULU, 'Idempotency-Key': '0f1e2d3c-4b5a-4697-8899-aabbccddeeff' },
+  headers: { ...HONOLULU, 'Idempotency-Key': '11111111-2222-4333-8444-555555555555' },
   setup: (h, userId) => { h.users.set(userId, { ...h.users.get(userId)!, access: 'waitlisted' }); },
   // A founder invite (no inviter): the minimal fixture. Retries by the same person get the same answer.
   expect: () => fixture('redeem.response.minimal.json'),
