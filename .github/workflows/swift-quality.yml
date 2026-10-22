@@ -7,6 +7,12 @@ on:
       - '.swiftlint.yml'
       - '.swiftformat'
       - '.github/workflows/swift-quality.yml'
+concurrency:
+  # A newer push to the same PR cancels its older run. Pushes to main are keyed by commit, so
+  # a later merge never cancels an earlier one's iOS check.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-format:
     runs-on: [self-hosted, light]
