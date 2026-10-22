@@ -48,7 +48,7 @@ extension Session {
 
     /// The session's Keychain writes that can fail without ending the session.
     enum KeychainItem: Sendable, Equatable {
-        case session, signedInBefore, mirror, sessionClear
+        case session, signedInBefore, mirror, sessionClear, pendingInvite
     }
 
     /// Apple's answer about the person's credential for this app.

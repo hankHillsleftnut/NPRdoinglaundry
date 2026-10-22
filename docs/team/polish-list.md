@@ -18,6 +18,10 @@ Nits and "close but not exact" items deferred under prototype mode (`prototype-m
 | #142 | legacy mirror | `LegacyMirror.publish` hops to main per call; a write then a clear could land out of order. Serialise the hops. | combined review, 22 Oct |
 | #142 | session | Remember a `rate_limited` on refresh and wait `retryAfterSeconds` before the next proactive refresh instead of trying again on the next request. | combined review, 22 Oct |
 | #142 | install check | A launch check that fails every time (not locked) reads as `.locked` forever; cap the retries or surface a state the gate can show. | combined review, 22 Oct |
+| #143 | invites | Keychain read failures in `InviteCenter` are logged as `keychainWriteFailed`; give reads their own event. | combined review, 22 Oct |
+| #143 | invites | `Ticket.none` conflates "no code" and "already in" (PI1 wants a toast for the second); split the case. | combined review, 22 Oct |
+| #143 | invites | A waiting ticket is checked again only on `.active`, not on reachability (PL1.8 wires both). | combined review, 22 Oct |
+| #143 | invites | `type(code:)` bypasses `afterSignIn`'s single flight, and a code typed while signed out isn't kept for after sign-in. | combined review, 22 Oct |
 
 | #147 | outbox drainer | A 426 (app too old) marks queued items dead; pausing them would send them on their own after the update. A 2xx that fails to decode is also dead (the server did write it; a retry with the same key returns the same entry). Both leave the entry recoverable by "tap to retry", nothing is lost. | integrator read, 22 Oct |
 | #143 | invites | A spent code can read as unspent after its redeemer's account is deleted (007 `ON DELETE SET NULL`): belongs with delete-my-account. The pending code outlives sign-out by contract (the link follows the phone). | CodeRabbit, 22 Oct |

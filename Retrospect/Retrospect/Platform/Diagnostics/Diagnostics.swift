@@ -168,6 +168,21 @@ extension Platform.Diagnostics {
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: Self.gate(path)
+            }
+        }
+
+        /// The sign-in gate's doors, kept apart so each switch stays small. A door
+        /// outside the gate never reaches here (`init` sends only these five).
+        private static func gate(_ path: Backend.PathTemplate) -> Route {
+            switch path {
+            case .access: .access
+            case .waitlist: .waitlist
+            case .invitesCheck: .invitesCheck
+            case .invitesRedeem: .invitesRedeem
+            case .invitesMine: .invitesMine
+            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout:
+                preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }
     }
