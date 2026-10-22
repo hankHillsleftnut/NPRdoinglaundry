@@ -7,7 +7,8 @@ import test, { before } from 'node:test';
 import { asServiceRole, freshDatabase, insertUser, type PGlite } from './support/database.js';
 import { pgliteRpc } from './support/pglite-rpc.js';
 import { supabaseSessionStore, startSession, type SessionStore } from '../src/sessions/store.js';
-import { hashRefreshToken, newRefreshToken, REFRESH_GRACE_SECONDS, sealGrace, verifyAccessToken } from '../src/sessions/tokens.js';
+import { check } from '../src/sessions/store.js';
+import { hashRefreshToken, newRefreshToken, openGrace, REFRESH_GRACE_SECONDS, sealGrace, verifyAccessToken } from '../src/sessions/tokens.js';
 
 const SECRET = 'test-only-not-a-key';
 const T0 = Date.parse('2026-10-21T12:00:00.000Z');
@@ -23,20 +24,23 @@ before(async () => {
   store = Object.fromEntries(Object.entries(raw).map(([k, fn]) => [k, (...a: unknown[]) => asServiceRole(db, () => (fn as (...x: unknown[]) => Promise<unknown>)(...a))])) as unknown as SessionStore;
 });
 
-/** One refresh as the route will do it: a new pair, sealed for the grace window. */
+/** Seeded randomness: each call gets the next distinct bytes, the same every run. */
+let seed = 0;
+const random = (n: number) => Buffer.alloc(n, ++seed % 256).fill(seed >> 8, 0, 1);
+
+/** One refresh as the route will do it: a new refresh token, sealed for the grace window. */
 async function rotate(oldPlain: string, nowMs: number) {
-  const next = newRefreshToken();
+  const next = newRefreshToken(random);
   const result = await store.rotate({
     tokenHash: hashRefreshToken(oldPlain), newHash: next.hash, nowIso: iso(nowMs),
-    accessToken: `access-for-${next.hash.slice(0, 6)}`, accessExpiresAt: iso(nowMs + 15 * 60 * 1000),
-    refreshCiphertext: sealGrace(next.plain, SECRET),
+    refreshCiphertext: sealGrace(next.plain, SECRET, random),
   });
   return { result, next };
 }
 
 async function newSession(nowMs = T0) {
   const user = await insertUser(db);
-  const s = await startSession(store, { userId: user, tokenVersion: 0 }, SECRET, nowMs);
+  const s = await startSession(store, { userId: user, tokenVersion: 0 }, SECRET, nowMs, { random });
   return { user, ...s };
 }
 
@@ -66,9 +70,9 @@ test('a retry with the just-rotated token within 30 seconds gets the same succes
   const retry = await rotate(s.refreshToken, T0 + 1000 + 29 * 1000);
   assert.equal(retry.result.outcome, 'grace');
   if (retry.result.outcome !== 'grace') return;
-  assert.equal(retry.result.accessToken, `access-for-${first.next.hash.slice(0, 6)}`);
-  const { openGrace } = await import('../src/sessions/tokens.js');
   assert.equal(openGrace(retry.result.refreshCiphertext, SECRET), first.next.plain, 'the same successor refresh token');
+  const { rows } = await db.query<{ cols: string[] }>(`SELECT array_agg(column_name::text) AS cols FROM information_schema.columns WHERE table_name = 'refresh_grace'`);
+  assert.deepEqual(rows[0]!.cols.sort(), ['expires_at', 'refresh_ciphertext', 'token_hash'], 'no access token is ever stored');
   // The successor still works: the retry didn't burn the family.
   assert.equal((await rotate(first.next.plain, T0 + 60 * 1000)).result.outcome, 'rotated');
 });
@@ -111,7 +115,7 @@ test('an unused session ends after 60 days', async () => {
 });
 
 test('an unknown token is revoked, not an error', async () => {
-  assert.deepEqual((await rotate(newRefreshToken().plain, T0)).result, { outcome: 'revoked' });
+  assert.deepEqual((await rotate(newRefreshToken(random).plain, T0)).result, { outcome: 'revoked' });
   assert.equal(await store.ownerOf(hashRefreshToken('not-a-token')), null);
 });
 
@@ -148,4 +152,12 @@ test('the session tables are closed to everyone but the service role', async () 
       await db.exec('RESET ROLE');
     }
   }
+});
+
+test('a database error surfaces as the function and code only, never the message', () => {
+  assert.throws(
+    () => check('rotate_refresh_token', { data: null, error: { code: '40001', message: 'could not serialize access; row (hash-0, ...)' } as { code: string } }),
+    (e: unknown) => e instanceof Error && e.message === 'rotate_refresh_token failed (40001)',
+  );
+  assert.throws(() => check('use_nonce', { data: null, error: {} }), /use_nonce failed \(unknown\)/);
 });

@@ -8,10 +8,11 @@
 -- revoke it. This adds the server side of the new sessions:
 --   refresh_tokens   one row per refresh token, stored as a SHA-256 hash only;
 --                    a "family" is one device's chain of rotations
---   refresh_grace    the successor pair for 30 seconds after a rotation, so a
---                    retried refresh (a dropped response) gets the same pair
---                    instead of tripping reuse detection; the refresh token is
---                    stored encrypted, and the row expires
+--   refresh_grace    the successor refresh token for 30 seconds after a
+--                    rotation, so a retried refresh (a dropped response) gets
+--                    the same one instead of tripping reuse detection; stored
+--                    encrypted only, and the row expires. No access token is
+--                    stored: a retry is given a freshly issued one.
 --   auth_nonces      sign-in nonces, accepted once
 --   users.time_zone, users.token_version, users.first_name
 -- and the functions that change them, each one transaction:
@@ -45,8 +46,6 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
 
 CREATE TABLE IF NOT EXISTS refresh_grace (
     token_hash          TEXT PRIMARY KEY,
-    access_token        TEXT NOT NULL,
-    access_expires_at   TIMESTAMPTZ NOT NULL,
     refresh_ciphertext  TEXT NOT NULL,
     expires_at          TIMESTAMPTZ NOT NULL
 );
@@ -77,14 +76,13 @@ $$;
 
 -- One refresh, in one transaction, with the presented token's row locked so
 -- two refreshes of one token at once produce one successor. Returns
---   { outcome: 'rotated', user_id }                       the successor is stored
---   { outcome: 'grace', access_token, access_expires_at,  rotated in the last
---     refresh_ciphertext }                                p_grace_seconds: same pair
---   { outcome: 'revoked' }                                unknown, expired, revoked,
---                                                         or reused (family revoked)
+--   { outcome: 'rotated', user_id }               the successor is stored
+--   { outcome: 'grace', user_id,                  rotated in the last p_grace_seconds:
+--     refresh_ciphertext }                        the same successor (sealed)
+--   { outcome: 'revoked' }                        unknown, expired, revoked, or
+--                                                 reused (the family is revoked)
 CREATE OR REPLACE FUNCTION rotate_refresh_token(
-    p_token_hash TEXT, p_new_hash TEXT, p_now TIMESTAMPTZ,
-    p_access_token TEXT, p_access_expires_at TIMESTAMPTZ, p_refresh_ciphertext TEXT,
+    p_token_hash TEXT, p_new_hash TEXT, p_now TIMESTAMPTZ, p_refresh_ciphertext TEXT,
     p_grace_seconds INTEGER DEFAULT 30
 )
 RETURNS JSONB
@@ -107,7 +105,6 @@ BEGIN
             SELECT * INTO v_grace FROM refresh_grace WHERE token_hash = p_token_hash AND expires_at >= p_now;
             IF FOUND THEN
                 RETURN jsonb_build_object('outcome', 'grace', 'user_id', v_row.user_id,
-                    'access_token', v_grace.access_token, 'access_expires_at', v_grace.access_expires_at,
                     'refresh_ciphertext', v_grace.refresh_ciphertext);
             END IF;
         END IF;
@@ -126,8 +123,8 @@ BEGIN
             LEAST(p_now + INTERVAL '60 days', v_row.absolute_expires_at), v_row.absolute_expires_at, v_row.device_label)
     RETURNING id INTO v_next;
     UPDATE refresh_tokens SET rotated_at = p_now, replaced_by = v_next WHERE id = v_row.id;
-    INSERT INTO refresh_grace (token_hash, access_token, access_expires_at, refresh_ciphertext, expires_at)
-    VALUES (p_token_hash, p_access_token, p_access_expires_at, p_refresh_ciphertext, p_now + make_interval(secs => p_grace_seconds))
+    INSERT INTO refresh_grace (token_hash, refresh_ciphertext, expires_at)
+    VALUES (p_token_hash, p_refresh_ciphertext, p_now + make_interval(secs => p_grace_seconds))
     ON CONFLICT (token_hash) DO NOTHING;
     -- Expired grace rows are of no use to anyone.
     DELETE FROM refresh_grace WHERE expires_at < p_now;
@@ -176,10 +173,10 @@ REVOKE ALL ON refresh_tokens, refresh_grace, auth_nonces FROM PUBLIC, anon, auth
 GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_tokens, refresh_grace, auth_nonces TO service_role;
 
 REVOKE ALL ON FUNCTION issue_session(UUID, TEXT, TIMESTAMPTZ, TEXT) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION rotate_refresh_token(TEXT, TEXT, TIMESTAMPTZ, TEXT, TIMESTAMPTZ, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION rotate_refresh_token(TEXT, TEXT, TIMESTAMPTZ, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION revoke_session(TEXT, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION use_nonce(TEXT, TIMESTAMPTZ, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION issue_session(UUID, TEXT, TIMESTAMPTZ, TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION rotate_refresh_token(TEXT, TEXT, TIMESTAMPTZ, TEXT, TIMESTAMPTZ, TEXT, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION rotate_refresh_token(TEXT, TEXT, TIMESTAMPTZ, TEXT, INTEGER) TO service_role;
 GRANT EXECUTE ON FUNCTION revoke_session(TEXT, TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION use_nonce(TEXT, TIMESTAMPTZ, INTEGER) TO service_role;

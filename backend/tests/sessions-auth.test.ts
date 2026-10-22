@@ -14,6 +14,10 @@ test('a new access token signs in to /v2 and to the old routes', async () => {
     const { token } = issueAccessToken({ userId: USER, tokenVersion: 0 }, SECRET, h.clock.now);
     const ping = await h.request('GET', '/v2/ping', undefined, { Authorization: `Bearer ${token}` });
     assert.deepEqual(ping.body, { success: true, data: { userId: USER } });
+    // An old route: past auth, /content's own validation answers 400 for an empty body.
+    const content = await h.request('POST', '/content', {}, { Authorization: `Bearer ${token}` });
+    assert.equal(content.status, 400);
+    assert.equal((content.body as { error: string }).error, 'Invalid request body');
   } finally {
     await h.close();
   }
@@ -51,6 +55,19 @@ test('old 30-day tokens still pass old routes', async () => {
     const res = await h.request('POST', '/content', {}, { Authorization: `Bearer ${old}` });
     assert.equal(res.status, 400);
     assert.equal((await h.request('GET', '/v2/ping', undefined, { Authorization: `Bearer ${old}` })).status, 200, 'and /v2 too, until X07');
+  } finally {
+    await h.close();
+  }
+});
+
+// Integrator review: before migration 005 the lookup has no version, and a new token must not pass.
+test('a user with no token version (005 not applied) is refused a new access token', async () => {
+  const h = await startHarness();
+  try {
+    h.users.set(USER, { id: USER, appleUserId: 'apple-1' });
+    const { token } = issueAccessToken({ userId: USER, tokenVersion: 0 }, SECRET, h.clock.now);
+    assert.equal((await h.request('GET', '/v2/ping', undefined, { Authorization: `Bearer ${token}` })).status, 401);
+    assert.equal((await h.request('POST', '/content', {}, { Authorization: `Bearer ${token}` })).status, 401);
   } finally {
     await h.close();
   }

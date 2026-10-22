@@ -7,7 +7,8 @@ import { issueAccessToken, newRefreshToken, type AccessClaims } from './tokens.j
  */
 export type RotateResult =
   | { outcome: 'rotated'; userId: string }
-  | { outcome: 'grace'; userId: string; accessToken: string; accessExpiresAt: string; refreshCiphertext: string }
+  /** Rotated moments ago: the same successor refresh token (sealed); the caller issues a fresh access token. */
+  | { outcome: 'grace'; userId: string; refreshCiphertext: string }
   | { outcome: 'revoked' };
 
 export interface SessionStore {
@@ -15,10 +16,7 @@ export interface SessionStore {
   issue(userId: string, tokenHash: string, nowIso: string, device?: string): Promise<void>;
   /** Who a refresh token belongs to (any state), or null when it isn't one. */
   ownerOf(tokenHash: string): Promise<string | null>;
-  rotate(input: {
-    tokenHash: string; newHash: string; nowIso: string;
-    accessToken: string; accessExpiresAt: string; refreshCiphertext: string;
-  }): Promise<RotateResult>;
+  rotate(input: { tokenHash: string; newHash: string; nowIso: string; refreshCiphertext: string }): Promise<RotateResult>;
   /** Ends the presented token's family (this device). */
   revoke(tokenHash: string, nowIso: string): Promise<boolean>;
   /** True the first time a nonce is seen while it lives; false after. */
@@ -37,7 +35,7 @@ export interface RpcClient {
   };
 }
 
-function check<T>(fn: string, r: { data: unknown; error: { code?: string } | null }): T {
+export function check<T>(fn: string, r: { data: unknown; error: { code?: string } | null }): T {
   // The code only: a database message can carry row values.
   if (r.error) throw new Error(`${fn} failed (${r.error.code ?? 'unknown'})`);
   return r.data as T;
@@ -54,15 +52,11 @@ export function supabaseSessionStore(db: RpcClient): SessionStore {
     },
     async rotate(input) {
       const raw = check<Record<string, unknown>>('rotate_refresh_token', await db.rpc('rotate_refresh_token', {
-        p_token_hash: input.tokenHash, p_new_hash: input.newHash, p_now: input.nowIso,
-        p_access_token: input.accessToken, p_access_expires_at: input.accessExpiresAt, p_refresh_ciphertext: input.refreshCiphertext,
+        p_token_hash: input.tokenHash, p_new_hash: input.newHash, p_now: input.nowIso, p_refresh_ciphertext: input.refreshCiphertext,
       }));
       if (raw.outcome === 'rotated') return { outcome: 'rotated', userId: String(raw.user_id) };
       if (raw.outcome === 'grace') {
-        return {
-          outcome: 'grace', userId: String(raw.user_id), accessToken: String(raw.access_token),
-          accessExpiresAt: new Date(String(raw.access_expires_at)).toISOString(), refreshCiphertext: String(raw.refresh_ciphertext),
-        };
+        return { outcome: 'grace', userId: String(raw.user_id), refreshCiphertext: String(raw.refresh_ciphertext) };
       }
       return { outcome: 'revoked' };
     },

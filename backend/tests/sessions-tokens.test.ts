@@ -36,11 +36,13 @@ test('a refresh token is 32 random bytes, stored only as its hash', () => {
   assert.equal(Buffer.from(t.plain, 'base64url').length, 32);
   assert.equal(t.hash, hashRefreshToken(t.plain));
   assert.match(t.hash, /^[0-9a-f]{64}$/);
-  assert.notEqual(newRefreshToken().plain, newRefreshToken().plain);
+  assert.notEqual(newRefreshToken((n) => Buffer.alloc(n, 1)).plain, newRefreshToken((n) => Buffer.alloc(n, 2)).plain);
 });
 
 test('the grace copy of a refresh token is encrypted and tamper-evident', () => {
-  const sealed = sealGrace('the-successor', SECRET);
+  const sealed = sealGrace('the-successor', SECRET, (n) => Buffer.alloc(n, 3));
+  assert.throws(() => openGrace('x', SECRET), /malformed/);
+  assert.throws(() => openGrace('a.b', SECRET), /malformed/);
   assert.equal(sealed.includes('the-successor'), false);
   assert.equal(openGrace(sealed, SECRET), 'the-successor');
   assert.throws(() => openGrace(sealed, 'another-secret'));

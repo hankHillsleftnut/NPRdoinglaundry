@@ -44,7 +44,10 @@ export async function freshDatabase(): Promise<PGlite> {
   return db;
 }
 
-export async function insertUser(db: PGlite, appleUserId = `apple-${Math.random().toString(36).slice(2)}`): Promise<string> {
+let users = 0;
+
+/** A user with a distinct, deterministic Apple subject (a counter, no randomness). */
+export async function insertUser(db: PGlite, appleUserId = `apple-test-${++users}`): Promise<string> {
   const { rows } = await db.query<{ id: string }>(`INSERT INTO users (apple_user_id) VALUES ($1) RETURNING id`, [appleUserId]);
   return rows[0]!.id;
 }
