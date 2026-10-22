@@ -4,8 +4,9 @@
 //  One grey line, never red: the offline glyph in icon.muted and the words in Geist 12
 //  text.label, 4 apart, 12 in from the edge (Paper JR-3 drawer · offline, the line under search).
 //  It sits above whatever is still showing from the phone. It blur-replaces in and out (exit
-//  faster than entrance) and is announced once when it appears. The host page moves the
-//  content below with `.animation(RMotion.snappy, value: isOffline)`, so nothing jumps.
+//  faster than entrance, `rBlurReplace`). The host page announces it once per offline spell
+//  with `.rOfflineAnnouncement(_:isOffline:)` and moves the content below with
+//  `.animation(RMotion.snappy, value: isOffline)`, so nothing jumps.
 //
 import SwiftUI
 
@@ -20,10 +21,14 @@ struct ROfflineLine: View {
             case .drawer: "offline · new notes send when you're back"
             }
         }
+
+        /// What VoiceOver reads and announces: the same words with a comma for the dot.
+        var spoken: String {
+            text.replacingOccurrences(of: " · ", with: ", ")
+        }
     }
 
     let copy: Copy
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // The glyph takes the label's font, so it sits on the label's baseline and grows with
@@ -37,39 +42,25 @@ struct ROfflineLine: View {
                 .foregroundStyle(RColor.textLabel)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .rText(.offlineLine)
+        .rText(.metaLine)
         .padding(.horizontal, RDimension.space3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .transition(transition)
-        .onAppear {
-            AccessibilityNotification.Announcement(copy.text).post()
-        }
-    }
-
-    /// In on curve.standard 280; out on curve.exit 200, faster than it came (craft 1.8).
-    /// Reduce Motion: a 140ms cross-fade, no blur.
-    private var transition: AnyTransition {
-        if reduceMotion {
-            return AnyTransition.opacity.animation(RMotion.standard(RNumber.motionDurationFast))
-        }
-        return .asymmetric(
-            insertion: AnyTransition(.blurReplace).animation(RMotion.standard(RNumber.motionDurationSlow)),
-            removal: AnyTransition(.blurReplace).animation(RMotion.exit(RNumber.motionDurationBase))
-        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(copy.spoken)
+        .rBlurReplace()
     }
 }
 
-extension RTextStyle {
-    /// Paper's offline line: Geist 12 regular, leading snug, no tracking (unlike `.label`).
-    static let offlineLine = RTextStyle(
-        family: .label,
-        size: RDimension.fontSizeSm,
-        weight: .regular,
-        tracking: RNumber.fontTrackingNone,
-        leading: RTextStyle.label.leading,
-        relativeTo: .caption
-    )
+extension View {
+    /// Announces the offline line once each time the page goes offline (and once if it opens
+    /// offline), never again while it stays offline, however often the line re-appears.
+    func rOfflineAnnouncement(_ copy: ROfflineLine.Copy, isOffline: Bool) -> some View {
+        onChange(of: isOffline, initial: true) { _, offline in
+            if offline {
+                AccessibilityNotification.Announcement(copy.spoken).post()
+            }
+        }
+    }
 }
 
 #if DEBUG
@@ -103,6 +94,7 @@ struct ROfflineLineGallery: View {
                     }
                     // the host moves what's below on a spring; the line brings its own blur timing
                     .animation(RMotion.snappy, value: offline)
+                    .rOfflineAnnouncement(.page, isOffline: offline)
                 }
             }
             .padding(RDimension.spaceScreenMargin)
