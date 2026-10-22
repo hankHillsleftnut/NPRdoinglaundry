@@ -39,7 +39,7 @@ struct MediaSourceTests {
         return try Backend.Coding.decoder.decode(Brief.self, from: Data(json.utf8))
     }
 
-    private func source(_ calls: Calls) -> Platform.Media.Source {
+    private func source(_ calls: Calls, body: String = "audio") -> Platform.Media.Source {
         let now = now
         let scratch = scratch
         return Platform.Media.Source(
@@ -48,7 +48,7 @@ struct MediaSourceTests {
                 calls.downloaded(url)
                 try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
                 let file = scratch.appendingPathComponent(UUID().uuidString)
-                try Data("audio".utf8).write(to: file)
+                try Data(body.utf8).write(to: file)
                 return file
             },
             refetch: { calls.refetched() }
@@ -68,6 +68,34 @@ struct MediaSourceTests {
         #expect(first.lastPathComponent == "b1.mp3")
         #expect(calls.downloads.count == 1)
         #expect(FileManager.default.fileExists(atPath: first.path))
+    }
+
+    @Test("an empty download is never kept as the brief's audio, and the next play tries again")
+    func anEmptyDownloadIsNotKept() async throws {
+        let calls = Calls()
+        let brief = try brief(expiresIn: 3600)
+        let empty = source(calls, body: "")
+
+        await #expect(throws: Platform.Media.Source.Failure.self) { try await empty.playableFile(for: brief, rate: 1) }
+        #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("b1.mp3").path))
+
+        let working = source(calls)
+        let file = try await working.playableFile(for: brief, rate: 1)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        #expect(calls.downloads.count == 2)
+    }
+
+    @Test("only a 2xx HTTP answer is accepted as audio: a 403 or a 404 body is not")
+    func onlyTwoXXIsAudio() throws {
+        let url = try #require(URL(string: "https://example.test/a.mp3"))
+        func answer(_ code: Int) throws -> URLResponse {
+            try #require(HTTPURLResponse(url: url, statusCode: code, httpVersion: nil, headerFields: nil))
+        }
+        #expect(try Platform.Media.Source.accepts(answer(200)))
+        #expect(try !Platform.Media.Source.accepts(answer(403)))
+        #expect(try !Platform.Media.Source.accepts(answer(404)))
+        #expect(try !Platform.Media.Source.accepts(answer(503)))
+        #expect(!Platform.Media.Source.accepts(URLResponse(url: url, mimeType: nil, expectedContentLength: 0, textEncodingName: nil)))
     }
 
     @Test("a signed link that would run out before the brief finishes is refetched first, and the fresh link is the one used")

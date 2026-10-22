@@ -33,7 +33,7 @@ extension Platform.Media {
             directory: URL = URL.cachesDirectory.appendingPathComponent("Platform/audio", isDirectory: true),
             now: @escaping @Sendable () -> Date = { Date() },
             isOnline: @escaping @Sendable () async -> Bool,
-            download: @escaping @Sendable (URL) async throws -> URL = { try await URLSession.shared.download(from: $0).0 },
+            download: @escaping @Sendable (URL) async throws -> URL = Source.downloadChecked,
             refetch: @escaping @Sendable () async throws -> Flows.Journal.Brief?
         ) {
             self.directory = directory
@@ -66,8 +66,35 @@ extension Platform.Media {
             } catch {
                 throw Failure.unavailable
             }
+            // an empty download is never kept as the brief's audio
+            guard Self.isUsable(temporary) else {
+                try? FileManager.default.removeItem(at: temporary)
+                throw Failure.unavailable
+            }
             try store(temporary, as: brief.id, duration: current.durationSeconds)
             return file
+        }
+
+        /// The default download: a non-2xx answer (an expired link's 403, a CDN error page) throws, so its body is never kept.
+        @Sendable
+        static func downloadChecked(_ url: URL) async throws -> URL {
+            let (file, response) = try await URLSession.shared.download(from: url)
+            guard Self.accepts(response) else {
+                try? FileManager.default.removeItem(at: file)
+                throw Failure.unavailable
+            }
+            return file
+        }
+
+        /// A 2xx HTTP answer (anything that is not HTTP is refused).
+        static func accepts(_ response: URLResponse) -> Bool {
+            guard let http = response as? HTTPURLResponse else { return false }
+            return (200 ..< 300).contains(http.statusCode)
+        }
+
+        static func isUsable(_ file: URL) -> Bool {
+            let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0
+            return size > 0
         }
 
         /// Sign-out: every file goes.

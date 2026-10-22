@@ -198,7 +198,7 @@ struct JournalViewModelTests {
         let data = ScriptedJournalData(entries: [])
         let model = JournalViewModel(data: data, today: SampleJournalContent.today)
         await model.load()
-        data.sendOutcome = .failed(Flows.Failure(.invalidRequest))
+        data.sendOutcome = .failed(Flows.Failure(.unknown))
         model.draft = "my words"
 
         await model.send("my words")

@@ -249,9 +249,9 @@ struct LiveJournalDataTests {
 
     @Test("an empty or over-long entry is never saved, and a refused one says so, so the words can go back")
     func refusedDrafts() async throws {
-        #expect(await data.send(text: "   ") == .failed(Flows.Failure(.invalidRequest)))
+        #expect(await data.send(text: "   ") == .failed(Flows.Failure(.unknown)))
         let long = await data.send(text: String(repeating: "a", count: LiveJournalData.longestEntry + 1))
-        #expect(long == .failed(Flows.Failure(.invalidRequest)))
+        #expect(long == .failed(Flows.Failure(.unknown)))
         #expect(try rowCount() == 0)
         #expect(await data.send(text: "fine") == .queued)
         #expect(try rowCount() == 1)

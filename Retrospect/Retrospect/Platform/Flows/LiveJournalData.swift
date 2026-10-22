@@ -270,7 +270,7 @@ final class LiveJournalData: Flows.JournalData {
     private func enqueue(kind: Backend.Endpoints.CreateEntry.Kind, text: String, mediaPath: String?) async -> Journal.WriteOutcome {
         guard text.utf16.count <= Self.longestEntry,
               let draft = Store.EntryDraft(kind: kind, text: text, createdAt: now(), mediaPath: mediaPath)
-        else { return .failed(Flows.Failure(.invalidRequest)) }
+        else { return .failed(Flows.Failure(.unknown)) }
         // The row lands in the store; the observation shows it as waiting. Nothing is appended here.
         do {
             _ = try await outbox.enqueueEntry(draft)
