@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "url": "https://example.invalid/storage/v1/object/sign/voice-samples/bright.mp3?token=fake",
+    "expiresAt": "2026-10-21T09:00:00.000Z",
+    "durationSeconds": 9
+  }
+}

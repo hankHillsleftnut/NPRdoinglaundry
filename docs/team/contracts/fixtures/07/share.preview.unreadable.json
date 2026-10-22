@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "thing": {
+      "url": "https://example.org/members/only",
+      "kind": "unknown",
+      "site": "example.org"
+    },
+    "read": null,
+    "goesWith": null,
+    "reading": "unreadable"
+  }
+}

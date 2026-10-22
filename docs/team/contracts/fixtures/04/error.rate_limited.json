@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many tries. Try again in a minute.",
+    "retryAfterSeconds": 60
+  }
+}

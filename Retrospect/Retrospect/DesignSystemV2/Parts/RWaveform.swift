@@ -32,7 +32,7 @@ struct RWaveform: View {
     var body: some View {
         HStack(spacing: RDimension.sizeVoiceBarGap) {
             ForEach(Self.restShape.indices, id: \.self) { index in
-                Capsule()
+                RShape.pill
                     .fill(color)
                     .frame(width: RDimension.sizeVoiceBarWidth, height: height(for: index))
             }

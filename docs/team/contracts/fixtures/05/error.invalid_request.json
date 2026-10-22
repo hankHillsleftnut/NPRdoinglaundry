@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": {
+    "code": "invalid_request",
+    "message": "that request wasn't valid."
+  }
+}

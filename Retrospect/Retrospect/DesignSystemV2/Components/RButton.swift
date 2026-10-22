@@ -125,13 +125,15 @@ private struct PrimaryBody: ViewModifier {
         if enabled {
             content.rLit(pressed: pressed)
         } else {
-            content.background(RColor.surfaceControl, in: Capsule())
+            content.background(RColor.surfaceControl, in: RShape.pill)
         }
     }
 }
 
-/// Three dots that pulse in turn over a pending label.
-private struct RPendingDots: View {
+/// Three dots that pulse in turn: over a pending label, and in the voice composer while Retro
+/// thinks (C14, 5pt dots). They take the foreground style; Reduce Motion holds them still.
+struct RPendingDots: View {
+    var diameter: CGFloat = RDimension.sizeStepDot
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -140,7 +142,7 @@ private struct RPendingDots: View {
             HStack(spacing: RDimension.space1) {
                 ForEach(0 ..< 3, id: \.self) { index in
                     Circle()
-                        .frame(width: RDimension.sizeStepDot, height: RDimension.sizeStepDot)
+                        .frame(width: diameter, height: diameter)
                         .opacity(reduceMotion ? 1 : 0.35 + 0.65 * pulse(t, index)) // literal-ok: pulse floor and range
                 }
             }

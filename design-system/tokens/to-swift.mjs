@@ -1,7 +1,7 @@
 // node design-system/tokens/to-swift.mjs [tokens.json] [out.swift]
 // M14 step 1 (process.md Part 3: "Tokens first: generated Swift from tokens.json"). One source for values:
 // this file is generated, never edited. Colours resolve light and dark from tokens.json (the
-// $extensions.retrospect.dark value; color.*, glow.* and depth.*) into dynamic UIColors; dimensions, radii, opacity, durations and type
+// $extensions.retrospect.dark value; color.*, glow.*, depth.* and each elevation.* shadow layer) into dynamic UIColors; dimensions, radii, opacity, durations and type
 // sizes become CGFloat / Double constants. Names follow the token path in lowerCamelCase.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -44,7 +44,8 @@ const num = (v) => {
 };
 const f = (x) => (+x.toFixed(4)).toString();
 
-const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], skipped = [];
+const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], artwork = [], skipped = [];
+let cornerStyle = null;
 (function walk(o, path) {
   if (!o || typeof o !== 'object') return;
   if ('$value' in o) {
@@ -62,14 +63,37 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
       // em values: a fraction of the font size, applied by RType
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n, doc: o.$description });
+    } else if (type === 'gradient' && /^gradient\.mesh/.test(path) && typeof o.$value === 'string' && o.$value.startsWith('base ')) {
+      // "base #hex; blob #hex at X% Y% r R% (alpha A→0); …; softness S; grain [mono|multi] N% [size Z]"
+      const v = o.$value;
+      const base = v.match(/base (#[0-9a-f]{6})/i)?.[1];
+      const blobs = [...v.matchAll(/blob (#[0-9a-f]{6}) at (\d+)% (\d+)% r (\d+)%(?:[^;]*?alpha \.?(\d*\.?\d+)→0)?/gi)].map((m) => ({
+        hex: m[1], x: +m[2] / 100, y: +m[3] / 100, r: +m[4] / 100,
+        a: m[5] === undefined ? 1 : (m[5].startsWith('.') ? +('0' + m[5]) : (+m[5] > 1 ? +('0.' + m[5]) : +m[5])),
+      }));
+      const g = v.match(/grain (?:(mono|multi) )?(\d+(?:\.\d+)?)%(?: size (\d*\.?\d+))?/i);
+      const grain = { mode: (g?.[1] ?? 'mono').toLowerCase(), opacity: +(g?.[2] ?? 0) / 100, size: +(g?.[3] ?? 1) };
+      const softness = +(v.match(/softness (\d*\.?\d+)/)?.[1] ?? 0.6);
+      if (base && blobs.length) artwork.push({ name: camel(path.slice('gradient.mesh'.length).replace(/^./, (c) => c.toLowerCase())), base, blobs, softness, grain, doc: o.$description });
+      else skipped.push(path);
     } else if (type === 'spring' && /^motion\.spring\./.test(path)) {
       const v = o.$value;
       springs.push({ name: camel(path.slice('motion.spring.'.length)), r: v.response, d: v.dampingFraction, doc: o.$description });
     } else if (type === 'cubicBezier' && /^motion\.curve\./.test(path) && Array.isArray(o.$value)) {
       curves.push({ name: camel(path.slice('motion.curve.'.length)), p: o.$value, doc: o.$description });
+    } else if (type === 'string' && path === 'radius.style') {
+      cornerStyle = { v: String(o.$value), doc: o.$description };
     } else if (type === 'string' && /^haptic\./.test(path)) {
       haptics.push({ name: camel(path.slice('haptic.'.length)), v: String(o.$value), doc: o.$description });
-    } else if ((type === 'number' && /^(opacity|layer|motion\.)/.test(path)) || type === 'duration') {
+    } else if (type === 'shadow' && /^elevation\./.test(path) && Array.isArray(o.$value)) {
+      // each layer's colour becomes RColor.shadow<Name><n>, the same names Paper uses (--color-shadow-thumb-1)
+      const dv = o.$extensions?.retrospect?.dark;
+      o.$value.forEach((layer, i) => {
+        const light = rgba(resolve(layer.color, false));
+        const dark = rgba(resolve((Array.isArray(dv) && dv[i] ? dv[i] : layer).color, true));
+        if (light && dark) colors.push({ name: camel('shadow.' + path.slice('elevation.'.length) + '.' + (i + 1)), light, dark, doc: i === 0 ? o.$description : undefined });
+      });
+    } else if ((type === 'number' && /^(opacity|layer|motion\.|radius\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });
     } else skipped.push(path);
@@ -79,6 +103,7 @@ const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics =
 })(T, '');
 
 const doc = (d) => (d ? `    /// ${String(d).replace(/\n/g, ' ')}\n` : '');
+const hexColor = (h) => { const [r, g, b] = rgba(h); return `Color(red: ${f(r)}, green: ${f(g)}, blue: ${f(b)})`; };
 const ui = ([r, g, b, a]) => `UIColor(red: ${f(r)}, green: ${f(g)}, blue: ${f(b)}, alpha: ${f(a)})`;
 // haptic token value → SwiftUI SensoryFeedback (typeOn's intensity is handled by RHaptic.typeOn())
 const feedback = (v) => {
@@ -117,10 +142,24 @@ const lines = [
   ...dims.map((d) => `${doc(d.doc)}    public static let ${d.name}: CGFloat = ${f(d.n)}`),
   '}',
   '',
+  ...(cornerStyle
+    ? [
+        '/// Corner shape from radius.style. Views draw corners through RShape, never a bare Capsule() or RoundedRectangle.',
+        'public enum RCorner {',
+        `${doc(cornerStyle.doc)}    public static let style: RoundedCornerStyle = .${cornerStyle.v}`,
+        '}',
+        '',
+      ]
+    : []),
   '/// Springs and curves from motion.* (design-system/principles/motion-system.md). Views use these, never a raw .spring(...).',
   'public enum RMotion {',
   ...springs.map((m) => `${doc(m.doc)}    public static let ${m.name}: Animation = .spring(response: ${f(m.r)}, dampingFraction: ${f(m.d)})`),
   ...curves.map((c) => `${doc(c.doc)}    public static func ${c.name}(_ duration: Double) -> Animation { .timingCurve(${c.p.map(f).join(', ')}, duration: duration) }`),
+  '}',
+  '',
+  '/// Episode artwork recipes from gradient.mesh* (principles/gradients.md: points blended in OKLab over a base, plus grain).',
+  'public enum RArtworkRecipes {',
+  ...artwork.map((a) => `${doc(a.doc)}    public static let ${a.name} = RArtworkRecipe(base: ${hexColor(a.base)}, blobs: [${a.blobs.map((b) => `.init(color: ${hexColor(b.hex)}, x: ${f(b.x)}, y: ${f(b.y)}, radius: ${f(b.r)}, weight: ${f(b.a)})`).join(', ')}], softness: ${f(a.softness)}, grain: .init(mode: .${a.grain.mode}, opacity: ${f(a.grain.opacity)}, size: ${f(a.grain.size)}))`),
   '}',
   '',
   '/// Haptics from haptic.* as SwiftUI feedback. Pair each with the visual change it lands on.',
@@ -135,4 +174,4 @@ const lines = [
   '',
 ];
 writeFileSync(out, lines.join('\n'));
-console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);
+console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics, ${artwork.length} artworks; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);

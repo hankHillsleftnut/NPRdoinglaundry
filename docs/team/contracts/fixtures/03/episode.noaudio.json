@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "data": {
+    "episode": {
+      "id": "3d9c1f84-2a77-4b1e-8c55-71a0e2b6c3d2",
+      "kind": "weekly",
+      "number": 5,
+      "title": "tuesdays, mostly",
+      "about": "writing mornings, the gym",
+      "durationSeconds": 540.0,
+      "timing": "measured",
+      "createdAt": "2026-10-11T16:00:01.020Z",
+      "coversFrom": "2026-09-13",
+      "coversTo": "2026-10-11",
+      "hasAudio": false,
+      "madeFrom": [
+        {
+          "kind": "entries",
+          "count": 3
+        }
+      ],
+      "chapters": [],
+      "lines": [],
+      "description": "a short week about writing mornings and the gym.",
+      "claims": []
+    }
+  }
+}

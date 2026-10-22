@@ -1,0 +1,21 @@
+{
+  "aps": {
+    "alert": {
+      "title": "something new",
+      "body": "a test line for a kind this app doesn't know."
+    },
+    "mutable-content": 1,
+    "category": "SOMETHING_NEW"
+  },
+  "r": {
+    "v": 3,
+    "kind": "somethingNew",
+    "id": "9a1b2c3d-0001-4abc-8def-000000000001",
+    "refId": "c0ffee00-1111-4222-8333-444455556666",
+    "link": "retrospect://somewhere-new",
+    "sentAt": "2026-12-01T09:00:00.000Z",
+    "extra": {
+      "x": 1
+    }
+  }
+}

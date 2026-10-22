@@ -97,7 +97,7 @@ private struct RSegmentStyle: ButtonStyle {
 /// background.underlay, sunken: inset 0 1 2 depth.shadow.sunken and a 0.5 inner hairline.
 private struct RSegmentedTrack: View {
     var body: some View {
-        let shape = Capsule(style: .continuous)
+        let shape = RShape.pill
         shape.fill(RColor.backgroundUnderlay)
             .overlay(shape.stroke(RColor.depthShadowSunken, lineWidth: 2).blur(radius: 1).offset(y: 1).clipShape(shape))
             .overlay(shape.strokeBorder(RColor.depthStrokeOuter, lineWidth: RDimension.sizeBorderHairline))
@@ -108,7 +108,7 @@ private struct RSegmentedTrack: View {
 /// contact (0 1 1.5) and cast (0 2 4 −1) shadows.
 private struct RSegmentedThumb: View {
     var body: some View {
-        let shape = Capsule(style: .continuous)
+        let shape = RShape.pill
         shape.fill(RColor.backgroundRaised)
             .overlay(shape.strokeBorder(RColor.depthStrokeInner, lineWidth: RDimension.sizeBorderDefault))
             .overlay(alignment: .top) {

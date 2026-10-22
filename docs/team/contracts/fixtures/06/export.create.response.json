@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "export": {
+      "id": "5d1e8a2b-7c3f-4e6a-8b9c-0d1e2f3a4b02",
+      "state": "preparing",
+      "requestedAt": "2026-10-21T09:12:00.000Z",
+      "readyAt": null,
+      "expiresAt": null,
+      "sizeBytes": null,
+      "url": null
+    }
+  }
+}

@@ -2,7 +2,6 @@ import express from 'express';
 import { captureException } from './services/telemetry.js';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 
 import { config } from './utils/config.js';
@@ -11,16 +10,18 @@ import { authRouter } from './routes/auth.js';
 import { contentRouter } from './routes/content.js';
 import { goalsRouter } from './routes/goals.js';
 import { pipelineRouter } from './routes/pipeline.js';
-import { adminRouter } from './routes/admin.js';
+import { mountAdmin } from './routes/admin-mount.js';
 import { podcastsRouter } from './routes/podcasts.js';
 import { profileRouter } from './routes/profile.js';
 import { claudeRouter } from './routes/claude.js';
 import { speechRouter } from './routes/speech.js';
 import { integrationOauthCallbackRouter, integrationsRouter } from './routes/integrations.js';
 import { graphRouter } from './routes/graph.js';
+import { applyServerTimeouts, globalLimiter, trustRenderProxy } from './server-settings.js';
 
 
 const app = express();
+trustRenderProxy(app);
 
 // Security middleware — relax CSP for the admin dashboard's inline scripts
 app.use(helmet({
@@ -38,33 +39,20 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxRequests,
-  message: {
-    success: false,
-    error: 'Too many requests, please try again later',
-  },
-});
-app.use(limiter);
+// Rate limiting by IP, except /health and /v2 (doors limit per user)
+app.use(globalLimiter({ windowMs: config.rateLimit.windowMs, max: config.rateLimit.maxRequests }));
 
-// Serve dashboard static files (public/ is copied alongside dist/ during build)
+// The admin dashboard's files (public/ is copied alongside dist/ during build);
+// served only when admin is mounted, below.
 const publicDir = path.join(__dirname, 'public');
-app.use('/public', express.static(publicDir));
-
-// Dashboard route
-app.get('/dashboard', (_req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(publicDir, 'dashboard.html'));
-});
 
 // Health check endpoint (no auth)
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Admin routes (protected by admin secret, not JWT)
-app.use('/admin', adminRouter);
+// Admin routes and the dashboard (admin secret, not JWT; absent without ADMIN_SECRET)
+mountAdmin(app, { secret: config.admin.secret, publicDir });
 
 // Auth routes (no auth middleware)
 app.use('/auth', authRouter);
@@ -116,8 +104,6 @@ const server = app.listen(config.server.port, () => {
   console.log(`Environment: ${config.server.nodeEnv}`);
 });
 
-// Podcast generation with v3 TTS can take several minutes
-server.timeout = 300_000; // 5 minutes
-server.keepAliveTimeout = 120_000;
+applyServerTimeouts(server);
 
 export default app;

@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**532 tokens** · 456 semantic · 276 marked *to set*
+**548 tokens** · 472 semantic · 276 marked *to set*
 
 ## palette
 
@@ -113,6 +113,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.text.primary` | Headlines and the words people read. | {palette.paper.950} | {palette.night.100} | to set: #121212 vs #1E1E1E |
 | `color.text.secondary` | Supporting sentences under a headline. (AA: 5.8:1 light, 7.5:1 dark.) | {palette.paper.680} | {palette.night.300} | to set |
 | `color.text.label` | Every monospace label: buttons on neutral surfaces, metadata, prices, times. (AA: 5:1 light on canvas, 4.5:1 on controls; dark shares secondary.) | {palette.paper.620} | {palette.night.300} | paywall |
+| `color.text.placeholder` | The hint inside a field on surface.control: the lightest grey that still passes AA there (4.57:1 light, 4.54:1 dark). Founder, 21 Oct: just passes. | {palette.paper.620} | {palette.night.350} | founder 21 Oct, part 32 |
 | `color.text.tertiary` | Hints and the least important metadata. (AA: 4.6:1; never on a control fill.) | {palette.paper.560} | {palette.night.350} | to set |
 | `color.text.disabled` | Anything that cannot be used right now. | {palette.paper.400} | {palette.night.600} | lime |
 | `color.text.inverse` | Text on background.inverse. | {palette.paper.25} | {palette.night.950} | lime |
@@ -188,6 +189,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.voice.listening` | The app is listening to you. | {color.accent.default} | {color.accent.default} | to set: app need |
 | `color.voice.speaking` | The app is talking. | {color.ink.default} | {color.ink.default} | to set: app need |
 | `color.voice.waveIdle` | Waveform bars at rest. | {palette.paper.400} | {palette.night.600} | to set: app need |
+| `color.voice.glowPool` | Listening glow, the deeper sky pooling left of the bar (sky.400 at 45%; offset −64 10, blur 34, spread −16). | rgba(67,183,255,0.45) | rgba(35,154,222,0.45) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowLift` | Listening glow, the pale sky lifting right (sky.200 at 60%; offset 72 −6, blur 30, spread −14). | rgba(179,225,255,0.60) | rgba(136,179,207,0.60) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowUnder` | Listening glow, the sky shadow under the right side (sky.500 at 38%; offset 18 20, blur 36, spread −18). | rgba(47,168,240,0.38) | rgba(2,141,209,0.38) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.voice.glowTop` | Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16). | rgba(255,200,92,0.26) | rgba(208,156,46,0.26) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
 | `color.player.progress` | How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.) | {palette.sky.700} | {palette.sky.300} | to set: app need |
 | `color.player.buffered` | How much has loaded ahead. | {color.surface.trackFill} | {color.surface.trackFill} | to set: app need |
 | `color.player.chapterMark` | A chapter tick on the progress bar. | {palette.paper.0} | {palette.night.900} | to set: app need |
@@ -385,6 +390,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.control.default` | Ordinary buttons (Apple minimum touch target). | 44pt |  | to set |
 | `size.control.large` | Prominent buttons. | 48pt |  | lime |
 | `size.control.hero` | The paywall-scale primary and secondary. | 60pt |  | paywall |
+| `size.control.icon` | Top-bar icon buttons (back, close, more): the visible wash circle; the hit area stays 44. | 36pt |  | 151 approved top-bar icon buttons, 21 Oct |
 | `size.touchTarget` | Nothing tappable is smaller than this. | 44pt |  | to set |
 | `size.icon.small` | Inline icons. | 16pt |  | to set |
 | `size.icon.default` | Standard icons. | 20pt |  | to set |
@@ -404,11 +410,13 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.avatar.default` | A person in a row. | 40pt |  | to set: Lime coverage |
 | `size.avatar.large` | A person at the top of their page. | 72pt |  | to set: Lime coverage |
 | `size.badge` | Height of a count or status badge. | 20pt |  | to set: Lime coverage |
+| `size.tagPadding` | Inline padding of a tag (Paper label · today: 20 tall, radius 10, padding 7). The guess dot side takes 6. | 7pt |  | Paper c · player sheet, label · today (21 Oct) |
 | `size.row.default` | A list row with a title and a line under it. | 56pt |  | to set: Lime coverage |
 | `size.row.compact` | A single-line list row. | 44pt |  | to set: Lime coverage |
 | `size.illustration` | The drawing on an empty or error state. | 120pt |  | to set: Lime coverage |
 | `size.navBar` | The navigation bar (without the status bar). | 44pt |  | to set: app need |
 | `size.tabBar` | The tab bar (without the home indicator). | 49pt |  | to set: app need |
+| `size.fieldWell` | A well or button slot inside a 48 field: the search field's mic well and its clear slot. | 36pt |  | Paper approvals · part 23 c:search-field/rest, /typed (21 Oct) |
 | `size.searchField` | The search field on You. | 36pt |  | to set: app need |
 | `size.grabber.width` | The handle at the top of a sheet. | 36pt |  | to set: app need |
 | `size.grabber.height` | The handle at the top of a sheet. | 5pt |  | to set: app need |
@@ -421,6 +429,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.voice.barWidth` | One waveform bar. | 3pt |  | to set: app need |
 | `size.voice.barGap` | Gap between waveform bars. | 2pt |  | to set: app need |
 | `size.voice.barMax` | Tallest waveform bar. | 32pt |  | to set: app need |
+| `size.voice.thinkingDot` | One of the three dots the level bars settle into while Retro is thinking. | 5pt |  | Paper c:voice-composer/thinking (approvals part 07), 20 Oct |
 | `size.player.scrubber` | The player's progress bar. | 4pt |  | to set: app need |
 | `size.player.thumb` | The knob you drag on the progress bar. | 12pt |  | to set: app need |
 | `size.player.button` | Play / pause in the full player. | 64pt |  | to set: app need |
@@ -428,6 +437,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.composer.minHeight` | The writing field, empty. | 44pt |  | to set: app need |
 | `size.composer.maxHeight` | The writing field before it scrolls. | 160pt |  | to set: app need |
 | `size.composer.cardMinHeight` | The input card at rest: room for two lines of words above the well row. | 120pt |  | current app input bar (MinimalJournalInput.swift), founder 20 Oct |
+| `size.composer.well` | The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24). | 40pt |  | Paper c:composer/compact (everything · latest, EX-1 share sheet; dark file), 21 Oct |
 | `size.goal.ring` | The progress ring on a goal. | 44pt |  | to set: app need |
 | `size.goal.ringStroke` | The progress ring's thickness. | 4pt |  | to set: app need |
 | `size.sourceIcon` | A source's app icon in a row. | 32pt |  | to set: app need |
@@ -435,11 +445,16 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.stepDotActive` | The current step (a short pill). | 18pt |  | to set: app need |
 | `size.popoverRow` | A menu row. | 50pt |  | to set: from the title-menu recording (20 Oct) |
 | `size.meter` | Height of the knows-you meter track (ON-6). | 4pt |  | ON-6 c:knows-you-meter, 21 Oct |
+| `size.switch.width` | The switch track's width. | 51pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.height` | The switch track's height. | 31pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.thumb` | The switch thumb (track height − 2 × size.border.ring). | 27pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
+| `size.switch.thumbHeld` | The thumb's width while held: it stretches toward its travel. | 33pt |  | Paper card 6 · part 25 · switch and segmented (approved) |
 
 ## radius
 
 | Token | Purpose | Light | Dark | Source |
 |---|---|---|---|---|
+| `radius.style` | Every corner is a squircle: continuous curvature, pills and wells included, never a circular arc meeting a straight edge. | continuous |  | founder 21 Oct: every rounded corner is a squircle |
 | `radius.small` | Small marks and tags. | 6pt |  | lime |
 | `radius.default` | Small cards and thumbnails. | 10pt |  | lime |
 | `radius.field` | Text fields. | 12pt |  | lime |
@@ -621,7 +636,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `gradient.glowPrimaryPressed` | Pressed body. | linear 180°: #2FA8F0 0%, #2DA3EA 25%, #2799DE 50%, #228FD2 75%, #1F8BCC 100% |  | to set: gradient recipes (founder, 20 Oct) |
 | `gradient.glowDanger` | Destructive body. | linear 180°: #C42B2B 0%, #BF2929 25%, #B32525 50%, #A82121 75%, #A31F1F 100% |  | to set: gradient recipes (founder, 20 Oct) |
 | `gradient.fadeToCanvas` | Content fading under floating controls and into the transport. Eased so there is no visible line where the fade starts. | linear 180°: 13 stops, alpha by smoothstep^1.1 from 0 to 1 (0, .013, .057, .13, .227, .341, .467, .595, .719, .83, .919, .978, 1) |  | to set: gradient recipes (founder, 20 Oct) |
-| `gradient.meshMorning` | Episode artwork: morning. Sky with a warm paper glow rising in one corner, never a ramp from sky to beige. | base #2FA8F0; blob #7FCDFF at 18% 0% r 70% (alpha 1→0); blob #1F7DBA at 100% 100% r 80%; blob #F7F3EE at 0% 100% r 55% alpha .55→0; grain 6% |  | to set: gradient recipes (founder, 20 Oct) |
-| `gradient.meshEvening` | Episode artwork: evening. Deep sky with low amber light. | base #1F7DBA; blob #F2B84B at 85% 15% r 55% alpha .7→0; blob #165E8C at 0% 100% r 80%; blob #7FCDFF at 30% 20% r 40% alpha .5→0; grain 6% |  | to set: gradient recipes (founder, 20 Oct) |
-| `gradient.meshQuiet` | Episode artwork: a quiet week. Paper with a breath of sky. | base #EFECE7; blob #B3E1FF at 80% 10% r 60% alpha .8→0; blob #E4DBCE at 10% 90% r 70%; blob #FFFFFF at 30% 20% r 35% alpha .7→0; grain 5% |  | to set: gradient recipes (founder, 20 Oct) |
+| `gradient.meshMorning` | Episode artwork: morning. Sky with a warm paper glow rising in one corner, never a ramp from sky to beige. | base #2FA8F0; blob #7FCDFF at 18% 0% r 70% (alpha 1→0); blob #1F7DBA at 100% 100% r 80%; blob #F7F3EE at 0% 100% r 55% alpha .55→0; softness .7; grain multi 12% size 1.5 |  | to set: gradient recipes (founder, 20 Oct) |
+| `gradient.meshEvening` | Episode artwork: evening. Deep sky with low amber light. | base #1F7DBA; blob #F2B84B at 90% 10% r 45% alpha .8→0; blob #E9906A at 70% 30% r 30% alpha .45→0; blob #165E8C at 0% 100% r 80%; blob #7FCDFF at 12% 30% r 35% alpha .5→0; softness .7; grain multi 12% size 1.5 |  | to set: gradient recipes (founder, 20 Oct) |
+| `gradient.meshQuiet` | Episode artwork: a quiet week. Paper with a breath of sky. | base #EFECE7; blob #B3E1FF at 80% 10% r 60% alpha .8→0; blob #E4DBCE at 10% 90% r 70%; blob #FFFFFF at 30% 20% r 35% alpha .7→0; softness .7; grain multi 12% size 1.5 |  | to set: gradient recipes (founder, 20 Oct) |
 | `gradient.meshSheetGlow` | The faint sky light at the top of the player sheet, behind the header. | radial 120% 80% at 20% 0%: rgba(127,205,255,.22) → 0 at 60% |  | to set: gradient recipes (founder, 20 Oct) |
+| `gradient.meshWeekly` | Episode artwork: the weekly episode. Night with low amber and a red ember, as drawn on the approved mini-player (ON-11, PC-1). | base #3A3834; blob #FFC85C at 88% 8% r 90%; blob #F0645E at 30% 30% r 75% alpha .55→0; blob #B7791F at 70% 80% r 90% alpha .75→0; blob #165E8C at 0% 100% r 85%; blob #FBF0DA at 78% 16% r 33% alpha .75→0; softness .7; grain multi 12% size 1.5 |  | Paper OEM artwork · mesh · weekly, 21 Oct |

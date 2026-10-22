@@ -1,0 +1,87 @@
+{
+  "success": true,
+  "data": {
+    "search": {
+      "id": "00000000-0000-4000-8000-000000000801",
+      "query": "when did i stop running",
+      "outcome": "found",
+      "sentences": [
+        {
+          "text": "you signed up for the half in march on 2 september.",
+          "cites": [
+            4
+          ],
+          "sure": "certain"
+        },
+        {
+          "text": "since mid october, runs have stopped on days with late meetings.",
+          "cites": [
+            1,
+            2
+          ],
+          "sure": "certain"
+        },
+        {
+          "text": "evening runs may be the ones you skip most.",
+          "cites": [
+            3
+          ],
+          "sure": "guess"
+        }
+      ],
+      "guessCount": 1,
+      "abstain": null,
+      "sources": [
+        {
+          "n": 1,
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000606"
+          },
+          "via": "journal",
+          "date": "2026-10-20",
+          "snippet": "no running again, too late after board prep",
+          "matches": [
+            {
+              "start": 3,
+              "length": 7
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000605"
+          },
+          "via": "calendar",
+          "date": "2026-10-20",
+          "snippet": "board prep until 8",
+          "matches": []
+        },
+        {
+          "n": 3,
+          "source": {
+            "kind": "answer",
+            "id": "00000000-0000-4000-8000-000000000702"
+          },
+          "via": "other",
+          "date": "2026-10-18",
+          "snippet": "what do you reliably avoid or skip? evening runs after work",
+          "matches": []
+        },
+        {
+          "n": 4,
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000608"
+          },
+          "via": "journal",
+          "date": "2026-09-02",
+          "snippet": "i am going to run the half in march",
+          "matches": []
+        }
+      ]
+    }
+  }
+}

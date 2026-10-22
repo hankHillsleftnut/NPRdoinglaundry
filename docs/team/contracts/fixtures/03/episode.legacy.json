@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "data": {
+    "episode": {
+      "id": "6a2e0c17-94b3-4f8d-a1c6-0d5b8e3f7a13",
+      "kind": "first",
+      "number": 1,
+      "title": "the week you started",
+      "durationSeconds": 131.0,
+      "timing": "estimated",
+      "createdAt": "2026-09-20T18:12:40.500Z",
+      "coversFrom": "2026-08-23",
+      "coversTo": "2026-09-20",
+      "hasAudio": true,
+      "madeFrom": [],
+      "chapters": [],
+      "lines": [
+        {
+          "index": 0,
+          "text": "This is the first week, so everything here is narrow.",
+          "chapterIndex": -1,
+          "register": "craft"
+        },
+        {
+          "index": 1,
+          "text": "Here's the first thing I noticed.",
+          "chapterIndex": -1,
+          "register": "craft"
+        }
+      ],
+      "claims": [],
+      "audio": {
+        "url": "https://example.supabase.co/storage/v1/object/sign/podcast-audio/podcasts/u/f.mp3?token=invented",
+        "expiresAt": "2026-10-21T09:00:04.200Z",
+        "durationSeconds": 131.0,
+        "mimeType": "audio/mpeg"
+      }
+    }
+  }
+}

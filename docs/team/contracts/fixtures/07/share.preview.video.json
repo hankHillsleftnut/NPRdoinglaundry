@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "thing": {
+      "url": "https://www.youtube.com/watch?v=EXAMPLE0001",
+      "kind": "video",
+      "title": "a walk through a test kitchen",
+      "site": "youtube.com",
+      "length": {
+        "unit": "watch",
+        "minutes": 18
+      }
+    },
+    "read": "an eighteen-minute tour of how a test kitchen develops one recipe.",
+    "goesWith": null,
+    "reading": "ready"
+  }
+}

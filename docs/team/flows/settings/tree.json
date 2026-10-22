@@ -1,0 +1,1117 @@
+{
+ "nodes": [
+  {
+   "id": "settings",
+   "parent": null,
+   "title": "settings and account (area 06)",
+   "plain": "decide how retro works for you, and take your data and leave whenever you want",
+   "size": "L",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.foundations",
+   "parent": "settings",
+   "title": "foundations",
+   "plain": "the shared pieces every settings page stands on",
+   "size": "M",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.notifications",
+   "parent": "settings",
+   "title": "notifications",
+   "plain": "choose which notifications come and whether their words show on the lock screen",
+   "size": "S",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.hub",
+   "parent": "settings",
+   "title": "hub",
+   "plain": "one calm list of every setting with its current value",
+   "size": "S",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.brief",
+   "parent": "settings",
+   "title": "daily brief",
+   "plain": "turn the brief on and choose when it's ready and how long it is",
+   "size": "M",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.voice",
+   "parent": "settings",
+   "title": "voice and listening",
+   "plain": "choose retro's voice, hear it first, and set the speed",
+   "size": "S",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.straight",
+   "parent": "settings",
+   "title": "how straight, what i've learned",
+   "plain": "choose how direct retro is, and see how it adjusts its questions",
+   "size": "S",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.sources",
+   "parent": "settings",
+   "title": "sources",
+   "plain": "see what retro reads, and stop or remove any of it",
+   "size": "M",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.privacy",
+   "parent": "settings",
+   "title": "privacy",
+   "plain": "background reading, where data goes, download it, or wipe it",
+   "size": "M",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.account",
+   "parent": "settings",
+   "title": "account (App Store minimum)",
+   "plain": "your plan, restore, manage, sign out, and delete your account",
+   "size": "M",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "settings.invites",
+   "parent": "settings",
+   "title": "your invites",
+   "plain": "three single-use links to bring friends in",
+   "size": "S",
+   "side": null,
+   "needs": []
+  },
+  {
+   "id": "PL3.7.0",
+   "parent": "settings.foundations",
+   "title": "Flows/Settings.swift protocol (integrator)",
+   "plain": "every settings screen can be built before anything is live",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "contract-06"
+   ]
+  },
+  {
+   "id": "UI6.0",
+   "parent": "settings.foundations",
+   "title": "SampleSettingsData + ledger",
+   "plain": "every settings state can be opened and tested on sample data",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "PL3.7.0",
+    "T02"
+   ]
+  },
+  {
+   "id": "C41",
+   "parent": "settings.foundations",
+   "title": "settings page frame",
+   "plain": "every settings page looks and behaves the same",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C17",
+    "C39",
+    "T01"
+   ]
+  },
+  {
+   "id": "C42",
+   "parent": "settings.foundations",
+   "title": "settings row, the missing parts",
+   "plain": "rows that act, and rows that say why they're off",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "C42.1",
+   "parent": "C42",
+   "title": "action row (raised pill)",
+   "plain": "actions you press right in the row: play, sync, export, sample",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#47",
+    "#45"
+   ]
+  },
+  {
+   "id": "C42.2",
+   "parent": "C42",
+   "title": "row states: loading, offline, disabled, error",
+   "plain": "a row never just greys out; it says why",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C42.1"
+   ]
+  },
+  {
+   "id": "PL3.7i",
+   "parent": "settings.foundations",
+   "title": "Platform.LocalReset (one erase routine)",
+   "plain": "nothing of yours is left on the phone after sign-out or deletion",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL2.1",
+    "PL1.3",
+    "PL0.3"
+   ]
+  },
+  {
+   "id": "PL5.2s",
+   "parent": "settings.foundations",
+   "title": "settings deep links",
+   "plain": "links and notifications open the right settings page",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL5.2"
+   ]
+  },
+  {
+   "id": "BE6.1e",
+   "parent": "settings.foundations",
+   "title": "door: GET /v2/settings",
+   "plain": "every setting's value arrives in one quick read",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2",
+    "BE0.12",
+    "BE6.1a",
+    "BE6.1b",
+    "BE6.1d"
+   ]
+  },
+  {
+   "id": "PL3.7a",
+   "parent": "settings.foundations",
+   "title": "LiveSettingsData: reads and writes",
+   "plain": "settings show real values and save the moment you change them",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.7.0",
+    "PL2.4",
+    "PL1.5",
+    "BE6.1e",
+    "BE6.1f",
+    "BE6.1g",
+    "BE6.1h",
+    "BE6.2a"
+   ]
+  },
+  {
+   "id": "W6",
+   "parent": "settings.foundations",
+   "title": "settings wiring (integrator)",
+   "plain": "the new settings run on real data and the old screen goes",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "P23",
+    "P24",
+    "P25",
+    "P25a",
+    "P26",
+    "P27",
+    "P27a",
+    "P28",
+    "P29",
+    "P30",
+    "P31",
+    "P33",
+    "PI3",
+    "PL3.7a",
+    "PL3.7b1",
+    "PL3.7b2",
+    "PL3.7c",
+    "PL3.7d",
+    "PL3.7e",
+    "PL3.7f",
+    "PL3.7g",
+    "PL3.7h",
+    "P23a",
+    "PL3.7j"
+   ]
+  },
+  {
+   "id": "T06",
+   "parent": "settings",
+   "title": "settings and account flow test",
+   "plain": "one test proves every settings path, including the App Store three",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P23",
+    "P24",
+    "P25",
+    "P25a",
+    "P26",
+    "P27",
+    "P27a",
+    "P28",
+    "P29",
+    "P30",
+    "P31",
+    "P33",
+    "PI3",
+    "UI6.0",
+    "P23a"
+   ]
+  },
+  {
+   "id": "page.P23",
+   "parent": "settings.hub",
+   "title": "page ST-1",
+   "plain": "every setting in one calm list",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P23",
+   "parent": "page.P23",
+   "title": "P23 · ST-1 settings (page PR)",
+   "plain": "every setting in one calm list",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C42.2",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "page.P24",
+   "parent": "settings.brief",
+   "title": "page ST-2",
+   "plain": "turn the brief on, pick its time and length, play today's",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P24",
+   "parent": "page.P24",
+   "title": "P24 · ST-2 daily brief (page PR)",
+   "plain": "turn the brief on, pick its time and length, play today's",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C42.1",
+    "C42.2",
+    "C43",
+    "#50",
+    "#51",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "C43",
+   "parent": "page.P24",
+   "title": "time sheet",
+   "plain": "choose your brief's time with a quick wheel",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C19.1"
+   ]
+  },
+  {
+   "id": "BE6.1a",
+   "parent": "settings.brief",
+   "title": "agent: brief + voice settings columns and routes",
+   "plain": "your brief time, length, voice and speed are remembered",
+   "size": "M",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE6.2a",
+   "parent": "settings.brief",
+   "title": "door: PATCH /v2/settings/brief",
+   "plain": "brief changes save at once",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1a",
+    "BE6.1e"
+   ]
+  },
+  {
+   "id": "BE6.2b",
+   "parent": "settings.brief",
+   "title": "agent: per-minute local brief scheduler",
+   "plain": "your brief is ready at your time, in your time zone",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE6.1a",
+    "BE1.3",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "BE6.2c",
+   "parent": "settings.brief",
+   "title": "agent: brief length in the writer (Q1)",
+   "plain": "short is short and long is long",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1a",
+    "BE1.3b"
+   ]
+  },
+  {
+   "id": "PL5.4",
+   "parent": "settings.brief",
+   "title": "notification ask when the brief turns on (Q9)",
+   "plain": "you're asked about notifications when it makes sense",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL5.1",
+    "PL3.7a"
+   ]
+  },
+  {
+   "id": "page.P29",
+   "parent": "settings.voice",
+   "title": "page ST-7",
+   "plain": "choose the voice, hear it, set the speed",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P29",
+   "parent": "page.P29",
+   "title": "P29 · ST-7 voice and listening (page PR)",
+   "plain": "choose the voice, hear it, set the speed",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C44",
+    "C20",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "C44",
+   "parent": "page.P29",
+   "title": "voice sample pill",
+   "plain": "hear a voice before choosing it",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C42.1",
+    "UI3.0"
+   ]
+  },
+  {
+   "id": "BE6.1g",
+   "parent": "settings.voice",
+   "title": "door: PATCH /v2/settings/voice + samples",
+   "plain": "voice and speed save; each voice has a sample",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1a",
+    "BE6.1e"
+   ]
+  },
+  {
+   "id": "page.P28",
+   "parent": "settings.straight",
+   "title": "page ST-6",
+   "plain": "choose how direct retro is, or let it decide",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P28",
+   "parent": "page.P28",
+   "title": "P28 · ST-6 how straight i am with you (page PR)",
+   "plain": "choose how direct retro is, or let it decide",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C45",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "C45",
+   "parent": "page.P28",
+   "title": "\"picked by retro\" note",
+   "plain": "retro says why it chose, and you can hand the choice back",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "page.P30",
+   "parent": "settings.straight",
+   "title": "page ST-8",
+   "plain": "one honest sentence on how retro adjusts its questions",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P30",
+   "parent": "page.P30",
+   "title": "P30 · ST-8 what i've learned (page PR)",
+   "plain": "one honest sentence on how retro adjusts its questions",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C46",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "C46",
+   "parent": "page.P30",
+   "title": "learned block",
+   "plain": "the sentence, the why, or 'too early'",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C39"
+   ]
+  },
+  {
+   "id": "BE6.1b",
+   "parent": "settings.straight",
+   "title": "agent: 'picked by retro' in plain words",
+   "plain": "the reason retro picked a level reads like a person",
+   "size": "S",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE6.1c",
+   "parent": "settings.straight",
+   "title": "agent: what i've learned in sentences",
+   "plain": "what retro learned about your questions, from real counts",
+   "size": "M",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE6.1f",
+   "parent": "settings.straight",
+   "title": "doors: PUT ambient, PUT straightness",
+   "plain": "the ambient switch and how straight save at once",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1e"
+   ]
+  },
+  {
+   "id": "BE6.1h",
+   "parent": "settings.straight",
+   "title": "door: GET /v2/settings/learned",
+   "plain": "ST-8 gets its sentences",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1c",
+    "BE0.1"
+   ]
+  },
+  {
+   "id": "page.P25",
+   "parent": "settings.sources",
+   "title": "page ST-3",
+   "plain": "everything retro reads, at a glance",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P25",
+   "parent": "page.P25",
+   "title": "P25 · ST-3 sources (page PR)",
+   "plain": "everything retro reads, at a glance",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41",
+    "#52",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "page.P25a",
+   "parent": "settings.sources",
+   "title": "page add a source",
+   "plain": "see every source and connect one",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P25a",
+   "parent": "page.P25a",
+   "title": "P25a · add a source (needs a drawing, Q12) (page PR)",
+   "plain": "see every source and connect one",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P25",
+    "Q12"
+   ]
+  },
+  {
+   "id": "page.P26",
+   "parent": "settings.sources",
+   "title": "page ST-4",
+   "plain": "what one source gives retro; read it now, stop it, or remove it",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P26",
+   "parent": "page.P26",
+   "title": "P26 · ST-4 a source (page PR)",
+   "plain": "what one source gives retro; read it now, stop it, or remove it",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C42.1",
+    "C50.1",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "BE6.5a",
+   "parent": "settings.sources",
+   "title": "agent: revoke one source's grant",
+   "plain": "disconnecting gives the permission back at the provider",
+   "size": "S",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE6.5b",
+   "parent": "settings.sources",
+   "title": "door: GET /v2/sources (+ copy)",
+   "plain": "each source with what it's for and whether it works",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.1",
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE6.5c",
+   "parent": "settings.sources",
+   "title": "doors: sync, disconnect, delete what it read",
+   "plain": "read now, stop, or remove a source's data",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE6.5a",
+    "BE6.5b"
+   ]
+  },
+  {
+   "id": "BE6.5d",
+   "parent": "settings.sources",
+   "title": "doors: connect, connected, imports",
+   "plain": "add, reconnect, or import a file, here and in onboarding",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE6.5b"
+   ]
+  },
+  {
+   "id": "PL3.7b1",
+   "parent": "settings.sources",
+   "title": "sources: list and actions",
+   "plain": "sources show their real state and every action finishes visibly",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.7a",
+    "BE6.5b",
+    "BE6.5c"
+   ]
+  },
+  {
+   "id": "PL3.7b2",
+   "parent": "settings.sources",
+   "title": "connecting, reconnecting, importing",
+   "plain": "connecting takes one tap; big imports survive interruptions",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.7b1",
+    "PL5.2s",
+    "BE6.5d"
+   ]
+  },
+  {
+   "id": "page.P27",
+   "parent": "settings.privacy",
+   "title": "page ST-5",
+   "plain": "background reading, export, delete my data",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P27",
+   "parent": "page.P27",
+   "title": "P27 · ST-5 privacy (page PR)",
+   "plain": "background reading, export, delete my data",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C47",
+    "C50.1",
+    "#50",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "C47",
+   "parent": "page.P27",
+   "title": "export row",
+   "plain": "see exactly where your export is",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C42.1"
+   ]
+  },
+  {
+   "id": "page.P27a",
+   "parent": "settings.privacy",
+   "title": "page where it's processed",
+   "plain": "where your data lives and who processes it, all true",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P27a",
+   "parent": "page.P27a",
+   "title": "P27a · where it's processed (needs a drawing, Q5) (page PR)",
+   "plain": "where your data lives and who processes it, all true",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P27",
+    "Q5"
+   ]
+  },
+  {
+   "id": "BE6.1d",
+   "parent": "settings.privacy",
+   "title": "agent: master ambient switch as a dial",
+   "plain": "the founder pauses background reading for everyone without a redeploy",
+   "size": "S",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE6.1i",
+   "parent": "settings.privacy",
+   "title": "dashboard: the master switch",
+   "plain": "one toggle on the founder's dashboard",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1d",
+    "BE0.0"
+   ]
+  },
+  {
+   "id": "BE6.3a",
+   "parent": "settings.privacy",
+   "title": "agent: export builder",
+   "plain": "a complete copy of everything about you, as a file",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE6.3b",
+   "parent": "settings.privacy",
+   "title": "agent: export lifecycle + deletion sweep",
+   "plain": "exports vanish after a week and with your account",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.3a",
+    "BE0.6"
+   ]
+  },
+  {
+   "id": "BE6.3c",
+   "parent": "settings.privacy",
+   "title": "doors: export",
+   "plain": "one tap starts it; save it when it's ready",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE6.3a",
+    "BE6.3b",
+    "BE0.1"
+   ]
+  },
+  {
+   "id": "BE6.6c",
+   "parent": "settings.privacy",
+   "title": "agent: delete my data keeps your choices (Q10)",
+   "plain": "starting again keeps your own choices",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.8"
+   ]
+  },
+  {
+   "id": "PL3.7c",
+   "parent": "settings.privacy",
+   "title": "download my data (live)",
+   "plain": "ask once, then save the file from the app",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.7a",
+    "BE6.3c"
+   ]
+  },
+  {
+   "id": "PL3.7f",
+   "parent": "settings.privacy",
+   "title": "delete my data (live)",
+   "plain": "wipe what retro knows and start fresh, keeping your account",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.7i",
+    "BE0.8"
+   ]
+  },
+  {
+   "id": "page.P31",
+   "parent": "settings.account",
+   "title": "page ST-9",
+   "plain": "your plan, manage, restore, sign out, delete",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P31",
+   "parent": "page.P31",
+   "title": "P31 · ST-9 account (page PR)",
+   "plain": "your plan, manage, restore, sign out, delete",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C42.2",
+    "C50.1",
+    "C50.2",
+    "UI6.0"
+   ]
+  },
+  {
+   "id": "page.P33",
+   "parent": "settings.account",
+   "title": "page AC-2",
+   "plain": "nothing is lost when you sign out",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P33",
+   "parent": "page.P33",
+   "title": "P33 · AC-2 signing out (page PR)",
+   "plain": "nothing is lost when you sign out",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C48",
+    "P31"
+   ]
+  },
+  {
+   "id": "C48",
+   "parent": "page.P33",
+   "title": "sign-out sheet",
+   "plain": "anything unsent goes first, and you see it go",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C19.1",
+    "#43"
+   ]
+  },
+  {
+   "id": "C50",
+   "parent": "settings.account",
+   "title": "dangerous choices",
+   "plain": "every destructive choice says exactly what happens",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "C50.1",
+   "parent": "C50",
+   "title": "danger dialogs (four)",
+   "plain": "disconnect, delete what it read, delete my data, delete account",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C19.2"
+   ]
+  },
+  {
+   "id": "C50.2",
+   "parent": "C50",
+   "title": "deleting and goodbye",
+   "plain": "a calm goodbye after deleting, never a crash to sign-in",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C50.1"
+   ]
+  },
+  {
+   "id": "BE6.4",
+   "parent": "settings.account",
+   "title": "door: GET /v2/account",
+   "plain": "your plan as apple has it, and how you signed in",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.8",
+    "BE0.5",
+    "BE2.4"
+   ]
+  },
+  {
+   "id": "BE6.6a",
+   "parent": "settings.account",
+   "title": "fresh Apple code at deletion (amends BE0.7)",
+   "plain": "old apple accounts are revoked properly when deleted",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.5",
+    "BE0.7"
+   ]
+  },
+  {
+   "id": "BE6.6b",
+   "parent": "settings.account",
+   "title": "deletion answers 202 and resumes (amends BE0.7)",
+   "plain": "deleting is never half-done",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.7"
+   ]
+  },
+  {
+   "id": "PL6.4",
+   "parent": "settings.account",
+   "title": "manage subscription and restore purchases",
+   "plain": "manage or cancel with apple's sheet; get a purchase back",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL6.1",
+    "PL6.2",
+    "BE2.8"
+   ]
+  },
+  {
+   "id": "PL3.7d",
+   "parent": "settings.account",
+   "title": "account and plan (live)",
+   "plain": "ST-9 shows your real plan at apple's price",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.7.0",
+    "PL6.4",
+    "BE6.4"
+   ]
+  },
+  {
+   "id": "PL3.7e",
+   "parent": "settings.account",
+   "title": "sign out with unsent entries",
+   "plain": "signing out never throws away what you wrote",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL1.5",
+    "PL2.2",
+    "PL3.7i"
+   ]
+  },
+  {
+   "id": "PL3.7g",
+   "parent": "settings.account",
+   "title": "delete account (live)",
+   "plain": "one deliberate tap deletes everything, on the server and the phone",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.7i",
+    "PL3.7d",
+    "PL1.4",
+    "BE0.7",
+    "BE6.6a",
+    "BE6.6b"
+   ]
+  },
+  {
+   "id": "page.PI3",
+   "parent": "settings.invites",
+   "title": "page your invites",
+   "plain": "three links, each a gift for one friend",
+   "size": "M",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "PI3",
+   "parent": "page.PI3",
+   "title": "PI3 · your invites (needs a drawing, Q7) (page PR)",
+   "plain": "three links, each a gift for one friend",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41",
+    "C49",
+    "UI6.0",
+    "Q7"
+   ]
+  },
+  {
+   "id": "C49",
+   "parent": "page.PI3",
+   "title": "invite row and share",
+   "plain": "share a link that says it works once",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "#45",
+    "Q7"
+   ]
+  },
+  {
+   "id": "PL3.7h",
+   "parent": "settings.invites",
+   "title": "your invites (live)",
+   "plain": "your links are always one tap from a friend",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL1.7",
+    "PL3.7.0"
+   ]
+  },
+  {
+   "id": "page.P23a",
+   "parent": "settings.notifications",
+   "title": "page notifications",
+   "plain": "per-kind switches and 'hide the words on the lock screen'",
+   "size": "S",
+   "side": "views",
+   "needs": []
+  },
+  {
+   "id": "P23a",
+   "parent": "page.P23a",
+   "title": "P23a · notifications page (needs a drawing, Q17) (page PR)",
+   "plain": "per-kind switches and 'hide the words on the lock screen'",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41",
+    "#50",
+    "UI6.0",
+    "Q17"
+   ]
+  },
+  {
+   "id": "BE6.7",
+   "parent": "settings.notifications",
+   "title": "door + storage: notification settings",
+   "plain": "your notification choices are stored, and the sender honours them",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE6.1e",
+    "BE2.6"
+   ]
+  },
+  {
+   "id": "PL3.7j",
+   "parent": "settings.notifications",
+   "title": "notification settings (live)",
+   "plain": "the switches save, and the page knows if iOS has notifications off",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.7a",
+    "PL5.1",
+    "BE6.7"
+   ]
+  }
+ ]
+}

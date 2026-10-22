@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "ambient": {
+      "enabled": false,
+      "effective": false,
+      "pausedForEveryone": false
+    }
+  }
+}

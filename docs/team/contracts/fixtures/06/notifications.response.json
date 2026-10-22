@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": {
+    "notifications": {
+      "brief": true,
+      "episode": true,
+      "questions": true,
+      "hideWordsOnLockScreen": true
+    }
+  }
+}
