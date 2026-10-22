@@ -4,11 +4,11 @@
   "description": "Knowledge Graph API for Retrospect - Insight extraction, connections, and pattern detection",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc && cp -r src/public dist/public",
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts",
-    "test": "tsx --test $(find tests -name '*.test.ts')",
+    "test": "tsx --test --import ./tests/support/env.ts $(find tests -name '*.test.ts')",
     "db:migrate": "supabase db push",
     "cron:daily": "node -e \"console.log('legacy daily pattern cron disabled; retrospect-agent owns ingestion')\"",
     "cron:weekly": "node -e \"console.log('legacy weekly pattern cron disabled; retrospect-agent owns weekly podcasts')\"",
@@ -51,7 +51,6 @@
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "eslint": "^8.56.0",
-    "jest": "^29.7.0",
     "tsx": "^4.7.0"
   },
   "engines": {
