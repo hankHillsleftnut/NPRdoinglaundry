@@ -24,7 +24,9 @@ import { MemoryLimiter, type Limiter } from './doors/limits.js';
 import { createV2Router } from './doors/router.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
-import { createSessionRouter } from './sessions/routes.js';
+import { createSessionRouter, type SessionRouteDeps } from './sessions/routes.js';
+import { verifyAppleSignIn, type AppleSignIn } from './services/apple-auth.js';
+import { findOrCreateAppleAccount, type UsersClient } from './services/users.js';
 import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessions/store.js';
 
 /**
@@ -43,6 +45,10 @@ export interface AppDeps {
   speechSynth?: SpeechRouteDeps['synth'];
   /** Where sessions live; the database functions of migration 005 by default. */
   sessions?: SessionStore;
+  /** Verifies Apple identity tokens; Apple's keys by default (tests pass a fake). */
+  verifyApple?: (identityToken: string) => Promise<AppleSignIn>;
+  /** Finds or creates accounts; the users table by default. */
+  accounts?: SessionRouteDeps['accounts'];
   /** Builds the /v2 router from the door kit; the real one by default. */
   v2Router?: (door: DoorFactory) => Router;
 }
@@ -122,6 +128,11 @@ export function createApp(deps: AppDeps): express.Express {
     log: deps.log ?? log,
     auth: v2Auth,
     reportBug: (err, name) => captureException(err, { door: name }),
+    verifyApple: deps.verifyApple ?? verifyAppleSignIn,
+    accounts: deps.accounts ?? {
+      findOrCreateApple: (appleUserId, profile) =>
+        findOrCreateAppleAccount(supabaseAdmin as unknown as UsersClient, 'users', appleUserId, profile),
+    },
   }));
   app.use('/v2', v2Auth, (deps.v2Router ?? createV2Router)(door));
   app.use('/v2', v2ErrorHandler);

@@ -9,7 +9,8 @@ export type RotateResult =
   | { outcome: 'rotated'; userId: string }
   /** Rotated moments ago: the same successor refresh token (sealed); the caller issues a fresh access token. */
   | { outcome: 'grace'; userId: string; refreshCiphertext: string }
-  | { outcome: 'revoked' };
+  /** `reuse`: a rotated token presented after its grace window, so the family was ended. */
+  | { outcome: 'revoked'; reuse?: true };
 
 export interface SessionStore {
   /** Starts a new family for one device with this token hash. */
@@ -58,7 +59,7 @@ export function supabaseSessionStore(db: RpcClient): SessionStore {
       if (raw.outcome === 'grace') {
         return { outcome: 'grace', userId: String(raw.user_id), refreshCiphertext: String(raw.refresh_ciphertext) };
       }
-      return { outcome: 'revoked' };
+      return raw.reuse === true ? { outcome: 'revoked', reuse: true } : { outcome: 'revoked' };
     },
     async revoke(tokenHash, nowIso) {
       return check<boolean>('revoke_session', await db.rpc('revoke_session', { p_token_hash: tokenHash, p_now: nowIso })) === true;

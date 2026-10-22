@@ -4,7 +4,8 @@
  * Privacy is enforced here, not by convention (context.md §3: counts and types
  * only, never a person's words). The line has a fixed set of fields, none of
  * which is free text:
- *   - numbers are numbers (non-finite becomes null);
+ *   - numbers are numbers (non-finite becomes null); `reuse` is written only
+ *     as `true`;
  *   - `code` must be one of the contract's error codes (a closed list);
  *   - `userId` must be a UUID, or null on public doors (sign-in, waitlist);
  *   - `appVersion` must be digits and dots, like `1.0 (42)`;
@@ -41,10 +42,12 @@ export interface DoorLogLine {
   costUsd?: number;
   /** The X-App-Version header, e.g. `1.0 (42)`. Optional until BE0.10 requires it. */
   appVersion?: string;
+  /** auth.refresh only: a rotated refresh token was used again (a possible stolen copy). Written only when true. */
+  reuse?: boolean;
 }
 
 /** The only fields a door log line can have, in output order. */
-export const DOOR_LOG_FIELDS = ['door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion'] as const;
+export const DOOR_LOG_FIELDS = ['door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'reuse'] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -68,8 +71,8 @@ function safeNumber(value: unknown): number | null {
 }
 
 /** Builds the line exactly as it will be written; exported for tests. */
-export function doorLogLine(entry: DoorLogLine): Record<string, string | number | null> {
-  const line: Record<string, string | number | null> = {
+export function doorLogLine(entry: DoorLogLine): Record<string, string | number | boolean | null> {
+  const line: Record<string, string | number | boolean | null> = {
     door: safeString('door', entry.door),
     userId: entry.userId === null ? null : safeString('userId', entry.userId),
     status: safeNumber(entry.status),
@@ -81,6 +84,7 @@ export function doorLogLine(entry: DoorLogLine): Record<string, string | number 
   if (entry.agentMs !== undefined) line.agentMs = safeNumber(entry.agentMs);
   if (entry.costUsd !== undefined) line.costUsd = safeNumber(entry.costUsd);
   if (entry.appVersion !== undefined) line.appVersion = safeString('appVersion', entry.appVersion);
+  if (entry.reuse === true) line.reuse = true;
   return line;
 }
 
