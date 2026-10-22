@@ -71,6 +71,7 @@ struct RetrospectApp: App {
     @StateObject private var firstPodcastOrchestrator = FirstPodcastOrchestrator.shared
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
     @StateObject private var screenTimeService = ScreenTimeService.shared
+    @State private var platform = Platform.Environment.live()
     @Environment(\.scenePhase) private var scenePhase
 
     private var isPodcastLayoutDiagnosticsMode: Bool {
@@ -239,6 +240,7 @@ struct RetrospectApp: App {
             .animation(.easeInOut(duration: 0.4), value: apiClient.isAuthenticated)
             .animation(.easeOut(duration: 0.2), value: isProcessingStopFromWidget)
             .environmentObject(themeManager)
+            .environment(platform)
             .animatedThemeTransition()
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
