@@ -5,12 +5,10 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct AppVersionTests {
     @Test("versions parse as the contract writes them, and nothing else", arguments: [
-        ("1.0 (42)", [1, 0], 42), ("1.10 (5)", [1, 10], 5), ("2 (7)", [2], 7), ("1.2.3 (99.1)", [1, 2, 3], 99),
-    ] as [(String, [Int], Int)])
-    func versionsParse(_ text: String, _ marketing: [Int], _ build: Int) {
-        let version = Backend.AppVersion(text)
-        #expect(version?.marketing == marketing)
-        #expect(version?.build == build)
+        ("1.0 (42)", "1.0 (42)"), ("1.10 (5)", "1.10 (5)"), ("2 (7)", "2 (7)"), ("1.2.3 (99.1)", "1.2.3 (99)"), ("01.0 (042)", "1.0 (42)"),
+    ])
+    func versionsParse(_ text: String, _ canonical: String) {
+        #expect(Backend.AppVersion(text)?.description == canonical)
     }
 
     @Test("strings that aren't versions don't parse", arguments: ["1.0", "1.0 42", "(42)", "", "0 (0) extra", "a.b (1)", "1.0 (x)"])

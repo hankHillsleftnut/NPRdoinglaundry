@@ -105,6 +105,14 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal:
                 recordDevice(event)
+            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable:
+                recordGate(event)
+            }
+        }
+
+        /// The invite's and the version floor's lines (PL1.6, PL1.7).
+        private func recordGate(_ event: Event) {
+            switch event {
             case .inviteReceived:
                 logger.info("invite code received")
             case let .inviteChecked(outcome):
@@ -122,6 +130,8 @@ extension Platform.Log {
                 case .running: logger.error("version floor: the running version is unreadable")
                 case .floor: logger.error("version floor: the server's minimum version is unreadable")
                 }
+            default:
+                break
             }
         }
 
