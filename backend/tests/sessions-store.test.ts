@@ -51,7 +51,7 @@ test('a new session stores only the hash, and its access token carries the user 
   assert.equal(rows[0]!.token_hash, hashRefreshToken(s.refreshToken));
   assert.equal(rows[0]!.n, 0, 'the plain token is never stored');
   assert.deepEqual(verifyAccessToken(s.accessToken, SECRET, T0), { userId: s.user, tokenVersion: 0 });
-  assert.equal(await store.ownerOf(hashRefreshToken(s.refreshToken)), s.user);
+  assert.deepEqual(await store.ownerOf(hashRefreshToken(s.refreshToken)), { userId: s.user, tokenVersion: 0 });
 });
 
 test('refresh rotates and the old token stops working', async () => {

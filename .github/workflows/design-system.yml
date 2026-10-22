@@ -13,7 +13,8 @@ concurrency:
 
 jobs:
   tokens-and-literals:
-    runs-on: [self-hosted, light]
+    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
+    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
