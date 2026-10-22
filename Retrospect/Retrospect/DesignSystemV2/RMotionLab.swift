@@ -57,6 +57,7 @@ struct RDesignLab: View {
         }
         .background(RColor.backgroundCanvas)
         .rLifeHost()
+        .rReadsScreenHeight()
     }
 }
 

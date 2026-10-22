@@ -166,7 +166,9 @@ extension View {
     func rReadsScreenHeight() -> some View {
         GeometryReader { proxy in
             let height = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
-            self.environment(\.rCompactHeight, height < RDimension.layoutCompactHeight)
+            // Fill the reader and centre, as the root laid out before it was wrapped.
+            self.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .environment(\.rCompactHeight, height < RDimension.layoutCompactHeight)
         }
     }
 }
