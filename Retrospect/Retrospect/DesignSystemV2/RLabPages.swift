@@ -27,12 +27,15 @@ struct RLabPage: Identifiable {
         RLabPage("foundation") { RFoundationGallery() },
         RLabPage("guess") { RGuessCardGallery() },
         RLabPage("journaldata") { SampleJournalGallery() },
+        RLabPage("message") { RMessageBubbleGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("retro") { RRetroLineGallery() },
+        RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
+        RLabPage("voice") { RVoiceBubbleGallery() },
     ]
 
     /// The page the lab opens on: `-DesignLabToast`, else `-DesignLabPage <name>`, else motion.

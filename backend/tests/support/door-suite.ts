@@ -43,10 +43,12 @@ export interface DoorSuiteSpec {
   v2Router?: AppDeps['v2Router'];
   /** Headers every request carries (e.g. an Idempotency-Key the door requires). */
   headers?: Record<string, string>;
+  /** The harness clock at the start of every test (milliseconds), when the fixture carries a date. */
+  now?: number;
   /** Doors a waitlisted person may use (access, waitlist, redeem). */
   openToWaitlisted?: boolean;
   /** Stores the door needs (e.g. access and invites on a test database). */
-  stores?: () => Pick<NonNullable<Parameters<typeof startHarness>[0]>, 'access' | 'invites'>;
+  stores?: () => Pick<NonNullable<Parameters<typeof startHarness>[0]>, 'access' | 'invites' | 'entries' | 'startIngest'>;
 }
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -58,6 +60,7 @@ async function withHarness(spec: DoorSuiteSpec, fn: (h: Harness, auth: Record<st
     ...(spec.v2Router ? { v2Router: spec.v2Router } : {}),
     ...(spec.diagnostics ? { diagnostics: spec.diagnostics() } : {}),
     ...(spec.stores ? spec.stores() : {}),
+    ...(spec.now !== undefined ? { now: spec.now } : {}),
   });
   try {
     const auth = { Authorization: `Bearer ${h.asUser(USER)}` };
