@@ -23,6 +23,11 @@ extension Platform {
         /// Which server, and the version every request reports.
         let configuration: Backend.Configuration
         let log: any Platform.LogSink
+        /// The one session (PL1.5): reads, renews and ends it; the client's token provider.
+        let session: Session.Manager
+        /// The one client for the `/v2` doors.
+        let client: Backend.Client
+        let reachability: any Backend.Reachability
         /// What the app did, for "send a report" (DG.3). No database until
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
@@ -42,12 +47,18 @@ extension Platform {
             launch: Platform.LaunchOptions = .standard,
             configuration: Backend.Configuration,
             log: any Platform.LogSink,
+            session: Session.Manager,
+            client: Backend.Client,
+            reachability: any Backend.Reachability,
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
         ) {
             self.launch = launch
             self.configuration = configuration
             self.log = log
+            self.session = session
+            self.client = client
+            self.reachability = reachability
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -56,21 +67,76 @@ extension Platform {
 
         /// The app's environment, set by this launch's options (always live
         /// production in a release build), logging to the system log. Options
-        /// that were ignored are logged by flag, never by value.
-        static func live(launch: Platform.LaunchOptions = .current, log: any Platform.LogSink = Log.SystemSink()) -> AppEnvironment {
+        /// that were ignored are logged by flag, never by value. Builds the
+        /// session and the client, joins them, and sets the old app's bridges.
+        static func live(
+            launch: Platform.LaunchOptions = .current,
+            log: any Platform.LogSink = Log.SystemSink(),
+            reachability: any Backend.Reachability = Backend.PathReachability()
+        ) -> AppEnvironment {
             launch.problems.forEach { log.record(.launchOptionIgnored($0)) }
-            return AppEnvironment(
-                launch: launch,
-                configuration: .resolve(launch.environment),
+            let configuration = Backend.Configuration.resolve(launch.environment)
+            if launch.environment == .staging, configuration.environment == .local {
+                log.record(.stagingResolvedToLocal)
+            }
+            let session = Session.Manager(
+                store: Session.Store(),
+                mirror: Session.LegacyMirror(
+                    keychain: Session.SystemKeychain(service: Session.Store.legacyService),
+                    stateChanged: { Bridges.legacyStateChanged(userID: $0) }
+                ),
                 log: log,
+                launchCheck: Launch.installCheck.value,
+                probeUnlock: { Session.SystemKeychain(service: Session.Store.service).probeUnlock() },
+                clearGate: { Bridges.clearSignInGate() },
+                appleCredentialState: Session.AppleRevocationCheck.live
+            )
+            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            session.connect(client)
+            Bridges.refreshLegacy = { await session.refreshForLegacy() }
+            Bridges.legacySignedOut = { _ = await session.signOut(force: true) }
+            return AppEnvironment(
+                launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
             )
         }
 
         /// For previews and tests: no network, no disk, no Keychain; logs are
-        /// kept in memory.
-        static func preview() -> AppEnvironment {
-            AppEnvironment(configuration: .resolve(.local, info: [:]), log: Log.Recorder())
+        /// kept in memory. The session starts signed out and nothing it does
+        /// reaches the old app.
+        static func preview(
+            log: any Platform.LogSink = Log.Recorder(),
+            backgroundTasks: Platform.BackgroundTasks = .uiKit,
+            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
+        ) -> AppEnvironment {
+            let configuration = Backend.Configuration.resolve(.local, info: [:])
+            let session = Session.Manager(
+                store: Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults()),
+                mirror: Session.LegacyMirror(keychain: Session.MemoryKeychain(), stateChanged: { _ in }),
+                log: log,
+                launchCheck: .alreadyDone,
+                probeUnlock: { .unlocked },
+                clearGate: {},
+                appleCredentialState: { _ in .unknown }
+            )
+            let reachability = Backend.PathReachability(monitor: nil)
+            let client = Backend.Client(configuration: configuration, tokens: session, reachability: reachability, log: log)
+            session.connect(client)
+            return AppEnvironment(
+                configuration: configuration, log: log, session: session, client: client, reachability: reachability,
+                backgroundTasks: backgroundTasks, openDatabase: openDatabase
+            )
+        }
+
+        /// Sign in with Apple, wired to this environment's client and session.
+        func appleSignIn() -> Session.AppleSignIn {
+            Session.AppleSignIn(client: client, installer: session, log: log)
+        }
+
+        /// The scene became active: the session finishes a deferred launch
+        /// check, reads, checks Apple, saves what it couldn't, and renews.
+        func becameActive() {
+            Task { await session.becameActive() }
         }
 
         /// Bridge until the new session owns authentication: restore the signed-in

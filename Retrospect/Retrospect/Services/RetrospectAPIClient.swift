@@ -110,12 +110,17 @@ class RetrospectAPIClient: ObservableObject {
     }
     #endif
 
-    /// Sign out by clearing Keychain and local state.
+    /// Sign out by clearing Keychain and local state, after the store's callbacks
+    /// have run. Bridge (PL1.5): the new session signs out too, so Settings'
+    /// "Log Out" ends both.
     func signOut() async {
         await changeSession(to: nil, email: nil) {
             self.deleteKeychain(key: self.tokenKey)
             self.deleteKeychain(key: self.userIdKey)
             self.deleteKeychain(key: self.appleUserIdKey)
+        }
+        Task { @MainActor in
+            await Platform.Bridges.legacySignedOut?()
         }
     }
 
@@ -545,7 +550,8 @@ class RetrospectAPIClient: ObservableObject {
         method: String,
         path: String,
         body: [String: Any]?,
-        authenticated: Bool = true
+        authenticated: Bool = true,
+        isRetryAfterRefresh: Bool = false
     ) async throws -> T {
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -572,8 +578,20 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.invalidResponse
         }
 
-        // Apple identity tokens cannot be refreshed from a stored subject ID.
         if response.statusCode == 401 && authenticated {
+            // Bridge (PL1.5): the new session refreshes the mirrored token once and the
+            // request is retried; a second 401, or a session the server ended, signs out
+            // as before. A refresh that can't be done now fails this request only.
+            if !isRetryAfterRefresh, let refresh = await MainActor.run(body: { Platform.Bridges.refreshLegacy }) {
+                switch await refresh() {
+                case .refreshed:
+                    return try await self.request(method: method, path: path, body: body, authenticated: authenticated, isRetryAfterRefresh: true)
+                case .unavailable:
+                    throw APIError.serverError("HTTP 401: the session couldn't be refreshed right now")
+                case .signedOut:
+                    break
+                }
+            }
             await signOut()
             // Clearing just the Keychain token isn't enough: if this 401 lands
             // mid-onboarding (before hasCompletedOnboarding is set), OnboardingState

@@ -164,6 +164,9 @@ extension Platform.Diagnostics {
             self = switch path {
             case .meta: .meta
             case .diagnostics: .diagnostics
+            case .authApple: .authApple
+            case .authRefresh: .authRefresh
+            case .authSignout: .authSignout
             }
         }
     }

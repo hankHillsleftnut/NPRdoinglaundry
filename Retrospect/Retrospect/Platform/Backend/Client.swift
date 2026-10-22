@@ -80,9 +80,24 @@ extension Backend {
             ceiling * Double.random(in: 0 ... 1, using: &generator)
         }
 
+        /// A 401 on an authenticated door is answered once: the session
+        /// refreshes (single flight, PL1.5), the request is rebuilt with the
+        /// new token and sent again. A second 401 is `.unauthenticated`. Public
+        /// doors never refresh.
         func send<E: Endpoint>(_ endpoint: E) async throws -> E.Response {
             guard await reachability.isOnline else { throw Failure(.offline) }
             let token = endpoint.requiresAuth ? try await accessToken() : nil
+            do {
+                return try await perform(endpoint, token: token)
+            } catch let failure as Failure where failure.kind == .unauthenticated && token != nil {
+                let fresh = try await refreshedToken(failedToken: token ?? "")
+                log.record(.requestReplayed(path: endpoint.path))
+                return try await perform(endpoint, token: fresh)
+            }
+        }
+
+        /// One send with its retry policy, as `token` allows.
+        private func perform<E: Endpoint>(_ endpoint: E, token: String?) async throws -> E.Response {
             let request = try request(for: endpoint, token: token)
             let policy = RetryPolicy.effective(endpoint.retry, method: endpoint.method, hasIdempotencyKey: endpoint.idempotencyKey != nil)
             var attempt = 1
@@ -196,8 +211,18 @@ extension Backend {
         // MARK: Sending and reading
 
         private func accessToken() async throws -> String {
+            try await token { try await tokens.accessToken() }
+        }
+
+        private func refreshedToken(failedToken: String) async throws -> String {
+            try await token { try await tokens.refreshAfterUnauthorized(failedToken: failedToken) }
+        }
+
+        /// The provider's token; its own failures pass through, anything else
+        /// it throws reads as unauthenticated.
+        private func token(_ fetch: () async throws -> String) async throws -> String {
             do {
-                return try await tokens.accessToken()
+                return try await fetch()
             } catch let failure as Failure {
                 throw failure
             } catch is CancellationError {

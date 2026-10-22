@@ -33,11 +33,12 @@
       ],
       "createdAt": "2026-10-21T07:58:00.000Z",
       "audio": {
-        "url": "https://example.supabase.co/storage/v1/object/sign/briefs/fixture.m4a?token=invented",
-        "expiresAt": "2026-10-21T09:58:00.000Z",
+        "url": "https://example.supabase.co/storage/v1/object/sign/brief-audio/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000202.mp3?token=invented",
+        "expiresAt": "2026-10-21T13:02:11.410Z",
         "durationSeconds": 74.2
       }
     },
-    "enabled": true
+    "enabled": true,
+    "nextAt": "2026-10-22T08:00:00.000Z"
   }
 }
