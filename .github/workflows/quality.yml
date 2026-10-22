@@ -61,8 +61,10 @@ jobs:
       - uses: actions/checkout@v4
       # Builds the app and runs the Platform test plan (contract fixtures, Platform units) on
       # CI's own simulator: the engineers keep agent-a and agent-b. CI doesn't create simulators.
+      # Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so each run is an
+      # incremental build, not a clean one. Delete the folder by hand if a build ever goes stale.
       - run: >-
           xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect
           -testPlan Platform -destination 'platform=iOS Simulator,id=2E876B5C-E345-44BC-A7D5-236837088B31'
-          -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" -disableAutomaticPackageResolution
+          -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution
           CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
