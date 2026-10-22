@@ -55,7 +55,8 @@ export const CodeBody = z.object({ code: z.string().min(1).max(64) }).strict();
 const IDEMPOTENCY_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const TicketFace = z.object({
+/** Contract 01 §1: what the ticket prints. Never the code, never more of the inviter than a first name. */
+export const TicketFace = z.object({
   from: z.string().nullable(),
   kind: z.enum(['member', 'founder', 'review']),
   serial: z.number().int().positive(),
@@ -85,7 +86,8 @@ export function issuedOn(face: InviteFace): string {
   return localDay(new Date(face.createdAt), 'UTC');
 }
 
-const toFace = (face: InviteFace) => ({ from: face.from, kind: face.kind, serial: face.serial, issuedOn: issuedOn(face) });
+export type TicketFace = z.infer<typeof TicketFace>;
+export const toFace = (face: InviteFace): TicketFace => ({ from: face.from, kind: face.kind, serial: face.serial, issuedOn: issuedOn(face) });
 
 export function mountInviteDoors(router: Router, door: DoorFactory, deps: InviteDoorDeps): void {
   router.get('/access', door({
