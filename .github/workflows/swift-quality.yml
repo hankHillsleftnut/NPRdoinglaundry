@@ -28,10 +28,11 @@ jobs:
           if command -v swiftlint >/dev/null && command -v swiftformat >/dev/null; then
             ln -sf "$(command -v swiftlint)" tools/swiftlint && ln -sf "$(command -v swiftformat)" tools/swiftformat
           else
-            curl -sSL -o /tmp/swiftlint.zip "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/swiftlint_linux.zip"
-            unzip -oq /tmp/swiftlint.zip -d /tmp/swiftlint && install /tmp/swiftlint/swiftlint tools/swiftlint
-            curl -sSL -o /tmp/swiftformat.zip "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip"
-            unzip -oq /tmp/swiftformat.zip -d /tmp/swiftformat && install /tmp/swiftformat/swiftformat_linux tools/swiftformat
+            # Release asset names as published: swiftlint_linux_amd64.zip, swiftformat_linux.zip.
+            curl -fsSL -o /tmp/swiftlint.zip "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/swiftlint_linux_amd64.zip"
+            unzip -oq /tmp/swiftlint.zip -d /tmp/swiftlint && install "$(find /tmp/swiftlint -type f -name 'swiftlint*' | head -1)" tools/swiftlint
+            curl -fsSL -o /tmp/swiftformat.zip "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip"
+            unzip -oq /tmp/swiftformat.zip -d /tmp/swiftformat && install "$(find /tmp/swiftformat -type f -name 'swiftformat*' | head -1)" tools/swiftformat
           fi
           test "$(tools/swiftlint version)" = "${SWIFTLINT_VERSION}" || { echo "need SwiftLint ${SWIFTLINT_VERSION}"; exit 1; }
           test "$(tools/swiftformat --version)" = "${SWIFTFORMAT_VERSION}" || { echo "need SwiftFormat ${SWIFTFORMAT_VERSION}"; exit 1; }
