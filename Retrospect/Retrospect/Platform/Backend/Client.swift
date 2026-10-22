@@ -16,7 +16,9 @@ extension Backend {
     ///
     /// Offline, it fails at once without sending. Otherwise it sends up to the
     /// endpoint's `retry` attempts, waiting a jittered backoff on the injected
-    /// clock between them; a keyed write resends the same request, key included.
+    /// clock between them, and gives up with `.offline` if the phone has gone
+    /// offline by then. A keyed write resends the same request, key included;
+    /// a write without a key is sent once, whatever its endpoint says.
     actor Client {
         private let configuration: Configuration
         private let session: URLSession
@@ -66,21 +68,29 @@ extension Backend {
 
         /// A duration between zero and `ceiling`, uniformly (full jitter).
         static let randomJitter: @Sendable (Duration) -> Duration = { ceiling in
-            ceiling * Double.random(in: 0 ... 1)
+            var generator = SystemRandomNumberGenerator()
+            return fullJitter(ceiling, using: &generator)
+        }
+
+        /// Full jitter drawn from `generator` (tests pass a seeded one).
+        static func fullJitter(_ ceiling: Duration, using generator: inout some RandomNumberGenerator) -> Duration {
+            ceiling * Double.random(in: 0 ... 1, using: &generator)
         }
 
         func send<E: Endpoint>(_ endpoint: E) async throws -> E.Response {
             guard await reachability.isOnline else { throw Failure(.offline) }
             let token = endpoint.requiresAuth ? try await accessToken() : nil
             let request = try request(for: endpoint, token: token)
+            let policy = RetryPolicy.effective(endpoint.retry, method: endpoint.method, hasIdempotencyKey: endpoint.idempotencyKey != nil)
             var attempt = 1
             while true {
                 do {
                     let (data, status) = try await load(request, path: endpoint.path)
                     return try decode(E.Response.self, from: data, status: status, path: endpoint.path)
                 } catch let failure as Failure {
-                    guard let delay = endpoint.retry.retryDelay(after: failure, attempt: attempt, jitter: jitter) else { throw failure }
+                    guard let delay = policy.retryDelay(after: failure, attempt: attempt, jitter: jitter) else { throw failure }
                     try await clock.sleep(for: delay)
+                    guard await reachability.isOnline else { throw Failure(.offline) }
                     attempt += 1
                 }
             }

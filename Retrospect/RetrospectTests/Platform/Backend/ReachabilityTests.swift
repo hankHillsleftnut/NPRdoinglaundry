@@ -27,10 +27,22 @@ struct ReachabilityTests {
         #expect(await reachability.isOnline)
     }
 
-    @Test("the real monitor starts and reports a value without blocking")
-    func theRealMonitorStarts() async {
-        let reachability = Backend.PathReachability()
+    @Test("monitor updates are applied in the order they arrive")
+    func monitorUpdatesAreAppliedInOrder() async {
+        let reachability = Backend.PathReachability(monitor: nil)
         var changes = reachability.changes().makeAsyncIterator()
-        #expect(await changes.next() != nil)
+        #expect(await changes.next() == true)
+        let sent = (0 ..< 200).map { $0.isMultiple(of: 2) ? NWPath.Status.unsatisfied : .satisfied } + [.unsatisfied]
+
+        sent.forEach(reachability.enqueue)
+
+        var seen: [Bool] = []
+        for _ in sent {
+            if let value = await changes.next() {
+                seen.append(value)
+            }
+        }
+        #expect(seen == sent.map(Backend.PathReachability.isOnline))
+        #expect(await reachability.isOnline == false)
     }
 }

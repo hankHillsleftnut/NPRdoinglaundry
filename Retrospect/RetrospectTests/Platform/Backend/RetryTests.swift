@@ -7,6 +7,13 @@ struct RetryTests {
     private struct Write: Backend.Endpoint {
         typealias Response = Backend.Meta
         var key: UUID?
+        /// What the endpoint asks for; nil keeps the default.
+        var requestedRetry: Backend.RetryPolicy?
+
+        var retry: Backend.RetryPolicy {
+            requestedRetry ?? .default(for: method, hasIdempotencyKey: key != nil)
+        }
+
         var method: Backend.Method {
             .post
         }
@@ -97,6 +104,58 @@ struct RetryTests {
         #expect(StubProtocol.requests(on: session).count == 1)
     }
 
+    @Test("an unkeyed write is sent once even when its endpoint asks for retries")
+    func anUnkeyedWriteCannotOptIntoRetries() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve([503, 200])
+
+        await #expect(throws: Backend.Failure(.upstreamUnavailable)) { _ = try await client().send(Write(key: nil, requestedRetry: .keyedWrite())) }
+        #expect(StubProtocol.requests(on: session).count == 1)
+    }
+
+    @Test("a connection lost mid-flight is retried for a read and a keyed write", arguments: [false, true])
+    func aConnectionLostMidFlightIsRetried(_ isWrite: Bool) async throws {
+        defer { StubProtocol.clear(session) }
+        let meta = try Fixtures.data("00", "meta")
+        let counter = Counter()
+        StubProtocol.register(on: session) { request in
+            if counter.next() == 0 {
+                throw URLError(.networkConnectionLost)
+            }
+            return (HTTPURLResponse.stub(request, status: 200), meta)
+        }
+
+        if isWrite {
+            _ = try await client().send(Write(key: UUID()))
+        } else {
+            _ = try await client().send(Backend.Endpoints.Meta())
+        }
+
+        #expect(StubProtocol.requests(on: session).count == 2)
+    }
+
+    @Test("a connection lost mid-flight on an unkeyed write is not retried")
+    func aConnectionLostOnAnUnkeyedWriteIsNotRetried() async throws {
+        defer { StubProtocol.clear(session) }
+        StubProtocol.register(on: session) { _ in throw URLError(.networkConnectionLost) }
+
+        await #expect(throws: Backend.Failure(.offline)) { _ = try await client().send(Write(key: nil)) }
+        #expect(StubProtocol.requests(on: session).count == 1)
+    }
+
+    @Test("still offline after the backoff, the client gives up without resending")
+    func stillOfflineAfterTheBackoffGivesUp() async throws {
+        defer { StubProtocol.clear(session) }
+        let reachability = reachability
+        StubProtocol.register(on: session) { _ in
+            reachability.set(online: false)
+            throw URLError(.notConnectedToInternet)
+        }
+
+        await #expect(throws: Backend.Failure(.offline)) { _ = try await client().send(Backend.Endpoints.Meta()) }
+        #expect(StubProtocol.requests(on: session).count == 1)
+    }
+
     @Test("an unkeyed write never retries")
     func anUnkeyedWriteNeverRetries() async throws {
         defer { StubProtocol.clear(session) }
@@ -163,12 +222,17 @@ struct RetryTests {
 
         let low = policy.retryDelay(after: Backend.Failure(.transport), attempt: attempt) { _ in .zero }
         let high = policy.retryDelay(after: Backend.Failure(.transport), attempt: attempt) { $0 }
-        let random = policy.retryDelay(after: Backend.Failure(.transport), attempt: attempt, jitter: Backend.Client.randomJitter)
+        var generator = SeededGenerator(seed: UInt64(attempt))
+        let drawn = (0 ..< 200).compactMap { _ in
+            policy.retryDelay(after: Backend.Failure(.transport), attempt: attempt) { Backend.Client.fullJitter($0, using: &generator) }
+        }
 
         #expect(low == .zero)
         #expect(high == min(.seconds(8), .milliseconds(500) * (1 << attempt)))
         #expect(ceiling <= .seconds(8))
-        #expect(random.map { $0 >= .zero && $0 <= ceiling } == true)
+        #expect(drawn.count == 200)
+        #expect(drawn.allSatisfy { $0 >= .zero && $0 <= ceiling })
+        #expect(Set(drawn).count > 100)
     }
 
     @Test("the backoff waits on the injected clock between sends")
@@ -200,6 +264,16 @@ struct RetryTests {
         #expect(recorder.events.isEmpty)
     }
 
+    @Test("the effective policy keeps an unkeyed write at never, whatever it asks for")
+    func theEffectivePolicyKeepsUnkeyedWritesAtNever() {
+        for method in [Backend.Method.post, .put, .patch, .delete] {
+            #expect(Backend.RetryPolicy.effective(.keyedWrite(), method: method, hasIdempotencyKey: false) == .never)
+            #expect(Backend.RetryPolicy.effective(.read(), method: method, hasIdempotencyKey: false) == .never)
+            #expect(Backend.RetryPolicy.effective(.keyedWrite(), method: method, hasIdempotencyKey: true) == .keyedWrite())
+        }
+        #expect(Backend.RetryPolicy.effective(.read(), method: .get, hasIdempotencyKey: false) == .read())
+    }
+
     @Test("defaults: reads retry, keyed writes retry, unkeyed writes never")
     func defaultPolicies() {
         #expect(Backend.RetryPolicy.default(for: .get, hasIdempotencyKey: false) == .read())
@@ -215,12 +289,30 @@ struct RetryTests {
         #expect(request.timeoutInterval == 60)
     }
 
+    /// Yields until `condition` holds. No deadline of its own: the suite's
+    /// time limit ends a wait that never comes true.
     private static func waitUntil(_ condition: () -> Bool) async throws {
-        let limit = ContinuousClock.now.advanced(by: .seconds(1))
-        while !condition(), ContinuousClock.now < limit {
+        while !condition() {
+            try Task.checkCancellation()
             await Task.yield()
         }
-        try #require(condition())
+    }
+}
+
+/// SplitMix64: the same numbers for the same seed.
+private struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed
+    }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var mixed = state
+        mixed = (mixed ^ (mixed >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        mixed = (mixed ^ (mixed >> 27)) &* 0x94D0_49BB_1331_11EB
+        return mixed ^ (mixed >> 31)
     }
 }
 

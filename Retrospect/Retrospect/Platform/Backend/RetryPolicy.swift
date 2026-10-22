@@ -17,6 +17,13 @@ extension Backend {
             }
         }
 
+        /// The policy the client actually uses. A write with no idempotency key
+        /// is never sent twice, whatever its endpoint asks for: the server
+        /// couldn't tell a retry from a second write.
+        static func effective(_ requested: RetryPolicy, method: Method, hasIdempotencyKey: Bool) -> RetryPolicy {
+            method != .get && !hasIdempotencyKey ? .never : requested
+        }
+
         /// How many sends in all.
         var attempts: Int {
             switch self {
@@ -35,7 +42,9 @@ extension Backend {
         func retryDelay(after failure: Failure, attempt: Int, jitter: (Duration) -> Duration) -> Duration? {
             guard attempt < attempts else { return nil }
             switch failure.kind {
-            case .timedOut, .transport, .upstreamTimeout, .upstreamUnavailable:
+            // `.offline` here arrived mid-flight (the connection dropped after the
+            // send began); the client checks reachability again before resending.
+            case .timedOut, .transport, .offline, .upstreamTimeout, .upstreamUnavailable:
                 return jitter(Self.backoffCeiling(attempt: attempt))
             case let .rateLimited(retryAfter), let .spendLimited(retryAfter):
                 // Once only, and only for a short wait.

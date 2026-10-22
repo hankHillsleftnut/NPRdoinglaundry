@@ -11,24 +11,34 @@ extension Backend {
 
     /// Reachability from `NWPathMonitor`, on a queue of its own. Until the
     /// first path arrives it says online, so nothing waits on it.
+    ///
+    /// The monitor's updates go into one stream, in the order the monitor
+    /// gave them, and one task reads that stream, so a later path can never
+    /// be overtaken by an earlier one.
     actor PathReachability: Reachability {
         private let monitor: NWPathMonitor?
         private var online = true
         private var continuations: [UUID: AsyncStream<Bool>.Continuation] = [:]
+        private let paths: AsyncStream<NWPath.Status>.Continuation
+        private var reader: Task<Void, Never>?
 
         /// Watches `monitor` on `queue`. With no monitor, only `receive(_:)` moves
         /// it (tests).
         init(monitor: NWPathMonitor? = NWPathMonitor(), queue: DispatchQueue = DispatchQueue(label: "com.shauryanarang.Retrospect.reachability")) {
+            let (stream, paths) = AsyncStream.makeStream(of: NWPath.Status.self, bufferingPolicy: .unbounded)
             self.monitor = monitor
-            monitor?.pathUpdateHandler = { [weak self] path in
-                let status = path.status
-                Task { await self?.receive(status) }
+            self.paths = paths
+            monitor?.pathUpdateHandler = { path in
+                paths.yield(path.status)
             }
             monitor?.start(queue: queue)
+            Task { await self.read(stream) }
         }
 
         deinit {
             monitor?.cancel()
+            paths.finish()
+            reader?.cancel()
             continuations.values.forEach { $0.finish() }
         }
 
@@ -46,7 +56,13 @@ extension Backend {
             return stream
         }
 
-        /// A new path status from the monitor. Publishes only real changes.
+        /// Queues a path status exactly as the monitor does: in order, read by
+        /// the one reader. (Tests feed it directly.)
+        nonisolated func enqueue(_ status: NWPath.Status) {
+            paths.yield(status)
+        }
+
+        /// A new path status. Publishes only real changes.
         func receive(_ status: NWPath.Status) {
             let now = Self.isOnline(status)
             guard now != online else { return }
@@ -58,6 +74,17 @@ extension Backend {
         /// paths count); `.unsatisfied` and `.requiresConnection` are offline.
         static func isOnline(_ status: NWPath.Status) -> Bool {
             status == .satisfied
+        }
+
+        /// The one reader of the monitor's updates. Holds the actor only weakly
+        /// between updates, so the actor can go away and end it.
+        private func read(_ stream: AsyncStream<NWPath.Status>) {
+            reader = Task { [weak self] in
+                for await status in stream {
+                    guard let self else { return }
+                    await receive(status)
+                }
+            }
         }
 
         private func add(_ continuation: AsyncStream<Bool>.Continuation, id: UUID) {

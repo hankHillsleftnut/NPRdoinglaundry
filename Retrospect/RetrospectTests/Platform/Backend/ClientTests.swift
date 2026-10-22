@@ -157,15 +157,16 @@ struct ClientTests {
         #expect(thrown?.kind == .decoding)
     }
 
-    @Test("with the network down the failure is offline, and the request is logged with no status")
+    @Test("with the network down the failure is offline, and each send is logged with no status")
     func withTheNetworkDownTheFailureIsOffline() async {
         defer { StubProtocol.clear(session) }
         StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
 
         let thrown = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
 
+        // Reachability still says online, so the read tries all three times.
         #expect(thrown?.kind == .offline)
-        #expect(recorder.events == [.requestSent(path: .meta, status: 0, ms: 0)])
+        #expect(recorder.events == Array(repeating: .requestSent(path: .meta, status: 0, ms: 0), count: 3))
     }
 
     @Test("transport errors map to offline, timed out or transport", arguments: [
