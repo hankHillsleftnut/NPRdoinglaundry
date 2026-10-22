@@ -130,7 +130,7 @@ struct DiagnosticsRecordTests {
             .playbackPaused(itemID: #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1")), positionMs: 125_000),
         ])
         #expect(report.network.map(\.body) == [
-            Diagnostics.Request(method: .get, route: .briefsLatest, status: 200, ms: 340),
+            Diagnostics.Request(method: .get, route: .briefsLatest, status: 200, ms: 340, retries: 0),
             Diagnostics.Request(method: .get, route: .briefsLatest, status: 504, code: .upstreamTimeout, ms: 30000, retries: 1),
         ])
         #expect(report.failures.map(\.body) == [Diagnostics.Failure(code: .server, screen: .journal)])
@@ -187,10 +187,27 @@ struct DiagnosticsRecordTests {
         }
     }
 
-    @Test("a request without a code or idempotency omits them, as the door requires")
+    @Test("a request without a code, retries or idempotency omits them, as the door requires")
     func aRequestOmitsAbsentFields() throws {
         let bytes = try Backend.Coding.encoder.encode(Diagnostics.Request(method: .post, route: .meta, status: 0, ms: 12))
-        #expect(try #require(String(data: bytes, encoding: .utf8)) == #"{"method":"POST","ms":12,"retries":0,"route":"/v2/meta","status":0}"#)
+        #expect(try #require(String(data: bytes, encoding: .utf8)) == #"{"method":"POST","ms":12,"route":"/v2/meta","status":0}"#)
+    }
+
+    @Test("a request's numbers are clamped to the door's ranges, so one odd value can't refuse a whole report")
+    func aRequestsNumbersAreClamped() {
+        let wild = Diagnostics.Request(method: .get, route: .meta, status: 999, ms: -5, retries: 50)
+        #expect(wild == Diagnostics.Request(method: .get, route: .meta, status: 599, ms: 0, retries: 20))
+        let negative = Diagnostics.Request(method: .get, route: .meta, status: -1, ms: 90_000_000, retries: -3)
+        #expect(negative == Diagnostics.Request(method: .get, route: .meta, status: 0, ms: 86_400_000, retries: 0))
+        #expect(Diagnostics.Request(method: .get, route: .meta, status: 200, ms: 12).retries == nil)
+    }
+
+    @Test("a playback position is written within the door's range", arguments: [(-1, 0), (0, 0), (125_000, 125_000), (1_000_000_000, 86_400_000)])
+    func aPlaybackPositionIsClamped(_ position: Int, _ written: Int) throws {
+        let id = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000b1"))
+        let bytes = try Backend.Coding.encoder.encode(Diagnostics.Event.playbackPaused(itemID: id, positionMs: position))
+        let object = try #require(try JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        #expect(object["positionMs"] as? Int == written)
     }
 
     @Test("each record goes to the ring with the server's cap for its part")

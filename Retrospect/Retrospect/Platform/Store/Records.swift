@@ -164,9 +164,13 @@ extension Store {
             case id, ring, at, payload
         }
 
-        /// One ring's rows, oldest first.
-        static func inRing(_ ring: Platform.Diagnostics.Ring) -> QueryInterfaceRequest<DiagnosticRow> {
-            filter(Column(CodingKeys.ring) == ring.rawValue).order(Column(CodingKeys.id))
+        /// One ring's rows, oldest first; from `since` on when given.
+        static func inRing(_ ring: Platform.Diagnostics.Ring, since: Date? = nil) -> QueryInterfaceRequest<DiagnosticRow> {
+            var request = filter(Column(CodingKeys.ring) == ring.rawValue).order(Column(CodingKeys.id))
+            if let since {
+                request = request.filter(Column(CodingKeys.at) >= Backend.Coding.timestamp(since))
+            }
+            return request
         }
 
         /// Keeps the ring's newest `cap` rows and deletes the rest.
