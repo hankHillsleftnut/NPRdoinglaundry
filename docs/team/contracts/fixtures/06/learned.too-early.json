@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "state": "tooEarly",
+    "headline": null,
+    "why": null,
+    "lastChangedAt": null
+  }
+}

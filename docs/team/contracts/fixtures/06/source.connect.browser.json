@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "data": {
+    "mode": "browser",
+    "authorizationUrl": "https://accounts.example.invalid/o/oauth2/auth?state=fake"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "success": true,
+  "data": {
+    "sources": [
+      {
+        "id": "google_calendar",
+        "name": "calendar",
+        "where": "account",
+        "status": "connected",
+        "purpose": "so your brief knows your day",
+        "problem": null,
+        "reads": "your events: when, how long, and who was there.",
+        "helpsMeSee": "what your weeks are really like, and what fills them.",
+        "lastReadAt": "2026-10-21T07:58:00.000Z",
+        "hasData": true,
+        "sharedGrant": "google"
+      },
+      {
+        "id": "healthkit",
+        "name": "health",
+        "where": "onPhone",
+        "status": "syncing",
+        "purpose": "how you slept, how you moved",
+        "problem": null,
+        "reads": "sleep, steps and workouts, by day.",
+        "helpsMeSee": "how rest and movement line up with how your days go.",
+        "lastReadAt": "2026-10-21T06:10:00.000Z",
+        "hasData": true,
+        "sharedGrant": null
+      },
+      {
+        "id": "youtube",
+        "name": "youtube",
+        "where": "account",
+        "status": "needsYou",
+        "purpose": "what you watch to learn",
+        "problem": "stopped reading on monday",
+        "reads": "the videos you like and save.",
+        "helpsMeSee": "what you're curious about lately.",
+        "lastReadAt": "2026-10-19T08:00:00.000Z",
+        "hasData": true,
+        "sharedGrant": "google"
+      },
+      {
+        "id": "chatgpt",
+        "name": "chatgpt",
+        "where": "file",
+        "status": "notConnected",
+        "purpose": "what you've asked an assistant",
+        "problem": null,
+        "reads": "the conversations in an export you choose.",
+        "helpsMeSee": "the questions you keep coming back to.",
+        "lastReadAt": null,
+        "hasData": false,
+        "sharedGrant": null
+      }
+    ]
+  }
+}
