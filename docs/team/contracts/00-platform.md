@@ -87,7 +87,9 @@ Both return:
 
 **`POST /public/waitlist`** (public, for the website) `{ "email": "…", "name": "…", "reason": "…", "website": "" }` → `{ "received": true }`, always the same answer whatever the email (it never reveals whether an email is already on the list; `website` is a honeypot that must be empty).
 
-**`POST /v2/invites/redeem`** `{ "code": "7KQ2-M9XD-4RTA-B" }` (case-insensitive; dashes and spaces ignored) → `{ "access": { "state": "approved" }, "invitedBy": "priya" }`. Errors (code in `error.code`): `invite_invalid`, `invite_used`, `invite_expired`, `rate_limited`. These three invite codes extend §2's list (400).
+**`POST /v2/invites/redeem`** `{ "code": "7KQ2-M9XD-4RTA-B" }` (case-insensitive; dashes and spaces ignored), with `Idempotency-Key: <the UUID the app made when the tear started>` → `{ "access": { "state": "approved" }, "invitedBy": "priya", "invite": { "serial": 412, "redeemedOn": "2026-10-21" } }`. `invite` is the spent code's number (its place in the order invites were made, printed "no. 0412") and the tear's date in the redeemer's time zone (`X-Time-Zone`; UTC without it); it is `null` only when no code was spent (a `member`, `staff` or `approved` caller: `fixtures/00/redeem.response.alreadyin.json`). **Idempotent for the redeemer** (BE2.0b, contract 01 §2.3): the same person redeeming the same code again gets the same `200` with the stored `serial` and `redeemedOn`, never `invite_used`; the same key with a different code is `idempotency_mismatch` (409); another person's key is their own. The key is optional in Beta 1 and must be a UUID when sent (else `invalid_request`); a replay counts toward the limit (5 per 10 minutes per person, 20 per address). Errors (code in `error.code`): `invite_invalid` (also a revoked code), `invite_used`, `invite_expired`, `rate_limited`, `idempotency_mismatch`. These three invite codes extend §2's list (400).
+
+**`POST /v2/invites/check`** `{ "code": "7KQ2-M9XD-4RTA-B" }` (BE2.0b; contract 01 §2.2 has the full door): what the ticket would print, without spending anything → `{ "usable": true, "face": { "from": "priya", "kind": "member", "serial": 412, "issuedOn": "2026-10-19" } }`, or `usable: false` with `reason: "yours"` (this person already redeemed it; the face) or `"alreadyIn"` (`face: null`). Same errors as redeem bar `idempotency_mismatch`; its own limits (20 per 10 minutes per person, 60 per address). Fixtures in `fixtures/01/invite.check.*.json`.
 
 **`GET /v2/invites/mine`** → 
 ```json
@@ -105,7 +107,7 @@ Sharing is the system share sheet with the link and one line of text (founder co
 
 ## 5. Meta
 
-**`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on.
+**`GET /v2/meta`** (public) → `{ "minVersion": "1.0 (40)", "latestVersion": "1.1 (55)", "serverTime": "…", "environment": "production" }`. `environment` is `production | staging | local`, so a test build can show which server it's on. **The floor (BE0.10):** every signed-in `/v2` door compares `X-App-Version`'s build number (the bracketed part) with `minVersion`'s and answers `update_required` (426) below it, before anything else but the token check; `meta` itself never does, so an old build can always learn it is one. A request with no readable `X-App-Version` passes until the server requires it (`REQUIRE_APP_VERSION`), then is `update_required` too. The sign-in doors (§3) are not gated.
 
 ## 5a. Diagnostics: "send a report" (DG.1, addendum; approved by the integrator, 22 Oct)
 
@@ -121,4 +123,4 @@ Sharing is the system share sheet with the link and one line of text (founder co
 
 ## 6. Fixtures
 
-`fixtures/00/`: `auth-apple.request.json`, `auth.response.json`, `auth.response.waitlisted.json`, `refresh.request.json`, `error.invalid_credentials.json`, `error.session_revoked.json`, `error.invite_required.json`, `error.rate_limited.json`, `error.spend_limited.json`, `error.update_required.json`, `access.waitlisted.json`, `access.member.json`, `redeem.request.json`, `redeem.response.json`, `error.invite_used.json`, `invites-mine.json`, `meta.json`; diagnostics (§5a): `diagnostics.request.json`, `diagnostics.request.minimal.json`, `diagnostics.response.json`, `diagnostics.ids.json`. Written with the contract; reviewed with it.
+`fixtures/00/`: `auth-apple.request.json`, `auth.response.json`, `auth.response.waitlisted.json`, `refresh.request.json`, `error.invalid_credentials.json`, `error.session_revoked.json`, `error.invite_required.json`, `error.rate_limited.json`, `error.spend_limited.json`, `error.update_required.json`, `access.waitlisted.json`, `access.member.json`, `redeem.request.json`, `redeem.response.json`, `redeem.response.minimal.json`, `redeem.response.alreadyin.json`, `error.invite_used.json`, `invites-mine.json`, `meta.json`; diagnostics (§5a): `diagnostics.request.json`, `diagnostics.request.minimal.json`, `diagnostics.response.json`, `diagnostics.ids.json`. Written with the contract; reviewed with it.

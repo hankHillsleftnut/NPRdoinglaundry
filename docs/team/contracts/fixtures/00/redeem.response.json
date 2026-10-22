@@ -4,6 +4,10 @@
     "access": {
       "state": "approved"
     },
-    "invitedBy": "priya"
+    "invitedBy": "priya",
+    "invite": {
+      "serial": 412,
+      "redeemedOn": "2026-10-21"
+    }
   }
 }

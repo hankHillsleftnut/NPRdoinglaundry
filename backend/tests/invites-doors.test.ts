@@ -1,8 +1,8 @@
 /**
  * BE0.12: the door suite on each invite door, against a real Postgres
  * (PGlite, migration 007), with each happy path equal to its contract 00
- * fixture. Suites share one database, in this order: "your invites" runs
- * before redeem gives the suite's person any.
+ * fixture. Suites share one database, in this order: "your invites" and check
+ * run before redeem gives the suite's person any invites and spends the code.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,8 +31,13 @@ before(async () => {
   access = asService(supabaseAccessStore(pgliteRpc(db)));
   invites = asService(supabaseInviteStore(pgliteRpc(db)));
   for (const id of [USER, OTHER]) await db.query(`INSERT INTO users (id, apple_user_id, access) VALUES ($1, $2, 'waitlisted')`, [id, `apple-${id}`]);
-  await db.query(`INSERT INTO invites (code_hash, code_ciphertext, kind) VALUES ($1, $2, 'founder')`, [hashCode(CODE), sealCode(CODE, process.env.INVITE_CODE_KEY ?? '')]);
+  // The founder invite is no. 7, made on 19 Oct, as the minimal redeem fixture says.
+  await db.query(`SELECT setval('invite_serial_seq', 7, false)`);
+  await db.query(`INSERT INTO invites (code_hash, code_ciphertext, kind, created_at) VALUES ($1, $2, 'founder', '2026-10-19T10:00:00.000Z')`, [hashCode(CODE), sealCode(CODE, process.env.INVITE_CODE_KEY ?? '')]);
 });
+/** 22 Oct 09:00Z: 21 Oct, late evening, in Honolulu (the fixtures' redeemedOn). */
+const T0 = Date.parse('2026-10-22T09:00:00.000Z');
+const HONOLULU = { 'X-Time-Zone': 'Pacific/Honolulu' };
 const stores = () => ({ access, invites });
 
 doorSuite({
@@ -60,11 +65,22 @@ doorSuite({
 });
 
 doorSuite({
-  method: 'POST', path: '/v2/invites/redeem', bucket: 'redeem', openToWaitlisted: true,
+  method: 'POST', path: '/v2/invites/check', bucket: 'inviteCheck', openToWaitlisted: true,
   validBody: { code: CODE },
   invalid: { body: { code: 42 } },
   setup: (h, userId) => { h.users.set(userId, { ...h.users.get(userId)!, access: 'waitlisted' }); },
+  // The founder invite, unspent: usable, with no inviter.
+  expect: () => ({ usable: true, face: { from: null, kind: 'founder', serial: 7, issuedOn: '2026-10-19' } }),
+  stores, now: T0,
+});
+
+doorSuite({
+  method: 'POST', path: '/v2/invites/redeem', bucket: 'redeem', openToWaitlisted: true,
+  validBody: { code: CODE },
+  invalid: { body: { code: 42 } },
+  headers: { ...HONOLULU, 'Idempotency-Key': '11111111-2222-4333-8444-555555555555' },
+  setup: (h, userId) => { h.users.set(userId, { ...h.users.get(userId)!, access: 'waitlisted' }); },
   // A founder invite (no inviter): the minimal fixture. Retries by the same person get the same answer.
   expect: () => fixture('redeem.response.minimal.json'),
-  stores,
+  stores, now: T0,
 });
