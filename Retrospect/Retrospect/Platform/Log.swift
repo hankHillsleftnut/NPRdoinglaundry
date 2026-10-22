@@ -96,6 +96,15 @@ extension Platform.Log {
                 logger.error("install check failed: keychain status \(status)")
             case .installCheckErrored:
                 logger.error("install check failed with an error that isn't a keychain status")
+            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed, .sessionLocked,
+                 .sessionNotConnected, .appleCredentialRevoked, .legacyRefresh, .stagingResolvedToLocal:
+                recordSession(event)
+            }
+        }
+
+        /// The session's lines (PL1.5), kept apart so each switch stays small.
+        private func recordSession(_ event: Event) {
+            switch event {
             case .refreshRetried:
                 logger.info("session refresh sent again after a dropped answer")
             case let .refreshFailed(failure):
@@ -118,6 +127,8 @@ extension Platform.Log {
                 record(legacy: outcome)
             case .stagingResolvedToLocal:
                 logger.info("environment staging resolved to the backend on this Mac")
+            default:
+                break
             }
         }
 

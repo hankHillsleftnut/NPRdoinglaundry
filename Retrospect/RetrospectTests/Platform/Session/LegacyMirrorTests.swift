@@ -23,10 +23,10 @@ struct LegacyMirrorTests {
         try mirror().write(accessToken: "invented.access.token", userID: "u1", appleUserID: "001234.invented")
         await settle()
 
-        #expect(keychain.contents.mapValues { String(decoding: $0, as: UTF8.self) } == [
+        #expect(keychain.contents.compactMapValues { String(bytes: $0, encoding: .utf8) } == [
             "jwt_token": "invented.access.token", "user_id": "u1", "apple_user_id": "001234.invented",
         ])
-        #expect(!keychain.contents.values.contains { String(decoding: $0, as: UTF8.self).contains("refresh") })
+        #expect(!keychain.contents.values.contains { String(bytes: $0, encoding: .utf8)?.contains("refresh") == true })
         #expect(published.value == ["u1"])
     }
 
