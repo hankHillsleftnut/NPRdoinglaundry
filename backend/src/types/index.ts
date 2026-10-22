@@ -1,3 +1,4 @@
+import type { AccessState } from '../access/store.js';
 import { z } from 'zod';
 
 // ============================================
@@ -501,6 +502,8 @@ export interface AuthUser {
   tokenVersion?: number;
   /** users.first_name (migration 005), saved at the first sign-in. */
   firstName?: string;
+  /** users.access (migration 007); absent before 007 is applied, which the gate treats as member. */
+  access?: AccessState;
 }
 
 export interface JWTPayload {

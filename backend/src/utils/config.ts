@@ -69,6 +69,16 @@ export const config = {
     privateKey: optionalEnv('APPLE_PRIVATE_KEY', ''),
   },
 
+  // Invites (BE0.12). INVITE_CODE_KEY seals unused codes so "your invites" can
+  // show a link again; without it, nothing can issue an invite (redeem and the
+  // admin's approve answer 500) while everything else works. Founder sets it.
+  invites: {
+    codeKey: process.env.INVITE_CODE_KEY || null,
+    baseUrl: optionalEnv('INVITE_BASE_URL', 'https://retrospect-api.onrender.com'),
+    /** Where the link page's download button goes (TestFlight or the App Store); no button when unset. */
+    appUrl: process.env.INVITE_APP_URL || null,
+  },
+
   // Admin
   admin: {
     // No default: without ADMIN_SECRET the admin routes are not mounted.

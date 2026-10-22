@@ -80,12 +80,14 @@ extension Platform.Log.Event {
             case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
             case .unknownErrorCode: .unknownErrorCode(path: .meta)
             case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
+            case .installChecked: .installChecked(.wipedLeftovers)
+            case .installCheckFailed: .installCheckFailed(status: -25308)
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, installChecked, installCheckFailed
     }
 
     fileprivate var kind: Kind {
@@ -95,6 +97,8 @@ extension Platform.Log.Event {
         case .requestSent: .requestSent
         case .unknownErrorCode: .unknownErrorCode
         case .launchOptionIgnored: .launchOptionIgnored
+        case .installChecked: .installChecked
+        case .installCheckFailed: .installCheckFailed
         }
     }
 }

@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "invalid_request",
-    "message": "That link can't be saved."
+    "message": "That didn't look right."
   }
 }

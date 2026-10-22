@@ -21,10 +21,16 @@ import type { AgentDoorClient } from './doors/agent.js';
 import { createDoorKit, type DoorFactory } from './doors/door.js';
 import { v2ErrorHandler } from './doors/errors.js';
 import { MemoryLimiter, type Limiter } from './doors/limits.js';
-import { createV2Router } from './doors/router.js';
+import { createV2Router, MAX_REPORT_BYTES, type V2RouterDeps } from './doors/router.js';
+import type { DiagnosticsStore } from './diagnostics/store.js';
+import type { AccessStore } from './access/store.js';
+import type { InviteStore } from './invites/store.js';
+import { createPublicInviteRouter } from './invites/public.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
-import { createSessionRouter } from './sessions/routes.js';
+import { createSessionRouter, type SessionRouteDeps } from './sessions/routes.js';
+import { verifyAppleSignIn, type AppleSignIn } from './services/apple-auth.js';
+import { findOrCreateAppleAccount, type UsersClient } from './services/users.js';
 import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessions/store.js';
 
 /**
@@ -43,8 +49,18 @@ export interface AppDeps {
   speechSynth?: SpeechRouteDeps['synth'];
   /** Where sessions live; the database functions of migration 005 by default. */
   sessions?: SessionStore;
+  /** Verifies Apple identity tokens; Apple's keys by default (tests pass a fake). */
+  verifyApple?: (identityToken: string) => Promise<AppleSignIn>;
+  /** Finds or creates accounts; the users table by default. */
+  accounts?: SessionRouteDeps['accounts'];
   /** Builds the /v2 router from the door kit; the real one by default. */
-  v2Router?: (door: DoorFactory) => Router;
+  v2Router?: (door: DoorFactory, routerDeps: V2RouterDeps) => Router;
+  /** Diagnostics reports (DG.1): server.ts passes the database and the private bucket; tests pass memory. */
+  diagnostics: DiagnosticsStore;
+  /** Access and the waitlist (BE0.12): server.ts passes migration 007's functions; tests pass PGlite or memory. */
+  access: AccessStore;
+  /** Invites (BE0.12): as above. */
+  invites: InviteStore;
 }
 
 /**
@@ -55,6 +71,7 @@ export function createApp(deps: AppDeps): express.Express {
   const app = express();
   const legacyAuth = makeAuthMiddleware(deps.users, { now: deps.now });
   const limiter = deps.limiter ?? new MemoryLimiter();
+  const { diagnostics } = deps;
   trustRenderProxy(app);
 
   // Security middleware — relax CSP for the admin dashboard's inline scripts
@@ -71,6 +88,8 @@ export function createApp(deps: AppDeps): express.Express {
     },
   }));
   app.use(cors());
+  // Diagnostics reports have their own cap (2 MB, after gzip), parsed before the general 10 MB one.
+  app.use('/v2/diagnostics', express.json({ limit: MAX_REPORT_BYTES }));
   app.use(express.json({ limit: '10mb' }));
 
   // Rate limiting by IP, except /health and /v2 (doors limit per user)
@@ -85,8 +104,25 @@ export function createApp(deps: AppDeps): express.Express {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Invites, public: the website's waitlist, the link page, the app-link file (BE0.12).
+  app.use(createPublicInviteRouter({
+    invites: deps.invites,
+    limiter,
+    now: deps.now,
+    log: deps.log ?? log,
+    reportBug: (err, where) => captureException(err, { door: where }),
+    appUrl: config.invites.appUrl,
+    teamId: config.apple.teamId,
+    bundleId: config.apple.clientId,
+  }));
+
   // Admin routes and the dashboard (admin secret, not JWT; absent without ADMIN_SECRET)
-  mountAdmin(app, { secret: config.admin.secret, publicDir });
+  mountAdmin(app, {
+    secret: config.admin.secret,
+    publicDir,
+    diagnostics,
+    invites: { invites: deps.invites, now: deps.now, codeKey: config.invites.codeKey, baseUrl: config.invites.baseUrl },
+  });
 
   // Auth routes (no auth middleware)
   app.use('/auth', authRouter);
@@ -103,7 +139,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use('/integrations', legacyAuth, integrationsRouter);
   app.use('/graph', legacyAuth, graphRouter);
 
-  // The new app's doors (src/doors). Public /v2 routes are mounted before this in later bytes.
+  // The new app's doors (src/doors). Public /v2 routes (sign-in) are mounted before the /v2 auth.
   const door = createDoorKit({
     agent: deps.agent,
     limiter,
@@ -122,8 +158,18 @@ export function createApp(deps: AppDeps): express.Express {
     log: deps.log ?? log,
     auth: v2Auth,
     reportBug: (err, name) => captureException(err, { door: name }),
+    verifyApple: deps.verifyApple ?? verifyAppleSignIn,
+    accounts: deps.accounts ?? {
+      findOrCreateApple: (appleUserId, profile) =>
+        findOrCreateAppleAccount(supabaseAdmin as unknown as UsersClient, 'users', appleUserId, profile),
+    },
   }));
-  app.use('/v2', v2Auth, (deps.v2Router ?? createV2Router)(door));
+  app.use('/v2', v2Auth, (deps.v2Router ?? createV2Router)(door, {
+    diagnostics,
+    invites: {
+      access: deps.access, invites: deps.invites, limiter, now: deps.now, codeKey: config.invites.codeKey, baseUrl: config.invites.baseUrl,
+    },
+  }));
   app.use('/v2', v2ErrorHandler);
 
   // Error handling middleware

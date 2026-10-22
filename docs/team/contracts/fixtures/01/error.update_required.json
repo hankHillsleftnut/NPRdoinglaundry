@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "update_required",
-    "message": "there's a newer version of retrospect. update to keep going."
+    "message": "There's a new version of Retrospect."
   }
 }

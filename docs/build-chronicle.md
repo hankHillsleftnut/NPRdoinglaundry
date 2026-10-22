@@ -178,3 +178,10 @@ Every one is in the findings log. The ones that shaped the process:
 - Pages reordered into start/approvals → system → product → archive, with two duplicate numbers fixed and icons added. 19 approved boards moved off approvals to 04b, 02 and 02b. Every page was laid out in labelled rows. About 11,800 generic layer names were replaced with content names. The dark-sync config gained a per-source `include` filter and tighter section offsets. Details are in findings-log.md.
 - 21 Oct: the Paper file hit its size limit. Archives were split into a full-copy file, and the warning cleared. Prices changed to $24.99/$239.99 (save 20%) on 57 texts. The Swift plan was rewritten top-down to cover the backend: 17 systems, 7 flows, a data contract for every page, a platform track B0–B8, and a ship gate per flow.
 - 21 Oct: wrote docs/design/m14-goal-prompt.md, a self-contained goal prompt for the M14 session (goal, the plan-before-code rule, reading list, context, decisions, approach, PR definition of done, feel brief, safety, first steps).
+
+## 22 Oct · morning · new integrator session
+- The old integrator's context grew too large; a fresh session took over from docs/team/integrator-handover.md (#106, merged) and the engineer notes. Restarted Platform, views and backend engineers from their notes; reviewers run on the Fable model.
+- Merged: #106, #101 (T02a), #78 (C39.3), #104 (PL2.0 GRDB), #108 (BE0.4b), brain #132 (BEA.1) and #133 (BEA.2, both squash). #107 retargeted to main before #104 merged; #109 retargeted before #108.
+- I resolved #105's lab-list conflict myself (adding #78's page as one line); #83 follows the same way.
+- Sent back: #107 (erase misses future tables, rows not truly erased, strict date decoding), #134 (URL ssl params override the CA check), #109 (the real Apple verifier was untested; the new test found HS256/alg-none tokens answered 500, now 401).
+- Usage: weekly at 61% with 4 days left, so the views engineer pauses after #93 (loop rule: one app engineer when the week is on pace to run out).

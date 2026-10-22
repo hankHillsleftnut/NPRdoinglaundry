@@ -1,5 +1,7 @@
 # Before you push: what reviewers caught today, so you catch it first
 
+> **Prototype mode until Beta 1 ships** (founder, 22 Oct): `docs/team/prototype-mode.md` overrides this file where they differ — a fresh reviewer only on risky PRs (sign-in, sessions, store, outbox, doors, brain queries, diagnostics, migrations); one PR per whole component, page or route; exact Paper matching only for P09–P12, their visible components, the invite ticket and M14; nits go to `docs/team/polish-list.md`.
+
 Every PR gets three reviews (an automated pass, a fresh reviewer and the integrator). Each fix round costs about an hour. Check these yourself before the first push.
 
 **Every PR**
@@ -34,3 +36,11 @@ Every PR gets three reviews (an automated pass, a fresh reviewer and the integra
 - The test host must start an empty app: no notifications, observers or network.
 - A test must fail when the rule it proves is removed. Try deleting the check; if the test still passes, it proves nothing (e.g. assert the agent was never called on a refused request).
 - Waiting for builds: `while pgrep -x xcodebuild >/dev/null; do sleep 15; done`. A `pgrep -f` pattern matches its own shell and waits forever.
+
+**Added 22 Oct (morning reviews)**
+- "Erase everything for this person" never lists tables by hand: derive the list from the schema, or add a test that the list equals every table. On a different account, delete the database file, not just rows (deleted rows stay readable in the file).
+- Every security check is tested against the real checker, not only a stand-in: sign real tokens with local keys and prove each bad one is refused (wrong audience, wrong issuer, wrong algorithm, expired, unknown key).
+- Settings parsed from a URL can override the safe settings you pass beside it (e.g. `sslmode=` in a database URL turns certificate checks off). Refuse those parameters, and test with a real client built from a hostile URL.
+- Optional, cosmetic fields never block a sign-in or a save: strip or drop them. Never store identity data the client sends unless the verified token carries it.
+- Dates read back from storage decode with or without fractional seconds.
+- GitHub's API limit (5,000 an hour) is shared by every agent: check CI every few minutes, never in a tight loop.

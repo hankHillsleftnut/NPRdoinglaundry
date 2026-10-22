@@ -1,11 +1,11 @@
 /**
- * BE0.4 review: the row lock in rotate_refresh_token, proven on a real Postgres
- * server with two connections. PGlite has one connection, so it can't show
+ * BE0.4 review: the row lock in rotate_refresh_token, and BE0.12's guard in
+ * redeem_invite, proven on a real Postgres server with two connections. PGlite has one connection, so it can't show
  * that a second refresh waits for the first; a server can.
  *
  * The server is a throwaway Postgres 17 (embedded-postgres: the official
  * binaries from npm, run from a temp directory on a free local port, deleted
- * after). Only users and migration 005 are applied; nothing leaves the machine.
+ * after). Only users and migrations 005 and 007 are applied; nothing leaves the machine.
  */
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -16,7 +16,7 @@ import test, { after, before } from 'node:test';
 import pg from 'pg';
 import EmbeddedPostgres from 'embedded-postgres';
 
-const MIGRATION = join(__dirname, '..', '..', 'supabase', 'migrations', '005_sessions.sql');
+const MIGRATIONS = ['005_sessions.sql', '007_invites.sql'].map((f) => join(__dirname, '..', '..', 'supabase', 'migrations', f));
 const PASSWORD = 'test-only-not-a-key';
 
 let server: EmbeddedPostgres;
@@ -50,7 +50,7 @@ before(async () => {
     DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     DO $$ BEGIN CREATE ROLE service_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     CREATE TABLE users (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), apple_user_id TEXT UNIQUE NOT NULL);`);
-  await setup.query(readFileSync(MIGRATION, 'utf8'));
+  for (const file of MIGRATIONS) await setup.query(readFileSync(file, 'utf8'));
   await setup.end();
 });
 
@@ -91,6 +91,43 @@ test('a second refresh of the same token waits for the first, then gets its succ
 
     const { rows } = await a.query<{ n: number }>(`SELECT count(*)::int n FROM refresh_tokens WHERE user_id = $1`, [user!.id]);
     assert.equal(rows[0]!.n, 2, 'one successor, not two');
+  } finally {
+    await a.end();
+    await b.end();
+  }
+});
+
+test('two people redeeming one code at once: the second waits, then finds it used', async () => {
+  const setup = client();
+  await setup.connect();
+  const ids: string[] = [];
+  for (const name of ['apple-redeem-a', 'apple-redeem-b']) {
+    const { rows: [u] } = await setup.query<{ id: string }>(`INSERT INTO users (apple_user_id) VALUES ($1) RETURNING id`, [name]);
+    ids.push(u!.id);
+  }
+  await setup.query(`INSERT INTO invites (code_hash, kind) VALUES ('code-hash-1', 'founder')`);
+  await setup.end();
+
+  const a = client(), b = client();
+  await a.connect();
+  await b.connect();
+  const redeem = (c: pg.Client, user: string, n: string) => c.query<{ r: { outcome: string } }>(
+    `SELECT redeem_invite($1, 'code-hash-1', $2, ARRAY['new-${n}-1', 'new-${n}-2', 'new-${n}-3'], ARRAY['s1', 's2', 's3']) AS r`, [user, T0]);
+  try {
+    await a.query('BEGIN');
+    assert.equal((await redeem(a, ids[0]!, 'a')).rows[0]!.r.outcome, 'redeemed');
+    let bDone = false;
+    const second = redeem(b, ids[1]!, 'b').then((r) => { bDone = true; return r; });
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(bDone, false, "B waits on A's claim of the invite");
+    await a.query('COMMIT');
+    assert.equal((await second).rows[0]!.r.outcome, 'used');
+
+    const { rows } = await a.query<{ used_by: string; b_access: string; b_invites: number }>(`
+      SELECT (SELECT used_by_user_id::text FROM invites WHERE code_hash = 'code-hash-1') used_by,
+             (SELECT access FROM users WHERE id = $1) b_access,
+             (SELECT count(*)::int FROM invites WHERE owner_user_id = $1) b_invites`, [ids[1]]);
+    assert.deepEqual(rows[0], { used_by: ids[0], b_access: 'waitlisted', b_invites: 0 }, 'A has it; B got nothing');
   } finally {
     await a.end();
     await b.end();

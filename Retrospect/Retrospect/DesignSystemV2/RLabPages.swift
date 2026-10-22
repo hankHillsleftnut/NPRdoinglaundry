@@ -24,10 +24,13 @@ struct RLabPage: Identifiable {
         RLabPage("error") { RErrorStateGallery() },
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("foundation") { RFoundationGallery() },
+        RLabPage("guess") { RGuessCardGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
+        RLabPage("retro") { RRetroLineGallery() },
         RLabPage("toast") { RToastGallery() },
+        RLabPage("topbar") { RTopBarGallery() },
     ]
 
     /// The page the lab opens on: `-DesignLabToast`, else `-DesignLabPage <name>`, else motion.

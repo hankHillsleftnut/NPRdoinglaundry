@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "invalid_request",
-    "message": "that request wasn't valid."
+    "message": "That didn't look right."
   }
 }

@@ -2,6 +2,20 @@
 
 What changed, in plain words, newest first. Every merged PR that changes what the app, the backend or the team does gets a line here, in the same PR or the integrator's next one. Big changes get a short paragraph: what a person will notice, and what to watch. (Founder, 22 Oct: "always have a changelog for every massive change".)
 
+## 22 Oct 2026 · morning (new integrator)
+
+- **Sign in with Apple** on the new server: Apple's token is checked (our app, Apple's keys, a one-time code), your name and email are kept only from the first sign-in, and only what Apple vouches for (#109). A test of the real check found that some forged tokens caused a server error instead of a refusal; fixed before merge.
+- Database migrations refuse any connection setting that could switch off certificate checks (brain #134).
+- The top bar, with its title that shrinks as you scroll (#83). The design lab lists its pages in one place (#105).
+- **Signing in, part two:** the app can refresh its sign-in and sign out. A retry after a dropped connection gets the same new sign-in, so nobody is signed out by a bad signal; a stolen copy used later ends that device's session (#108).
+- **The brain:**
+  - "that's not right" now saves in one step or not at all; before, it could half-apply in production (#132);
+  - every brain lookup is limited to the person asking (#133).
+- **The app's plumbing:**
+  - launch options for testing: sample or live data, staging or local server, seeded accounts; release builds ignore them all (#101);
+  - the local database library, GRDB 7.11.1, pinned (+3.8 MB to the app) (#104).
+- **Journal parts:** the error state with "try again", its haptic and its VoiceOver line (#78).
+
 ## 21–22 Oct 2026 · Beta 1 build, day one
 
 **The team and the plan**
@@ -53,3 +67,6 @@ What changed, in plain words, newest first. Every merged PR that changes what th
   - design tokens and depth recipes, so single lines match Paper's height (#85).
 - **CI:** Platform code is linted, Keychain tests run, and package versions are locked (#96).
 - **Changelog started; session diagnostics added to Beta 1** (#91).
+
+## 22 Oct 2026 · prototype mode
+- **Until Beta 1 ships, the team runs in prototype mode** (`docs/team/prototype-mode.md`). Privacy, data safety, the outbox, sign-in and CI stay strict, and so does the journal and ticket design. Reviews, PR size, Paper matching on internal parts and nit-fixing get lighter. Expect about twice the speed at about half the usage.
