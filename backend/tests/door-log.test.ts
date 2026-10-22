@@ -15,11 +15,11 @@ function capture() {
 test('the door log type has no field that can carry text', () => {
   assert.deepEqual([...DOOR_LOG_FIELDS], [
     'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields',
-    'reuse',
+    'clockSkew', 'reuse',
   ]);
   const full: Required<DoorLogLine> = {
     door: 'entries.create', userId: USER, status: 200, code: 'rate_limited', ms: 12, agentMs: 8, costUsd: 0.0123, appVersion: '1.0 (42)',
-    sizeBytes: 2048, events: 5, requests: 2, failures: 1, crashes: 0, nulledFields: 1, reuse: true,
+    sizeBytes: 2048, events: 5, requests: 2, failures: 1, crashes: 0, nulledFields: 1, clockSkew: 1, reuse: true,
   };
   assert.deepEqual(Object.keys(doorLogLine(full)), [...DOOR_LOG_FIELDS]);
 });
