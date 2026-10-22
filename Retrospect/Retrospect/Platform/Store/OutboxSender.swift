@@ -73,7 +73,7 @@ extension Store {
                     throw Backend.Failure(.invalidRequest)
                 }
                 // The door's key is the report's own id, which is also the row's id.
-                guard report.reportId == item.id else { throw Backend.Failure(.invalidRequest) }
+                guard report.reportId.lowercased() == item.id else { throw Backend.Failure(.invalidRequest) }
                 let receipt = try await client.send(Backend.Endpoints.SendReport(report: report))
                 return OutboxSendResult(reference: receipt.reference)
             case .unknown:
