@@ -149,6 +149,55 @@ extension Store {
         }
     }
 
+    /// One diagnostics record (DG.3): which ring it's in, when it happened,
+    /// and the record in the report's JSON shape. Rows are read in `id`
+    /// order, which is the order they were recorded.
+    struct DiagnosticRow: Codable, Equatable, FetchableRecord, MutablePersistableRecord, Sendable {
+        static let databaseTableName = "diagnostics"
+
+        var id: Int64?
+        var ring: Platform.Diagnostics.Ring
+        var at: Date
+        var payload: Data
+
+        enum CodingKeys: String, CodingKey {
+            case id, ring, at, payload
+        }
+
+        /// One ring's rows, oldest first.
+        static func inRing(_ ring: Platform.Diagnostics.Ring) -> QueryInterfaceRequest<DiagnosticRow> {
+            filter(Column(CodingKeys.ring) == ring.rawValue).order(Column(CodingKeys.id))
+        }
+
+        /// Keeps the ring's newest `cap` rows and deletes the rest.
+        static func trim(_ ring: Platform.Diagnostics.Ring, in db: GRDB.Database) throws {
+            try db.execute(
+                sql: """
+                DELETE FROM diagnostics WHERE ring = :ring AND id NOT IN
+                (SELECT id FROM diagnostics WHERE ring = :ring ORDER BY id DESC LIMIT :cap)
+                """,
+                arguments: ["ring": ring.rawValue, "cap": ring.cap]
+            )
+        }
+
+        /// Deletes every row from before `cutoff`, in every ring.
+        static func deleteOlder(than cutoff: Date, in db: GRDB.Database) throws {
+            try db.execute(sql: "DELETE FROM diagnostics WHERE at < ?", arguments: [Backend.Coding.timestamp(cutoff)])
+        }
+
+        mutating func didInsert(_ inserted: InsertionSuccess) {
+            id = inserted.rowID
+        }
+
+        static func databaseDateEncodingStrategy(for _: String) -> DatabaseDateEncodingStrategy {
+            Store.Timestamp.encoding
+        }
+
+        static func databaseDateDecodingStrategy(for _: String) -> DatabaseDateDecodingStrategy {
+            Store.Timestamp.decoding
+        }
+    }
+
     /// Dates are written as ISO 8601 UTC with milliseconds
     /// (`2026-10-21T08:00:04.200Z`): they sort as text and read like the
     /// contracts. They're read with or without the fraction, so one odd row

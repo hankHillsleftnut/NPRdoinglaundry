@@ -7,6 +7,7 @@ extension Store {
         static var all: DatabaseMigrator {
             var migrator = DatabaseMigrator()
             migrator.registerMigration("v1", migrate: v1)
+            migrator.registerMigration("v2", migrate: v2)
             return migrator
         }
 
@@ -50,6 +51,18 @@ extension Store {
                 table.column("fetched_at", .text).notNull()
                 table.column("etag", .text)
             }
+        }
+
+        /// DG.3: the diagnostics rings. One table, four rings told apart by
+        /// `ring`; `payload` is the record in the report's own JSON shape.
+        private static func v2(_ db: GRDB.Database) throws {
+            try db.create(table: "diagnostics") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("ring", .text).notNull()
+                table.column("at", .text).notNull()
+                table.column("payload", .blob).notNull()
+            }
+            try db.create(index: "diagnostics_ring", on: "diagnostics", columns: ["ring"])
         }
     }
 }
