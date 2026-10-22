@@ -95,7 +95,7 @@ extension Platform.Log {
             case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
                 recordSession(event)
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
-                 .legacyRefresh, .stagingResolvedToLocal:
+                 .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
                 recordDevice(event)
             }
         }
