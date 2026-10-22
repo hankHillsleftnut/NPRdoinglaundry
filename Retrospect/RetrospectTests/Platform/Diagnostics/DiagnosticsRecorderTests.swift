@@ -49,6 +49,15 @@ struct DiagnosticsRecorderTests {
         try database.writer.write { try $0.execute(sql: sql) }
     }
 
+    /// The scheduled flush registers its sleep on a task of its own; wait for
+    /// it before moving the clock, or the sleep would start after the move.
+    private func waitForSleep() async throws {
+        for _ in 0 ..< 10000 where clock.pendingSleeps == 0 {
+            await Task.yield()
+        }
+        try #require(clock.pendingSleeps == 1)
+    }
+
     private func event(_ event: Diagnostics.Event) throws -> Data {
         try Recorder.encode(.event(event))
     }
@@ -80,6 +89,7 @@ struct DiagnosticsRecorderTests {
         await recorder.record(.event(.appForeground))
         #expect(try count(.events) == 0)
 
+        try await waitForSleep()
         clock.advance(by: Recorder.flushAfter)
         await recorder.waitForScheduledFlush()
         #expect(try count(.events) == 1)
@@ -194,11 +204,12 @@ struct DiagnosticsRecorderTests {
         #expect(try rows(.events).map(\.payload) == [event(.appLaunch), event(.screenShown(.signIn))])
     }
 
-    @Test("while detached, only the newest records are kept in memory")
-    func whileDetachedOnlyTheNewestAreKept() async throws {
+    @Test("while detached, each ring keeps only its newest cap records in memory, and one ring's flood never evicts another's")
+    func whileDetachedEachRingKeepsItsNewest() async throws {
         let recorder = recorder(attached: false)
+        await recorder.record(.crash(.init(kind: .crash)))
         await recorder.record(.event(.appLaunch))
-        for _ in 0 ..< Recorder.pendingCap {
+        for _ in 0 ..< Diagnostics.Ring.events.cap {
             await recorder.record(.event(.appForeground))
         }
 
@@ -206,7 +217,8 @@ struct DiagnosticsRecorderTests {
 
         let events = try rows(.events)
         #expect(events.count == Diagnostics.Ring.events.cap)
-        #expect(try !events.map(\.payload).contains(event(.appLaunch)), "the oldest record was dropped from memory")
+        #expect(try !events.map(\.payload).contains(event(.appLaunch)), "the oldest event was dropped from memory")
+        #expect(try count(.crashes) == 1, "the crash survived the flood of events")
     }
 
     // MARK: Failures

@@ -19,7 +19,8 @@ extension Platform.Diagnostics {
         static let batchSize = 50
         static let flushAfter: Duration = .seconds(2)
         /// The most records kept in memory while no database is attached:
-        /// the rings' caps added up, so the first flush can fill every ring.
+        /// each ring's cap, so the first flush can fill every ring and no
+        /// ring's wait evicts another's (`bounded`).
         static let pendingCap = Ring.allCases.map(\.cap).reduce(0, +)
 
         private var database: Store.LocalDatabase?
@@ -51,9 +52,7 @@ extension Platform.Diagnostics {
                 return
             }
             pending.append(Store.DiagnosticRow(id: nil, ring: record.ring, at: now(), payload: payload))
-            if pending.count > Self.pendingCap {
-                pending.removeFirst(pending.count - Self.pendingCap)
-            }
+            pending = Self.bounded(pending)
             if database == nil {
                 return
             }
@@ -135,6 +134,21 @@ extension Platform.Diagnostics {
                 try? await clock.sleep(for: Self.flushAfter)
                 guard !Task.isCancelled else { return }
                 flush()
+            }
+        }
+
+        /// `rows` with each ring cut to its own cap, oldest first to go: a
+        /// flood of one kind (events) never pushes out a rare one (a crash)
+        /// while they wait in memory, the same rule as the rings on disk.
+        static func bounded(_ rows: [Store.DiagnosticRow]) -> [Store.DiagnosticRow] {
+            var over = Dictionary(uniqueKeysWithValues: Ring.allCases.map { ring in
+                (ring, rows.count { $0.ring == ring } - ring.cap)
+            })
+            guard over.values.contains(where: { $0 > 0 }) else { return rows }
+            return rows.filter { row in
+                guard let excess = over[row.ring], excess > 0 else { return true }
+                over[row.ring] = excess - 1
+                return false
             }
         }
 
