@@ -82,6 +82,15 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-Screen <id> -State <name>`: one screen on sample data (T02's launcher, debug only).
+    private var launchedScreen: AnyView? {
+        #if DEBUG
+        ScreenLauncher.view()
+        #else
+        nil
+        #endif
+    }
+
     /// Design lab (M14): the DesignSystemV2 gallery, motion lab and component catalogue.
     private var isDesignLabMode: Bool {
         #if DEBUG
@@ -149,6 +158,8 @@ struct RetrospectApp: App {
                     #if DEBUG
                     RDesignLab()
                     #endif
+                } else if let launched = launchedScreen {
+                    launched
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
                     FirstPodcastFinaleDebugHost()
