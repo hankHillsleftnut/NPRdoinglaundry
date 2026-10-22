@@ -94,6 +94,7 @@ struct AppleSignInTests {
             configuration: .resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false),
             session: session,
             tokens: NoTokens(),
+            reachability: ManualReachability(),
             clock: TestClock(),
             log: recorder
         )
