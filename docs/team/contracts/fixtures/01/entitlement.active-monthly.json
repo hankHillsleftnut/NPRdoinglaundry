@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": {
+    "active": true,
+    "productId": "retro.monthly",
+    "inTrial": false,
+    "expiresAt": "2026-11-21T13:02:11.410Z",
+    "willRenew": true,
+    "environment": "sandbox"
+  }
+}

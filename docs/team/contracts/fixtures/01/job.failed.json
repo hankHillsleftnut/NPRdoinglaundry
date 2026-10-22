@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "job": {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "kind": "first",
+      "step": "writing",
+      "stepIndex": 2,
+      "startedAt": "2026-10-21T13:15:00.000Z",
+      "failed": {
+        "code": "upstream_unavailable",
+        "retryable": true
+      }
+    }
+  }
+}
