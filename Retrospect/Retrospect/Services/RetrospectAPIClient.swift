@@ -567,7 +567,7 @@ class RetrospectAPIClient: ObservableObject {
             if !isRetryAfterRefresh, let refresh = await MainActor.run(body: { Platform.Bridges.refreshLegacy }) {
                 switch await refresh() {
                 case .refreshed:
-                    return try await request(method: method, path: path, body: body, authenticated: authenticated, isRetryAfterRefresh: true)
+                    return try await self.request(method: method, path: path, body: body, authenticated: authenticated, isRetryAfterRefresh: true)
                 case .unavailable:
                     throw APIError.serverError("HTTP 401: the session couldn't be refreshed right now")
                 case .signedOut:
