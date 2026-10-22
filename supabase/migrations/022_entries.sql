@@ -29,8 +29,12 @@
 -- production by an agent.
 -- ============================================================================
 
--- Built without CONCURRENTLY (the hand-apply runs in a transaction; the
--- column is new, so the index is empty and the lock is brief).
+-- Building this index reads every existing raw_content row and holds a
+-- write-blocking lock on the table until the transaction commits. The hand-
+-- apply runs the file in one transaction, so apply it in a quiet window; or
+-- run this one statement on its own, outside a transaction, as
+--   CREATE UNIQUE INDEX CONCURRENTLY raw_content_client_entry_unique ... ;
+-- and then the rest of the file.
 CREATE UNIQUE INDEX IF NOT EXISTS raw_content_client_entry_unique
     ON raw_content (user_id, (metadata->>'client_entry_id'))
     WHERE metadata->>'client_entry_id' IS NOT NULL;
@@ -52,6 +56,15 @@ BEGIN
     SELECT time_zone INTO v_stored FROM users WHERE id = p_user;
     IF NOT FOUND THEN
         RETURN NULL;
+    END IF;
+    -- A header this Postgres doesn't know (an alias the door's Intl check
+    -- accepts, say) is never remembered: the stored zone stays.
+    IF p_zone IS NOT NULL THEN
+        BEGIN
+            PERFORM now() AT TIME ZONE p_zone;
+        EXCEPTION WHEN invalid_parameter_value THEN
+            p_zone := NULL;
+        END;
     END IF;
     IF p_zone IS NOT NULL AND p_zone IS DISTINCT FROM v_stored THEN
         UPDATE users SET time_zone = p_zone WHERE id = p_user;
