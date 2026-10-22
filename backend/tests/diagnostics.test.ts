@@ -13,7 +13,7 @@ import { createDiagnosticsStore, newReference, REPORT_TTL_DAYS, type Diagnostics
 import { REFERENCE_CONSTRAINT } from '../src/diagnostics/supabase-backend.js';
 import { asServiceRole, freshDatabase, insertUser } from './support/database.js';
 import { doorSuite } from './support/door-suite.js';
-import { startHarness } from './support/harness.js';
+import { startHarness, type Harness } from './support/harness.js';
 import { memoryDiagnostics } from './support/memory-diagnostics.js';
 
 const FIXTURES = join(__dirname, '..', '..', 'docs', 'team', 'contracts', 'fixtures', '00');
@@ -32,8 +32,14 @@ async function harness() {
   const mem = memoryDiagnostics();
   const store = createDiagnosticsStore(mem.backend, counterPick());
   const h = await startHarness({ diagnostics: store });
+  // Every send carries the report id as its Idempotency-Key, as the app does; a test overrides it.
+  const keyOf = (body: unknown) => {
+    const id = typeof body === 'object' && body !== null ? (body as { reportId?: unknown }).reportId : undefined;
+    const key: Record<string, string> = typeof id === 'string' ? { 'Idempotency-Key': id } : {};
+    return key;
+  };
   const send = (user: string, body: unknown, headers: Record<string, string> = {}) =>
-    h.request('POST', '/v2/diagnostics', body, { Authorization: `Bearer ${h.asUser(user)}`, ...headers });
+    h.request('POST', '/v2/diagnostics', body, { Authorization: `Bearer ${h.asUser(user)}`, ...keyOf(body), ...headers });
   return { h, mem, store, send };
 }
 
@@ -61,7 +67,7 @@ test('a report is stored under the sender, with counts, kept 30 days', async () 
     const [row] = [...mem.rows.values()];
     assert.equal(row!.user_id, ALICE);
     assert.equal(row!.storage_path, `${ALICE}/${report().reportId}.json`);
-    assert.deepEqual(row!.counts, { events: 5, requests: 2, failures: 1, crashes: 0, hasNote: true });
+    assert.deepEqual(row!.counts, { events: 5, requests: 2, failures: 1, crashes: 0, nulledEnvironment: 0, hasNote: true });
     assert.equal(Date.parse(row!.expires_at) - Date.parse(row!.created_at), REPORT_TTL_DAYS * 86_400_000);
     assert.deepEqual(JSON.parse(mem.files.get(row!.storage_path)!), report());
   } finally {
@@ -123,12 +129,6 @@ const STRING_PATHS: Array<(r: Record<string, any>) => void> = [
   (r) => { r.failures[0].code = WORDS; },
   (r) => { r.failures[0].screen = WORDS; },
   (r) => { r.performance.hitchRates[0].screen = WORDS; },
-  (r) => { r.environment.appVersion = WORDS; },
-  (r) => { r.environment.build = WORDS; },
-  (r) => { r.environment.osVersion = WORDS; },
-  (r) => { r.environment.deviceModel = WORDS; },
-  (r) => { r.environment.locale = WORDS; },
-  (r) => { r.environment.timeZone = WORDS; },
   (r) => { r.outbox.lastFailureCodes = [WORDS]; },
   (r) => { r.events[0].text = WORDS; },
   (r) => { r.environment.email = 'sam@example.com'; },
@@ -165,6 +165,7 @@ test('the report has exactly the agreed fields', () => {
 test('the door refuses words in a report, a key that is not the report id, and anything over 2 MB', async () => {
   const { h, mem, send } = await harness();
   try {
+    assert.equal((await send(ALICE, report(), { 'Idempotency-Key': '' })).status, 400, 'an empty key');
     const bad = structuredClone(report()) as Record<string, any>;
     bad.events[1].screen = WORDS;
     const words = await send(ALICE, bad);
@@ -185,7 +186,10 @@ test('a gzip-compressed report is accepted', async () => {
   try {
     const res = await fetch(`${h.url}/v2/diagnostics`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Authorization: `Bearer ${h.asUser(ALICE)}` },
+      headers: {
+        'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Authorization: `Bearer ${h.asUser(ALICE)}`,
+        'Idempotency-Key': String(report().reportId),
+      },
       body: gzipSync(JSON.stringify(report())),
     });
     assert.equal(res.status, 200);
@@ -204,7 +208,7 @@ test('the door log records the size and counts, never the report', async () => {
     assert.equal(all.includes('journal'), false);
     const line = h.logLines.map((l) => JSON.parse(l) as Record<string, unknown>).find((l) => l.door === 'diagnostics.create')!;
     assert.equal(line.sizeBytes, Buffer.byteLength(JSON.stringify(DiagnosticsReport.parse(report())), 'utf8'));
-    assert.deepEqual([line.events, line.requests, line.failures, line.crashes], [5, 2, 1, 0]);
+    assert.deepEqual([line.events, line.requests, line.failures, line.crashes, line.nulledFields], [5, 2, 1, 0, 0]);
   } finally {
     await h.close();
   }
@@ -249,6 +253,7 @@ test('a reference already in use is drawn again', async () => {
 doorSuite({
   method: 'POST',
   path: '/v2/diagnostics',
+  headers: { 'Idempotency-Key': String(report().reportId) },
   bucket: 'write',
   validBody: report(),
   invalid: { body: { ...report(), extra: true } },
@@ -415,5 +420,104 @@ test('migration 019 on a real Postgres: the reference constraint has the name th
     }
   } finally {
     await db.close();
+  }
+});
+
+test('a missing Idempotency-Key is invalid_request, as on every write door', async () => {
+  const { h, mem } = await harness();
+  try {
+    const res = await h.request('POST', '/v2/diagnostics', report(), { Authorization: `Bearer ${h.asUser(ALICE)}` });
+    assert.equal(res.status, 400);
+    assert.equal(code(res.body), 'invalid_request');
+    assert.equal(mem.rows.size, 0);
+  } finally {
+    await h.close();
+  }
+});
+
+test('a malformed environment field is stored as null, never refuses the report, and is counted in the log', async () => {
+  const { h, mem, send } = await harness();
+  try {
+    const r = structuredClone(report()) as Record<string, any>;
+    r.environment.locale = 'zh-Hans_CN@calendar=chinese';
+    r.environment.deviceModel = WORDS;
+    r.environment.dynamicType = 'enormous';
+    delete r.environment.timeZone;
+    const res = await send(ALICE, r);
+    assert.equal(res.status, 200);
+    const stored = JSON.parse([...mem.files.values()][0]!) as { environment: Record<string, unknown> };
+    assert.deepEqual(
+      [stored.environment.locale, stored.environment.deviceModel, stored.environment.dynamicType, stored.environment.timeZone],
+      [null, null, null, null],
+    );
+    assert.equal(JSON.stringify(stored).includes('walk'), false, 'the words are dropped, not kept');
+    assert.equal(stored.environment.appVersion, '1.0', 'good fields stay');
+    const line = h.logLines.map((l) => JSON.parse(l) as Record<string, unknown>).find((l) => l.door === 'diagnostics.create')!;
+    assert.equal(line.nulledFields, 4);
+    const extra = structuredClone(report()) as Record<string, any>;
+    extra.environment.email = 'sam@example.com';
+    assert.equal((await send(ALICE, { ...extra, reportId: '00000000-0000-4000-8000-0000000000c1' })).status, 400, 'an unknown field is still refused');
+  } finally {
+    await h.close();
+  }
+});
+
+test('a failure with no screen is a background failure; a request with no retries count is zero retries', () => {
+  const r = structuredClone(report()) as Record<string, any>;
+  delete r.failures[0].screen;
+  delete r.network[0].retries;
+  delete r.network[0].idempotency;
+  const parsed = DiagnosticsReport.safeParse(r);
+  assert.equal(parsed.success, true);
+});
+
+test('every timestamp is UTC with a Z; an offset is refused', () => {
+  for (const put of [
+    (r: Record<string, any>) => { r.createdAt = '2026-10-22T09:30:00.000+02:00'; },
+    (r: Record<string, any>) => { r.events[0].t = '2026-10-22T09:20:00-07:00'; },
+    (r: Record<string, any>) => { r.network[0].t = '2026-10-22 09:20:02'; },
+  ]) {
+    const r = structuredClone(report()) as Record<string, any>;
+    put(r);
+    assert.equal(DiagnosticsReport.safeParse(r).success, false);
+  }
+});
+
+/** A raw POST, so the body can be chunked (no Content-Length) or gzipped. */
+async function rawPost(h: Harness, body: Buffer, headers: Record<string, string>) {
+  const { request } = await import('node:http');
+  const target = new URL(`${h.url}/v2/diagnostics`);
+  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const req = request({ host: target.hostname, port: target.port, path: target.pathname, method: 'POST', headers }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.on('error', reject);
+    // Written in pieces: Node sends Transfer-Encoding: chunked when no length is set.
+    for (let i = 0; i < body.length; i += 64 * 1024) req.write(body.subarray(i, i + 64 * 1024));
+    req.end();
+  });
+}
+
+test('the 2 MB cap holds for chunked and gzipped bodies, not only a declared length', async () => {
+  const { h, mem } = await harness();
+  try {
+    const oversize = Buffer.from(JSON.stringify(report()) + ' '.repeat(2 * 1024 * 1024 + 1), 'utf8');
+    const headers = {
+      'Content-Type': 'application/json', Authorization: `Bearer ${h.asUser(ALICE)}`, 'Idempotency-Key': String(report().reportId),
+    };
+    const chunked = await rawPost(h, oversize, headers);
+    assert.equal(chunked.status, 400);
+    assert.equal((JSON.parse(chunked.body) as { error: { code: string } }).error.code, 'invalid_request');
+    const zipped = gzipSync(oversize);
+    assert.ok(zipped.length < 100_000, 'small on the wire');
+    const gz = await rawPost(h, zipped, { ...headers, 'Content-Encoding': 'gzip' });
+    assert.equal(gz.status, 400, 'unpacked past 2 MB');
+    const fits = await rawPost(h, Buffer.from(JSON.stringify(report()), 'utf8'), headers);
+    assert.equal(fits.status, 200, 'a report under the cap, chunked, is fine');
+    assert.equal(mem.rows.size, 1);
+  } finally {
+    await h.close();
   }
 });

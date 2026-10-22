@@ -21,7 +21,7 @@ import type { AgentDoorClient } from './doors/agent.js';
 import { createDoorKit, type DoorFactory } from './doors/door.js';
 import { v2ErrorHandler } from './doors/errors.js';
 import { MemoryLimiter, type Limiter } from './doors/limits.js';
-import { createV2Router, type V2RouterDeps } from './doors/router.js';
+import { createV2Router, MAX_REPORT_BYTES, type V2RouterDeps } from './doors/router.js';
 import type { DiagnosticsStore } from './diagnostics/store.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
@@ -80,6 +80,8 @@ export function createApp(deps: AppDeps): express.Express {
     },
   }));
   app.use(cors());
+  // Diagnostics reports have their own cap (2 MB, after gzip), parsed before the general 10 MB one.
+  app.use('/v2/diagnostics', express.json({ limit: MAX_REPORT_BYTES }));
   app.use(express.json({ limit: '10mb' }));
 
   // Rate limiting by IP, except /health and /v2 (doors limit per user)

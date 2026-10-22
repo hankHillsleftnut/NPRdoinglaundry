@@ -21,12 +21,16 @@ const control = z.enum(DIAGNOSTIC_CONTROLS);
 const failureKind = z.enum(DIAGNOSTIC_FAILURES);
 /** A route template from the server's closed list (`/v2/entries/:id`), never a route with real ids. */
 const routeTemplate = z.enum(V2_ROUTE_TEMPLATES);
+/** UTC with a Z, e.g. 2026-10-22T09:30:00.000Z; an offset is refused. */
 const at = z.string().datetime();
+/** A value that fails its check (or is missing) becomes null; never a refusal, never stored as sent. */
+const lenient = <T extends z.ZodTypeAny>(schema: T) => schema.nullable().catch(null);
 const count = z.number().int().min(0).max(1_000_000);
 const ms = z.number().int().min(0).max(24 * 60 * 60 * 1000);
 const errorCode = z.enum(DOOR_ERROR_CODES as [string, ...string[]]);
 
 export const MAX_EVENTS = 2000;
+
 export const MAX_NOTE_CHARS = 1000;
 
 const event = z.object({
@@ -53,11 +57,14 @@ const request = z.object({
   status: z.number().int().min(0).max(599),
   code: errorCode.optional(),
   ms,
-  retries: z.number().int().min(0).max(20),
+  /** Absent means 0. */
+  retries: z.number().int().min(0).max(20).optional(),
+  /** Omitted until the door kit signals replays. */
   idempotency: z.enum(['new', 'replayed']).optional(),
 }).strict();
 
-const failure = z.object({ t: at, code: failureKind, screen }).strict();
+/** `screen` is absent for a failure in the background (the outbox, a sync). */
+const failure = z.object({ t: at, code: failureKind, screen: screen.optional() }).strict();
 
 const crash = z.object({ t: at, kind: z.enum(['crash', 'hang']) }).strict();
 
@@ -67,18 +74,23 @@ export const DiagnosticsReport = z.object({
   createdAt: at,
   /** The only free text: "what happened?", written for us on purpose. */
   note: z.string().max(MAX_NOTE_CHARS).nullable(),
+  /**
+   * The device: every field is nullable, and a value that fails its check is
+   * stored as null instead of refusing the report (a new OS or device model
+   * must never lose a tester's report). The door log counts the nulls.
+   */
   environment: z.object({
-    appVersion: z.string().regex(/^\d{1,4}(\.\d{1,4}){0,2}$/),
-    build: z.string().regex(/^\d{1,8}(\.\d{1,8}){0,2}$/),
-    osVersion: z.string().regex(/^\d{1,3}(\.\d{1,3}){0,2}$/),
-    deviceModel: z.string().regex(/^[A-Za-z]{1,16}\d{0,3}(,\d{1,3})?$/),
-    locale: z.string().regex(/^[a-z]{2,3}(_[A-Z]{2})?$/),
-    timeZone: z.string().regex(/^[A-Za-z_]{1,32}(\/[A-Za-z_+-]{1,32}){0,2}$/),
-    dynamicType: z.enum(['xSmall', 'small', 'medium', 'large', 'xLarge', 'xxLarge', 'xxxLarge', 'ax1', 'ax2', 'ax3', 'ax4', 'ax5']),
-    reduceMotion: z.boolean(),
-    voiceOver: z.boolean(),
-    network: z.enum(['wifi', 'cellular', 'wired', 'none', 'unknown']),
-    freeDisk: z.enum(['under_1gb', '1_to_5gb', '5_to_20gb', 'over_20gb']),
+    appVersion: lenient(z.string().regex(/^\d{1,4}(\.\d{1,4}){0,2}$/)),
+    build: lenient(z.string().regex(/^\d{1,8}(\.\d{1,8}){0,2}$/)),
+    osVersion: lenient(z.string().regex(/^\d{1,3}(\.\d{1,3}){0,2}$/)),
+    deviceModel: lenient(z.string().regex(/^[A-Za-z]{1,16}\d{0,3}(,\d{1,3})?$/)),
+    locale: lenient(z.string().regex(/^[a-z]{2,3}(_[A-Z]{2})?$/)),
+    timeZone: lenient(z.string().regex(/^[A-Za-z_]{1,32}(\/[A-Za-z_+-]{1,32}){0,2}$/)),
+    dynamicType: lenient(z.enum(['xSmall', 'small', 'medium', 'large', 'xLarge', 'xxLarge', 'xxxLarge', 'ax1', 'ax2', 'ax3', 'ax4', 'ax5'])),
+    reduceMotion: lenient(z.boolean()),
+    voiceOver: lenient(z.boolean()),
+    network: lenient(z.enum(['wifi', 'cellular', 'wired', 'none', 'unknown'])),
+    freeDisk: lenient(z.enum(['under_1gb', '1_to_5gb', '5_to_20gb', 'over_20gb'])),
   }).strict(),
   account: z.object({
     provider: z.enum(['apple', 'google']),
@@ -112,6 +124,8 @@ export function countsOf(report: DiagnosticsReport) {
     requests: report.network.length,
     failures: report.failures.length,
     crashes: report.crashes.length,
+    /** Environment fields stored as null because they failed their check (or were absent). */
+    nulledEnvironment: Object.values(report.environment).filter((v) => v === null).length,
     hasNote: report.note !== null && report.note.trim() !== '',
   };
 }

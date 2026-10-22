@@ -6,7 +6,7 @@
  * which is free text:
  *   - numbers are numbers (non-finite becomes null), including the size and
  *     counts a door may add (`sizeBytes`, `events`, `requests`, `failures`,
- *     `crashes`); `reuse` is written only as `true`;
+ *     `crashes`, `nulledFields`); `reuse` is written only as `true`;
  *   - `code` must be one of the contract's error codes (a closed list);
  *   - `userId` must be a UUID, or null on public doors (sign-in, waitlist);
  *   - `appVersion` must be digits and dots, like `1.0 (42)`;
@@ -50,17 +50,20 @@ export interface DoorLogLine {
   requests?: number;
   failures?: number;
   crashes?: number;
+  /** How many fields of a stored report were dropped as malformed (diagnostics). */
+  nulledFields?: number;
   /** auth.refresh only: a rotated refresh token was used again (a possible stolen copy). Written only when true. */
   reuse?: boolean;
 }
 
 /** The numeric size and count fields a door may add to its line (DoorSpec.logCounts). */
-export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes'>;
-export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes'] as const;
+export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes' | 'nulledFields'>;
+export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields'] as const;
 
 /** The only fields a door log line can have, in output order. */
 export const DOOR_LOG_FIELDS = [
-  'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'reuse',
+  'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields',
+  'reuse',
 ] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.
