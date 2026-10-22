@@ -56,15 +56,8 @@ struct LogTests {
         }
     }
 
-    /// Every String, Substring, Character, URL or Data anywhere inside `value`,
-    /// through enums, structs, optionals and collections.
     private static func contentValues(in value: Any) -> [Any] {
-        switch value {
-        case is String, is Substring, is Character, is URL, is NSString, is NSURL, is Data, is NSData:
-            return [value]
-        default:
-            return Mirror(reflecting: value).children.flatMap { contentValues(in: $0.value) }
-        }
+        ContentCheck.values(in: value)
     }
 }
 
@@ -82,12 +75,13 @@ extension Platform.Log.Event {
             case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
             case .installChecked: .installChecked(.wipedLeftovers)
             case .installCheckFailed: .installCheckFailed(status: -25308)
+            case .diagnosticsWriteFailed: .diagnosticsWriteFailed
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, installChecked, installCheckFailed
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, installChecked, installCheckFailed, diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
@@ -99,6 +93,7 @@ extension Platform.Log.Event {
         case .launchOptionIgnored: .launchOptionIgnored
         case .installChecked: .installChecked
         case .installCheckFailed: .installCheckFailed
+        case .diagnosticsWriteFailed: .diagnosticsWriteFailed
         }
     }
 }
