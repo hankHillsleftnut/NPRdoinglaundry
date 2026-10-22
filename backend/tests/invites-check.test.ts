@@ -312,9 +312,18 @@ test('migration 021 numbers existing invites in creation order and keeps serials
       made.push(hashCode(c));
       await old.query(`INSERT INTO invites (code_hash, kind, created_at) VALUES ($1, 'founder', $2)`, [hashCode(c), `2026-10-${day}T12:00:00.000Z`]);
     }
+    // One was redeemed before the migration: it gets the UTC date of its use.
+    const redeemer = await insertUser(old);
+    await old.query(`UPDATE invites SET used_by_user_id = $1, used_at = '2026-10-05T23:30:00.000Z' WHERE code_hash = $2`, [redeemer, made[0]]);
     await applyMigration(old, '021_invite_serial.sql');
-    const { rows } = await old.query<{ code_hash: string; serial: number }>(`SELECT code_hash, serial::int AS serial FROM invites ORDER BY created_at`);
-    assert.deepEqual(rows, [{ code_hash: made[1], serial: 1 }, { code_hash: made[2], serial: 2 }, { code_hash: made[0], serial: 3 }]);
+    const { rows } = await old.query<{ code_hash: string; serial: number; redeemed_on: string | null }>(
+      `SELECT code_hash, serial::int AS serial, redeemed_on::text AS redeemed_on FROM invites ORDER BY created_at`);
+    assert.deepEqual(rows, [
+      { code_hash: made[1], serial: 1, redeemed_on: null }, { code_hash: made[2], serial: 2, redeemed_on: null }, { code_hash: made[0], serial: 3, redeemed_on: '2026-10-05' },
+    ]);
+    const replay = await old.query<{ r: { outcome: string; serial: number; redeemed_on: string } }>(
+      `SELECT redeem_invite($1, $2, now(), '{}', '{}', NULL, current_date) AS r`, [redeemer, made[0]]);
+    assert.deepEqual(replay.rows[0]!.r, { outcome: 'redeemed', invited_by: null, serial: 3, redeemed_on: '2026-10-05' }, "a pre-migration redeemer's retry has a date");
     const next = await old.query<{ serial: number }>(`INSERT INTO invites (code_hash, kind) VALUES ($1, 'review') RETURNING serial::int AS serial`, [hashCode(nextCode())]);
     assert.equal(next.rows[0]!.serial, 4, 'the sequence continues after the backfill');
     await assert.rejects(old.query(`INSERT INTO invites (code_hash, kind, serial) VALUES ($1, 'review', 4)`, [hashCode(nextCode())]), (e: { code?: string }) => e.code === '23505');

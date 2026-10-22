@@ -42,6 +42,10 @@ UPDATE invites i
   FROM (SELECT id, row_number() OVER (ORDER BY created_at, id) AS n FROM invites) numbered
  WHERE i.id = numbered.id AND i.serial IS NULL;
 SELECT setval('invite_serial_seq', COALESCE((SELECT max(serial) FROM invites), 0) + 1, false);
+-- Invites redeemed before this migration get the UTC date of their use, so a
+-- redeemer's own retry still answers with a date (no zone was recorded then).
+UPDATE invites SET redeemed_on = (used_at AT TIME ZONE 'UTC')::date
+ WHERE used_by_user_id IS NOT NULL AND redeemed_on IS NULL AND used_at IS NOT NULL;
 ALTER TABLE invites ALTER COLUMN serial SET DEFAULT nextval('invite_serial_seq');
 ALTER TABLE invites ALTER COLUMN serial SET NOT NULL;
 ALTER SEQUENCE invite_serial_seq OWNED BY invites.serial;
