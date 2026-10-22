@@ -20,7 +20,7 @@ struct NonceTests {
         let nonce = try Session.Nonce.make { count in (0 ..< count).map { _ in 0xFB } }
 
         #expect(nonce.raw.count == 43)
-        #expect(nonce.raw == String(repeating: "-_v", count: 14) + "-w")
+        #expect(nonce.raw == String(repeating: "-_v7", count: 10) + "-_s")
         #expect(Session.Nonce.base64URL([0xFB, 0xFF]) == "-_8")
         let real = try Session.Nonce.make()
         #expect(real.raw.count == 43)
