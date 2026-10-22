@@ -56,15 +56,26 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: [self-hosted, macOS, retrospect]  # the first runner only: one iOS build at a time
+    # Any Mac runner labelled `retrospect`: each one has its own simulator named `ci`, its own
+    # derived data, and runs one iOS build at a time.
+    runs-on: [self-hosted, macOS, retrospect]
     steps:
       - uses: actions/checkout@v4
-      # Builds the app and runs the Platform test plan (contract fixtures, Platform units) on
-      # CI's own simulator: the engineers keep agent-a and agent-b. CI doesn't create simulators.
-      # Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so each run is an
-      # incremental build, not a clean one. Delete the folder by hand if a build ever goes stale.
+      # Packages come from Package.resolved (pinned). On a fresh machine this fills the derived
+      # data's SourcePackages once; after that it's a no-op, and the test step never resolves.
       - run: >-
-          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect
-          -testPlan Platform -destination 'platform=iOS Simulator,id=2E876B5C-E345-44BC-A7D5-236837088B31'
-          -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution
-          CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+          xcodebuild -resolvePackageDependencies -project Retrospect/Retrospect.xcodeproj
+          -scheme Retrospect -derivedDataPath "$HOME/actions-runner/dd-ci"
+      # Builds the app and runs the Platform test plan (contract fixtures, Platform units) on
+      # the runner's own simulator, `ci` (the engineers keep agent-a and agent-b; CI doesn't create
+      # simulators). Derived data lives outside $RUNNER_TEMP (which the runner wipes per job), so
+      # each run is an incremental build. Delete the folder by hand if a build ever goes stale.
+      # The `ci` simulator is found by name and addressed by id: a bare `name=` would also pin
+      # the newest installed iOS, and the device may run an older one.
+      - run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.name=="ci") | .udid' | head -1)
+          test -n "$udid" || { echo "no simulator named ci on this runner (xcrun simctl create ci \"iPhone 17 Pro\")"; exit 1; }
+          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect \
+            -testPlan Platform -destination "platform=iOS Simulator,id=$udid" \
+            -configuration Debug -derivedDataPath "$HOME/actions-runner/dd-ci" -disableAutomaticPackageResolution \
+            COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
