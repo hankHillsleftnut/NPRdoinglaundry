@@ -8,41 +8,43 @@ Order: BE1.1 → BE1.5 → BE1.5b → BE1.6 (needs BEA.2) → BE1.7 (needs BEA.1
 
 ### BE1.1 · Sending into your bank                                         size: M
 Place in the tree: journal › sending › `POST /v2/entries`, `GET /v2/entries/today`
-Repo · branch: backend · `be/BE1.1-entries-send`
+Repo · branch: backend · `be/BE1.1-entries`
 Needs: BE0.0, BE0.1, BE0.2, BE0.12      Unblocks: PL2.2's live target, PL3.1, P09
 
 Why: everything you type or say in the journal lands in your bank exactly once, even when you were offline when you sent it.
 
 Inputs:
-- Contract: 02 §2, §5 (`Entry`)
+- Contract: 02 §2, §5 (`Entry`); the integrator's contract pass (`retrospect-handover/contracts/BE1.1-BE1.5.md`, 22 Oct), whose leans this card now carries
 - Reference: backend-reference §10 (`POST /content`, `insertRawContent`, dedup), §9 (raw_content columns); agent-api-reference §10.1 (content types, "sent by the person" set at `src/planner/daily.ts:22`)
-- Code anchors: `src/services/content-insert.ts:65-109`, `src/services/dedup-key.ts` (`deriveDedupKey`), `src/services/agent-handoff.ts`, `src/services/agent-client.ts` (`runAgentIngest`)
+- Code anchors: `src/entries/doors.ts`, `src/entries/store.ts`, `supabase/migrations/022_entries.sql`, `src/services/content-insert.ts` (`requestHash`), `src/services/agent-handoff.ts` (`handOffToAgent`), `src/doors/agent.ts` (the door's agent client; `app.ts` builds the default `startIngest` with it)
 
-Spec:
-- Request (zod): `text` string, trimmed, 1–20,000 characters; `kind` `'typed' | 'voice'`; `clientEntryId` UUID; `createdAt` ISO datetime, not more than 5 minutes in the future (clock skew), not older than 30 days (offline backlog). Header `Idempotency-Key` required and equal to `clientEntryId` (else `invalid_request`).
-- Write: `insertRawContent` with `content_type` `journal_entry` (typed) or `voice_journal` (voice), `content_date = createdAt`, `metadata = { client_entry_id, request_hash, app_version }`, `processing_status 'pending'`, `idempotencyKey = clientEntryId`, `timeZone` from the user's stored time zone (so the human-content dedup day is the local day, `dedup-key.ts` `localDay`).
-- New row → hand off to ingest exactly like `/content` (`setImmediate(() => handOffToAgent(runAgentIngest, { userId, rawContentIds: [id] }))`); respond **201** `{ entry }`. Replay → **200** `{ entry }` (the stored row), no second ingest. Same key, different body → 409 `idempotency_mismatch` (BE0.0).
-- `GET /v2/entries/today`: the person's own entries (`content_type` in the "sent by the person" set) whose `content_date` (else `created_at`) falls in today in the user's time zone, oldest first, max 200.
-- Mapping to `Entry`: `kind` per contract 02 §5; `reading` from `processing_status`; `day` computed in the user's zone; `clientEntryId` from `metadata.client_entry_id`.
-- Bucket `write`; log: door, userId, status, ms (never the text).
+Spec (as built):
+- Migration `022_entries.sql`: a unique partial index on `(user_id, metadata->>'client_entry_id')`, whatever the content type (the agent's dedup key is per type, F1); `resolve_zone` (the request's `X-Time-Zone` wins and is stored on `users.time_zone` when it changes, else the stored zone, else UTC, F2); `entry_create` (insert once; a replay is the stored row; the same key with another fingerprint is a mismatch); `entries_today`. The functions never read `raw_content.embedding`.
+- Request (zod, strict): `text` trimmed, 1–20,000 UTF-16 code units; `kind` `'typed' | 'voice'`; `clientEntryId` UUID; `createdAt` ISO datetime, UTC with a `Z` (an offset is `invalid_request`). Header `Idempotency-Key` required and equal to `clientEntryId`, lowercased both sides (else `invalid_request`).
+- `createdAt`: no floor (an old offline entry is never thrown away, F3); more than 5 minutes ahead of the server is clamped to the server's now and counted in the door log (`clockSkew: 1`), never refused; within 5 minutes it is kept as sent.
+- Write: `content_type` `journal_entry` (typed) or `voice_journal` (voice), `content_date = createdAt` (clamped), `metadata = { client_entry_id, request_hash, app_version }`, `processing_status 'pending'`, `created_at = now`. `request_hash` = `requestHash(contentType, text)`: **kind + trimmed text, never `createdAt`**, so a clamped retry is still a replay.
+- New row → **201** `{ entry }` and the hand-off to ingest after the response (`startIngest`, injected; the server's default in `app.ts` is `setImmediate(() => handOffToAgent(…))` posting `/ingest/run` with `rawContentIds: [id]` through the door's agent client, `retry: 'none'`, so it can never write the row's status and a brain that is down leaves the row pending for its next sweep). Replay → **200** `{ entry }` (the stored row, same bytes), no second ingest. Same key, different fingerprint → **409** `idempotency_mismatch`, nothing stored.
+- `GET /v2/entries/today`: the person's own entries (`SENT_TYPES` in `entries/doors.ts`, the agent's "sent by the person" set, passed to SQL) whose `coalesce(content_date, created_at)` falls on today's calendar day in the resolved zone, oldest first (ties by id), max 200; `date` is that day. `video_entry` isn't in the agent's set, so old video notes never show (accepted for Beta 1).
+- Mapping to `Entry`: `kind` per contract 02 §5 with a default of `imported`; `reading` from `processing_status` (null → `waiting`); `day` in the resolved zone; `clientEntryId` from `metadata.client_entry_id`, omitted when absent.
+- Buckets: create `write`, today `read`; neither open to waitlisted people. Log: door, userId, status, ms, `clockSkew` (never the text or an id).
 
 Acceptance:
 - One send = one row and one ingest; ten retries with the same key = still one row and one ingest.
 - An offline backlog of entries sent in order arrives with their original `createdAt`.
 - `today` shows the person's entries and nothing from records, mail or other people.
 
-Tests (door suite, plus):
-- `a send creates one entry and starts one read`
-- `retrying a send returns the same entry and starts no second read`
-- `a reused key with different text is idempotency_mismatch`
-- `an entry dated in the future beyond five minutes is refused`
-- `today follows the person's time zone, not UTC` (a user in UTC−8 at 23:30 local)
-- `today never lists calendar, mail or another person's items`
-- fixtures: `entry.create.response.json`, `entries.today.json`, `entries.today.empty.json` validate against the output schema.
+Tests (door suite, plus; * = fails when its rule is removed), `backend/tests/entries.test.ts`, `entries-doors.test.ts`, `contract-02-fixtures.test.ts`:
+- `a send creates one row and one ingest, in the shape of the contract fixture`
+- `ten retries with the same key make one row and one ingest` (incl. two at once, and an upper-case key)
+- `the same key with different text, or a different kind, is idempotency_mismatch` *
+- `a future createdAt is clamped to now and counted, not refused` * · `the Idempotency-Key must be present and equal to clientEntryId; the body is strict`
+- `today follows X-Time-Zone, not UTC, and stores the zone` * (UTC−8 at 23:30) · `today never lists calendar, mail or another person's rows, and equals the contract fixture` *
+- `today lists every kind the person sends, maps the rest to imported, and stops at the cap`
+- fixtures: every `fixtures/02/entr*.json` validates against the output or request schema.
 
-Proof: test output; a local-staging run creating an entry and seeing it in `today` (counts only).
+Proof: test output; one safety test shown failing with its rule removed.
 
-Watch out: don't route through `POST /content` internally (its responses and side effects are the old app's); share `insertRawContent`. `createdAt` is the person's moment, not the server's.
+Watch out: don't route through `POST /content` internally (its responses and side effects are the old app's). `createdAt` is the person's moment, not the server's. Before applying 022 by hand: no two rows of one user may share `metadata->>'client_entry_id'` (nothing on main writes that field yet).
 
 ---
 
@@ -128,15 +130,22 @@ Watch out: the dial is the founder's (D11); never flip it in code or migrations.
 
 ### BE1.5 · Entry history and one entry                                     size: M
 Place in the tree: journal › entries › `GET /v2/entries`, `GET /v2/entries/:id`
-Repo · branch: backend · `be/BE1.5-entry-history`
+Repo · branch: backend · `be/BE1.5-entry-history` (stacked on BE1.1)
 Needs: BE1.1      Unblocks: C31, P11, P12
 
-Spec:
-- `GET /v2/entries?cursor=&limit=50&q=`: own words only (the "sent by the person" set), newest first; cursor = base64 of `(coalesce(content_date, created_at), id)`; `q` (1–100 chars): case-insensitive `ilike` with `%`, `_` and `\` escaped; each result carries `matches: [{ start, length }]` computed in the door (case-insensitive, all occurrences, on the returned text); `limit` ≤ 100.
-- `GET /v2/entries/:id`: ownership (`raw_content.user_id`), else `not_found`.
-- Project columns explicitly (never `select('*')`: `raw_content.embedding` is 3,072 floats).
+Spec (as built; the integrator's contract pass §1.5–§1.6):
+- Migration `023_entry_history.sql`: `entry_fields_json` over named columns (never a whole `raw_content` row: the agent's migrations put a 3,072-float embedding on it); `entries_today` redefined on it; `entries_list` (own words, newest first, keyset strictly before `(moment in microseconds, id)`, `ILIKE` with the door's pattern); `entry_get` (the caller's own row of a sent type, else null).
+- `GET /v2/entries?cursor=&limit=50&q=`: strict query. `cursor` = base64url of `<microseconds>|<id>`, opaque to the app (a cursor that doesn't decode is `invalid_request`; the app starts over). `limit` 1–100, default 50. A **full page carries the cursor of its last entry; a short page is the end** (so the page after the last full one may be empty, `{ entries: [], nextCursor: null }`, which the app treats as the end too). `q` 1–100 characters, case-insensitive `ILIKE` with `%`, `_` and `\` escaped; each result carries `matches: [{ start, length }]` computed in the door on the returned text: every non-overlapping occurrence, in **UTF-16 code units** (a range can run past the end for a script whose lower-casing changes length; the app drops it).
+- `GET /v2/entries/:id`: the caller's own entry of a sent type, else `not_found` (another person's, a record of your own, an id that isn't there: all the same); a malformed id is `invalid_request`.
+- `PATCH` and `DELETE /v2/entries/:id` are **BE1.5b, after Beta 1**: a delete must take everything read from the entry with it, which needs the brain's forget route (pass F11–F13).
 
-Tests: door suite · `search escapes wildcards` (searching "50%" finds only that) · `match ranges point at the right words` · `paging never repeats or skips an entry` (entries with equal timestamps) · `another person's entry is not found` · fixtures `entries.list.json`, `entries.search.json`, `entry.json`.
+Tests (door suite, plus; * = fails when its rule is removed), `backend/tests/entries-history.test.ts`:
+- `the list, its last page, search and one entry equal the contract fixtures exactly`
+- `paging never repeats or skips an entry, even with equal timestamps` * (7 rows at one instant; a new entry mid-walk shifts nothing)
+- `search escapes % _ and \, matches every occurrence case-insensitively, and reports UTF-16 ranges` *
+- `a malformed cursor, limit or q is invalid_request; the default page is 50 and the ceiling 100`
+- `another person's entry is not_found on get, as is a record of your own and an id that isn't there` *
+- fixtures: `entries.list.json`'s cursor is opaque and names its last entry (F8); `entries.search.astral.json` (F9) is mapped in the app's `ContractFixtureTests` with a UTF-16 assertion.
 
 ---
 

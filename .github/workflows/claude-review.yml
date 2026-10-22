@@ -1,0 +1,44 @@
+name: claude review
+# An automated review of every PR, billed to the founder's Anthropic API account (the
+# ANTHROPIC_API_KEY repo secret), separate from the team's Claude plan. Switched on by the repo
+# variable CLAUDE_REVIEW=true; without it the workflow does nothing, so this file is safe before
+# the secret exists. It reports real problems only; it never merges or changes code.
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  review:
+    if: vars.CLAUDE_REVIEW == 'true' && github.event.pull_request.draft == false
+    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
+    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--max-turns 25'
+          prompt: |
+            You are the automated reviewer for this pull request in Retrospect (a SwiftUI iOS app with a Node backend). Read `docs/team/prototype-mode.md`, `docs/team/first-push-checklist.md` and the relevant contract under `docs/team/contracts/` first, then the PR's diff (`gh pr diff ${{ github.event.pull_request.number }}`).
+
+            Report only real problems, as one PR comment, each with file:line:
+            - correctness bugs and unhandled failure paths;
+            - safety: one person's data reachable by another (every door and query must be scoped by user), secrets or tokens in code or logs, personal content (entry text, names, emails) in logs, fixtures or analytics;
+            - hollow tests: a safety test that would still pass if the rule it protects were removed;
+            - the outbox losing or duplicating an entry; sign-in or session handling that can sign someone out or let a revoked token through;
+            - a fixture added under `docs/team/contracts/fixtures/00` or `02` without a mapping in the app's `ContractFixtureTests`.
+            Then a short list of nits (style, naming, small inefficiencies), clearly marked as nits.
+            End with one line: "no blocking findings" or "N blocking findings". Do not change code, do not approve, do not merge.
