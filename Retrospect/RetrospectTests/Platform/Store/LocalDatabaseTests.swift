@@ -39,8 +39,8 @@ struct LocalDatabaseTests {
         FileManager.default.temporaryDirectory.appendingPathComponent("store-\(UUID().uuidString)", isDirectory: true)
     }
 
-    @Test("v1 creates every table and index")
-    func v1CreatesEveryTableAndIndex() throws {
+    @Test("the migrations create every table and index")
+    func theMigrationsCreateEveryTableAndIndex() throws {
         let database = try Store.LocalDatabase.inMemory()
 
         let names = try database.writer.read { try String.fetchSet(
@@ -49,8 +49,8 @@ struct LocalDatabaseTests {
         ) }
 
         #expect(names == [
-            "meta", "entries", "outbox", "cached_documents",
-            "entries_day_created", "entries_sync_state", "outbox_status_next", "outbox_entity",
+            "meta", "entries", "outbox", "cached_documents", "diagnostics",
+            "entries_day_created", "entries_sync_state", "outbox_status_next", "outbox_entity", "diagnostics_ring",
         ])
     }
 
@@ -182,8 +182,8 @@ struct LocalDatabaseTests {
         #expect(values.contains { $0.count == 64 })
     }
 
-    @Test("erase leaves an empty v1 database")
-    func eraseLeavesAnEmptyV1Database() throws {
+    @Test("erase leaves an empty database with the schema in place")
+    func eraseLeavesAnEmptyDatabase() throws {
         let database = try Store.LocalDatabase.inMemory()
         try database.writer.write { try entry().insert($0) }
 
@@ -200,7 +200,7 @@ struct LocalDatabaseTests {
 
         let tables = try database.writer.read { try Store.LocalDatabase.dataTables($0) }
 
-        #expect(tables == ["cached_documents", "entries", "outbox"])
+        #expect(tables == ["cached_documents", "diagnostics", "entries", "outbox"])
     }
 
     @Test("erase empties a table a later migration adds")

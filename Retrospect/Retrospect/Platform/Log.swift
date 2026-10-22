@@ -33,6 +33,8 @@ extension Platform.Log {
         case installCheckFailed(status: OSStatus)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
+        /// A batch of diagnostics couldn't be written; it was dropped.
+        case diagnosticsWriteFailed
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -49,19 +51,30 @@ extension Platform.Log {
             case let .outboxDrained(sent, failed):
                 logger.info("outbox drained: sent \(sent), failed \(failed)")
             case let .requestSent(path, status, ms):
-                switch path {
-                case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
-                }
+                recordRequest(path, status: status, ms: ms)
             case let .unknownErrorCode(path):
-                switch path {
-                case .meta: logger.error("unknown error code from /v2/meta")
-                }
+                recordUnknownErrorCode(path)
             case let .launchOptionIgnored(problem):
                 record(problem)
             case let .installChecked(check):
                 record(check)
             case let .installCheckFailed(status):
                 logger.error("install check failed: keychain status \(status)")
+            case .diagnosticsWriteFailed:
+                logger.error("diagnostics: a batch couldn't be written, dropped")
+            }
+        }
+
+        /// One fixed line per door: the template is never interpolated.
+        private func recordRequest(_ path: Backend.PathTemplate, status: Int, ms: Int) {
+            switch path {
+            case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+            }
+        }
+
+        private func recordUnknownErrorCode(_ path: Backend.PathTemplate) {
+            switch path {
+            case .meta: logger.error("unknown error code from /v2/meta")
             }
         }
 
