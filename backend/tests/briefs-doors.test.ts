@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test, { before } from 'node:test';
 import express from 'express';
-import { freshDatabase, type PGlite } from './support/database.js';
+import { applyMigration, freshDatabase, type PGlite } from './support/database.js';
 import { createAgentBriefTables } from './support/agent-tables.js';
 import { pgliteQuery } from './support/pglite-query.js';
 import { doorSuite } from './support/door-suite.js';
@@ -147,6 +147,36 @@ test('latest is null while the switch is off, even with a row', async () => {
   assert.deepEqual(data(res.body), { brief: null, enabled: false, nextAt: null });
   await setSwitch(p.id, true);
   assert.notEqual(data<{ brief: unknown }>((await get('/v2/briefs/latest', p.auth)).body).brief, null);
+});
+
+test('a fresh person is switched on without doing anything, and switching off sticks (founder, 22 Oct; migration 026) (*)', async () => {
+  // Created the way sign-in creates a person: nothing says anything about the brief.
+  const id = `33333333-3333-4333-8333-${String(++uid).padStart(12, '0')}`;
+  await db.query(`INSERT INTO users (id, apple_user_id) VALUES ($1, $2)`, [id, `apple-${id}`]);
+  const auth = { Authorization: `Bearer ${h.asUser(id)}` };
+  assert.deepEqual(data(( await get('/v2/briefs/latest', auth)).body), { brief: null, enabled: true, nextAt: null }, 'on by default');
+  assert.deepEqual(data((await h.request('PUT', '/v2/briefs/enabled', { enabled: false }, auth)).body), { enabled: false });
+  assert.equal(data<{ enabled: boolean }>((await get('/v2/briefs/latest', auth)).body).enabled, false, 'off once they say so');
+  await insertBrief(id);
+  assert.equal(data<{ brief: unknown }>((await get('/v2/briefs/latest', auth)).body).brief, null, 'and a brief made meanwhile stays hidden');
+});
+
+test('migration 026 switches on everyone who existed before it, and new people after it', async () => {
+  const old = await freshDatabase({ before: '026_brief_on_by_default.sql' });
+  try {
+    await createAgentBriefTables(old);
+    const before = (await old.query<{ id: string }>(`INSERT INTO users (apple_user_id) VALUES ('apple-before-026') RETURNING id`)).rows[0]!.id;
+    assert.equal((await old.query<{ on: boolean }>(`SELECT daily_brief_enabled AS "on" FROM users WHERE id = $1`, [before])).rows[0]!.on, false, "the brain's 128 made it off");
+    await applyMigration(old, '026_brief_on_by_default.sql');
+    assert.equal((await old.query<{ on: boolean }>(`SELECT daily_brief_enabled AS "on" FROM users WHERE id = $1`, [before])).rows[0]!.on, true, 'switched on once');
+    const after = (await old.query<{ on: boolean }>(`INSERT INTO users (apple_user_id) VALUES ('apple-after-026') RETURNING daily_brief_enabled AS "on"`)).rows[0]!;
+    assert.equal(after.on, true, 'the default is on');
+    await old.query(`UPDATE users SET daily_brief_enabled = false WHERE id = $1`, [before]);
+    await applyMigration(old, '026_brief_on_by_default.sql');
+    assert.equal((await old.query<{ on: boolean }>(`SELECT daily_brief_enabled AS "on" FROM users WHERE id = $1`, [before])).rows[0]!.on, true, 'applying it again is the same one-time switch-on (idempotent file)');
+  } finally {
+    await old.close();
+  }
 });
 
 test('latest carries nextAt from the run time, null without one', async () => {
