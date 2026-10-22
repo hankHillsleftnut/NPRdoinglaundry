@@ -24,6 +24,10 @@ Retrospect is "a companion that knows you and helps you grow". It's ambient by d
 - **Tests:** a real testing standard on every PR ([testing.md](./testing.md)).
 - **Design:** every corner a squircle (`RShape`); field hints `text.placeholder` (just passes AA); one lit object per screen; lowercase labels; guesses never look like facts; no invented data in empty states; small screens adapt, never shrink; the founder doesn't want to see the simulator.
 
+- **Changelog (22 Oct):** `CHANGELOG.md` at the repo root gets a plain-words line for every merged PR that changes behaviour, and a paragraph for big changes. The integrator keeps it and reminds the founder at each massive change.
+- **Session diagnostics and "send a report" (22 Oct):** in Beta 1 (`flows/diagnostics.md`). The app records how it behaved (no personal content), and the person sends a report from settings or by shaking the phone.
+- **Personal data downloads as a context source (22 Oct, after Beta 1):** people can pull their GDPR and data-protection exports (Google Takeout, Spotify, Instagram, Netflix, Amazon, Apple…) into Retro, with computer use requesting and downloading the export for them. That's another rich source of context. It's planned as a connector family; see `docs/second-brain/integration-catalogue.md`.
+
 ## 3. The hard rules (never broken)
 
 - **Privacy:** no personal content in logs, analytics, crash reports, fixtures or reports. Counts and types only. Debug with counts, never by reading someone's words.
