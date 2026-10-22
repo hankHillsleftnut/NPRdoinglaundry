@@ -2,6 +2,17 @@
 
 What changed, in plain words, newest first. Every merged PR that changes what the app, the backend or the team does gets a line here, in the same PR or the integrator's next one. Big changes get a short paragraph: what a person will notice, and what to watch. (Founder, 22 Oct: "always have a changelog for every massive change".)
 
+## 22 Oct 2026 · morning (new integrator)
+
+- **Signing in, part two:** the app can refresh its sign-in and sign out. A retry after a dropped connection gets the same new sign-in, so nobody is signed out by a bad signal; a stolen copy used later ends that device's session (#108).
+- **The brain:**
+  - "that's not right" now saves in one step or not at all; before, it could half-apply in production (#132);
+  - every brain lookup is limited to the person asking (#133).
+- **The app's plumbing:**
+  - launch options for testing: sample or live data, staging or local server, seeded accounts; release builds ignore them all (#101);
+  - the local database library, GRDB 7.11.1, pinned (+3.8 MB to the app) (#104).
+- **Journal parts:** the error state with "try again", its haptic and its VoiceOver line (#78).
+
 ## 21–22 Oct 2026 · Beta 1 build, day one
 
 **The team and the plan**

@@ -60,7 +60,9 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export async function startHarness(opts: {
-  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router']; speechSynth?: AppDeps['speechSynth'];
+  agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router'];
+  speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
+  verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
@@ -95,6 +97,9 @@ export async function startHarness(opts: {
     ...(opts.v2Router ? { v2Router: opts.v2Router } : {}),
     ...(opts.speechSynth ? { speechSynth: opts.speechSynth } : {}),
     diagnostics: opts.diagnostics ?? createDiagnosticsStore(memoryDiagnostics().backend),
+    ...(opts.sessions ? { sessions: opts.sessions } : {}),
+    ...(opts.verifyApple ? { verifyApple: opts.verifyApple } : {}),
+    ...(opts.accounts ? { accounts: opts.accounts } : {}),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

@@ -6,7 +6,7 @@
  * which is free text:
  *   - numbers are numbers (non-finite becomes null), including the size and
  *     counts a door may add (`sizeBytes`, `events`, `requests`, `failures`,
- *     `crashes`);
+ *     `crashes`); `reuse` is written only as `true`;
  *   - `code` must be one of the contract's error codes (a closed list);
  *   - `userId` must be a UUID, or null on public doors (sign-in, waitlist);
  *   - `appVersion` must be digits and dots, like `1.0 (42)`;
@@ -50,6 +50,8 @@ export interface DoorLogLine {
   requests?: number;
   failures?: number;
   crashes?: number;
+  /** auth.refresh only: a rotated refresh token was used again (a possible stolen copy). Written only when true. */
+  reuse?: boolean;
 }
 
 /** The numeric size and count fields a door may add to its line (DoorSpec.logCounts). */
@@ -58,7 +60,7 @@ export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failur
 
 /** The only fields a door log line can have, in output order. */
 export const DOOR_LOG_FIELDS = [
-  'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes',
+  'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'reuse',
 ] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.
@@ -83,8 +85,8 @@ function safeNumber(value: unknown): number | null {
 }
 
 /** Builds the line exactly as it will be written; exported for tests. */
-export function doorLogLine(entry: DoorLogLine): Record<string, string | number | null> {
-  const line: Record<string, string | number | null> = {
+export function doorLogLine(entry: DoorLogLine): Record<string, string | number | boolean | null> {
+  const line: Record<string, string | number | boolean | null> = {
     door: safeString('door', entry.door),
     userId: entry.userId === null ? null : safeString('userId', entry.userId),
     status: safeNumber(entry.status),
@@ -99,6 +101,7 @@ export function doorLogLine(entry: DoorLogLine): Record<string, string | number 
   for (const field of DOOR_LOG_COUNT_FIELDS) {
     if (entry[field] !== undefined) line[field] = safeNumber(entry[field]);
   }
+  if (entry.reuse === true) line.reuse = true;
   return line;
 }
 
