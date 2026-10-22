@@ -15,8 +15,8 @@ enum AppEntry {
         } else {
             // Bridge (PL1.3): before the old app starts, so a reinstall's
             // leftover sign-in is gone before the old client restores it.
-            Session.Store.checkInstallAtLaunch(
-                isUnlockedSinceBoot: Session.SystemKeychain(service: Session.Store.service).isUnlockedSinceBoot(),
+            Platform.Launch.installCheck.value = Session.Store.checkInstallAtLaunch(
+                probe: { Session.SystemKeychain(service: Session.Store.service).probeUnlock() },
                 log: Platform.Log.SystemSink()
             )
             RetrospectApp.main()

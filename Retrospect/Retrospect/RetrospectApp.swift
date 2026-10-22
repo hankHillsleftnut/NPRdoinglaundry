@@ -362,6 +362,7 @@ struct RetrospectApp: App {
                 // Delayed refresh gives the hidden DeviceActivityReport time to trigger
                 // the extension and write fresh data to the App Group.
                 if newPhase == .active {
+                    platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
                     ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
                     IntegrationsSyncService.shared.syncIfNeeded()

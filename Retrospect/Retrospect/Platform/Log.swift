@@ -36,6 +36,33 @@ extension Platform.Log {
         /// The launch install check failed with this Keychain status; the next
         /// launch tries again.
         case installCheckFailed(status: OSStatus)
+        /// The launch install check threw something that isn't a Keychain error.
+        case installCheckErrored
+        /// A refresh was sent again after a dropped answer (PL1.5).
+        case refreshRetried
+        /// A refresh failed and the credentials were kept (PL1.5).
+        case refreshFailed(Session.RefreshFailure)
+        /// The server ended the session (`session_revoked`, or a refresh token
+        /// it called malformed); the device signed out (PL1.5).
+        case sessionRevoked
+        /// This device signed out, and whether the server was told.
+        case signedOut(reason: Session.SignedOutReason, serverNotified: Bool)
+        /// A 401 on an authenticated door was answered with one refresh and one replay.
+        case requestReplayed(path: Backend.PathTemplate)
+        /// A Keychain write of one of the session's items failed; the session
+        /// carries on in memory and the write is tried again later.
+        case keychainWriteFailed(Session.KeychainItem, status: OSStatus)
+        /// The session couldn't be read: the phone is locked (`errSecInteractionNotAllowed`)
+        /// or the Keychain answered another status. Read again on the next active scene.
+        case sessionLocked(status: OSStatus)
+        /// The session manager was asked for the server before the client was connected.
+        case sessionNotConnected
+        /// Apple says the person removed the app from their Apple ID: signed out.
+        case appleCredentialRevoked
+        /// The old client's 401 went through the bridge: what came back.
+        case legacyRefresh(Platform.Bridges.LegacyRefresh)
+        /// `-Environment staging` resolved to the backend on this Mac (no Render staging yet).
+        case stagingResolvedToLocal
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
         /// A batch of diagnostics couldn't be written; it was dropped.
@@ -65,12 +92,57 @@ extension Platform.Log {
                 logger.error("sign-in nonce unavailable: random status \(status)")
             case let .launchOptionIgnored(problem):
                 record(problem)
+            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
+                recordSession(event)
+            case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
+                 .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
+                recordDevice(event)
+            }
+        }
+
+        /// The session's lines (PL1.5), kept apart so each switch stays small.
+        private func recordSession(_ event: Event) {
+            switch event {
+            case .refreshRetried:
+                logger.info("session refresh sent again after a dropped answer")
+            case let .refreshFailed(failure):
+                record(failure)
+            case .sessionRevoked:
+                logger.error("session revoked by the server: signed out")
+            case let .signedOut(reason, serverNotified):
+                record(signedOut: reason, serverNotified: serverNotified)
+            case let .requestReplayed(path):
+                record(replayed: path)
+            case let .keychainWriteFailed(item, status):
+                record(writeFailed: item, status: status)
+            default:
+                break
+            }
+        }
+
+        /// The phone's and the old app's lines (PL1.3, PL1.5).
+        private func recordDevice(_ event: Event) {
+            switch event {
             case let .installChecked(check):
                 record(check)
             case let .installCheckFailed(status):
                 logger.error("install check failed: keychain status \(status)")
+            case .installCheckErrored:
+                logger.error("install check failed with an error that isn't a keychain status")
+            case let .sessionLocked(status):
+                logger.info("session unreadable, read again when active: keychain status \(status)")
+            case .sessionNotConnected:
+                logger.error("session manager asked for the server before the client was connected")
+            case .appleCredentialRevoked:
+                logger.info("apple credential revoked or not found: signed out")
+            case let .legacyRefresh(outcome):
+                record(legacy: outcome)
+            case .stagingResolvedToLocal:
+                logger.info("environment staging resolved to the backend on this Mac")
             case .diagnosticsWriteFailed:
                 logger.error("diagnostics: a batch couldn't be written, dropped")
+            default:
+                break
             }
         }
 
@@ -98,6 +170,52 @@ extension Platform.Log {
             case .apple: logger.info("signed in with apple, new account: \(isNew)")
             case .google: logger.info("signed in with google, new account: \(isNew)")
             case .unknown: logger.info("signed in with an unknown provider, new account: \(isNew)")
+            }
+        }
+
+        private func record(_ failure: Session.RefreshFailure) {
+            switch failure {
+            case .offline: logger.info("session refresh failed: offline, credentials kept")
+            case .timedOut: logger.info("session refresh failed: timed out, credentials kept")
+            case .transport: logger.info("session refresh failed: transport, credentials kept")
+            case .decoding: logger.error("session refresh failed: unreadable answer, credentials kept")
+            case .rateLimited: logger.info("session refresh failed: rate limited, credentials kept")
+            case .server: logger.error("session refresh failed: server error, credentials kept")
+            case .other: logger.error("session refresh failed: unexpected answer, credentials kept")
+            }
+        }
+
+        private func record(signedOut reason: Session.SignedOutReason, serverNotified: Bool) {
+            switch reason {
+            case .none: logger.info("signed out, server notified: \(serverNotified)")
+            case .revoked: logger.info("signed out after revocation, server notified: \(serverNotified)")
+            case .signedOut: logger.info("signed out by the person, server notified: \(serverNotified)")
+            }
+        }
+
+        private func record(replayed path: Backend.PathTemplate) {
+            switch path {
+            case .meta: logger.info("401 on /v2/meta: refreshed and replayed once")
+            case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
+            case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
+            case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
+            }
+        }
+
+        private func record(writeFailed item: Session.KeychainItem, status: OSStatus) {
+            switch item {
+            case .session: logger.error("session item write failed: keychain status \(status)")
+            case .signedInBefore: logger.error("signed-in-before flag write failed: keychain status \(status)")
+            case .mirror: logger.error("old client mirror write failed: keychain status \(status)")
+            case .sessionClear: logger.error("session item delete failed: keychain status \(status)")
+            }
+        }
+
+        private func record(legacy outcome: Platform.Bridges.LegacyRefresh) {
+            switch outcome {
+            case .refreshed: logger.info("old client 401: session refreshed, request retried")
+            case .unavailable: logger.info("old client 401: refresh unavailable, nothing signed out")
+            case .signedOut: logger.info("old client 401: session ended, signed out")
             }
         }
 
