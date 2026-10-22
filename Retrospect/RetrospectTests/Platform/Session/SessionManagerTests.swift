@@ -3,23 +3,23 @@ import Foundation
 import Security
 import Testing
 
+/// A door that only needs a token: used to drive 401s through the client.
+struct SessionDoor: Backend.Endpoint {
+    typealias Response = Backend.Meta
+    var method: Backend.Method {
+        .get
+    }
+
+    var path: Backend.PathTemplate {
+        .meta
+    }
+}
+
 /// The session manager with everything around it in memory: a Keychain for
 /// the session, one for the old client's mirror, a stubbed server, a log,
 /// and clocks the test moves by hand.
 @MainActor
 final class SessionHarness {
-    /// A door that only needs a token: used to drive 401s through the client.
-    struct Door: Backend.Endpoint {
-        typealias Response = Backend.Meta
-        var method: Backend.Method {
-            .get
-        }
-
-        var path: Backend.PathTemplate {
-            .meta
-        }
-    }
-
     let keychain = Session.MemoryKeychain()
     let legacy = Session.MemoryKeychain()
     let recorder = Platform.Log.Recorder()
@@ -40,7 +40,7 @@ final class SessionHarness {
     let client: Backend.Client
 
     /// Saved by sign-in at 08:00:00; the token ends 08:15:00 server time.
-    static let signedIn = Session.Credentials(
+    nonisolated static let signedIn = Session.Credentials(
         accessToken: "invented.access.token", accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_570_500),
         refreshToken: "invented-refresh-token", userID: "00000000-0000-4000-8000-000000000001",
         access: .member, firstName: "sam", provider: .apple, appleUserID: "001234.invented"
@@ -94,7 +94,11 @@ final class SessionHarness {
     }
 
     /// A refresh answer: a new pair whose token ends 15 minutes after `at` (server time).
-    static func refreshAnswer(access: String = "a2", refresh: String = "r2", expiresAt: Date = Date(timeIntervalSince1970: 1_792_570_500 + 900)) -> Data {
+    nonisolated static func refreshAnswer(
+        access: String = "a2",
+        refresh: String = "r2",
+        expiresAt: Date = Date(timeIntervalSince1970: 1_792_570_500 + 900)
+    ) -> Data {
         let user = #"{"id":"00000000-0000-4000-8000-000000000001","firstName":"sam","isNew":false}"#
         let pair = #""accessToken":"\#(access)","refreshToken":"\#(refresh)","accessTokenExpiresAt":"\#(Backend.Coding.timestamp(expiresAt))""#
         return Data(#"{"success":true,"data":{\#(pair),"user":\#(user),"access":{"state":"member"}}}"#.utf8)
@@ -159,7 +163,7 @@ struct SessionManagerTests {
     }
 
     private func fetchMeta(_ h: SessionHarness) async throws -> Backend.Meta {
-        try await h.client.send(SessionHarness.Door())
+        try await h.client.send(SessionDoor())
     }
 
     private func metaHandler(_ tokens: [String]) -> @Sendable (Int, URLRequest) throws -> (Int, Data) {

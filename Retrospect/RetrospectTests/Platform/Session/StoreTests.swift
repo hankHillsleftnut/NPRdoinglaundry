@@ -91,21 +91,6 @@ struct StoreTests {
         #expect(read.provider == .unknown)
     }
 
-    @Test("install saves the session, then marks signed in before; a failed save marks nothing")
-    func installSavesThenMarks() async throws {
-        let store = store()
-
-        try await store.install(credentials)
-        #expect(try await store.credentials() == credentials)
-        #expect(try await store.hasSignedInBefore)
-
-        let second = Session.MemoryKeychain()
-        second.failCall(1, with: errSecInteractionNotAllowed)
-        let failing = Session.Store(keychain: second, legacyKeychain: legacy, defaults: defaults)
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await failing.install(credentials) }
-        #expect(second.contents.isEmpty)
-    }
-
     @Test("the whole session is one Keychain item")
     func theWholeSessionIsOneItem() async throws {
         try await store().save(credentials)

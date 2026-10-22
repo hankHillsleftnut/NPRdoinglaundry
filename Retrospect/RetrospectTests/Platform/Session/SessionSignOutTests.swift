@@ -22,7 +22,7 @@ struct SessionSignOutTests {
     }
 
     private func fetchMeta(_ h: SessionHarness) async throws -> Backend.Meta {
-        try await h.client.send(SessionHarness.Door())
+        try await h.client.send(SessionDoor())
     }
 
     private func metaHandler(_ tokens: [String]) -> @Sendable (Int, URLRequest) throws -> (Int, Data) {
@@ -313,6 +313,6 @@ struct SessionSignOutTests {
         _ = await failure { _ = try await h.manager.refreshAfterUnauthorized(failedToken: "invented.access.token") }
 
         let signsOut = ["error.session_revoked", "error.invalid_request"].contains(parts[1])
-        #expect((h.stored() == nil) == signsOut, fixture)
+        #expect((h.stored() == nil) == signsOut, "\(fixture)")
     }
 }
