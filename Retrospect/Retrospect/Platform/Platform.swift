@@ -37,8 +37,8 @@ enum Store {}
 /// Cache-first reads and outbox-backed writes, one per flow.
 enum Repositories {}
 
-/// The per-flow data protocols the screens read. The integrator writes them.
-enum Flows {}
+// `Flows`, the per-flow data protocols the screens read, is declared by the
+// integrator beside them in Flows/FlowTypes.swift.
 
 /// Every way into the app: links, widgets, shortcuts, notification taps.
 enum Routing {}
