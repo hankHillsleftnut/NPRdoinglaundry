@@ -106,7 +106,7 @@ final class RLoadingTimer {
 
     /// Both deadlines are measured from the load's start, so a late wake never pushes
     /// "still working" past motion.duration.stillWorking.
-    func run<C: Clock>(on clock: C) async where C.Duration == Duration {
+    func run(on clock: some Clock<Duration>) async {
         phase = .waiting
         let start = clock.now
         do {
