@@ -77,7 +77,7 @@ const noteDoor: DoorSpec<{ id: string }, { id: string }, { id: string }> = {
 };
 
 test('/v2/ping answers the user from the token through the kit', async () => {
-  const h = await harness((door, router) => router.use(createV2Router(door)));
+  const h = await harness((door, router) => router.use(createV2Router(door, { diagnostics: {} as never })));
   try {
     const res = await h.request('GET', '/ping', { user: ALICE });
     assert.equal(res.status, 200);
@@ -88,7 +88,7 @@ test('/v2/ping answers the user from the token through the kit', async () => {
 });
 
 test('without a signed-in user a door is a 401 envelope', async () => {
-  const h = await harness((door, router) => router.use(createV2Router(door)));
+  const h = await harness((door, router) => router.use(createV2Router(door, { diagnostics: {} as never })));
   try {
     const res = await h.request('GET', '/ping');
     assert.equal(res.status, 401);
@@ -141,7 +141,7 @@ test('a bad body is invalid_request with nothing echoed back', async () => {
 });
 
 test('over the limit is rate_limited with retryAfterSeconds and Retry-After', async () => {
-  const h = await harness((door, router) => router.use(createV2Router(door)));
+  const h = await harness((door, router) => router.use(createV2Router(door, { diagnostics: {} as never })));
   try {
     for (let i = 0; i < DOOR_LIMITS.buckets.read[0]!.max; i++) await h.request('GET', '/ping', { user: ALICE });
     const res = await h.request('GET', '/ping', { user: ALICE });
@@ -159,7 +159,7 @@ test('an expensive door over the daily spend is spend_limited; a read never is',
   limiter.recordSpend(ALICE, DOOR_LIMITS.dailySpendCapUsd, T0 - 1000);
   const h = await harness((door, router) => {
     router.post('/costly', door({ name: 'costly', bucket: 'expensive', request: z.object({}).strict(), call: async () => ({}), map: () => ({}) }));
-    router.use(createV2Router(door));
+    router.use(createV2Router(door, { diagnostics: {} as never }));
   }, { limiter });
   try {
     const res = await h.request('POST', '/costly', { user: ALICE, body: '{}' });
@@ -265,7 +265,7 @@ test('a door still answers its envelope when reporting the bug fails', async () 
 
 // Integrator review of #79: every client-side body failure is the request's fault.
 test('a body in an unsupported charset is invalid_request, not a 500', async () => {
-  const h = await harness((door, router) => router.use(createV2Router(door)));
+  const h = await harness((door, router) => router.use(createV2Router(door, { diagnostics: {} as never })));
   try {
     const res = await h.request('POST', '/ping', { user: ALICE, body: '{}', headers: { 'Content-Type': 'application/json; charset=latin1' } });
     assert.equal(res.status, 400);
@@ -276,7 +276,7 @@ test('a body in an unsupported charset is invalid_request, not a 500', async () 
 });
 
 test('an unknown /v2 path is the envelope\'s 404', async () => {
-  const h = await harness((door, router) => router.use(createV2Router(door)));
+  const h = await harness((door, router) => router.use(createV2Router(door, { diagnostics: {} as never })));
   try {
     const res = await h.request('GET', '/nothing-here', { user: ALICE });
     assert.equal(res.status, 404);

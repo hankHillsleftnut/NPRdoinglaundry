@@ -1,6 +1,6 @@
 import type { Request, RequestHandler, Response } from 'express';
 import type { ZodType, ZodTypeDef } from 'zod';
-import type { DoorLogLine } from '../utils/log.js';
+import type { DoorLogCounts, DoorLogLine } from '../utils/log.js';
 import type { AgentCallOptions, AgentDoorClient } from './agent.js';
 import { DoorError, fromAgentError, sendError, type DoorErrorCode } from './errors.js';
 import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
@@ -56,6 +56,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
   cost?: (result: AgentRes) => number | undefined;
   /** HTTP status on success (default 200). */
   successStatus?: number;
+  /** Sizes and counts for the log line on success (numbers only, by type and in the log). */
+  logCounts?: (result: AgentRes) => DoorLogCounts;
 }
 
 export interface DoorKitDeps {
@@ -118,6 +120,7 @@ export function createDoorKit(deps: DoorKitDeps) {
       const userId = req.user?.id ?? null;
       const appVersion = req.header('X-App-Version');
       let costUsd: number | undefined;
+      let counts: DoorLogCounts = {};
 
       const finish = (status: number, code?: DoorErrorCode) => {
         deps.log.door({
@@ -129,6 +132,7 @@ export function createDoorKit(deps: DoorKitDeps) {
           ...(agentMs > 0 ? { agentMs } : {}),
           ...(costUsd !== undefined ? { costUsd } : {}),
           ...(appVersion !== undefined ? { appVersion } : {}),
+          ...counts,
         });
       };
 
@@ -163,6 +167,7 @@ export function createDoorKit(deps: DoorKitDeps) {
           deps.limiter.recordSpend(userId, reported, deps.now());
         }
         const data = spec.map(result, ctx);
+        if (spec.logCounts) counts = spec.logCounts(result);
         res.status(spec.successStatus ?? 200).json({ success: true, data });
         finish(spec.successStatus ?? 200);
       };
