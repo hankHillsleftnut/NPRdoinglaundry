@@ -332,7 +332,9 @@ struct ClientTests {
     func aClientWithoutDiagnosticsWorks() async throws {
         defer { StubProtocol.clear(session) }
         try serve(Fixtures.data("00", "meta"))
-        let bare = Backend.Client(configuration: configuration, session: session, tokens: Tokens(), clock: TestClock(), log: recorder)
+        let bare = Backend.Client(
+            configuration: configuration, session: session, tokens: Tokens(), reachability: ManualReachability(), clock: TestClock(), log: recorder
+        )
 
         _ = try await bare.send(Backend.Endpoints.Meta())
 
