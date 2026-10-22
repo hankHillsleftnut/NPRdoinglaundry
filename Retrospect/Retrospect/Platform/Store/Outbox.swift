@@ -35,7 +35,7 @@ extension Store {
     /// PL2.2a is the queue; the drainer and its triggers are PL2.2b.
     actor Outbox {
         enum DrainReason: String, Sendable {
-            case launch, foreground, reachability, afterWrite, backgroundTask, manual
+            case launch, foreground, reachability, afterWrite, backgroundTask, manual, retryTimer
         }
 
         /// An item still in flight this long after it was sent was lost to a
@@ -53,17 +53,20 @@ extension Store {
         let database: LocalDatabase
         private let sender: (any OutboxSending)?
         private let reachability: (any Backend.Reachability)?
-        private let now: @Sendable () -> Date
+        let now: @Sendable () -> Date
         private let timeZone: @Sendable () -> TimeZone
         private let jitter: @Sendable (Duration) -> Duration
         /// Chooses an acknowledgement line: an index below its argument.
         private let pick: @Sendable (Int) -> Int
-        private let log: any Platform.LogSink
+        let log: any Platform.LogSink
+        /// Sleeps until a retry is due; replaceable so tests don't wait.
+        private let sleep: @Sendable (TimeInterval) async throws -> Void
+        private var retryWake: Task<Void, Never>?
         private var isDraining = false
         private var needsAnotherPass = false
-        private var started = false
+        var started = false
         private var reachabilityWatch: Task<Void, Never>?
-        fileprivate var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
+        var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
         /// tests); `drain` does nothing.
@@ -75,8 +78,10 @@ extension Store {
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
             jitter: @escaping @Sendable (Duration) -> Duration = Backend.Client.randomJitter,
             pick: @escaping @Sendable (Int) -> Int = { Int.random(in: 0 ..< max(1, $0)) },
+            sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
             log: any Platform.LogSink
         ) {
+            self.sleep = sleep
             self.database = database
             self.sender = sender
             self.reachability = reachability
@@ -89,6 +94,7 @@ extension Store {
 
         deinit {
             reachabilityWatch?.cancel()
+            retryWake?.cancel()
         }
 
         /// Saves the entry (`local`, from the new app) and its `entry.create`
@@ -141,12 +147,14 @@ extension Store {
             return key
         }
 
-        /// Items not yet sent: pending, in flight or refused. Feeds sign-out's
-        /// "you have unsent entries" (PL1.5).
+        /// Entries and answers not yet sent: pending, in flight or refused (a
+        /// report isn't the person's words, so it isn't counted). Feeds
+        /// sign-out's "you have unsent entries" (PL1.5).
         func unsentCount() throws -> Int {
             try database.writer.read { db in
-                try OutboxRow
+                try Store.OutboxRow
                     .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
+                    .filter(Column(OutboxRow.CodingKeys.operation) != OutboxOperation.diagnosticsSend.rawValue)
                     .fetchCount(db)
             }
         }
@@ -158,7 +166,7 @@ extension Store {
             let id = entityID.uuidString.lowercased()
             let due = now()
             try database.writer.write { db in
-                let dead = try OutboxRow
+                let dead = try Store.OutboxRow
                     .filter(Column(OutboxRow.CodingKeys.entityID) == id && Column(OutboxRow.CodingKeys.status) == OutboxStatus.dead.rawValue)
                     .fetchAll(db)
                 guard !dead.isEmpty else { throw NothingToRetry() }
@@ -236,10 +244,16 @@ extension Store {
             }
             isDraining = true
             defer { isDraining = false }
+            var paused = false
             repeat {
                 needsAnotherPass = false
-                await pass()
-            } while needsAnotherPass && !Task.isCancelled
+                paused = await pass()
+            } while needsAnotherPass && !paused && !Task.isCancelled
+            // A pause (offline, signed out) is ended by its own trigger:
+            // reachability, sign-in, foreground. Otherwise wake for the next retry.
+            if !paused, !Task.isCancelled {
+                scheduleRetryWake()
+            }
         }
 
         private struct Tally {
@@ -248,8 +262,10 @@ extension Store {
         }
 
         /// One pass over what's due, oldest first.
-        private func pass() async {
-            guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return }
+        /// Returns true when the pass paused (offline, signed out): no more passes.
+        private func pass() async -> Bool {
+            guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return false }
+            var paused = false
             var tally = Tally()
             for queued in due where !Task.isCancelled {
                 guard let item = try? markInFlight(queued) else { continue }
@@ -267,11 +283,13 @@ extension Store {
                     break
                 } catch {
                     if settle(error, item: item, tally: &tally) == .pause {
+                        paused = true
                         break
                     }
                 }
             }
             log.record(.outbox(.drained(sent: tally.sent, failed: tally.failed)))
+            return paused
         }
 
         /// Writes a failed send back: the item waits, is refused, or the pass pauses.
@@ -515,61 +533,30 @@ extension Store {
     }
 }
 
-// MARK: Reports (DG.5b)
-
 extension Store.Outbox {
-    /// A report was delivered: its id and the short reference to quote.
-    struct ReportReceipt: Sendable, Equatable {
-        let reportID: String
-        let reference: String
-    }
-
-    /// Queues a report. The row's id, entity and key are the report's id, so
-    /// queueing the same report twice stores one row, and the door, which is
-    /// idempotent on that key, makes one reference. Like an entry, it survives
-    /// a relaunch and goes out when there is a connection. Throws if the
-    /// report's id isn't a UUID.
-    @discardableResult
-    func enqueueReport(_ report: Platform.Diagnostics.Report) throws -> UUID {
-        guard let reportID = UUID(uuidString: report.reportId) else { throw Backend.Failure(.invalidRequest) }
-        let payload = try Backend.Coding.encoder.encode(report)
-        let id = report.reportId
-        let queuedAt = now()
-        let item = Store.OutboxRow(
-            id: id, operation: .diagnosticsSend, entityID: id, payload: payload, attempts: 0,
-            nextAttemptAt: queuedAt, status: .pending, lastErrorCode: nil, createdAt: queuedAt
-        )
-        let isNew = try database.writer.write { db -> Bool in
-            guard try Store.OutboxRow.fetchOne(db, key: id) == nil else { return false }
-            try item.insert(db)
-            return true
+    /// One sleeping task, for the earliest pending item that isn't due yet.
+    private func scheduleRetryWake() {
+        retryWake?.cancel()
+        retryWake = nil
+        guard started, let next = try? earliestPendingAt() else { return }
+        let wait = max(0, next.timeIntervalSince(now()))
+        let sleep = sleep
+        retryWake = Task { [weak self] in
+            do { try await sleep(wait) } catch { return }
+            await self?.drain(reason: .retryTimer)
         }
-        guard isNew else { return reportID }
-        log.record(.outbox(.enqueued(operation: .diagnosticsSend)))
-        if started {
-            Task { await drain(reason: .afterWrite) }
+    }
+
+    private func earliestPendingAt() throws -> Date? {
+        let current = now()
+        return try database.writer.read { db in
+            try Store.OutboxRow
+                .filter(Column(Store.OutboxRow.CodingKeys.status) == Store.OutboxStatus.pending.rawValue)
+                .fetchAll(db)
+                .map(\.nextAttemptAt)
+                .filter { $0 > current }
+                .min()
         }
-        return reportID
-    }
-
-    /// Each report as it's delivered, with its reference (for the "sent"
-    /// toast). Reports delivered while nobody listens are not replayed.
-    func receipts() -> AsyncStream<ReportReceipt> {
-        let token = UUID()
-        let (stream, continuation) = AsyncStream.makeStream(of: ReportReceipt.self)
-        receiptListeners[token] = continuation
-        continuation.onTermination = { [weak self] _ in
-            Task { await self?.dropListener(token) }
-        }
-        return stream
-    }
-
-    private func dropListener(_ token: UUID) {
-        receiptListeners[token] = nil
-    }
-
-    fileprivate func publish(_ receipt: ReportReceipt) {
-        receiptListeners.values.forEach { $0.yield(receipt) }
     }
 
     #if DEBUG
