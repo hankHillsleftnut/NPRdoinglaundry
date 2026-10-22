@@ -31,7 +31,14 @@ export interface AgentClientConfig {
   baseUrl: string;
   internalSecret: string;
   fetch?: typeof fetch;
+  /** Starts a call's timeout; returns a cancel. Injected by tests so they use no real clock. */
+  setTimer?: (fire: () => void, ms: number) => () => void;
 }
+
+const realTimer = (fire: () => void, ms: number) => {
+  const t = setTimeout(fire, ms);
+  return () => clearTimeout(t);
+};
 
 const RETRYABLE_STATUSES: ReadonlySet<number> = new Set([502, 503, 504]);
 
@@ -41,7 +48,7 @@ export function createAgentDoorClient(cfg: AgentClientConfig): AgentDoorClient {
 
   async function once<T>(method: string, path: string, body: unknown, timeoutMs: number): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const cancelTimer = (cfg.setTimer ?? realTimer)(() => controller.abort(), timeoutMs);
     let response: Response;
     let text: string;
     try {
@@ -56,7 +63,7 @@ export function createAgentDoorClient(cfg: AgentClientConfig): AgentDoorClient {
     } catch {
       throw new AgentCallError({ kind: controller.signal.aborted ? 'timeout' : 'network' });
     } finally {
-      clearTimeout(timer);
+      cancelTimer();
     }
 
     let payload: unknown;
