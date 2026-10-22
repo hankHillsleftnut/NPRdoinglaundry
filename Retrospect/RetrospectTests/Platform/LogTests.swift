@@ -4,23 +4,27 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct LogTests {
-    @Test("a log event has no string payload")
-    func aLogEventHasNoStringPayload() {
+    @Test("a log event has no text or data payload")
+    func aLogEventHasNoTextOrDataPayload() {
         for event in Platform.Log.Event.everyCase {
-            #expect(Self.textValues(in: event).isEmpty, "\(event) carries text")
+            #expect(Self.contentValues(in: event).isEmpty, "\(event) carries content")
         }
     }
 
-    @Test("the no-text check catches a string, a URL and text nested inside a value")
-    func theNoTextCheckCatchesText() {
+    @Test("the no-content check catches text, data and URLs, also inside optionals and collections")
+    func theNoContentCheckCatchesContent() {
         enum Leaky {
             case words(String)
             case link(URL)
+            case bytes(Data)
+            case maybe(String?)
             case nested(count: Int, inner: [Substring])
         }
-        #expect(Self.textValues(in: Leaky.words("invented")).count == 1)
-        #expect(Self.textValues(in: Leaky.link(URL(fileURLWithPath: "/invented"))).count == 1)
-        #expect(Self.textValues(in: Leaky.nested(count: 1, inner: ["invented"])).count == 1)
+        #expect(Self.contentValues(in: Leaky.words("invented")).count == 1)
+        #expect(Self.contentValues(in: Leaky.link(URL(fileURLWithPath: "/invented"))).count == 1)
+        #expect(Self.contentValues(in: Leaky.bytes(Data([1]))).count == 1)
+        #expect(Self.contentValues(in: Leaky.maybe("invented")).count == 1)
+        #expect(Self.contentValues(in: Leaky.nested(count: 1, inner: ["invented"])).count == 1)
     }
 
     @Test("the samples cover every kind of event, once")
@@ -42,45 +46,55 @@ struct LogTests {
         #expect(recorder.events == [.outboxDrained(sent: 2, failed: 0), .refreshed, .outboxDrained(sent: 0, failed: 1)])
     }
 
-    @Test("the system sink writes every event without failing")
-    func theSystemSinkWritesEveryEvent() {
+    /// A smoke test: the unified log can't be read back here, so this proves
+    /// only that every case reaches a log line without trapping.
+    @Test("smoke: the system sink accepts every event")
+    func theSystemSinkAcceptsEveryEvent() {
         let sink = Platform.Log.SystemSink()
         for event in Platform.Log.Event.everyCase {
             sink.record(event)
         }
     }
 
-    /// Every String, Substring, Character or URL anywhere inside `value`.
-    private static func textValues(in value: Any) -> [Any] {
+    /// Every String, Substring, Character, URL or Data anywhere inside `value`,
+    /// through enums, structs, optionals and collections.
+    private static func contentValues(in value: Any) -> [Any] {
         switch value {
-        case is String, is Substring, is Character, is URL, is NSString, is NSURL:
+        case is String, is Substring, is Character, is URL, is NSString, is NSURL, is Data, is NSData:
             return [value]
         default:
-            return Mirror(reflecting: value).children.flatMap { textValues(in: $0.value) }
+            return Mirror(reflecting: value).children.flatMap { contentValues(in: $0.value) }
         }
     }
 }
 
 extension Platform.Log.Event {
     /// One of every case. The switch in `kind` has no default, so a new case
-    /// doesn't compile until it has a sample here too.
+    /// doesn't compile until it has a sample here too. Optional payloads are
+    /// sampled non-nil, so the no-content check sees what they can hold.
     static var everyCase: [Self] {
         Kind.allCases.map { kind in
             switch kind {
             case .refreshed: .refreshed
             case .outboxDrained: .outboxDrained(sent: 3, failed: 1)
+            case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
+            case .unknownErrorCode: .unknownErrorCode(path: .meta)
+            case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored
     }
 
     fileprivate var kind: Kind {
         switch self {
         case .refreshed: .refreshed
         case .outboxDrained: .outboxDrained
+        case .requestSent: .requestSent
+        case .unknownErrorCode: .unknownErrorCode
+        case .launchOptionIgnored: .launchOptionIgnored
         }
     }
 }

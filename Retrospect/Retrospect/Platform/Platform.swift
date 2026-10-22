@@ -16,7 +16,7 @@
 //   about 450 top-level names; a nested name can't collide with any of them.
 // - Networking, storage, session and outbox are actors; anything a view observes
 //   is @MainActor @Observable; values crossing a boundary are Sendable.
-// - No singletons: one Platform.Environment is built at launch and injected.
+// - No singletons: one Platform.AppEnvironment is built at launch and injected.
 // - Nothing here calls the old RetrospectAPIClient, and old code never calls in,
 //   except at the bridges named in docs/team/app-plumbing-engineer.md §7.
 

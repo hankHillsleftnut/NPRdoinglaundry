@@ -497,6 +497,10 @@ export interface AuthUser {
   id: string;
   appleUserId: string;
   email?: string;
+  /** users.token_version (migration 005); a new access token must carry it. */
+  tokenVersion?: number;
+  /** users.first_name (migration 005), saved at the first sign-in. */
+  firstName?: string;
 }
 
 export interface JWTPayload {

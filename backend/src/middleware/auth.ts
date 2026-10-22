@@ -5,6 +5,7 @@ import { supabaseAdmin, Tables } from '../utils/supabase.js';
 import type { AuthUser, JWTPayload } from '../types/index.js';
 import { getOrCreateUserWith, type UsersClient } from '../services/users.js';
 import { DoorError, sendError } from '../doors/errors.js';
+import { verifyAccessToken } from '../sessions/tokens.js';
 
 // Extend Express Request type to include user
 declare global {
@@ -18,17 +19,54 @@ declare global {
 /** Finds a signed-in user by id: null when there is no such user; throws when it can't tell. */
 export type UserLookup = (userId: string) => Promise<AuthUser | null>;
 
-/** The real lookup: one round trip to the users table per authenticated request. */
-export const supabaseUserLookup: UserLookup = async (userId) => {
-  const { data, error } = await supabaseAdmin
-    .from(Tables.USERS)
-    .select('id, apple_user_id, email')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
-  if (!data) return null;
-  return { id: data.id, appleUserId: data.apple_user_id, email: data.email ?? undefined };
-};
+/** Postgres: the column being read does not exist. */
+const UNDEFINED_COLUMN = '42703';
+let warnedNoTokenVersion = false;
+
+/**
+ * The real lookup: one round trip to the users table per authenticated request.
+ *
+ * Reads users.token_version (migration 005). If the server reaches production
+ * before 005 does, the column is missing: the lookup falls back to the old
+ * columns and logs once, so old sign-ins keep working. New access tokens are
+ * then refused (no version to check them against), which is the safe side.
+ */
+/** The slice of supabase-js the lookup uses. */
+export interface UserRowsClient {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+      };
+    };
+  };
+}
+
+export function userLookupWith(db: UserRowsClient): UserLookup {
+  return async (userId) => {
+    const read = (columns: string) => db.from(Tables.USERS).select(columns).eq('id', userId).maybeSingle();
+    let { data, error } = await read('id, apple_user_id, email, token_version, first_name');
+    if (error?.code === UNDEFINED_COLUMN) {
+      if (!warnedNoTokenVersion) {
+        warnedNoTokenVersion = true;
+        console.warn('[auth] users.token_version is missing: migration 005 is not applied. Only old tokens can sign in.');
+      }
+      ({ data, error } = await read('id, apple_user_id, email'));
+    }
+    if (error) throw new Error(`user lookup failed (${error.code ?? 'unknown'})`);
+    if (!data) return null;
+    const row = data as unknown as { id: string; apple_user_id: string; email: string | null; token_version?: number; first_name?: string | null };
+    return {
+      id: row.id,
+      appleUserId: row.apple_user_id,
+      email: row.email ?? undefined,
+      ...(typeof row.token_version === 'number' ? { tokenVersion: row.token_version } : {}),
+      ...(typeof row.first_name === 'string' ? { firstName: row.first_name } : {}),
+    };
+  };
+}
+
+export const supabaseUserLookup: UserLookup = userLookupWith(supabaseAdmin as unknown as UserRowsClient);
 
 type AuthFailure = 'missing' | 'invalid' | 'no_user' | 'error';
 
@@ -71,24 +109,40 @@ export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean
       return;
     }
 
-    let payload: JWTPayload;
-    try {
-      payload = jwt.verify(authHeader.substring(7), config.jwt.secret, {
-        ...(opts.now ? { clockTimestamp: Math.floor(opts.now() / 1000) } : {}),
-      }) as JWTPayload;
-    } catch {
-      fail(res, 'invalid');
-      return;
+    const token = authHeader.substring(7);
+    const nowMs = opts.now ? opts.now() : Date.now();
+
+    // The new 15-minute access token (BE0.4), or the old 30-day shape, which
+    // old app versions keep using until X07 retires it.
+    let userId: string;
+    let requiredVersion: number | null = null;
+    const access = verifyAccessToken(token, config.jwt.secret, nowMs);
+    if (access) {
+      userId = access.userId;
+      requiredVersion = access.tokenVersion;
+    } else {
+      let payload: JWTPayload;
+      try {
+        payload = jwt.verify(token, config.jwt.secret, { clockTimestamp: Math.floor(nowMs / 1000) }) as JWTPayload;
+      } catch {
+        fail(res, 'invalid');
+        return;
+      }
+      if (typeof payload?.userId !== 'string') {
+        fail(res, 'invalid');
+        return;
+      }
+      userId = payload.userId;
     }
-    // A validly signed token with no user id, or one that isn't a UUID, names no user.
-    if (typeof payload?.userId !== 'string' || !UUID.test(payload.userId)) {
+    // A validly signed token whose user id isn't a UUID names no user.
+    if (!UUID.test(userId)) {
       fail(res, 'invalid');
       return;
     }
 
     let user: AuthUser | null;
     try {
-      user = await users(payload.userId);
+      user = await users(userId);
     } catch (error) {
       console.error('Auth middleware error:', error instanceof Error ? error.message : 'unknown');
       fail(res, 'error');
@@ -96,6 +150,11 @@ export function makeAuthMiddleware(users: UserLookup, opts: { envelope?: boolean
     }
     if (!user) {
       fail(res, 'no_user');
+      return;
+    }
+    // A bumped token_version ends every access token issued before it.
+    if (requiredVersion !== null && user.tokenVersion !== requiredVersion) {
+      fail(res, 'invalid');
       return;
     }
 
