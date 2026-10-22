@@ -35,6 +35,10 @@ Two engineers running at the same time: the **app engineer** (all of `Retrospect
 
 **Integrator:** merge the backlog, contracts 00 and 02 with fixtures, the journal protocol, the guardrails below, one end-to-end run of the journal on local staging before TestFlight, and your sign-off from recordings.
 
+## Added 22 Oct: session diagnostics (founder)
+
+The six PRs in `flows/diagnostics.md` (DG.1–DG.6): the app records how it behaved, with no personal content, and "send a report" sends it to us for debugging. Beta 1 is now about 90 PRs.
+
 ## Later: waits until after Beta 1
 
 | What | Why it can wait | When it comes back |

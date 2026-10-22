@@ -93,7 +93,7 @@ let cornerStyle = null;
         const dark = rgba(resolve((Array.isArray(dv) && dv[i] ? dv[i] : layer).color, true));
         if (light && dark) colors.push({ name: camel('shadow.' + path.slice('elevation.'.length) + '.' + (i + 1)), light, dark, doc: i === 0 ? o.$description : undefined });
       });
-    } else if ((type === 'number' && /^(opacity|layer|motion\.|radius\.|blur\.)/.test(path)) || type === 'duration') {
+    } else if ((type === 'number' && /^(opacity|layer|motion\.|radius\.|layout\.|blur\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });
     } else skipped.push(path);
