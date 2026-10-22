@@ -273,7 +273,7 @@ How the door gets there: while the agent's onboarding stage is `reading` or `und
 
 `POST /v2/devices` — idempotent, bucket `write` (BE2.6)
 ```json
-{ "token": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "environment": "sandbox", "appVersion": "1.0 (42)" }
+{ "token": "0000000000000000000000000000000000000000000000000000000000000001", "environment": "sandbox", "appVersion": "1.0 (42)" }
 ```
 → `204`. A token registered to someone else moves to this person. Called on every launch once permission is granted (it refreshes `lastSeenAt`). Validation: hex, 64–200 characters; `environment` `sandbox | production`.
 
