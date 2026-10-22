@@ -6,8 +6,8 @@ import Testing
 struct RMessageBubbleTests {
     @Test("the bubble's width never exceeds 0.8 of the column")
     func widthFollowsTheColumn() {
-        #expect(RMessageBubble.maxWidth(column: 300, accessibilitySize: false) == 240)
-        #expect(RMessageBubble.maxWidth(column: 342, accessibilitySize: false) == 342 * 0.8)
+        #expect(abs(RMessageBubble.maxWidth(column: 300, accessibilitySize: false) - 240) < 0.001)
+        #expect(abs(RMessageBubble.maxWidth(column: 342, accessibilitySize: false) - 273.6) < 0.001)
     }
 
     @Test("a wide column stops the bubble at 280")

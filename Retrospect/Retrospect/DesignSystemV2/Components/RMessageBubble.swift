@@ -129,6 +129,8 @@ struct RMessageBubble: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, RDimension.space3)
             .padding(.horizontal, RDimension.space4)
+            // at accessibility sizes the bubble itself fills the column, not only its row
+            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
             .background(RColor.messageMine, in: Self.shape)
             // Increase Contrast: a 1pt edge so the shape holds without the wash (C3A-0 "increase contrast")
             .overlay(Self.shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
@@ -268,8 +270,6 @@ struct RMessageBubbleGallery: View {
                 RMessageBubble(text: "notes from the planning call: ship the first version friday", delivery: .sending)
                 caption("offline · waits on the phone")
                 RMessageBubble(text: "lunch outside for once. twenty minutes, no phone.", delivery: .waiting)
-                caption("not sent · tap the line to retry")
-                RMessageBubble(text: "cooked instead of ordering in. small win.", delivery: .notSent)
                 caption("a send that lands")
                 VStack(alignment: .trailing, spacing: RDimension.space2) {
                     if sentShown {
@@ -280,7 +280,7 @@ struct RMessageBubbleGallery: View {
                 .frame(maxWidth: .infinity, minHeight: RDimension.sizeTouchTarget, alignment: .topTrailing)
                 RPill(title: "send", style: .raised) { Task { await send() } }
                     .disabled(sent == .sending)
-                caption("a send that fails · retry lands (attempt \(attempts))")
+                caption("not sent · tap the line to retry (attempt \(attempts))")
                 RMessageBubble(text: "good call with sam about the launch plan", delivery: failed) { Task { await retryFailed() } }
                 RPill(title: "fail it again", style: .raised) { Task { await failAgain() } }
                     .disabled(failed == .sending)
