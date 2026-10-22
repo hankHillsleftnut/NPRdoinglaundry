@@ -4,6 +4,7 @@ import type { DoorFactory } from './door.js';
 import { DoorError, sendError } from './errors.js';
 import { DiagnosticsReport } from '../diagnostics/schema.js';
 import type { DiagnosticsStore } from '../diagnostics/store.js';
+import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -12,6 +13,7 @@ import type { DiagnosticsStore } from '../diagnostics/store.js';
  */
 export interface V2RouterDeps {
   diagnostics: DiagnosticsStore;
+  invites: InviteDoorDeps;
 }
 
 /**
@@ -49,6 +51,8 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
   }, door({
     name: 'diagnostics.create',
     bucket: 'write',
+    // Anyone signed in may send a report, waitlisted or not (diagnostics.md).
+    openToWaitlisted: true,
     request: DiagnosticsReport,
     call: async (ctx, report) => {
       const saved = await diagnostics.save(ctx.userId, report, ctx.now);
@@ -65,6 +69,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
       nulledFields: saved.counts.nulledEnvironment,
     }),
   }));
+
+  // Access, the waitlist and invites (BE0.12).
+  mountInviteDoors(router, door, deps.invites);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {

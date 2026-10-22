@@ -2,7 +2,7 @@
   "success": false,
   "error": {
     "code": "rate_limited",
-    "message": "too many tries. try again in a minute.",
+    "message": "Too many tries. Try again in a minute.",
     "retryAfterSeconds": 60
   }
 }

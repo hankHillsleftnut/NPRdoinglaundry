@@ -131,8 +131,8 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       out().ok(res, {
         ...session,
         user: { id: user.id, firstName: user.firstName ?? null, isNew: account.isNew },
-        // Access states arrive with invites (BE0.12); until then everyone signed in is a member.
-        access: { state: 'member' },
+        // users.access (BE0.12); before migration 007 everyone was a member.
+        access: { state: user.access ?? 'member' },
       });
     })().catch((err: unknown) => out().fail(res, err));
   });
@@ -174,8 +174,8 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       out().ok(res, {
         ...pair,
         user: { id: user.id, firstName: user.firstName ?? null, isNew: false },
-        // Access states arrive with invites (BE0.12); until then everyone signed in is a member.
-        access: { state: 'member' },
+        // users.access (BE0.12); before migration 007 everyone was a member.
+        access: { state: user.access ?? 'member' },
       });
     })().catch((err: unknown) => out().fail(res, err));
   });

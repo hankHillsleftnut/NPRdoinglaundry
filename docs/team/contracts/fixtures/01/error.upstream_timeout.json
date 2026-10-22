@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "upstream_timeout",
-    "message": "that took too long. try again."
+    "message": "That took too long. Try again."
   }
 }
