@@ -4,13 +4,6 @@ import test from 'node:test';
 import express from 'express';
 import type { AuthUser } from '../src/types/index.js';
 
-// The route module reads config at import, so env is set before importing it
-// (dynamic import below); these placeholders are never real keys.
-for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_ANON_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY',
-  'JWT_SECRET', 'AGENT_SERVICE_URL', 'INTERNAL_API_SECRET']) {
-  process.env[key] ??= key.endsWith('_URL') ? 'http://127.0.0.1:9' : 'test-only-not-a-key';
-}
-
 /** What jose throws for an expired token (its code is what the route reads). */
 const jwtExpired = () => Object.assign(new Error('"exp" claim timestamp check failed'), { code: 'ERR_JWT_EXPIRED' });
 

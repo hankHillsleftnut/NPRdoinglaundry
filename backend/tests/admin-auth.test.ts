@@ -5,13 +5,6 @@ import test from 'node:test';
 import express from 'express';
 import { adminSecretMatches, makeAdminAuth } from '../src/middleware/admin-auth.js';
 
-// The route modules read config at import, so env is set before importing them
-// (dynamic import below); these placeholders are never real keys.
-for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_ANON_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY',
-  'JWT_SECRET', 'AGENT_SERVICE_URL', 'INTERNAL_API_SECRET']) {
-  process.env[key] ??= key.endsWith('_URL') ? 'http://127.0.0.1:9' : 'test-only-not-a-key';
-}
-
 async function serve(app: express.Express): Promise<{ url: string; close: () => Promise<void> }> {
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));

@@ -5,13 +5,18 @@ import { AgentCallError } from '../src/doors/errors.js';
 
 type Script = (call: number, url: string, init: RequestInit) => Promise<Response> | Response;
 
-function scripted(script: Script) {
+/** Fires a call's timeout on the next turn instead of after real time passes. */
+const fireAtOnce = (fire: () => void) => { setImmediate(fire); return () => undefined; };
+/** Never fires: for calls that must not time out. */
+const neverFire = () => () => undefined;
+
+function scripted(script: Script, timer: (fire: () => void, ms: number) => () => void = neverFire) {
   const calls: { url: string; init: RequestInit }[] = [];
   const fake = (async (input: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(input), init: init ?? {} });
     return script(calls.length, String(input), init ?? {});
   }) as typeof fetch;
-  return { calls, client: createAgentDoorClient({ baseUrl: 'http://agent.test/', internalSecret: 'test-secret', fetch: fake }) };
+  return { calls, client: createAgentDoorClient({ baseUrl: 'http://agent.test/', internalSecret: 'test-secret', fetch: fake, setTimer: timer }) };
 }
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
@@ -38,13 +43,16 @@ test('a read retries once on 502, 503, 504 and timeouts, then gives up', async (
   await assert.rejects(client.get('/x', { timeoutMs: 1000, retry: 'read' }), AgentCallError);
   assert.equal(calls.length, 2, 'never more than one retry');
 
-  const slow = scripted((n, u, i) => (n === 1 ? hang(n, u, i) : json(200, { ok: true })));
+  // Only the first call's timer fires; the retry answers.
+  let timers = 0;
+  const firstOnly = (fire: () => void) => { if (timers++ === 0) setImmediate(fire); return () => undefined; };
+  const slow = scripted((n, u, i) => (n === 1 ? hang(n, u, i) : json(200, { ok: true })), firstOnly);
   assert.deepEqual(await slow.client.get('/x', { timeoutMs: 20, retry: 'read' }), { ok: true });
 });
 
 test('a write without retry is never sent twice, whatever fails', async () => {
   for (const failure of [() => json(503, {}), hang]) {
-    const { calls, client } = scripted(failure as Script);
+    const { calls, client } = scripted(failure as Script, fireAtOnce);
     await assert.rejects(client.post('/ingest/run', {}, { timeoutMs: 20, retry: 'none' }), AgentCallError);
     assert.equal(calls.length, 1);
   }
@@ -59,7 +67,7 @@ test('a read does not retry a 500, 404 or 400: those will not change on a retry'
 });
 
 test('an agent timeout is reported as a timeout, a refused connection as network', async () => {
-  const timeout = scripted(hang);
+  const timeout = scripted(hang, fireAtOnce);
   await assert.rejects(timeout.client.get('/x', { timeoutMs: 20, retry: 'none' }),
     (e: unknown) => e instanceof AgentCallError && e.failure.kind === 'timeout');
   const refused = scripted(() => { throw new TypeError('fetch failed'); });
@@ -78,4 +86,11 @@ test('a spend 429 keeps only the dollars; the agent\'s message is dropped', asyn
 test('a 200 that is not JSON is a failure, not a crash', async () => {
   const { client } = scripted(() => new Response('<html>proxy error</html>', { status: 200 }));
   await assert.rejects(client.get('/x', { timeoutMs: 1000, retry: 'none' }), AgentCallError);
+});
+
+test('each call\'s timer is set to the timeout the door asked for', async () => {
+  const asked: number[] = [];
+  const { client } = scripted(() => json(200, {}), (_fire, ms) => { asked.push(ms); return () => undefined; });
+  await client.get('/x', { timeoutMs: 1234, retry: 'none' });
+  assert.deepEqual(asked, [1234]);
 });
