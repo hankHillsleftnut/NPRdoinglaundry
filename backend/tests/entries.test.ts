@@ -85,6 +85,13 @@ test('a send creates one row and one ingest, in the shape of the contract fixtur
     assert.equal(h.ingested.length, 2);
     assert.equal(h.logLines.join('').includes('dentist'), false, 'no words in the log');
     assert.equal(h.logLines.join('').includes(body.clientEntryId), false, 'no ids either');
+
+    const oddBody = draft();
+    const odd = await send(h, sam, oddBody, { 'X-App-Version': 'dentist at 3 <script>' });
+    assert.equal(odd.status, 201);
+    const oddRow = (await db.query<{ v: string | null }>(`SELECT metadata->>'app_version' AS v FROM raw_content WHERE metadata->>'client_entry_id' = $1`, [oddBody.clientEntryId])).rows[0]!;
+    assert.equal(oddRow.v, null, 'a header that is not a version is not stored');
+    assert.equal(h.logLines.join('').includes('<script>'), false);
   } finally {
     await h.close();
   }

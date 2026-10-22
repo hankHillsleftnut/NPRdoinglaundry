@@ -73,10 +73,13 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const fieldsMatchType: Same<(typeof DOOR_LOG_FIELDS)[number], keyof DoorLogLine> = true;
 void fieldsMatchType;
 
+/** The X-App-Version header's shape (`1.0 (42)`); anything else is never logged or stored. */
+export const APP_VERSION_PATTERN = /^\d{1,4}(\.\d{1,4}){0,2}( \(\d{1,8}(\.\d{1,8}){0,2}\))?$/;
+
 const PATTERNS: Record<'door' | 'userId' | 'appVersion', RegExp> = {
   door: /^[a-z][a-z0-9._-]{0,63}$/,
   userId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-  appVersion: /^\d{1,4}(\.\d{1,4}){0,2}( \(\d{1,8}(\.\d{1,8}){0,2}\))?$/,
+  appVersion: APP_VERSION_PATTERN,
 };
 
 const INVALID = 'invalid';

@@ -1,6 +1,6 @@
 import type { Request, RequestHandler, Response } from 'express';
 import type { ZodType, ZodTypeDef } from 'zod';
-import type { DoorLogCounts, DoorLogLine } from '../utils/log.js';
+import { APP_VERSION_PATTERN, type DoorLogCounts, type DoorLogLine } from '../utils/log.js';
 import type { AccessState } from '../access/store.js';
 import type { AgentCallOptions, AgentDoorClient } from './agent.js';
 import { DoorError, fromAgentError, sendError, type DoorErrorCode } from './errors.js';
@@ -47,7 +47,7 @@ export interface DoorContext {
   timeZone: string | null;
   /** The Idempotency-Key header as sent, or null without one; a door that marks a write idempotent checks its shape. */
   idempotencyKey: string | null;
-  /** The X-App-Version header as sent (the log checks its shape; a door may store it), or null. */
+  /** The X-App-Version header when it has the contract's shape (`1.0 (42)`), else null; a door may store it. */
   appVersion: string | null;
   now: number;
   /** The person's access state (contract 00 §4); `member` before migration 007, when everyone was one. */
@@ -158,7 +158,7 @@ export function createDoorKit(deps: DoorKitDeps) {
         if (access === 'waitlisted' && !spec.openToWaitlisted) throw new DoorError('invite_required');
         const ctx: DoorContext = {
           userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), idempotencyKey: req.header('Idempotency-Key') ?? null,
-          appVersion: appVersion ?? null, now: started, access: access ?? 'member',
+          appVersion: appVersion !== undefined && APP_VERSION_PATTERN.test(appVersion) ? appVersion : null, now: started, access: access ?? 'member',
         };
 
         const taken = deps.limiter.take(userId, spec.bucket, started);
