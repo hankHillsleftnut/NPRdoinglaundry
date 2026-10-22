@@ -32,6 +32,11 @@ class RetrospectAPIClient: ObservableObject {
     @Published var currentUserId: String?
     @Published var currentEmail: String?
 
+    // Bridge (DG.4): the environment owns the per-user diagnostics store.
+    @MainActor var sessionWillChange: (() async -> Void)?
+    @MainActor var sessionDidChange: ((String) async -> Void)?
+    @MainActor private var sessionChange: Task<Void, Never>?
+
     private let session: URLSession
     private let keychainService = "com.retrospect.api"
     private let tokenKey = "jwt_token"
@@ -67,15 +72,10 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.authFailed(response.error ?? "Unknown error")
         }
 
-        // Store credentials
-        saveKeychain(key: tokenKey, value: data.token)
-        saveKeychain(key: userIdKey, value: data.user.id)
-        saveKeychain(key: appleUserIdKey, value: appleUserId)
-
-        await MainActor.run {
-            self.isAuthenticated = true
-            self.currentUserId = data.user.id
-            self.currentEmail = data.user.email
+        await changeSession(to: data.user.id, email: data.user.email) {
+            self.saveKeychain(key: self.tokenKey, value: data.token)
+            self.saveKeychain(key: self.userIdKey, value: data.user.id)
+            self.saveKeychain(key: self.appleUserIdKey, value: appleUserId)
         }
 
         return (userId: data.user.id, email: data.user.email)
@@ -100,37 +100,59 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.authFailed(response.error ?? "Dev test user unavailable")
         }
 
-        saveKeychain(key: tokenKey, value: data.token)
-        saveKeychain(key: userIdKey, value: data.user.id)
-        deleteKeychain(key: appleUserIdKey)
-
-        await MainActor.run {
-            self.isAuthenticated = true
-            self.currentUserId = data.user.id
-            self.currentEmail = data.user.email
+        await changeSession(to: data.user.id, email: data.user.email) {
+            self.saveKeychain(key: self.tokenKey, value: data.token)
+            self.saveKeychain(key: self.userIdKey, value: data.user.id)
+            self.deleteKeychain(key: self.appleUserIdKey)
         }
 
         return (userId: data.user.id, email: data.user.email)
     }
     #endif
 
-    /// Sign out by clearing Keychain and local state.
-    func signOut() {
-        deleteKeychain(key: tokenKey)
-        deleteKeychain(key: userIdKey)
-        deleteKeychain(key: appleUserIdKey)
-
-        DispatchQueue.main.async {
-            self.isAuthenticated = false
-            self.currentUserId = nil
-            self.currentEmail = nil
+    /// Sign out by clearing Keychain and local state, after the store's callbacks
+    /// have run. Bridge (PL1.5): the new session signs out too, so Settings'
+    /// "Log Out" ends both.
+    func signOut() async {
+        await changeSession(to: nil, email: nil) {
+            self.deleteKeychain(key: self.tokenKey)
+            self.deleteKeychain(key: self.userIdKey)
+            self.deleteKeychain(key: self.appleUserIdKey)
         }
+        Task { @MainActor in
+            await Platform.Bridges.legacySignedOut?()
+        }
+    }
+
+    /// Serialize credential mutations and their store callbacks as one operation.
+    /// A second sign-in/sign-out cannot overtake a suspended store callback.
+    @MainActor
+    private func changeSession(to userID: String?, email: String?, saveCredentials: @escaping @MainActor () -> Void) async {
+        let previous = sessionChange
+        let task = Task {
+            await previous?.value
+            let userChanged = currentUserId != userID
+            // Keep the first sign-in's pre-authentication records waiting for
+            // attach; detach on sign-out or when replacing an existing user.
+            if userID == nil || (userChanged && currentUserId != nil) {
+                await sessionWillChange?()
+            }
+            saveCredentials()
+            isAuthenticated = userID != nil
+            currentUserId = userID
+            currentEmail = email
+            if userChanged, let userID {
+                await sessionDidChange?(userID)
+            }
+        }
+        sessionChange = task
+        await task.value
     }
 
     /// A new Apple identity token is required to renew backend authentication.
     /// A stored Apple user ID alone is not an authentication credential.
     func refreshToken() async throws {
-        signOut()
+        await signOut()
         throw APIError.authFailed("Please sign in with Apple again")
     }
 
@@ -528,7 +550,8 @@ class RetrospectAPIClient: ObservableObject {
         method: String,
         path: String,
         body: [String: Any]?,
-        authenticated: Bool = true
+        authenticated: Bool = true,
+        isRetryAfterRefresh: Bool = false
     ) async throws -> T {
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -555,9 +578,21 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.invalidResponse
         }
 
-        // Apple identity tokens cannot be refreshed from a stored subject ID.
         if response.statusCode == 401 && authenticated {
-            signOut()
+            // Bridge (PL1.5): the new session refreshes the mirrored token once and the
+            // request is retried; a second 401, or a session the server ended, signs out
+            // as before. A refresh that can't be done now fails this request only.
+            if !isRetryAfterRefresh, let refresh = await MainActor.run(body: { Platform.Bridges.refreshLegacy }) {
+                switch await refresh() {
+                case .refreshed:
+                    return try await self.request(method: method, path: path, body: body, authenticated: authenticated, isRetryAfterRefresh: true)
+                case .unavailable:
+                    throw APIError.serverError("HTTP 401: the session couldn't be refreshed right now")
+                case .signedOut:
+                    break
+                }
+            }
+            await signOut()
             // Clearing just the Keychain token isn't enough: if this 401 lands
             // mid-onboarding (before hasCompletedOnboarding is set), OnboardingState
             // would otherwise still read its own persisted "signed in" flag and skip

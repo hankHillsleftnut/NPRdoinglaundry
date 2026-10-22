@@ -10,7 +10,8 @@ import {
   getPodcastEpisode,
   getLatestEpisode,
 } from '../services/podcast-db.js';
-import { generateAgentPodcast } from '../services/agent-client.js';
+import { generateAgentPodcast, isAgentSpendLimited } from '../services/agent-client.js';
+import { sendError } from '../doors/errors.js';
 import { captureException } from '../services/telemetry.js';
 
 /** A failure's code or name for the log; its message (raw database or agent text) goes to Sentry only. */
@@ -150,6 +151,12 @@ export function createPodcastsRouter(deps: PodcastRouteDeps): Router {
 
       res.json({ success: true, data: episode });
     } catch (err) {
+      // The agent refused for spend (BEA.4): contract 00's spend_limited with its wait, not a 500 (BE0.11).
+      if (isAgentSpendLimited(err)) {
+        console.warn(`[Podcasts] Generate refused for spend (${err.scope})`);
+        sendError(res, err.toDoorError());
+        return;
+      }
       console.error(`[Podcasts] Generate failed (${failureCode(err)})`);
       deps.report(err, { route: 'podcasts.generate' });
       res.status(500).json({

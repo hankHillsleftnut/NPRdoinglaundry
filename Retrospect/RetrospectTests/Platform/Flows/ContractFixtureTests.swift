@@ -7,6 +7,7 @@ import Testing
 /// shape that drifts fails on both sides. A fixture nobody mapped fails here too.
 struct ContractFixtureTests {
     typealias Journal = Flows.Journal
+    typealias AppleBody = Backend.AppleSignInBody
 
     /// The repo's `docs/team/contracts/fixtures`, found from this file's place in the repo.
     /// PL0.1's shared `Fixtures` helper replaces this once it lands.
@@ -74,9 +75,9 @@ struct ContractFixtureTests {
     // MARK: - Contract 00
 
     static let platformResponses: [String: (Data) throws -> Void] = [
-        "auth.response": decodes(Auth.self),
-        "auth.response.waitlisted": decodes(Auth.self),
-        "signout.response": decodes(SignedOut.self),
+        "auth.response": decodes(Backend.AuthResponse.self),
+        "auth.response.waitlisted": decodes(Backend.AuthResponse.self),
+        "signout.response": decodes(Backend.SignedOut.self),
         "access.waitlisted": decodes(Access.self),
         "access.member": decodes(Access.self),
         "waitlist.response": decodes(OnWaitlist.self),
@@ -86,24 +87,24 @@ struct ContractFixtureTests {
         "redeem.response.alreadyin": decodes(Redeem.self),
         "invites-mine": decodes(InvitesMine.self),
         "meta": decodes(Meta.self),
-        "diagnostics.response": decodes(DiagnosticsReceipt.self),
+        "diagnostics.response": decodes(Backend.Endpoints.SendReport.Receipt.self),
     ]
 
     static let platformRequests: [String: (Data) throws -> Void] = [
-        "auth-apple.request": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
-        "auth-apple.request.minimal": request(AppleSignIn.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
+        "auth-apple.request.minimal": request(AppleBody.self, required: ["identityToken", "authorizationCode", "rawNonce"], optional: ["fullName", "email"]),
         "auth-google.request": request(GoogleSignIn.self, required: ["idToken", "rawNonce"]),
-        "refresh.request": request(RefreshToken.self, required: ["refreshToken"]),
-        "signout.request": request(RefreshToken.self, required: ["refreshToken"]),
+        "refresh.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
+        "signout.request": request(Backend.RefreshTokenBody.self, required: ["refreshToken"]),
         "waitlist.request": request(WaitlistReason.self, required: [], optional: ["reason"]),
         "public-waitlist.request": request(PublicWaitlist.self, required: ["email", "name", "website"], optional: ["reason"]),
         "redeem.request": request(RedeemRequest.self, required: ["code"]),
         "diagnostics.request": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         "diagnostics.request.minimal": request(
-            DiagnosticsReport.self,
+            Platform.Diagnostics.Report.self,
             required: ["reportId", "createdAt", "note", "environment", "account", "outbox", "performance", "events", "network", "failures", "crashes"]
         ),
         // The closed id lists the report may carry, shared with the backend (DG.1, DG.4).
@@ -190,6 +191,25 @@ struct ContractFixtureTests {
         #expect(target?.kind == .fact)
         #expect(retired == 3)
         #expect(try envelope(Journal.CorrectionOutcome.self, "02", "correction.not") == .notACorrection)
+    }
+
+    @Test("the auth fixtures decode into the session's own types, with their access state and name")
+    func authValues() throws {
+        let member = try envelope(Backend.AuthResponse.self, "00", "auth.response")
+        #expect(member.access.state == .member)
+        #expect(member.user.firstName == "sam")
+        #expect(!member.user.isNew)
+        #expect(member.accessTokenExpiresAt == Date(timeIntervalSince1970: 1_792_570_500))
+
+        let waitlisted = try envelope(Backend.AuthResponse.self, "00", "auth.response.waitlisted")
+        #expect(waitlisted.access.state == .waitlisted)
+        #expect(waitlisted.user.isNew)
+
+        let first = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request"))
+        #expect(first.firstAuthorization == .init(givenName: "sam", familyName: nil, email: nil))
+        let later = try JSONDecoder.contract.decode(AppleBody.self, from: data("00", "auth-apple.request.minimal"))
+        #expect(later.firstAuthorization == nil)
+        #expect(try envelope(Backend.SignedOut.self, "00", "signout.response").signedOut)
     }
 
     @Test("an enum value the app doesn't know decodes as unknown, never failing the response")

@@ -30,6 +30,15 @@ extension Platform {
             case account = "-Account"
         }
 
+        /// The arguments that take free text (a screen id or a state name).
+        enum TextFlag: String, Sendable, CaseIterable {
+            case screen = "-Screen"
+            case state = "-State"
+        }
+
+        /// The longest `-Screen` or `-State` value read; a longer one is ignored.
+        static let longestText = 64
+
         /// Something in the arguments that was ignored. Reported, never thrown:
         /// the app still launches with the default.
         enum Problem: Sendable, Equatable {
@@ -37,6 +46,8 @@ extension Platform {
             case unknownValue(Flag)
             /// The flag came last, with no value after it.
             case missingValue(Flag)
+            /// A `-Screen` or `-State` value longer than `longestText`.
+            case tooLong(TextFlag)
             /// `-Account` on production, where there are no seeded accounts.
             case accountNeedsStaging
         }
@@ -72,8 +83,8 @@ extension Platform {
                 options.account = nil
                 options.problems.append(.accountNeedsStaging)
             }
-            options.screen = text(after: "-Screen", in: arguments)
-            options.state = text(after: "-State", in: arguments)
+            options.screen = text(.screen, in: arguments, problems: &options.problems)
+            options.state = text(.state, in: arguments, problems: &options.problems)
             return options
         }
 
@@ -91,10 +102,15 @@ extension Platform {
             return value
         }
 
-        private static func text(after flag: String, in arguments: [String]) -> String? {
-            guard let index = arguments.lastIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
+        private static func text(_ flag: TextFlag, in arguments: [String], problems: inout [Problem]) -> String? {
+            guard let index = arguments.lastIndex(of: flag.rawValue), arguments.indices.contains(index + 1) else { return nil }
             let value = arguments[index + 1]
-            return value.hasPrefix("-") ? nil : value
+            guard !value.hasPrefix("-") else { return nil }
+            guard value.count <= longestText else {
+                problems.append(.tooLong(flag))
+                return nil
+            }
+            return value
         }
     }
 }

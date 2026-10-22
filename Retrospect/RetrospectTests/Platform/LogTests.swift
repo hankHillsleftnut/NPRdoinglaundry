@@ -73,15 +73,34 @@ extension Platform.Log.Event {
             case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
             case .unknownErrorCode: .unknownErrorCode(path: .meta)
             case .launchOptionIgnored: .launchOptionIgnored(.unknownValue(.data))
+            case .outboxEnqueued: .outboxEnqueued(operation: .entryCreate)
+            case .signedIn: .signedIn(provider: .apple, isNew: true)
+            case .nonceUnavailable: .nonceUnavailable(status: -4)
             case .installChecked: .installChecked(.wipedLeftovers)
             case .installCheckFailed: .installCheckFailed(status: -25308)
+            case .installCheckErrored: .installCheckErrored
+            case .refreshRetried: .refreshRetried
+            case .refreshFailed: .refreshFailed(.timedOut)
+            case .sessionRevoked: .sessionRevoked
+            case .signedOut: .signedOut(reason: .revoked, serverNotified: false)
+            case .requestReplayed: .requestReplayed(path: .meta)
+            case .keychainWriteFailed: .keychainWriteFailed(.mirror, status: -25308)
+            case .sessionLocked: .sessionLocked(status: -25308)
+            case .sessionNotConnected: .sessionNotConnected
+            case .appleCredentialRevoked: .appleCredentialRevoked
+            case .legacyRefresh: .legacyRefresh(.refreshed)
+            case .stagingResolvedToLocal: .stagingResolvedToLocal
             case .diagnosticsWriteFailed: .diagnosticsWriteFailed
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, installChecked, installCheckFailed, diagnosticsWriteFailed
+        case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
+             installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
+             keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
+             outboxEnqueued,
+             diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
@@ -91,8 +110,23 @@ extension Platform.Log.Event {
         case .requestSent: .requestSent
         case .unknownErrorCode: .unknownErrorCode
         case .launchOptionIgnored: .launchOptionIgnored
+        case .outboxEnqueued: .outboxEnqueued
+        case .signedIn: .signedIn
+        case .nonceUnavailable: .nonceUnavailable
         case .installChecked: .installChecked
         case .installCheckFailed: .installCheckFailed
+        case .installCheckErrored: .installCheckErrored
+        case .refreshRetried: .refreshRetried
+        case .refreshFailed: .refreshFailed
+        case .sessionRevoked: .sessionRevoked
+        case .signedOut: .signedOut
+        case .requestReplayed: .requestReplayed
+        case .keychainWriteFailed: .keychainWriteFailed
+        case .sessionLocked: .sessionLocked
+        case .sessionNotConnected: .sessionNotConnected
+        case .appleCredentialRevoked: .appleCredentialRevoked
+        case .legacyRefresh: .legacyRefresh
+        case .stagingResolvedToLocal: .stagingResolvedToLocal
         case .diagnosticsWriteFailed: .diagnosticsWriteFailed
         }
     }

@@ -32,6 +32,12 @@ extension Store {
         case unknown
     }
 
+    /// What an outbox row sends. Stored as its raw value.
+    enum OutboxOperation: String, Flows.ContractEnum {
+        case entryCreate = "entry.create"
+        case unknown
+    }
+
     enum OutboxStatus: String, Flows.ContractEnum {
         case pending, inFlight, done, dead, unknown
     }
@@ -92,11 +98,14 @@ extension Store {
 
         var id: String
         /// What to send: `entry.create`; later `entry.edit`, `guess.answer`…
-        var operation: String
+        var operation: OutboxOperation
         var entityID: String
         /// The encoded request body, exactly as it will be sent every time.
         var payload: Data
         var attempts: Int = 0
+        /// Pending: the earliest time to send. In flight: the time the send
+        /// counts as lost to a crash (sent at + `Outbox.crashedSendAfter`), so
+        /// the drainer finds stale sends through the same index.
         var nextAttemptAt: Date
         var status: OutboxStatus
         /// A failure kind, never a message.
@@ -155,9 +164,13 @@ extension Store {
             case id, ring, at, payload
         }
 
-        /// One ring's rows, oldest first.
-        static func inRing(_ ring: Platform.Diagnostics.Ring) -> QueryInterfaceRequest<DiagnosticRow> {
-            filter(Column(CodingKeys.ring) == ring.rawValue).order(Column(CodingKeys.id))
+        /// One ring's rows, oldest first; from `since` on when given.
+        static func inRing(_ ring: Platform.Diagnostics.Ring, since: Date? = nil) -> QueryInterfaceRequest<DiagnosticRow> {
+            var request = filter(Column(CodingKeys.ring) == ring.rawValue).order(Column(CodingKeys.id))
+            if let since {
+                request = request.filter(Column(CodingKeys.at) >= Backend.Coding.timestamp(since))
+            }
+            return request
         }
 
         /// Keeps the ring's newest `cap` rows and deletes the rest.
