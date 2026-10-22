@@ -226,8 +226,8 @@ extension Store {
         private func pass() async {
             guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return }
             var tally = Tally()
-            for item in due where !Task.isCancelled {
-                guard (try? markInFlight(item)) != nil else { continue }
+            for queued in due where !Task.isCancelled {
+                guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
                     let result = try await sender.send(item)
@@ -333,28 +333,39 @@ extension Store {
                 )
             }
             var taken: Set<String> = []
+            var included: Set<String> = []
             var due: [OutboxRow] = []
             for row in rows where row.operation != .unknown {
+                let isDue = row.status == .pending && Backend.Coding.timestamp(row.nextAttemptAt) <= cutoff
                 guard !taken.contains(row.entityID) else {
-                    if row.status == .pending, Backend.Coding.timestamp(row.nextAttemptAt) <= cutoff {
+                    // Due, behind an item this pass is sending: one more pass picks it up.
+                    // Behind a stuck one (not due, in flight, refused): it waits, no extra pass.
+                    if isDue, included.contains(row.entityID) {
                         needsAnotherPass = true
                     }
                     continue
                 }
                 taken.insert(row.entityID)
-                if row.status == .pending, Backend.Coding.timestamp(row.nextAttemptAt) <= cutoff {
+                if isDue {
+                    included.insert(row.entityID)
                     due.append(row)
                 }
             }
             return due
         }
 
-        private func markInFlight(_ item: OutboxRow) throws {
+        /// Marks the item in flight with its crash deadline and the entry
+        /// `sending`; returns the item as stored, which is what the sender sees.
+        private func markInFlight(_ item: OutboxRow) throws -> OutboxRow {
             let deadline = now().addingTimeInterval(Self.crashedSendAfter)
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .inFlight, nextAttemptAt: deadline, attempts: item.attempts, code: item.lastErrorCode), db)
                 try Self.setEntry(item.entityID, EntryChange(state: .sending), db)
             }
+            var sending = item
+            sending.status = .inFlight
+            sending.nextAttemptAt = deadline
+            return sending
         }
 
         private func markDone(_ item: OutboxRow, result: OutboxSendResult) throws {
