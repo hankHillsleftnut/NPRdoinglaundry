@@ -155,7 +155,8 @@ struct AppleSignInTests {
         #expect(first != second)
         #expect(first.count == 64)
         #expect(first == first.lowercased())
-        #expect(first.allSatisfy(\.isHexDigit))
+        let isHex = first.allSatisfy(\.isHexDigit)
+        #expect(isHex)
     }
 
     @Test("the hash on the request is the hash of the raw nonce the server gets")
