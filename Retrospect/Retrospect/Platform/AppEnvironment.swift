@@ -14,6 +14,9 @@ extension Platform {
     /// Platform` can still use SwiftUI's `@Environment` wrapper.
     @MainActor @Observable
     final class AppEnvironment {
+        /// How this launch runs: sample or live data, which server, the screen
+        /// launcher's page and state.
+        let launch: Platform.LaunchOptions
         /// Which server, and the version every request reports.
         let configuration: Backend.Configuration
         let log: any Platform.LogSink
@@ -21,15 +24,18 @@ extension Platform {
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
 
-        init(configuration: Backend.Configuration, log: any Platform.LogSink) {
+        init(launch: Platform.LaunchOptions = .standard, configuration: Backend.Configuration, log: any Platform.LogSink) {
+            self.launch = launch
             self.configuration = configuration
             self.log = log
         }
 
-        /// The app's environment: production (T02a adds launch options for
-        /// other servers in debug builds), logs to the system log.
-        static func live() -> AppEnvironment {
-            AppEnvironment(configuration: .resolve(.production), log: Log.SystemSink())
+        /// The app's environment, set by this launch's options (always live
+        /// production in a release build), logging to the system log. Options
+        /// that were ignored are logged by flag, never by value.
+        static func live(launch: Platform.LaunchOptions = .current, log: any Platform.LogSink = Log.SystemSink()) -> AppEnvironment {
+            launch.problems.forEach { log.record(.launchOptionIgnored($0)) }
+            return AppEnvironment(launch: launch, configuration: .resolve(launch.environment), log: log)
         }
 
         /// For previews and tests: no network, no disk, no Keychain; logs are

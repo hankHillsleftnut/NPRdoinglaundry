@@ -15,7 +15,7 @@ struct AppEnvironmentTests {
 
     @Test("the live environment logs to the system log")
     func theLiveEnvironmentLogsToTheSystemLog() {
-        let environment = Platform.AppEnvironment.live()
+        let environment = Platform.AppEnvironment.live(launch: .standard)
 
         #expect(environment.log is Platform.Log.SystemSink)
         #expect(environment.updateRequired == false)
@@ -23,10 +23,29 @@ struct AppEnvironmentTests {
 
     @Test("live() uses the production configuration")
     func liveUsesTheProductionConfiguration() {
-        let configuration = Platform.AppEnvironment.live().configuration
+        let configuration = Platform.AppEnvironment.live(launch: .standard).configuration
 
         #expect(configuration.environment == .production)
         #expect(configuration.baseURL.absoluteString == "https://retrospect-api.onrender.com")
+    }
+
+    @Test("live(launch:) follows the launch's environment and keeps its options")
+    func liveFollowsTheLaunchsEnvironment() {
+        let launch = Platform.LaunchOptions.parse(["app", "-Environment", "local", "-Data", "sample", "-State", "offline"])
+
+        let environment = Platform.AppEnvironment.live(launch: launch, log: Platform.Log.Recorder())
+
+        #expect(environment.configuration.environment == .local)
+        #expect(environment.launch == launch)
+    }
+
+    @Test("ignored launch options are logged by flag")
+    func ignoredLaunchOptionsAreLoggedByFlag() {
+        let recorder = Platform.Log.Recorder()
+
+        _ = Platform.AppEnvironment.live(launch: .parse(["app", "-Data", "nonsense", "-Account", "month"]), log: recorder)
+
+        #expect(recorder.events == [.launchOptionIgnored(.unknownValue(.data)), .launchOptionIgnored(.accountNeedsStaging)])
     }
 
     @Test("the preview environment points at local staging and reads no bundle")
