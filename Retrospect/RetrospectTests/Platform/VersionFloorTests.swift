@@ -43,6 +43,7 @@ struct VersionFloorTests {
     private let session = URLSession.stubbed()
     private let recorder = Platform.Log.Recorder()
     private let uptime = Platform.Box(TimeInterval(100))
+    private let reachability = ManualReachability()
 
     private struct NoTokens: Backend.TokenProviding {
         func accessToken() async throws -> String { "t" }
@@ -57,7 +58,7 @@ struct VersionFloorTests {
     private func client(floor: Platform.VersionFloor) -> Backend.Client {
         Backend.Client(
             configuration: .resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false),
-            session: session, tokens: NoTokens(), reachability: ManualReachability(), clock: TestClock(), log: recorder,
+            session: session, tokens: NoTokens(), reachability: reachability, clock: TestClock(), log: recorder,
             onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
         )
     }
@@ -141,13 +142,13 @@ struct VersionFloorTests {
         await floor.checkIfDue(using: client)
         #expect(StubProtocol.requests(on: session).count == 2)
 
-        StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
+        reachability.set(online: false)
         uptime.value += 7 * 60 * 60
         await floor.checkIfDue(using: client)
         #expect(recorder.events.contains(.versionFloor(.askFailed)))
-        serveMeta(min: "1.0 (1)")
+        reachability.set(online: true)
         await floor.checkIfDue(using: client)
-        #expect(StubProtocol.requests(on: session).count == 4, "a failed ask doesn't start the six hours")
+        #expect(StubProtocol.requests(on: session).count == 3, "a failed ask doesn't start the six hours")
     }
 
     @Test("two active scenes at once ask meta once")
