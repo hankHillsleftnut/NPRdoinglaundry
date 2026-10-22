@@ -96,9 +96,10 @@ extension Platform.Log {
                 logger.error("install check failed: keychain status \(status)")
             case .installCheckErrored:
                 logger.error("install check failed with an error that isn't a keychain status")
-            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed, .sessionLocked,
-                 .sessionNotConnected, .appleCredentialRevoked, .legacyRefresh, .stagingResolvedToLocal:
+            case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
                 recordSession(event)
+            case .sessionLocked, .sessionNotConnected, .appleCredentialRevoked, .legacyRefresh, .stagingResolvedToLocal:
+                recordDevice(event)
             }
         }
 
@@ -117,6 +118,14 @@ extension Platform.Log {
                 record(replayed: path)
             case let .keychainWriteFailed(item, status):
                 record(writeFailed: item, status: status)
+            default:
+                break
+            }
+        }
+
+        /// The phone's and the old app's lines (PL1.5).
+        private func recordDevice(_ event: Event) {
+            switch event {
             case let .sessionLocked(status):
                 logger.info("session unreadable, read again when active: keychain status \(status)")
             case .sessionNotConnected:
