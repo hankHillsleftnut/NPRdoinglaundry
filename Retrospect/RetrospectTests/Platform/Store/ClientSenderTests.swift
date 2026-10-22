@@ -50,6 +50,42 @@ struct ClientSenderTests {
         #expect(result.reading != nil)
     }
 
+    @Test("the entry answer's server createdAt and day come back with the ids")
+    func theAnswersDatesComeBack() async throws {
+        defer { StubProtocol.clear(session) }
+        StubProtocol.register(on: session) { request in
+            try (HTTPURLResponse.stub(request, status: 201), Fixtures.data("02", "entry.create.response"))
+        }
+
+        let result = try await sender().send(row())
+
+        #expect(result.day == "2026-10-21")
+        #expect(try abs(#require(result.createdAt).timeIntervalSince(Date(timeIntervalSince1970: 1_792_587_731.41))) < 0.001)
+    }
+
+    @Test("a guess answer goes to POST /v2/guesses/:id with its verdict and the row's id as the key, and writes nothing back")
+    func aGuessAnswerGoesToItsDoor() async throws {
+        defer { StubProtocol.clear(session) }
+        let key = "00000000-0000-4000-8000-000000000777"
+        let row = try Store.OutboxRow(
+            id: key, operation: .guessAnswer, entityID: "guess 1", payload: Backend.Coding.encoder.encode(Backend.Endpoints.AnswerGuess.Body(verdict: .yes)),
+            attempts: 0, nextAttemptAt: Date(timeIntervalSince1970: 1_792_569_604), status: .inFlight, lastErrorCode: nil,
+            createdAt: Date(timeIntervalSince1970: 1_792_569_604)
+        )
+        StubProtocol.register(on: session) { request in
+            try (HTTPURLResponse.stub(request, status: 200), Fixtures.data("02", "guess.answer"))
+        }
+
+        let result = try await sender().send(row)
+
+        let request = try #require(StubProtocol.requests(on: session).first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/v2/guesses/guess%201" || request.url?.path == "/v2/guesses/guess 1")
+        #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == key)
+        #expect(request.httpBody == row.payload)
+        #expect(result == Store.OutboxSendResult())
+    }
+
     @Test("a door's refusal comes back as the backend failure, for the drainer to settle")
     func aRefusalComesBackAsTheFailure() async throws {
         defer { StubProtocol.clear(session) }

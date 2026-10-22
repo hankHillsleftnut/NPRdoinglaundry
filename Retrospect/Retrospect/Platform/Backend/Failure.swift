@@ -128,3 +128,31 @@ private extension Duration {
         Int(components.seconds)
     }
 }
+
+extension Backend.Failure.Kind {
+    /// The stable name the store keeps (`entries.failure_code`, `outbox.last_error_code`):
+    /// the contract code when the server answered, else the phone-side kind.
+    var code: String {
+        storedCode.rawValue
+    }
+
+    /// The kind for a stored code; nil for a code this build doesn't know. A
+    /// retry-after and an unknown server code don't survive the round trip
+    /// (they're not stored), so `rateLimited` comes back with no wait and
+    /// `unknown` with its own name.
+    init?(code: String) {
+        guard let stored = Store.FailureCode(rawValue: code), stored != .unknown || code == Store.FailureCode.unknown.rawValue,
+              let kind = Self.byStoredCode[stored]
+        else { return nil }
+        self = kind
+    }
+
+    private static let byStoredCode: [Store.FailureCode: Self] = [
+        .invalidRequest: .invalidRequest, .invalidCredentials: .invalidCredentials, .unauthenticated: .unauthenticated,
+        .sessionRevoked: .sessionRevoked, .inviteRequired: .inviteRequired, .suspended: .suspended, .notFound: .notFound,
+        .idempotencyMismatch: .idempotencyMismatch, .updateRequired: .updateRequired, .rateLimited: .rateLimited(retryAfter: nil),
+        .spendLimited: .spendLimited(retryAfter: nil), .upstreamTimeout: .upstreamTimeout, .upstreamUnavailable: .upstreamUnavailable,
+        .internal: .internal, .inviteInvalid: .inviteInvalid, .inviteUsed: .inviteUsed, .inviteExpired: .inviteExpired,
+        .offline: .offline, .timedOut: .timedOut, .decoding: .decoding, .transport: .transport, .unknown: .unknown(code: "unknown"),
+    ]
+}

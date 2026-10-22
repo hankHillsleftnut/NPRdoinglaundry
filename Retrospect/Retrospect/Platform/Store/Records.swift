@@ -34,7 +34,10 @@ extension Store {
 
     /// What an outbox row sends. Stored as its raw value.
     enum OutboxOperation: String, Flows.ContractEnum {
+        /// `POST /v2/entries`; the entity is the entry (`local_id`), the key is the entity's id.
         case entryCreate = "entry.create"
+        /// `POST /v2/guesses/:id`; the entity is the guess, the key is the row's own id (the door ignores it).
+        case guessAnswer = "guess.answer"
         case unknown
     }
 
@@ -95,10 +98,13 @@ extension Store {
         var attempts: Int = 0
         var reading: Reading?
         var origin: Origin
+        /// The line shown under the entry once it's sent ("got it."), chosen
+        /// once by the drainer and never changed. Nil until sent.
+        var acknowledgement: String?
 
         enum CodingKeys: String, CodingKey {
             case localID = "local_id", serverID = "server_id", kind, text, createdAt = "created_at", day
-            case mediaPath = "media_path", syncState = "sync_state", failureCode = "failure_code", attempts, reading, origin
+            case mediaPath = "media_path", syncState = "sync_state", failureCode = "failure_code", attempts, reading, origin, acknowledgement
         }
 
         /// One day's entries, oldest first (the `entries(day, created_at)` index).

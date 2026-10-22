@@ -157,6 +157,7 @@ extension Platform.Diagnostics {
             self = switch path {
             case .meta: .meta
             case .entries: .entries
+            case .guessByID: .guessesById
             }
         }
     }

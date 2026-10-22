@@ -56,6 +56,8 @@ extension Store {
         private let now: @Sendable () -> Date
         private let timeZone: @Sendable () -> TimeZone
         private let jitter: @Sendable (Duration) -> Duration
+        /// Chooses an acknowledgement line: an index below its argument.
+        private let pick: @Sendable (Int) -> Int
         private let log: any Platform.LogSink
         private var isDraining = false
         private var needsAnotherPass = false
@@ -71,6 +73,7 @@ extension Store {
             now: @escaping @Sendable () -> Date = { Date() },
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
             jitter: @escaping @Sendable (Duration) -> Duration = Backend.Client.randomJitter,
+            pick: @escaping @Sendable (Int) -> Int = { Int.random(in: 0 ..< max(1, $0)) },
             log: any Platform.LogSink
         ) {
             self.database = database
@@ -79,6 +82,7 @@ extension Store {
             self.now = now
             self.timeZone = timeZone
             self.jitter = jitter
+            self.pick = pick
             self.log = log
         }
 
@@ -114,6 +118,26 @@ extension Store {
                 Task { await drain(reason: .afterWrite) }
             }
             return draft.id
+        }
+
+        /// Queues a guess's answer (PL3.1 F4): the entity is the guess, the key
+        /// is the row's own id (the door ignores it, so a repeat is safe). The
+        /// screen flips the guess itself; the drainer never touches it.
+        @discardableResult
+        func enqueueGuessAnswer(guessID: String, verdict: Flows.Journal.GuessVerdict) throws -> UUID {
+            let payload = try Backend.Coding.encoder.encode(Backend.Endpoints.AnswerGuess.Body(verdict: verdict))
+            let key = UUID()
+            let queuedAt = now()
+            let item = OutboxRow(
+                id: key.uuidString.lowercased(), operation: .guessAnswer, entityID: guessID, payload: payload, attempts: 0,
+                nextAttemptAt: queuedAt, status: .pending, lastErrorCode: nil, createdAt: queuedAt
+            )
+            try database.writer.write { try item.insert($0) }
+            log.record(.outbox(.enqueued(operation: .guessAnswer)))
+            if started {
+                Task { await drain(reason: .afterWrite) }
+            }
+            return key
         }
 
         /// Items not yet sent: pending, in flight or refused. Feeds sign-out's
@@ -360,7 +384,7 @@ extension Store {
             let deadline = now().addingTimeInterval(Self.crashedSendAfter)
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .inFlight, nextAttemptAt: deadline, attempts: item.attempts, code: item.lastErrorCode), db)
-                try Self.setEntry(item.entityID, EntryChange(state: .sending), db)
+                try Self.setEntry(of: item, EntryChange(state: .sending), db)
             }
             var sending = item
             sending.status = .inFlight
@@ -368,26 +392,36 @@ extension Store {
             return sending
         }
 
+        /// `done`, and for an entry: `sent`, the server's id, reading, `createdAt`
+        /// and `day`, and its acknowledgement line, chosen now if it has none
+        /// (never the newest line already stored) and never changed after.
         private func markDone(_ item: OutboxRow, result: OutboxSendResult) throws {
+            let pick = pick
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .done, nextAttemptAt: item.nextAttemptAt, attempts: item.attempts + 1, code: nil), db)
-                try Self.setEntry(
-                    item.entityID, EntryChange(state: .sent, attempts: item.attempts + 1, serverID: result.serverID, reading: result.reading), db
+                guard item.operation == .entryCreate else { return }
+                let previous = try String.fetchOne(
+                    db, sql: "SELECT acknowledgement FROM entries WHERE acknowledgement IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1"
                 )
+                let line = Flows.Journal.Acknowledgements.next(after: previous, pick: pick)
+                try Self.setEntry(of: item, EntryChange(
+                    state: .sent, attempts: item.attempts + 1, serverID: result.serverID, reading: result.reading,
+                    createdAt: result.createdAt, day: result.day, acknowledgement: line
+                ), db)
             }
         }
 
         private func markPending(_ item: OutboxRow, at date: Date) throws {
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .pending, nextAttemptAt: date, attempts: item.attempts, code: item.lastErrorCode), db)
-                try Self.setEntry(item.entityID, EntryChange(state: .local), db)
+                try Self.setEntry(of: item, EntryChange(state: .local), db)
             }
         }
 
         private func markRetry(_ item: OutboxRow, attempts: Int, at date: Date, code: FailureCode) throws {
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .pending, nextAttemptAt: date, attempts: attempts, code: code.rawValue), db)
-                try Self.setEntry(item.entityID, EntryChange(state: .local, attempts: attempts), db)
+                try Self.setEntry(of: item, EntryChange(state: .local, attempts: attempts), db)
             }
             log.record(.outbox(.retry(operation: item.operation, code: code)))
         }
@@ -395,7 +429,7 @@ extension Store {
         private func markDead(_ item: OutboxRow, attempts: Int, code: FailureCode) throws {
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .dead, nextAttemptAt: item.nextAttemptAt, attempts: attempts, code: code.rawValue), db)
-                try Self.setEntry(item.entityID, EntryChange(state: .failed, attempts: attempts, failureCode: code.rawValue), db)
+                try Self.setEntry(of: item, EntryChange(state: .failed, attempts: attempts, failureCode: code.rawValue), db)
             }
             log.record(.outbox(.dead(operation: item.operation, code: code)))
         }
@@ -421,25 +455,41 @@ extension Store {
             var attempts: Int?
             var serverID: String?
             var reading: Reading?
+            var createdAt: Date?
+            var day: String?
+            /// Kept only if the row has none yet (`COALESCE`).
+            var acknowledgement: String?
             var failureCode: String?
 
-            init(state: SyncState, attempts: Int? = nil, serverID: String? = nil, reading: Reading? = nil, failureCode: String? = nil) {
+            init(
+                state: SyncState, attempts: Int? = nil, serverID: String? = nil, reading: Reading? = nil,
+                createdAt: Date? = nil, day: String? = nil, acknowledgement: String? = nil, failureCode: String? = nil
+            ) {
                 self.state = state
                 self.attempts = attempts
                 self.serverID = serverID
                 self.reading = reading
+                self.createdAt = createdAt
+                self.day = day
+                self.acknowledgement = acknowledgement
                 self.failureCode = failureCode
             }
         }
 
-        /// An entity that isn't an entry (later operations) is left alone.
-        private static func setEntry(_ id: String, _ change: EntryChange, _ db: GRDB.Database) throws {
+        /// Only an entry's own item writes to `entries`; another operation's
+        /// entity (a guess) lives elsewhere and is never touched here.
+        private static func setEntry(of item: OutboxRow, _ change: EntryChange, _ db: GRDB.Database) throws {
+            guard item.operation == .entryCreate else { return }
             try db.execute(
                 sql: """
                 UPDATE entries SET sync_state = ?, attempts = COALESCE(?, attempts), server_id = COALESCE(?, server_id),
-                reading = COALESCE(?, reading), failure_code = ? WHERE local_id = ?
+                reading = COALESCE(?, reading), created_at = COALESCE(?, created_at), day = COALESCE(?, day),
+                acknowledgement = COALESCE(acknowledgement, ?), failure_code = ? WHERE local_id = ?
                 """,
-                arguments: [change.state.rawValue, change.attempts, change.serverID, change.reading?.rawValue, change.failureCode, id]
+                arguments: [
+                    change.state.rawValue, change.attempts, change.serverID, change.reading?.rawValue,
+                    change.createdAt.map(Backend.Coding.timestamp), change.day, change.acknowledgement, change.failureCode, item.entityID,
+                ]
             )
         }
 

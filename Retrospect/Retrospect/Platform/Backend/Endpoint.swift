@@ -11,6 +11,7 @@ extension Backend {
     enum PathTemplate: String, Sendable, CaseIterable {
         case meta = "/v2/meta"
         case entries = "/v2/entries"
+        case guessByID = "/v2/guesses/:id"
     }
 
     /// The body of a request that sends none.

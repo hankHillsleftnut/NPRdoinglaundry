@@ -7,10 +7,15 @@ extension Store {
         /// The server's id for the entity (an entry's `id`).
         var serverID: String?
         var reading: Reading?
+        /// The server's `createdAt` (clamped if the phone's clock was ahead) and its `day`.
+        var createdAt: Date?
+        var day: String?
 
-        init(serverID: String? = nil, reading: Reading? = nil) {
+        init(serverID: String? = nil, reading: Reading? = nil, createdAt: Date? = nil, day: String? = nil) {
             self.serverID = serverID
             self.reading = reading
+            self.createdAt = createdAt
+            self.day = day
         }
     }
 
@@ -43,7 +48,20 @@ extension Store {
                     throw Backend.Failure(.invalidRequest)
                 }
                 let created = try await client.send(Backend.Endpoints.CreateEntry(clientEntryID: key, content: body))
-                return OutboxSendResult(serverID: created.entry.id, reading: Reading(rawValue: created.entry.reading.rawValue) ?? .unknown)
+                return OutboxSendResult(
+                    serverID: created.entry.id, reading: Reading(rawValue: created.entry.reading.rawValue) ?? .unknown,
+                    createdAt: created.entry.createdAt, day: created.entry.day
+                )
+            case .guessAnswer:
+                guard let key = UUID(uuidString: item.id) else { throw Backend.Failure(.invalidRequest) }
+                let body: Backend.Endpoints.AnswerGuess.Body
+                do {
+                    body = try Backend.Coding.decoder.decode(Backend.Endpoints.AnswerGuess.Body.self, from: item.payload)
+                } catch {
+                    throw Backend.Failure(.invalidRequest)
+                }
+                _ = try await client.send(Backend.Endpoints.AnswerGuess(guessID: item.entityID, content: body, key: key))
+                return OutboxSendResult()
             case .unknown:
                 // Written by a newer build; left in the queue for it.
                 throw Backend.Failure(.invalidRequest)

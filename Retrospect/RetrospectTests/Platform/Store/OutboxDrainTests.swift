@@ -30,11 +30,13 @@ struct OutboxDrainTests {
         database = try Store.LocalDatabase.inMemory()
     }
 
-    /// Full jitter is replaced by its ceiling, so delays are exact.
+    /// Full jitter is replaced by its ceiling, so delays are exact; the
+    /// acknowledgement picker always takes the first choice.
     private func outbox(reachability: (any Backend.Reachability)? = nil) -> Store.Outbox {
         let now = now
         return Store.Outbox(
-            database: database, sender: sender, reachability: reachability, now: { now.value }, timeZone: { .gmt }, jitter: { $0 }, log: recorder
+            database: database, sender: sender, reachability: reachability, now: { now.value }, timeZone: { .gmt }, jitter: { $0 },
+            pick: { _ in 0 }, log: recorder
         )
     }
 
@@ -117,6 +119,115 @@ struct OutboxDrainTests {
 
         #expect(try item(a).status == .pending)
         #expect(drainedLines.isEmpty)
+    }
+
+    @Test("a sent entry takes the server's createdAt and day, so a clamped clock moves it once")
+    func aSentEntryTakesTheServersCreatedAtAndDay() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.success(.init(
+            serverID: "srv", reading: .waiting, createdAt: Date(timeIntervalSince1970: 1_792_569_000.5), day: "2026-10-20"
+        ))])
+
+        await outbox.drain(reason: .manual)
+
+        let entry = try entry(a)
+        #expect(abs(entry.createdAt.timeIntervalSince(Date(timeIntervalSince1970: 1_792_569_000.5))) < 0.001)
+        #expect(entry.day == "2026-10-20")
+        #expect(entry.serverID == "srv")
+    }
+
+    @Test("an answer that comes back without a createdAt or day keeps the row's own")
+    func aSentEntryKeepsItsOwnDatesWhenTheAnswerHasNone() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        let before = try entry(a)
+
+        await outbox.drain(reason: .manual)
+
+        #expect(try entry(a).day == before.day)
+        #expect(try abs(entry(a).createdAt.timeIntervalSince(before.createdAt)) < 0.001)
+    }
+
+    // MARK: The acknowledgement
+
+    @Test("an entry gets its acknowledgement line when first sent, never the newest line already stored, and keeps it for good")
+    func anEntryGetsItsAcknowledgementOnce() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        #expect(try entry(a).acknowledgement == nil, "nothing until sent")
+
+        await outbox.drain(reason: .manual)
+
+        let first = try #require(try entry(a).acknowledgement)
+        #expect(Flows.Journal.Acknowledgements.lines.contains(first))
+
+        try await outbox.enqueueEntry(draft(b))
+        await outbox.drain(reason: .manual)
+        let second = try #require(try entry(b).acknowledgement)
+        #expect(second != first, "never the same line twice in a row")
+        #expect(try entry(a).acknowledgement == first)
+
+        try execute("UPDATE entries SET acknowledgement = 'kept.' WHERE local_id = ?", [key(a)])
+        try execute("UPDATE outbox SET status = 'pending' WHERE id = ?", [key(a)])
+        await outbox.drain(reason: .manual)
+        #expect(try entry(a).acknowledgement == "kept.", "a line already chosen is never changed")
+    }
+
+    @Test("a refused entry gets no acknowledgement")
+    func aRefusedEntryGetsNoAcknowledgement() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.failure(Backend.Failure(.invalidRequest))])
+
+        await outbox.drain(reason: .manual)
+
+        #expect(try entry(a).acknowledgement == nil)
+    }
+
+    // MARK: Guess answers
+
+    @Test("a queued guess answer is sent with its verdict, keyed by its own row, and never touches entries")
+    func aQueuedGuessAnswerIsSent() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        await outbox.drain(reason: .manual)
+        let entryBefore = try entry(a)
+        let rowKey = try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .no)
+
+        await outbox.drain(reason: .manual)
+
+        let send = try #require(sender.sends.last)
+        #expect(send.id == rowKey.uuidString.lowercased())
+        #expect(try #require(String(data: send.payload, encoding: .utf8)) == #"{"verdict":"no"}"#)
+        let row = try rowByID(rowKey.uuidString.lowercased())
+        #expect(row.status == .done)
+        #expect(row.entityID == "guess-1")
+        #expect(row.operation == .guessAnswer)
+        #expect(try entry(a) == entryBefore, "the entry row is untouched by a guess's send")
+        #expect(try database.writer.read { try Store.EntryRow.fetchCount($0) } == 1, "no entry row is made for a guess")
+        #expect(recorder.events.contains(.outbox(.enqueued(operation: .guessAnswer))))
+    }
+
+    @Test("a guess answer refused for good is dead, and a retryable one is dead after the attempt budget; entries stay untouched")
+    func aGuessAnswerDiesLikeAnEntry() async throws {
+        let outbox = outbox()
+        let refused = try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .yes)
+        let flaky = try await outbox.enqueueGuessAnswer(guessID: "guess-2", verdict: .yes)
+        sender.script(refused.uuidString.lowercased(), [.failure(Backend.Failure(.notFound))])
+        sender.script(flaky.uuidString.lowercased(), Array(repeating: .failure(Backend.Failure(.upstreamUnavailable)), count: 5))
+
+        for _ in 0 ..< 5 {
+            await outbox.drain(reason: .manual)
+            now.advance(seconds: 600)
+        }
+
+        #expect(try rowByID(refused.uuidString.lowercased()).status == .dead)
+        #expect(try rowByID(refused.uuidString.lowercased()).lastErrorCode == "not_found")
+        #expect(try rowByID(flaky.uuidString.lowercased()).status == .dead)
+        #expect(try rowByID(flaky.uuidString.lowercased()).attempts == Store.Outbox.attemptLimit)
+        #expect(try database.writer.read { try Store.EntryRow.fetchCount($0) } == 0)
+        #expect(try await outbox.unsentCount() == 2, "queued answers count as unsent")
     }
 
     // MARK: Offline and retries

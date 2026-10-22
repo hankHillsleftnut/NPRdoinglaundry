@@ -83,6 +83,7 @@ extension Platform.Log {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
             case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
+            case .guessByID: logger.info("request /v2/guesses/:id: status \(status), \(ms) ms")
             }
         }
 
@@ -90,6 +91,7 @@ extension Platform.Log {
             switch path {
             case .meta: logger.error("unknown error code from /v2/meta")
             case .entries: logger.error("unknown error code from /v2/entries")
+            case .guessByID: logger.error("unknown error code from /v2/guesses/:id")
             }
         }
 
@@ -114,6 +116,7 @@ extension Platform.Log {
         private static func name(_ operation: Store.OutboxOperation) -> StaticString {
             switch operation {
             case .entryCreate: "entry.create"
+            case .guessAnswer: "guess.answer"
             case .unknown: "unknown operation"
             }
         }
