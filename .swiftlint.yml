@@ -3,6 +3,7 @@
 included:
   - Retrospect/Retrospect/DesignSystemV2
   - Retrospect/Retrospect/Features
+  - Retrospect/Retrospect/Platform
 excluded:
   - Retrospect/Retrospect/DesignSystemV2/Generated
 opt_in_rules:
