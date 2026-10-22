@@ -54,18 +54,20 @@ export interface DoorLogLine {
   nulledFields?: number;
   /** How many items the door left out of its answer because the contract has no name for them (guesses). */
   dropped?: number;
+  /** entries.create: 1 when the entry's createdAt was ahead of the server by more than the allowed skew and was clamped. */
+  clockSkew?: number;
   /** auth.refresh only: a rotated refresh token was used again (a possible stolen copy). Written only when true. */
   reuse?: boolean;
 }
 
 /** The numeric size and count fields a door may add to its line (DoorSpec.logCounts). */
-export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes' | 'nulledFields' | 'dropped'>;
-export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields', 'dropped'] as const;
+export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes' | 'nulledFields' | 'dropped' | 'clockSkew'>;
+export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields', 'dropped', 'clockSkew'] as const;
 
 /** The only fields a door log line can have, in output order. */
 export const DOOR_LOG_FIELDS = [
   'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields',
-  'dropped', 'reuse',
+  'dropped', 'clockSkew', 'reuse',
 ] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.
@@ -73,10 +75,13 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const fieldsMatchType: Same<(typeof DOOR_LOG_FIELDS)[number], keyof DoorLogLine> = true;
 void fieldsMatchType;
 
+/** The X-App-Version header's shape (`1.0 (42)`); anything else is never logged or stored. */
+export const APP_VERSION_PATTERN = /^\d{1,4}(\.\d{1,4}){0,2}( \(\d{1,8}(\.\d{1,8}){0,2}\))?$/;
+
 const PATTERNS: Record<'door' | 'userId' | 'appVersion', RegExp> = {
   door: /^[a-z][a-z0-9._-]{0,63}$/,
   userId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-  appVersion: /^\d{1,4}(\.\d{1,4}){0,2}( \(\d{1,8}(\.\d{1,8}){0,2}\))?$/,
+  appVersion: APP_VERSION_PATTERN,
 };
 
 const INVALID = 'invalid';

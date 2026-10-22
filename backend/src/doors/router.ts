@@ -7,6 +7,7 @@ import type { DiagnosticsStore } from '../diagnostics/store.js';
 import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
 import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
 import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
+import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -18,6 +19,7 @@ export interface V2RouterDeps {
   invites: InviteDoorDeps;
   briefs: BriefDoorDeps;
   guesses: GuessDoorDeps;
+  entries: EntryDoorDeps;
 }
 
 /**
@@ -79,6 +81,8 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
 
   // Today's brief, the list, one brief, the switch (BE1.3, BE1.3b).
   mountBriefDoors(router, door, deps.briefs);
+  // The journal: sending and today (BE1.1).
+  mountEntryDoors(router, door, deps.entries);
 
   // The guess cards (BE1.4).
   mountGuessDoors(router, door, deps.guesses);
