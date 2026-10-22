@@ -71,6 +71,10 @@ extension Platform.Log {
         case inviteChecked(Session.InviteCheckOutcome)
         /// A tear redeemed, or didn't.
         case inviteTorn(Session.InviteTearOutcome)
+        /// The version floor was checked (PL1.6): what it found.
+        case versionFloor(Platform.VersionFloorOutcome)
+        /// A version string couldn't be read; logged once per process and side.
+        case versionUnreadable(Platform.UnreadableVersion)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
         /// A batch of diagnostics couldn't be written; it was dropped.
@@ -104,12 +108,12 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
                 recordDevice(event)
-            case .inviteReceived, .inviteChecked, .inviteTorn:
+            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable:
                 recordGate(event)
             }
         }
 
-        /// The invite's lines (PL1.7).
+        /// The invite's and the version floor's lines (PL1.6, PL1.7).
         private func recordGate(_ event: Event) {
             switch event {
             case .inviteReceived:
@@ -118,8 +122,27 @@ extension Platform.Log {
                 record(checked: outcome)
             case let .inviteTorn(outcome):
                 record(torn: outcome)
+            case let .versionFloor(outcome):
+                record(floor: outcome)
+            case let .versionUnreadable(which):
+                record(unreadable: which)
             default:
                 break
+            }
+        }
+
+        private func record(floor outcome: Platform.VersionFloorOutcome) {
+            switch outcome {
+            case .current: logger.info("version floor: this build is current")
+            case .updateRequired: logger.error("version floor: this build must update")
+            case .askFailed: logger.info("version floor: meta couldn't be asked, next scene")
+            }
+        }
+
+        private func record(unreadable which: Platform.UnreadableVersion) {
+            switch which {
+            case .running: logger.error("version floor: the running version is unreadable")
+            case .floor: logger.error("version floor: the server's minimum version is unreadable")
             }
         }
 

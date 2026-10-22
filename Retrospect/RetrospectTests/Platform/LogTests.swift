@@ -93,6 +93,8 @@ extension Platform.Log.Event {
             case .inviteReceived: .inviteReceived
             case .inviteChecked: .inviteChecked(.usable)
             case .inviteTorn: .inviteTorn(.yours)
+            case .versionFloor: .versionFloor(.current)
+            case .versionUnreadable: .versionUnreadable(.floor)
             case .diagnosticsWriteFailed: .diagnosticsWriteFailed
             }
         }
@@ -102,7 +104,7 @@ extension Platform.Log.Event {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
-             inviteReceived, inviteChecked, inviteTorn, outboxEnqueued, diagnosticsWriteFailed
+             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, outboxEnqueued, diagnosticsWriteFailed
     }
 
     fileprivate var kind: Kind {
@@ -132,6 +134,8 @@ extension Platform.Log.Event {
         case .inviteReceived: .inviteReceived
         case .inviteChecked: .inviteChecked
         case .inviteTorn: .inviteTorn
+        case .versionFloor: .versionFloor
+        case .versionUnreadable: .versionUnreadable
         case .diagnosticsWriteFailed: .diagnosticsWriteFailed
         }
     }
