@@ -198,6 +198,7 @@ export function createApp(deps: AppDeps): express.Express {
       briefs: deps.briefs ?? supabaseBriefStore(supabaseAdmin as unknown as BriefDbClient),
       signAudio: deps.signAudio ?? supabaseSignAudio(supabaseAdmin),
       runTimeUtc: config.briefs.runTimeUtc,
+    },
     entries: {
       entries: deps.entries,
       // Same hand-off as /content (the agent's /ingest/run, one row), through the

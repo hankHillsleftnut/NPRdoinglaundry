@@ -69,10 +69,9 @@ export async function startHarness(opts: {
   speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
-  access?: AppDeps['access']; invites?: AppDeps['invites'];
-  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio'];
   access?: AppDeps['access']; invites?: AppDeps['invites']; entries?: AppDeps['entries'];
   startIngest?: AppDeps['startIngest'];
+  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio'];
   versions?: AppDeps['versions'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
