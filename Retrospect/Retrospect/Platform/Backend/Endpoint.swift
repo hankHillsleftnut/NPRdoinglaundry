@@ -10,6 +10,7 @@ extension Backend {
     /// and each new case gets its fixed line in `Platform.Log.SystemSink`.
     enum PathTemplate: String, Sendable, CaseIterable {
         case meta = "/v2/meta"
+        case diagnostics = "/v2/diagnostics"
         case entries = "/v2/entries"
         case authApple = "/v2/auth/apple"
         case authRefresh = "/v2/auth/refresh"

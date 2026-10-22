@@ -27,6 +27,7 @@ extension Backend {
         private let clock: any Clock<Duration>
         private let jitter: @Sendable (Duration) -> Duration
         private let log: any Platform.LogSink
+        private let diagnostics: (any Platform.Diagnostics.Sink)?
         private let timeZone: @Sendable () -> TimeZone
         private let languages: @Sendable () -> [String]
 
@@ -38,6 +39,7 @@ extension Backend {
             clock: any Clock<Duration> = ContinuousClock(),
             jitter: @escaping @Sendable (Duration) -> Duration = Client.randomJitter,
             log: any Platform.LogSink,
+            diagnostics: (any Platform.Diagnostics.Sink)? = nil,
             timeZone: @escaping @Sendable () -> TimeZone = { .current },
             languages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages }
         ) {
@@ -48,6 +50,7 @@ extension Backend {
             self.clock = clock
             self.jitter = jitter
             self.log = log
+            self.diagnostics = diagnostics
             self.timeZone = timeZone
             self.languages = languages
         }
@@ -100,8 +103,7 @@ extension Backend {
             var attempt = 1
             while true {
                 do {
-                    let (data, status) = try await load(request, path: endpoint.path)
-                    return try decode(E.Response.self, from: data, status: status, path: endpoint.path)
+                    return try await sendOnce(endpoint, request: request)
                 } catch let failure as Failure {
                     guard let delay = policy.retryDelay(after: failure, attempt: attempt, jitter: jitter) else { throw failure }
                     try await clock.sleep(for: delay)
@@ -109,6 +111,37 @@ extension Backend {
                     attempt += 1
                 }
             }
+        }
+
+        /// One attempt: sent, decoded, and recorded for diagnostics whatever
+        /// happens (a retried request records one row per attempt).
+        private func sendOnce<E: Endpoint>(_ endpoint: E, request: URLRequest) async throws -> E.Response {
+            switch await load(request, path: endpoint.path) {
+            case let .failed(error, ms):
+                if error is Failure {
+                    await record(endpoint, status: 0, ms: ms, code: nil)
+                }
+                throw error
+            case let .answered(data, status, ms):
+                do {
+                    let response = try decode(E.Response.self, from: data, status: status, path: endpoint.path)
+                    await record(endpoint, status: status, ms: ms, code: nil)
+                    return response
+                } catch let failure as Failure {
+                    await record(endpoint, status: status, ms: ms, code: failure.kind.diagnosticsCode)
+                    throw failure
+                }
+            }
+        }
+
+        /// The request's diagnostics row (DG.4): the route template, status,
+        /// time and the contract code if the door sent one. Never the URL, the
+        /// body or the message.
+        private func record(_ endpoint: some Endpoint, status: Int, ms: Int, code: Platform.Diagnostics.ErrorCode?) async {
+            guard let diagnostics else { return }
+            await diagnostics.record(.request(Platform.Diagnostics.Request(
+                method: endpoint.method, route: Platform.Diagnostics.Route(endpoint.path), status: status, code: code, ms: ms
+            )))
         }
 
         // MARK: Building the request
@@ -199,9 +232,16 @@ extension Backend {
             }
         }
 
+        /// What came back from one send, with the time it took.
+        private enum Loaded {
+            case answered(Data, status: Int, ms: Int)
+            /// A `Failure`, or `CancellationError` when the caller was cancelled.
+            case failed(any Error, ms: Int)
+        }
+
         /// Sends `request` and logs it, whatever happens: the door, the status (0
         /// when nothing came back) and the time on the injected clock.
-        private func load(_ request: URLRequest, path: PathTemplate) async throws -> (Data, Int) {
+        private func load(_ request: URLRequest, path: PathTemplate) async -> Loaded {
             var outcome: Result<(Data, URLResponse), any Error> = .failure(Failure(.transport))
             let elapsed = await clock.measure {
                 do {
@@ -210,16 +250,17 @@ extension Backend {
                     outcome = .failure(error)
                 }
             }
+            let ms = Self.milliseconds(elapsed)
             switch outcome {
             case let .success((data, response as HTTPURLResponse)):
-                log.record(.requestSent(path: path, status: response.statusCode, ms: Self.milliseconds(elapsed)))
-                return (data, response.statusCode)
+                log.record(.requestSent(path: path, status: response.statusCode, ms: ms))
+                return .answered(data, status: response.statusCode, ms: ms)
             case .success:
-                log.record(.requestSent(path: path, status: 0, ms: Self.milliseconds(elapsed)))
-                throw Failure(.transport)
+                log.record(.requestSent(path: path, status: 0, ms: ms))
+                return .failed(Failure(.transport), ms: ms)
             case let .failure(error):
-                log.record(.requestSent(path: path, status: 0, ms: Self.milliseconds(elapsed)))
-                throw Self.failure(for: error)
+                log.record(.requestSent(path: path, status: 0, ms: ms))
+                return .failed(Self.failure(for: error), ms: ms)
             }
         }
 

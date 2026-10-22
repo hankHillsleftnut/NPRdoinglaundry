@@ -154,6 +154,7 @@ extension Platform.Log {
         private func record(sent path: Backend.PathTemplate, status: Int, ms: Int) {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+            case .diagnostics: logger.info("request /v2/diagnostics: status \(status), \(ms) ms")
             case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
             case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
@@ -164,6 +165,7 @@ extension Platform.Log {
         private func record(unknownCodeFrom path: Backend.PathTemplate) {
             switch path {
             case .meta: logger.error("unknown error code from /v2/meta")
+            case .diagnostics: logger.error("unknown error code from /v2/diagnostics")
             case .entries: logger.error("unknown error code from /v2/entries")
             case .authApple: logger.error("unknown error code from /v2/auth/apple")
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
@@ -202,6 +204,7 @@ extension Platform.Log {
         private func record(replayed path: Backend.PathTemplate) {
             switch path {
             case .meta: logger.info("401 on /v2/meta: refreshed and replayed once")
+            case .diagnostics: logger.info("401 on /v2/diagnostics: refreshed and replayed once")
             case .entries: logger.info("401 on /v2/entries: refreshed and replayed once")
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
