@@ -1,6 +1,7 @@
 import type { Request, RequestHandler, Response } from 'express';
 import type { ZodType, ZodTypeDef } from 'zod';
 import type { DoorLogCounts, DoorLogLine } from '../utils/log.js';
+import type { AccessState } from '../access/store.js';
 import type { AgentCallOptions, AgentDoorClient } from './agent.js';
 import { DoorError, fromAgentError, sendError, type DoorErrorCode } from './errors.js';
 import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
@@ -13,17 +14,20 @@ import { checkSpendCap, type LimitBucket, type Limiter } from './limits.js';
  *
  *   1. the user comes from the token (`req.user`, set by the auth middleware),
  *      never from the client;
- *   2. the per-user limit for the door's bucket is taken (before anything
+ *   2. the invite gate: a suspended person is refused everywhere
+ *      (`suspended`), a waitlisted one everywhere but the doors marked
+ *      `openToWaitlisted` (`invite_required`), contract 00 §4;
+ *   3. the per-user limit for the door's bucket is taken (before anything
  *      else runs, so bad bodies and id probing are limited too); expensive
  *      doors also check the rolling daily spend;
- *   3. the request is validated with the door's zod schema (strict schemas
+ *   4. the request is validated with the door's zod schema (strict schemas
  *      reject unknown fields, including a client-sent `userId`); a failure is
  *      `invalid_request` with nothing echoed back;
- *   4. `owns` (when the door names a thing by id) answers `not_found`, never
+ *   5. `owns` (when the door names a thing by id) answers `not_found`, never
  *      forbidden, so ids can't be probed;
- *   5. `call` runs (usually one agent request), then `map` shapes the answer to
+ *   6. `call` runs (usually one agent request), then `map` shapes the answer to
  *      the contract;
- *   6. one content-free log line is written (utils/log.ts).
+ *   7. one content-free log line is written (utils/log.ts).
  * Every failure, thrown or rejected, ends in the error envelope; nothing falls
  * through to the app-wide error handler.
  *
@@ -42,6 +46,8 @@ export interface DoorContext {
   /** The X-Time-Zone header when it names a real IANA zone; read only until users.time_zone exists (BE0.4). */
   timeZone: string | null;
   now: number;
+  /** The person's access state (contract 00 §4); `member` before migration 007, when everyone was one. */
+  access: AccessState;
 }
 
 export interface DoorSpec<Req, AgentRes, Res> {
@@ -58,6 +64,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
   successStatus?: number;
   /** Sizes and counts for the log line on success (numbers only, by type and in the log). */
   logCounts?: (result: AgentRes) => DoorLogCounts;
+  /** A waitlisted person may use this door (contract 00 §4's own doors, and diagnostics). */
+  openToWaitlisted?: boolean;
 }
 
 export interface DoorKitDeps {
@@ -138,7 +146,13 @@ export function createDoorKit(deps: DoorKitDeps) {
 
       const run = async () => {
         if (!userId) throw new DoorError('unauthenticated');
-        const ctx: DoorContext = { userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), now: started };
+        // The gate. No access state means migration 007 isn't applied yet: everyone was a member then.
+        const access = req.user?.access;
+        if (access === 'suspended') throw new DoorError('suspended');
+        if (access === 'waitlisted' && !spec.openToWaitlisted) throw new DoorError('invite_required');
+        const ctx: DoorContext = {
+          userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), now: started, access: access ?? 'member',
+        };
 
         const taken = deps.limiter.take(userId, spec.bucket, started);
         if (!taken.ok) throw new DoorError('rate_limited', { retryAfterSeconds: taken.retryAfterSeconds });

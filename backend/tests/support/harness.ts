@@ -59,11 +59,17 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+/** A store a test didn't set up: any call throws, so a test can't pass by not reaching it. */
+function notConfigured<T extends object>(what: string): T {
+  return new Proxy({} as T, { get: (_t, prop) => () => Promise.reject(new Error(`harness: ${what}.${String(prop)} is not set up in this test`)) });
+}
+
 export async function startHarness(opts: {
   agentRoutes?: AgentRoutes; users?: AuthUser[]; now?: number; v2Router?: AppDeps['v2Router'];
   speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
+  access?: AppDeps['access']; invites?: AppDeps['invites'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -100,6 +106,9 @@ export async function startHarness(opts: {
     ...(opts.sessions ? { sessions: opts.sessions } : {}),
     ...(opts.verifyApple ? { verifyApple: opts.verifyApple } : {}),
     ...(opts.accounts ? { accounts: opts.accounts } : {}),
+    // Tests that use access or invites pass real stores (PGlite); anything else touching them fails loudly.
+    access: opts.access ?? notConfigured('access'),
+    invites: opts.invites ?? notConfigured('invites'),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

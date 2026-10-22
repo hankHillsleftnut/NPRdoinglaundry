@@ -253,6 +253,8 @@ test('a reference already in use is drawn again', async () => {
 doorSuite({
   method: 'POST',
   path: '/v2/diagnostics',
+  // A waitlisted tester can still send a report (diagnostics.md).
+  openToWaitlisted: true,
   headers: { 'Idempotency-Key': String(report().reportId) },
   bucket: 'write',
   validBody: report(),
