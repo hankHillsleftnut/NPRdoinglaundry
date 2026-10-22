@@ -56,12 +56,12 @@ struct REvidenceRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .multilineTextAlignment(.leading)
-                // Paper draws › at 14 (--text-md) in RSymbol's 16 frame
+                // Paper draws › at size.icon.chevron 14 in RSymbol's 16 frame
                 RSymbol(
                     name: "chevron.right",
                     size: .small,
                     tint: RColor.iconMuted,
-                    glyphScale: RSymbol.defaultGlyphScale * RDimension.fontSizeMd / RDimension.sizeIconSmall
+                    glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconChevron / RDimension.sizeIconSmall
                 )
             }
             .padding(.vertical, RDimension.space3)
@@ -81,8 +81,8 @@ struct REvidenceRow: View {
             RIconWell(
                 symbol: symbol,
                 fill: onTint ? RColor.surfaceLifted : RColor.surfaceWash,
-                // Paper draws the glyph at 18 (--text-lg) in RSymbol's 20 frame
-                glyphScale: RSymbol.defaultGlyphScale * RDimension.fontSizeLg / RDimension.sizeIconDefault
+                // Paper draws the glyph at size.icon.inWell 18 in RSymbol's 20 frame
+                glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconInWell / RDimension.sizeIconDefault
             )
             .accessibilityHidden(true)
         }
