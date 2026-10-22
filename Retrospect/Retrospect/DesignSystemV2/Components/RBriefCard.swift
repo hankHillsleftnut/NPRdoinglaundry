@@ -129,11 +129,13 @@ struct RBriefCard: View {
             .padding(RDimension.space2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(shape)
+            // inside the label, so the press scales the card with its shadows and the shadows
+            // see one opaque card, not the words on their own
+            .rRaised(radius)
+            // Increase Contrast: a 1pt control edge so the shape holds without its shadow (CEM-0 "increase contrast")
+            .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
         }
         .buttonStyle(RCardPressStyle())
-        .rRaised(radius)
-        // Increase Contrast: a 1pt control edge so the shape holds without its shadow (CEM-0 "increase contrast")
-        .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
         .overlay(alignment: collapsed ? .trailing : .topTrailing) {
             // one play instance: on the seam, beside the words when collapsed, under them at accessibility sizes
             playWell
@@ -420,6 +422,8 @@ struct RBriefCardGallery: View {
             }
             .padding(RDimension.spaceScreenMargin)
         }
+        // `-DesignLabBottom` opens on the lower states, for a second screenshot
+        .defaultScrollAnchor(ProcessInfo.processInfo.arguments.contains("-DesignLabBottom") ? .bottom : .top)
         .task {
             guard ProcessInfo.processInfo.arguments.contains("-DesignLabAutoplay") else { return }
             for pause in [1.5, 1.5] {
