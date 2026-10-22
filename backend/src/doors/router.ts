@@ -6,6 +6,7 @@ import { DiagnosticsReport } from '../diagnostics/schema.js';
 import type { DiagnosticsStore } from '../diagnostics/store.js';
 import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
 import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
+import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
 import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 
 /**
@@ -17,6 +18,7 @@ export interface V2RouterDeps {
   diagnostics: DiagnosticsStore;
   invites: InviteDoorDeps;
   briefs: BriefDoorDeps;
+  guesses: GuessDoorDeps;
   entries: EntryDoorDeps;
 }
 
@@ -81,6 +83,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
   mountBriefDoors(router, door, deps.briefs);
   // The journal: sending and today (BE1.1).
   mountEntryDoors(router, door, deps.entries);
+
+  // The guess cards (BE1.4).
+  mountGuessDoors(router, door, deps.guesses);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {

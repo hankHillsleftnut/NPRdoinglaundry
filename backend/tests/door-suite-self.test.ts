@@ -24,7 +24,7 @@ function withSampleDoor(door: DoorFactory): Router {
     call: (ctx, req) => ctx.agent.get<{ title: string }>(`/samples/${ctx.userId}/${req.id}`, { timeoutMs: 1000, retry: 'read' }),
     map: (r) => ({ title: r.title }),
   }));
-  router.use(createV2Router(door, { diagnostics: {} as never, invites: {} as never, briefs: {} as never, entries: {} as never }));
+  router.use(createV2Router(door, { diagnostics: {} as never, invites: {} as never, briefs: {} as never, guesses: {} as never, entries: {} as never }));
   return router;
 }
 

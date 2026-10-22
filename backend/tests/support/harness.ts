@@ -69,9 +69,9 @@ export async function startHarness(opts: {
   speechSynth?: AppDeps['speechSynth']; sessions?: AppDeps['sessions'];
   verifyApple?: AppDeps['verifyApple']; accounts?: AppDeps['accounts'];
   diagnostics?: AppDeps['diagnostics'];
+  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio']; guesses?: AppDeps['guesses'];
   access?: AppDeps['access']; invites?: AppDeps['invites']; entries?: AppDeps['entries'];
   startIngest?: AppDeps['startIngest'];
-  briefs?: AppDeps['briefs']; signAudio?: AppDeps['signAudio'];
   versions?: AppDeps['versions'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
@@ -114,6 +114,7 @@ export async function startHarness(opts: {
     invites: opts.invites ?? notConfigured('invites'),
     briefs: opts.briefs ?? notConfigured<NonNullable<AppDeps['briefs']>>('briefs'),
     ...(opts.signAudio ? { signAudio: opts.signAudio } : {}),
+    guesses: opts.guesses ?? notConfigured<NonNullable<AppDeps['guesses']>>('guesses'),
     entries: opts.entries ?? notConfigured('entries'),
     ...(opts.startIngest ? { startIngest: opts.startIngest } : {}),
     ...(opts.versions ? { versions: opts.versions } : {}),
