@@ -1,3 +1,4 @@
+import Foundation
 @testable import Retrospect
 import Testing
 
@@ -57,12 +58,43 @@ struct AppEnvironmentTests {
         environment.scenePhaseChanged(to: .active)
         environment.scenePhaseChanged(to: .inactive)
         environment.scenePhaseChanged(to: .background)
-        await Task.yield()
+        await environment.lifecycleSettled()
 
         let events = try await environment.diagnostics.rows(in: .events).map(\.payload)
-        #expect(try events.contains(Platform.Diagnostics.Recorder.encode(.event(.appForeground))))
-        #expect(try events.contains(Platform.Diagnostics.Recorder.encode(.event(.appBackground))))
-        #expect(events.count == 2)
+        #expect(try events == [
+            Platform.Diagnostics.Recorder.encode(.event(.appForeground)),
+            Platform.Diagnostics.Recorder.encode(.event(.appBackground)),
+        ], "in the order the scene changed")
+    }
+
+    @Test("going to the background keeps the app awake until the flush has landed, and ends the task exactly once")
+    func backgroundFlushRunsUnderABackgroundTask() async throws {
+        let tasks = BackgroundTaskSpy()
+        let environment = Platform.AppEnvironment(configuration: .resolve(.local, info: [:]), log: Platform.Log.Recorder(), backgroundTasks: tasks.tasks)
+        let database = try Store.LocalDatabase.inMemory()
+        await environment.diagnostics.attach(database)
+
+        environment.scenePhaseChanged(to: .background)
+        #expect(tasks.begun == ["com.shauryanarang.Retrospect.diagnostics.flush"])
+        #expect(tasks.ended == 0, "still awake while the flush runs")
+        await environment.lifecycleSettled()
+
+        #expect(tasks.ended == 1)
+        #expect(try await environment.diagnostics.rows(in: .events).count == 1)
+        tasks.expire()
+        #expect(tasks.ended == 1, "expiring after the end doesn't end it twice")
+    }
+
+    @Test("a background task that expires before the flush ends is ended once by the expiration handler, then never again")
+    func anExpiredBackgroundTaskEndsOnce() {
+        let tasks = BackgroundTaskSpy()
+        let environment = Platform.AppEnvironment(configuration: .resolve(.local, info: [:]), log: Platform.Log.Recorder(), backgroundTasks: tasks.tasks)
+
+        environment.scenePhaseChanged(to: .background)
+        tasks.expire()
+        tasks.expire()
+
+        #expect(tasks.ended == 1)
     }
 
     @Test("the preview environment points at local staging and reads no bundle")
@@ -83,5 +115,37 @@ struct AppEnvironmentTests {
         let secondLog = try #require(second.log as? Platform.Log.Recorder)
         #expect(secondLog.events.isEmpty)
         #expect(second.updateRequired == false)
+    }
+}
+
+/// Stands in for UIKit's background tasks: counts begins and ends, and can
+/// fire the expiration handler.
+private final class BackgroundTaskSpy: @unchecked Sendable {
+    private let lock = NSLock()
+    private var begunNames: [String] = []
+    private var endedCount = 0
+    private var handles: [Platform.BackgroundTasks.Handle] = []
+
+    var begun: [String] {
+        lock.withLock { begunNames }
+    }
+
+    var ended: Int {
+        lock.withLock { endedCount }
+    }
+
+    var tasks: Platform.BackgroundTasks {
+        Platform.BackgroundTasks { [self] name in
+            let handle = Platform.BackgroundTasks.Handle { self.lock.withLock { self.endedCount += 1 } }
+            lock.withLock {
+                begunNames.append(name)
+                handles.append(handle)
+            }
+            return handle
+        }
+    }
+
+    func expire() {
+        lock.withLock { handles }.forEach { $0.end() }
     }
 }

@@ -1,5 +1,7 @@
+import Foundation
 import Observation
 import SwiftUI
+import UIKit
 
 extension Platform {
     /// Everything new code depends on, built once at launch and handed down
@@ -26,14 +28,24 @@ extension Platform {
         /// newest records in memory.
         let diagnostics: Platform.Diagnostics.Recorder
         private let crashReporter: Platform.Diagnostics.CrashReporter
+        private let backgroundTasks: Platform.BackgroundTasks
+        /// Lifecycle records run one after another on this chain, so
+        /// foreground and background land in the order the scene changed.
+        private var lifecycle: Task<Void, Never>?
 
         /// Set when the backend says this version is too old (PL1.6).
         var updateRequired = false
 
-        init(launch: Platform.LaunchOptions = .standard, configuration: Backend.Configuration, log: any Platform.LogSink) {
+        init(
+            launch: Platform.LaunchOptions = .standard,
+            configuration: Backend.Configuration,
+            log: any Platform.LogSink,
+            backgroundTasks: Platform.BackgroundTasks = .uiKit
+        ) {
             self.launch = launch
             self.configuration = configuration
             self.log = log
+            self.backgroundTasks = backgroundTasks
             diagnostics = Platform.Diagnostics.Recorder(log: log)
             crashReporter = Platform.Diagnostics.CrashReporter(sink: diagnostics)
         }
@@ -62,21 +74,102 @@ extension Platform {
         }
 
         /// Records foreground and background, and lands what's waiting when the
-        /// app goes to the background (it may not come back).
+        /// app goes to the background (it may not come back). The flush runs
+        /// under a background task, so the app isn't suspended in the middle
+        /// of writing the very records a report is meant to carry.
         func scenePhaseChanged(to phase: ScenePhase) {
             let diagnostics = diagnostics
             switch phase {
             case .active:
-                Task { await diagnostics.record(.event(.appForeground)) }
+                enqueueLifecycle { await diagnostics.record(.event(.appForeground)) }
             case .background:
-                Task {
+                let keepAwake = backgroundTasks.begin("com.shauryanarang.Retrospect.diagnostics.flush")
+                enqueueLifecycle {
                     await diagnostics.record(.event(.appBackground))
                     await diagnostics.flush()
+                    keepAwake.end()
                 }
             case .inactive:
                 break
             @unknown default:
                 break
+            }
+        }
+
+        /// Waits for every lifecycle record queued so far to land. For tests.
+        func lifecycleSettled() async {
+            await lifecycle?.value
+        }
+
+        private func enqueueLifecycle(_ work: @escaping @Sendable () async -> Void) {
+            let previous = lifecycle
+            lifecycle = Task {
+                await previous?.value
+                await work()
+            }
+        }
+    }
+
+    /// Keeps the app running a little longer for work that must finish
+    /// (`UIApplication.beginBackgroundTask`). `uiKit` is the real thing; tests
+    /// pass closures of their own.
+    struct BackgroundTasks: Sendable {
+        /// One task kept awake; `end` is safe to call more than once, and the
+        /// expiration handler calls it too.
+        final class Handle: Sendable {
+            private let finish: @Sendable () -> Void
+            private let once = OnceFlag()
+
+            init(finish: @escaping @Sendable () -> Void) {
+                self.finish = finish
+            }
+
+            func end() {
+                guard once.claim() else { return }
+                finish()
+            }
+        }
+
+        let begin: @MainActor @Sendable (_ name: String) -> Handle
+
+        @MainActor static let uiKit = BackgroundTasks { name in
+            let application = UIApplication.shared
+            let box = IdentifierBox()
+            let handle = Handle {
+                let id = box.take()
+                guard id != .invalid else { return }
+                Task { @MainActor in application.endBackgroundTask(id) }
+            }
+            box.set(application.beginBackgroundTask(withName: name) { handle.end() })
+            return handle
+        }
+
+        private final class IdentifierBox: @unchecked Sendable {
+            private let lock = NSLock()
+            private var id = UIBackgroundTaskIdentifier.invalid
+
+            func set(_ value: UIBackgroundTaskIdentifier) {
+                lock.withLock { id = value }
+            }
+
+            /// The id, once; `.invalid` afterwards.
+            func take() -> UIBackgroundTaskIdentifier {
+                lock.withLock {
+                    defer { id = .invalid }
+                    return id
+                }
+            }
+        }
+
+        private final class OnceFlag: @unchecked Sendable {
+            private let lock = NSLock()
+            private var claimed = false
+
+            func claim() -> Bool {
+                lock.withLock {
+                    defer { claimed = true }
+                    return !claimed
+                }
             }
         }
     }
