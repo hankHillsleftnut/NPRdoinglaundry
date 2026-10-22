@@ -77,18 +77,22 @@ extension Platform.Log.Event {
             switch kind {
             case .refreshed: .refreshed
             case .outboxDrained: .outboxDrained(sent: 3, failed: 1)
+            case .requestSent: .requestSent(path: .meta, status: 200, ms: 12)
+            case .unknownErrorCode: .unknownErrorCode(path: .meta)
             }
         }
     }
 
     fileprivate enum Kind: CaseIterable {
-        case refreshed, outboxDrained
+        case refreshed, outboxDrained, requestSent, unknownErrorCode
     }
 
     fileprivate var kind: Kind {
         switch self {
         case .refreshed: .refreshed
         case .outboxDrained: .outboxDrained
+        case .requestSent: .requestSent
+        case .unknownErrorCode: .unknownErrorCode
         }
     }
 }

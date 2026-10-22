@@ -11,8 +11,11 @@ extension Backend {
         }
 
         /// Dates go out as `2026-10-21T08:00:04.200Z`, always UTC, always milliseconds.
+        /// Keys are sorted, so the same value always makes the same bytes (a
+        /// retried write sends exactly what it sent the first time).
         static var encoder: JSONEncoder {
             let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
             encoder.dateEncodingStrategy = .custom { date, encoder in
                 var container = encoder.singleValueContainer()
                 try container.encode(timestamp(date))

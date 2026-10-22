@@ -6,7 +6,8 @@ extension Backend {
     }
 
     /// Every `/v2` path the app calls, as the contract writes it (`:id` for a
-    /// parameter). Logs carry these, never a filled-in URL. Grows a case per door.
+    /// parameter). Logs carry these, never a filled-in URL. Grows a case per door,
+    /// and each new case gets its fixed line in `Platform.Log.SystemSink`.
     enum PathTemplate: String, Sendable, CaseIterable {
         case meta = "/v2/meta"
     }
