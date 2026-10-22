@@ -12,13 +12,33 @@
 import SwiftUI
 import UIKit
 
-/// How the colour wash over a band runs, as fractions of the band from its inner edge (0) to
-/// its outer edge (1): clear until `from`, rising to full by `solidFrom`, solid to the edge.
+/// A place across a band, from its inner edge to its outer edge.
+enum RBandPosition: Hashable, Sendable {
+    /// A fraction of the band: 0 at the inner edge, 1 at the outer edge.
+    case fraction(CGFloat)
+    /// This many points in from the outer edge, whatever the band's height.
+    case fromOuterEdge(CGFloat)
+
+    func resolved(in band: CGFloat) -> CGFloat {
+        switch self {
+        case let .fraction(value):
+            min(max(value, 0), 1)
+        case let .fromOuterEdge(points):
+            band > 0 ? min(max(1 - points / band, 0), 1) : 0
+        }
+    }
+}
+
+/// How the colour wash over a band runs: clear (at `startOpacity`) until `from`, rising to
+/// `endOpacity` by `solidFrom`, then steady to the outer edge. Colours are stored opaque, with
+/// their opacities apart, so Reduce Transparency can really end at full strength.
 struct RBlurTint: Hashable, Sendable {
     var start: Color
+    var startOpacity: Double
     var end: Color
-    var from: CGFloat
-    var solidFrom: CGFloat
+    var endOpacity: Double
+    var from: RBandPosition
+    var solidFrom: RBandPosition
 }
 
 /// One edge's progressive blur. Presets carry the values from progressive-blur.md as tokens.
@@ -40,10 +60,12 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
         maxRadius: RDimension.blurTabMax,
         saturation: RNumber.blurTabSaturation,
         tint: RBlurTint(
-            start: RColor.backgroundCanvas.opacity(0),
-            end: RColor.backgroundCanvas.opacity(RNumber.opacityDisabled),
-            from: 1 - RDimension.blurTabTint / RDimension.blurTabBand,
-            solidFrom: 1
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundCanvas,
+            endOpacity: RNumber.opacityDisabled,
+            from: .fromOuterEdge(RDimension.blurTabTint),
+            solidFrom: .fraction(1)
         )
     )
 
@@ -54,7 +76,14 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
         bandCompact: nil,
         maxRadius: RDimension.blurJournalTopMax,
         saturation: 1,
-        tint: RBlurTint(start: RColor.backgroundCanvas.opacity(0), end: RColor.backgroundCanvas, from: 0, solidFrom: 1)
+        tint: RBlurTint(
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundCanvas,
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1)
+        )
     )
 
     /// The player transcript's top: the sheet colour rises over the band's outer part.
@@ -65,10 +94,12 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
         maxRadius: RDimension.blurTranscriptTopMax,
         saturation: 1,
         tint: RBlurTint(
-            start: RColor.backgroundRaised.opacity(0),
+            start: RColor.backgroundRaised,
+            startOpacity: 0,
             end: RColor.backgroundRaised,
-            from: 1 - RNumber.blurTranscriptTopTint,
-            solidFrom: 1
+            endOpacity: 1,
+            from: .fraction(1 - RNumber.blurTranscriptTopTint),
+            solidFrom: .fraction(1)
         )
     )
 
@@ -80,10 +111,12 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
         maxRadius: RDimension.blurTranscriptBottomMax,
         saturation: 1,
         tint: RBlurTint(
-            start: RColor.backgroundRaised.opacity(0),
+            start: RColor.backgroundRaised,
+            startOpacity: 0,
             end: RColor.backgroundRaised,
-            from: 0,
-            solidFrom: 1 - RNumber.blurTranscriptBottomTint
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1 - RNumber.blurTranscriptBottomTint)
         )
     )
 
@@ -94,14 +127,21 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
         bandCompact: nil,
         maxRadius: RDimension.blurDrawerFootMax,
         saturation: 1,
-        tint: RBlurTint(start: RColor.backgroundCanvas.opacity(0), end: RColor.backgroundUnderlay, from: 0, solidFrom: 1)
+        tint: RBlurTint(
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundUnderlay,
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1)
+        )
     )
 }
 
 extension View {
     /// A progressive blur at one edge of this view, usually a scroll view's container.
-    /// `active: false` takes the blur away when nothing is under the band (drive it from
-    /// `onScrollGeometryChange`), so the edge costs nothing at rest.
+    /// `active: false` takes the blur away (both paths) when nothing is under the band; drive it
+    /// from `onScrollGeometryChange`, so the edge costs nothing at rest.
     func rProgressiveBlur(_ style: RProgressiveBlurStyle, active: Bool = true) -> some View {
         modifier(RProgressiveBlurModifier(style: style, active: active))
     }
@@ -120,9 +160,20 @@ extension View {
             active: active
         )
     }
+
+    /// Reads the window's height once at the root and tells every view below whether the screen
+    /// is short (`layout.compactHeight`), from the first frame. Apply it at the app's root.
+    func rReadsScreenHeight() -> some View {
+        GeometryReader { proxy in
+            let height = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+            self.environment(\.rCompactHeight, height < RDimension.layoutCompactHeight)
+        }
+    }
 }
 
 extension EnvironmentValues {
+    /// A short screen (iPhone SE): compact bands and tighter rhythm. Set by `rReadsScreenHeight()`.
+    @Entry var rCompactHeight = false
     /// Forces the iOS 18 path on iOS 26, so the two can be compared side by side (the gallery).
     @Entry var rForceBlurFallback = false
 }
@@ -133,51 +184,57 @@ private struct RProgressiveBlurModifier: ViewModifier {
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.rForceBlurFallback) private var forceFallback
-    @State private var compact = false
+    @Environment(\.rCompactHeight) private var compact
 
     private var band: CGFloat {
         compact ? (style.bandCompact ?? style.band) : style.band
     }
 
-    private var useSystemEdge: Bool {
+    private var systemEdgeAvailable: Bool {
         if #available(iOS 26, *) {
-            return !forceFallback
+            return true
         }
         return false
     }
 
     func body(content: Content) -> some View {
+        let blurs = active && !reduceTransparency
+        let usesSystemEdge = systemEdgeAvailable && !forceFallback
         content
-            .modifier(SystemSoftEdge(edge: style.edge, enabled: useSystemEdge && active && !reduceTransparency))
+            .modifier(SystemSoftEdge(edge: style.edge, shown: blurs && usesSystemEdge))
             .overlay(alignment: style.edge == .top ? .top : .bottom) {
                 RBlurBand(
                     style: style,
                     band: band,
-                    blur: active && !reduceTransparency && !useSystemEdge,
+                    blur: blurs && !usesSystemEdge,
                     reduceTransparency: reduceTransparency
                 )
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             }
-            .onGeometryChange(for: Bool.self) { $0.size.height < RDimension.layoutCompactHeight } action: { compact = $0 }
     }
 }
 
-/// iOS 26's own soft edge on the scroll views inside.
+/// iOS 26's own soft edge on the scroll views inside. The style is always applied and only
+/// shown or hidden, so the content's identity (and its scroll position) never changes.
 private struct SystemSoftEdge: ViewModifier {
     let edge: VerticalEdge
-    let enabled: Bool
+    let shown: Bool
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *), enabled {
-            content.scrollEdgeEffectStyle(.soft, for: edge == .top ? .top : .bottom)
+        if #available(iOS 26, *) {
+            let edges: Edge.Set = edge == .top ? .top : .bottom
+            content
+                .scrollEdgeEffectStyle(.soft, for: edges)
+                .scrollEdgeEffectHidden(!shown, for: edges)
         } else {
             content
         }
     }
 }
 
-/// The band itself: the masked blur (iOS 18 path) under the tint.
+/// The band itself: the masked blur (iOS 18 path) under the tint. The blur view stays in place
+/// and only switches its effect off, so nothing is rebuilt as the band activates.
 private struct RBlurBand: View {
     let style: RProgressiveBlurStyle
     let band: CGFloat
@@ -186,10 +243,8 @@ private struct RBlurBand: View {
 
     var body: some View {
         ZStack {
-            if blur {
-                RMaskedBlur(edge: style.edge, maxRadius: style.maxRadius)
-                    .saturation(style.saturation)
-            }
+            RMaskedBlur(edge: style.edge, maxRadius: style.maxRadius, active: blur)
+                .saturation(blur ? style.saturation : 1)
             if let tint = tintForBand {
                 tintGradient(tint)
             }
@@ -198,20 +253,30 @@ private struct RBlurBand: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// With Reduce Transparency the tint carries the edge alone, so it must end opaque.
+    /// With Reduce Transparency the tint carries the edge alone, so it must end fully opaque.
     private var tintForBand: RBlurTint? {
         guard reduceTransparency else { return style.tint }
-        let base = style.tint ?? RBlurTint(start: RColor.backgroundCanvas, end: RColor.backgroundCanvas, from: 0, solidFrom: 1)
-        return RBlurTint(start: base.start.opacity(0), end: base.end.opacity(1), from: base.from, solidFrom: base.solidFrom)
+        var tint = style.tint ?? RBlurTint(
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundCanvas,
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1)
+        )
+        tint.endOpacity = 1
+        return tint
     }
 
     private func tintGradient(_ tint: RBlurTint) -> some View {
+        let from = tint.from.resolved(in: band)
+        let solidFrom = max(from, tint.solidFrom.resolved(in: band))
         // Stops run from the band's inner edge (0) to its outer edge (1).
         let stops = [
-            Gradient.Stop(color: tint.start, location: 0),
-            Gradient.Stop(color: tint.start, location: tint.from),
-            Gradient.Stop(color: tint.end, location: max(tint.from, tint.solidFrom)),
-            Gradient.Stop(color: tint.end, location: 1),
+            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: 0),
+            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: from),
+            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: solidFrom),
+            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: 1),
         ]
         return LinearGradient(
             stops: stops,
@@ -227,27 +292,32 @@ private struct RBlurBand: View {
 private struct RMaskedBlur: UIViewRepresentable {
     let edge: VerticalEdge
     let maxRadius: CGFloat
+    let active: Bool
 
     func makeUIView(context _: Context) -> RMaskedBlurView {
         RMaskedBlurView()
     }
 
     func updateUIView(_ view: RMaskedBlurView, context _: Context) {
-        view.configure(edge: edge, maxRadius: maxRadius)
+        view.configure(edge: edge, maxRadius: active ? maxRadius : 0)
     }
 }
 
 final class RMaskedBlurView: UIView {
-    /// The radius the thinnest material blurs at in full. A paused animator scales the effect
-    /// down to `maxRadius` from it: public API, unlike the private variable-blur filter.
-    private static let materialRadius: CGFloat = 30 // literal-ok: measured strength of .systemUltraThinMaterial
+    /// The radius the thinnest material blurs at in full, **assumed** (not measured; the gallery
+    /// checks it against the spec). A paused animator scales the effect down to `maxRadius` from
+    /// it: public API, unlike the private variable-blur filter.
+    private static let materialRadius: CGFloat = 30 // literal-ok: assumed material strength
     /// Ramp samples for the mask: enough that no step shows across a 140pt band.
     private static let rampSteps = 12 // literal-ok: mask resolution, not a size
 
     private let effectView = UIVisualEffectView(effect: nil)
     private let ramp = CAGradientLayer()
     private var animator: UIViewPropertyAnimator?
-    private var configured: (edge: VerticalEdge, radius: CGFloat)?
+    private var edge: VerticalEdge = .bottom
+    private var maxRadius: CGFloat = 0
+    private var configured = false
+    private var foregroundObserver: NSObjectProtocol?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -256,6 +326,18 @@ final class RMaskedBlurView: UIView {
         effectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(effectView)
         layer.mask = ramp
+        // Paused animators are dropped when the app goes to the background; arm it again.
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.arm() }
+        }
+        // Light and dark rebuild the material's layers, tint included: clear it again.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: RMaskedBlurView, _: UITraitCollection) in
+            view.arm()
+        }
     }
 
     @available(*, unavailable)
@@ -264,24 +346,17 @@ final class RMaskedBlurView: UIView {
     }
 
     deinit {
+        if let foregroundObserver {
+            NotificationCenter.default.removeObserver(foregroundObserver)
+        }
         animator?.stopAnimation(true)
     }
 
     func configure(edge: VerticalEdge, maxRadius: CGFloat) {
-        if let configured, configured.edge == edge, configured.radius == maxRadius {
-            return
-        }
-        configured = (edge, maxRadius)
-
-        animator?.stopAnimation(true)
-        effectView.effect = nil
-        // The animator never plays: it's paused at a fraction, which sets the blur's strength.
-        let animator = UIViewPropertyAnimator(duration: 1, curve: .linear) { [effectView] in // literal-ok: paused
-            effectView.effect = UIBlurEffect(style: .systemUltraThinMaterial)
-        }
-        animator.pausesOnCompletion = true
-        animator.fractionComplete = min(1, maxRadius / Self.materialRadius)
-        self.animator = animator
+        guard !configured || edge != self.edge || maxRadius != self.maxRadius else { return }
+        configured = true
+        self.edge = edge
+        self.maxRadius = maxRadius
 
         // t from the band's inner edge (0) to its outer edge (1); strength t².
         let steps = (0 ... Self.rampSteps).map { CGFloat($0) / CGFloat(Self.rampSteps) }
@@ -289,13 +364,41 @@ final class RMaskedBlurView: UIView {
         ramp.locations = steps.map { NSNumber(value: Double($0)) }
         ramp.startPoint = CGPoint(x: 0.5, y: edge == .bottom ? 0 : 1)
         ramp.endPoint = CGPoint(x: 0.5, y: edge == .bottom ? 1 : 0)
-        setNeedsLayout()
+        arm()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            arm()
+        }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         ramp.frame = bounds
-        // The material's colour layers sit above its backdrop: clear them so only the blur remains.
+        clearMaterialTint()
+    }
+
+    /// Sets the blur's strength: a paused animator at `maxRadius / materialRadius`, or no
+    /// effect at all when the band is inactive.
+    private func arm() {
+        animator?.stopAnimation(true)
+        animator = nil
+        effectView.effect = nil
+        guard maxRadius > 0 else { return }
+        // The animator never plays: it's paused at a fraction, which sets the blur's strength.
+        let animator = UIViewPropertyAnimator(duration: 1, curve: .linear) { [effectView] in // literal-ok: paused
+            effectView.effect = UIBlurEffect(style: .systemUltraThinMaterial)
+        }
+        animator.pausesOnCompletion = true
+        animator.fractionComplete = min(1, maxRadius / Self.materialRadius)
+        self.animator = animator
+        clearMaterialTint()
+    }
+
+    /// The material's colour layers sit above its backdrop: clear them so only the blur remains.
+    private func clearMaterialTint() {
         for subview in effectView.subviews.dropFirst() {
             subview.backgroundColor = .clear
         }
