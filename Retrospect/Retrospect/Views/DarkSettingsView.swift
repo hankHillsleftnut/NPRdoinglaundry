@@ -276,11 +276,13 @@ struct DarkSettingsView: View {
     /// alone is not enough: `OnboardingState.restoreFromDisk` reads its own signed-in
     /// flag and would skip the welcome page.
     private func fullSignOut(wipeOnboarding: Bool) {
-        if wipeOnboarding {
-            OnboardingContextManager.shared.resetForFreshOnboarding()
+        Task {
+            await apiClient.signOut()
+            if wipeOnboarding {
+                OnboardingContextManager.shared.resetForFreshOnboarding()
+            }
+            OnboardingState.clearSignInGate()
         }
-        OnboardingState.clearSignInGate()
-        apiClient.signOut()
     }
 
     private func connectHealth() {

@@ -245,6 +245,7 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
+                await platform.bindSessionLifecycle(to: apiClient)
             }
             .onAppear {
                 // If Face ID is disabled, mark as authenticated
