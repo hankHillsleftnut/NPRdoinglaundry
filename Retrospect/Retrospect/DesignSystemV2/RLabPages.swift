@@ -21,15 +21,18 @@ struct RLabPage: Identifiable {
     static let all: [RLabPage] = [
         RLabPage("artwork") { RArtworkLab() },
         RLabPage("dialog") { RDialogGallery() },
+        RLabPage("empty") { REmptyLineGallery() },
         RLabPage("entryrow") { REntryRowGallery() },
         RLabPage("error") { RErrorStateGallery() },
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("foundation") { RFoundationGallery() },
         RLabPage("guess") { RGuessCardGallery() },
+        RLabPage("journaldata") { SampleJournalGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("retro") { RRetroLineGallery() },
+        RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
     ]

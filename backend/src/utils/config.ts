@@ -116,6 +116,18 @@ export const config = {
     isProduction: optionalEnv('NODE_ENV', 'development') === 'production',
   },
 
+  // The app's version floor and where this server runs (BE0.10, contract 00 §5).
+  // MIN_APP_VERSION reads like "1.0 (40)"; a build below it is told to update.
+  // LATEST_APP_VERSION is the floor when unset. REQUIRE_APP_VERSION=true makes
+  // a missing X-App-Version header a refusal (off until every client sends one).
+  // RETROSPECT_ENV is production | staging; anything else is local.
+  app: {
+    minVersion: optionalEnv('MIN_APP_VERSION', '1.0 (1)'),
+    latestVersion: process.env.LATEST_APP_VERSION || optionalEnv('MIN_APP_VERSION', '1.0 (1)'),
+    requireVersion: optionalEnv('REQUIRE_APP_VERSION', 'false') === 'true',
+    retrospectEnv: process.env.RETROSPECT_ENV,
+  },
+
   // Rate Limiting
   rateLimit: {
     windowMs: parseInt(optionalEnv('RATE_LIMIT_WINDOW_MS', '900000'), 10),
