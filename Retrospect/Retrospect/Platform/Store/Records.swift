@@ -38,6 +38,8 @@ extension Store {
         case entryCreate = "entry.create"
         /// `POST /v2/guesses/:id`; the entity is the guess, the key is the row's own id (the door ignores it).
         case guessAnswer = "guess.answer"
+        /// `POST /v2/diagnostics`; the entity and the key are the report's id. Not an entry: nothing is written back to `entries`.
+        case diagnosticsSend = "diagnostics.send"
         case unknown
     }
 

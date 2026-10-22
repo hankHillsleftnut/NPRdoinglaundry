@@ -115,6 +115,16 @@ struct DiagnosticsEnvironmentTests {
         #expect(Environment.FreeDisk.allCases.map(\.rawValue) == ["under_1gb", "1_to_5gb", "5_to_20gb", "over_20gb"])
     }
 
+    @Test("reachability feeds the network: offline is none, online is unknown (a route, not its kind), and the phone's snapshot carries it")
+    @MainActor
+    func reachabilityFeedsTheNetwork() {
+        #expect(Environment.Network(isOnline: false) == .none)
+        #expect(Environment.Network(isOnline: true) == .unknown)
+        #expect(Environment(sources: .device(isOnline: false)).network == Environment.Network.none)
+        #expect(Environment(sources: .device(isOnline: true)).network == .unknown)
+        #expect(Environment(sources: .device).network == .unknown)
+    }
+
     @Test("the phone's own snapshot has a model, locale and time zone that pass the door's checks")
     @MainActor
     func thePhonesSnapshotPasses() {

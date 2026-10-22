@@ -63,6 +63,7 @@ extension Store {
         private var needsAnotherPass = false
         private var started = false
         private var reachabilityWatch: Task<Void, Never>?
+        fileprivate var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
         /// tests); `drain` does nothing.
@@ -257,6 +258,9 @@ extension Store {
                     let result = try await sender.send(item)
                     try markDone(item, result: result)
                     tally.sent += 1
+                    if item.operation == .diagnosticsSend, let reference = result.reference {
+                        publish(ReportReceipt(reportID: item.id, reference: reference))
+                    }
                     log.record(.outbox(.sent(operation: item.operation, attempts: item.attempts + 1, ms: Self.milliseconds(since: startedAt, now: now()))))
                 } catch is CancellationError {
                     try? markPending(item, at: now())
@@ -399,6 +403,10 @@ extension Store {
             let pick = pick
             try database.writer.write { db in
                 try Self.setItem(item.id, ItemChange(status: .done, nextAttemptAt: item.nextAttemptAt, attempts: item.attempts + 1, code: nil), db)
+                if item.operation == .diagnosticsSend {
+                    // Delivered: the report's bytes aren't kept (the rings they came from are the device's own).
+                    try db.execute(sql: "UPDATE outbox SET payload = ? WHERE id = ?", arguments: [Data(), item.id])
+                }
                 guard item.operation == .entryCreate else { return }
                 let previous = try String.fetchOne(
                     db, sql: "SELECT acknowledgement FROM entries WHERE acknowledgement IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1"
@@ -504,5 +512,63 @@ extension Store {
             let parts = calendar.dateComponents([.year, .month, .day], from: date)
             return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
         }
+    }
+}
+
+// MARK: Reports (DG.5b)
+
+extension Store.Outbox {
+    /// A report was delivered: its id and the short reference to quote.
+    struct ReportReceipt: Sendable, Equatable {
+        let reportID: String
+        let reference: String
+    }
+
+    /// Queues a report. The row's id, entity and key are the report's id, so
+    /// queueing the same report twice stores one row, and the door, which is
+    /// idempotent on that key, makes one reference. Like an entry, it survives
+    /// a relaunch and goes out when there is a connection. Throws if the
+    /// report's id isn't a UUID.
+    @discardableResult
+    func enqueueReport(_ report: Platform.Diagnostics.Report) throws -> UUID {
+        guard let reportID = UUID(uuidString: report.reportId) else { throw Backend.Failure(.invalidRequest) }
+        let payload = try Backend.Coding.encoder.encode(report)
+        let id = report.reportId
+        let queuedAt = now()
+        let item = Store.OutboxRow(
+            id: id, operation: .diagnosticsSend, entityID: id, payload: payload, attempts: 0,
+            nextAttemptAt: queuedAt, status: .pending, lastErrorCode: nil, createdAt: queuedAt
+        )
+        let isNew = try database.writer.write { db -> Bool in
+            guard try Store.OutboxRow.fetchOne(db, key: id) == nil else { return false }
+            try item.insert(db)
+            return true
+        }
+        guard isNew else { return reportID }
+        log.record(.outbox(.enqueued(operation: .diagnosticsSend)))
+        if started {
+            Task { await drain(reason: .afterWrite) }
+        }
+        return reportID
+    }
+
+    /// Each report as it's delivered, with its reference (for the "sent"
+    /// toast). Reports delivered while nobody listens are not replayed.
+    func receipts() -> AsyncStream<ReportReceipt> {
+        let token = UUID()
+        let (stream, continuation) = AsyncStream.makeStream(of: ReportReceipt.self)
+        receiptListeners[token] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { await self?.dropListener(token) }
+        }
+        return stream
+    }
+
+    private func dropListener(_ token: UUID) {
+        receiptListeners[token] = nil
+    }
+
+    fileprivate func publish(_ receipt: ReportReceipt) {
+        receiptListeners.values.forEach { $0.yield(receipt) }
     }
 }

@@ -189,6 +189,84 @@ struct OutboxDrainTests {
         #expect(try entry(a).acknowledgement == nil)
     }
 
+    // MARK: Reports (DG.5b)
+
+    private func report(_ id: String = "00000000-0000-4000-8000-0000000000d1", note: String? = "the brief stalled") throws -> Platform.Diagnostics.Report {
+        let reportID = try #require(UUID(uuidString: id))
+        return Platform.Diagnostics.Report(
+            reportID: reportID, createdAt: Date(timeIntervalSince1970: 1_792_569_604.2), note: note,
+            environment: Platform.Diagnostics.Environment(sources: .init(
+                info: [:], osVersion: OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0), machine: "iPhone17,1",
+                locale: Locale(identifier: "en_US"), timeZone: .gmt, contentSize: .large, reduceMotion: false, voiceOver: false,
+                network: .none, freeDiskBytes: 8_000_000_000
+            )),
+            account: .init(provider: .apple, access: .member, entitlement: .trial), events: [], network: [], outbox: .empty,
+            failures: [], performance: .none, crashes: []
+        )
+    }
+
+    private func allRows() throws -> [Store.OutboxRow] {
+        try database.writer.read { try Store.OutboxRow.fetchAll($0) }
+    }
+
+    @Test("queueing the same report twice stores one row, and one send makes one reference")
+    func aRetryStoresOneReport() async throws {
+        let outbox = outbox()
+        let report = try report()
+
+        try await outbox.enqueueReport(report)
+        try await outbox.enqueueReport(report)
+        await outbox.drain(reason: .manual)
+
+        let rows = try allRows()
+        #expect(rows.count == 1)
+        #expect(rows.first?.id == report.reportId)
+        #expect(rows.first?.operation == .diagnosticsSend)
+        #expect(sender.sends.count == 1)
+        #expect(sender.sends.first?.id == report.reportId)
+        #expect(recorder.events.filter { $0 == .outbox(.enqueued(operation: .diagnosticsSend)) }.count == 1)
+    }
+
+    @Test("a report queued offline is kept, goes out when the phone is back, and its reference reaches the listener")
+    func anOfflineSendDeliversLater() async throws {
+        let outbox = outbox(reachability: StreamingReachability())
+        let report = try report()
+        sender.script(report.reportId, [.failure(Backend.Failure(.offline)), .success(Store.OutboxSendResult(reference: "r-7KQ2"))])
+        var receipts = await outbox.receipts().makeAsyncIterator()
+
+        try await outbox.enqueueReport(report)
+        await outbox.drain(reason: .manual)
+
+        var row = try rowByID(report.reportId)
+        #expect(row.status == .pending, "offline pauses: the report waits, nothing counted")
+        #expect(row.attempts == 0)
+        #expect(!row.payload.isEmpty)
+
+        await outbox.drain(reason: .reachability)
+
+        row = try rowByID(report.reportId)
+        #expect(row.status == .done)
+        #expect(row.payload.isEmpty, "a delivered report's bytes are not kept")
+        let receipt = await receipts.next()
+        #expect(receipt == Store.Outbox.ReportReceipt(reportID: report.reportId, reference: "r-7KQ2"))
+        #expect(try entryCount() == 0, "a report never makes an entry row")
+    }
+
+    @Test("a report the door refuses for good is dead and can be retried by hand")
+    func aRefusedReportCanBeRetried() async throws {
+        let outbox = outbox()
+        let report = try report()
+        sender.script(report.reportId, [.failure(Backend.Failure(.invalidRequest))])
+
+        try await outbox.enqueueReport(report)
+        await outbox.drain(reason: .manual)
+        #expect(try rowByID(report.reportId).status == .dead)
+
+        try await outbox.retry(entityID: #require(UUID(uuidString: report.reportId)))
+        await outbox.drain(reason: .manual)
+        #expect(try rowByID(report.reportId).status == .done)
+    }
+
     // MARK: Guess answers
 
     @Test("a queued guess answer is sent with its verdict, keyed by its own row, and never touches entries")
