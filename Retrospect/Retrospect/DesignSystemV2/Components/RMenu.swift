@@ -314,6 +314,8 @@ private struct RMenuPanel: View {
             )
             .simultaneousGesture(slide)
             .onAppear {
+                // the pill starts on the chosen row, then follows the finger
+                highlighted = request.rows.firstIndex(where: \.selected)
                 // the choreography's settle, when the grow has landed
                 Task {
                     try? await Task.sleep(for: .seconds(RNumber.motionDurationBase + RNumber.motionDurationSourceDim))
