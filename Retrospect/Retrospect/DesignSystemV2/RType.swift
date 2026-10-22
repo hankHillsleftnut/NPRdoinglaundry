@@ -53,10 +53,39 @@ struct RTextStyle {
         }
     }
 
+    /// The font's own line height at a scaled size, the box SwiftUI gives one line before any spacing.
+    func naturalLineHeight(scaledSize: CGFloat) -> CGFloat {
+        let name: String? = switch family {
+        case let .inky(axis): ExposureFont.postScriptName(axis: axis, italic: false)
+        case .display: RFamily.display
+        case .label: RFamily.label(weight)
+        case .text, .mono: nil
+        }
+        let uiFont = name.flatMap { UIFont(name: $0, size: scaledSize) }
+            ?? UIFont.systemFont(ofSize: scaledSize, weight: weight.uiWeight)
+        return uiFont.lineHeight
+    }
+
     /// `size` scaled the way iOS scales `relativeTo` at this Dynamic Type size.
     func scaledSize(at dynamicTypeSize: DynamicTypeSize) -> CGFloat {
         let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicTypeSize))
         return UIFontMetrics(forTextStyle: relativeTo.uiTextStyle).scaledValue(for: size, compatibleWith: traits)
+    }
+}
+
+private extension Font.Weight {
+    var uiWeight: UIFont.Weight {
+        switch self {
+        case .ultraLight: .ultraLight
+        case .thin: .thin
+        case .light: .light
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        case .heavy: .heavy
+        case .black: .black
+        default: .regular
+        }
     }
 }
 
@@ -249,11 +278,16 @@ private struct RTextModifier: ViewModifier {
     func body(content: Content) -> some View {
         // tracking and leading are proportions of the size, so they follow the scaled size too
         let size = style.scaledSize(at: dynamicTypeSize)
+        // Paper's line box is leading × size; SwiftUI gives each line the font's own height. The
+        // difference goes between lines and, as in CSS, half above and half below the text, so a
+        // single line is as tall as Paper draws it too. Tighter leading than the font's own
+        // height can't shrink a SwiftUI line, so it stays at the font's height.
+        let extra = max(0, style.leading * size - style.naturalLineHeight(scaledSize: size))
         content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
-            // SwiftUI's default line height is about 1.2× the size; add the rest as spacing
-            .lineSpacing(max(0, (style.leading - 1.2) * size))
+            .lineSpacing(extra)
+            .padding(.vertical, extra / 2)
     }
 }
 
