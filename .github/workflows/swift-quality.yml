@@ -9,7 +9,7 @@ on:
       - '.github/workflows/swift-quality.yml'
 jobs:
   lint-and-format:
-    runs-on: [self-hosted, macOS, retrospect]
+    runs-on: [self-hosted, light]
     env:
       SWIFTLINT_VERSION: 0.65.1
       SWIFTFORMAT_VERSION: 0.64.0
