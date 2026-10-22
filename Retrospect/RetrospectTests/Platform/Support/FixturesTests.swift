@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+@Suite(.timeLimit(.minutes(1)))
 struct FixturesTests {
     @Test("a missing fixture names its path")
     func aMissingFixtureNamesItsPath() throws {

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+@Suite(.timeLimit(.minutes(1)))
 struct StubProtocolTests {
     private let url = URL(string: "https://stub.invalid/v2/meta")!
 

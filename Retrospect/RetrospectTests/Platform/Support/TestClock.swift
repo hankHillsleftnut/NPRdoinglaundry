@@ -1,8 +1,9 @@
 import Foundation
 
 /// A clock that only moves when a test says so. Code under test sleeps on it
-/// (backoff, timeouts); the test calls `advance(by:)` and the sleepers whose
-/// deadline has passed wake, in deadline order. No real time passes.
+/// (backoff, timeouts); the test calls `advance(by:)`, and every sleep whose
+/// deadline has passed is resumed, earliest deadline first. (When the resumed
+/// tasks then run is up to the scheduler.) No real time passes.
 final class TestClock: Clock, @unchecked Sendable {
     struct Instant: InstantProtocol {
         var offset: Duration
@@ -12,15 +13,20 @@ final class TestClock: Clock, @unchecked Sendable {
         static func < (lhs: Instant, rhs: Instant) -> Bool { lhs.offset < rhs.offset }
     }
 
-    private struct Sleeper {
-        let deadline: Instant
-        let continuation: CheckedContinuation<Void, Error>
+    /// One sleep's life. It's in `sleeps` from the moment it starts until it
+    /// ends, so a cancellation that arrives at any point finds it or finds
+    /// nothing, and never leaves anything behind.
+    private enum Sleep {
+        /// Started, not yet waiting on its continuation.
+        case starting
+        /// Cancelled while starting; the wait throws as soon as it begins.
+        case cancelled
+        case waiting(deadline: Instant, continuation: CheckedContinuation<Void, Error>)
     }
 
     private let lock = NSLock()
     private var current = Instant(offset: .zero)
-    private var sleepers: [UUID: Sleeper] = [:]
-    private var cancelledBeforeWaiting: Set<UUID> = []
+    private var sleeps: [UUID: Sleep] = [:]
 
     var now: Instant {
         lock.withLock { current }
@@ -32,22 +38,33 @@ final class TestClock: Clock, @unchecked Sendable {
 
     /// How many sleeps are waiting for the clock to move.
     var pendingSleeps: Int {
-        lock.withLock { sleepers.count }
+        lock.withLock {
+            sleeps.values.filter {
+                if case .waiting = $0 {
+                    true
+                } else {
+                    false
+                }
+            }.count
+        }
     }
 
     func sleep(until deadline: Instant, tolerance _: Duration? = nil) async throws {
         try Task.checkCancellation()
         let id = UUID()
+        lock.withLock { sleeps[id] = .starting }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 let outcome: Result<Void, Error>? = lock.withLock {
-                    if cancelledBeforeWaiting.remove(id) != nil {
+                    if case .cancelled = sleeps[id] {
+                        sleeps[id] = nil
                         return .failure(CancellationError())
                     }
                     if deadline <= current {
+                        sleeps[id] = nil
                         return .success(())
                     }
-                    sleepers[id] = Sleeper(deadline: deadline, continuation: continuation)
+                    sleeps[id] = .waiting(deadline: deadline, continuation: continuation)
                     return nil
                 }
                 if let outcome {
@@ -55,27 +72,45 @@ final class TestClock: Clock, @unchecked Sendable {
                 }
             }
         } onCancel: {
-            // Cancellation can arrive before the sleep is registered; remember
-            // it so the registration sees it and throws instead of waiting.
-            let sleeper: Sleeper? = lock.withLock {
-                guard let sleeper = sleepers.removeValue(forKey: id) else {
-                    cancelledBeforeWaiting.insert(id)
+            let waiting: CheckedContinuation<Void, Error>? = lock.withLock {
+                switch sleeps[id] {
+                case .starting:
+                    sleeps[id] = .cancelled
+                    return nil
+                case let .waiting(_, continuation):
+                    sleeps[id] = nil
+                    return continuation
+                case .cancelled, nil:
+                    // Already ended: nothing to cancel, nothing to keep.
                     return nil
                 }
-                return sleeper
             }
-            sleeper?.continuation.resume(throwing: CancellationError())
+            waiting?.resume(throwing: CancellationError())
         }
     }
 
-    /// Moves the clock forward and wakes every sleep that is now due.
+    /// Moves the clock forward and resumes every sleep that is now due,
+    /// earliest deadline first.
     func advance(by duration: Duration) {
-        let due: [Sleeper] = lock.withLock {
+        let due: [CheckedContinuation<Void, Error>] = lock.withLock {
             current = current.advanced(by: duration)
-            let ready = sleepers.filter { $0.value.deadline <= current }
-            ready.keys.forEach { sleepers.removeValue(forKey: $0) }
-            return ready.values.sorted { $0.deadline < $1.deadline }
+            var ready: [UUID: Instant] = [:]
+            var continuations: [UUID: CheckedContinuation<Void, Error>] = [:]
+            for (id, sleep) in sleeps {
+                if case let .waiting(deadline, continuation) = sleep, deadline <= current {
+                    ready[id] = deadline
+                    continuations[id] = continuation
+                }
+            }
+            ready.keys.forEach { sleeps[$0] = nil }
+            return ready.sorted { $0.value < $1.value }.compactMap { continuations[$0.key] }
         }
-        due.forEach { $0.continuation.resume() }
+        due.forEach { $0.resume() }
+    }
+
+    /// Sleeps the clock is still holding in any state; zero once every sleep
+    /// has ended, however it ended.
+    var heldSleeps: Int {
+        lock.withLock { sleeps.count }
     }
 }
