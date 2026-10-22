@@ -51,7 +51,7 @@ type Brief = {
 - **Mapping from the agent** (`daily_briefs`): v1 rows → one part per item (`text`, `why`, `sources` from `sourceRef.raw_content_id`). v2 rows → the spoken brief is `through_line`, split into parts at paragraph breaks; the v2 `items` are bookkeeping and are **never** shown (they contain the bare words "pattern" or "answer"). `kind: "quiet"` keeps the agent's line ("nothing new since your last brief. i'll keep listening.").
 - `audio` is absent until BE1.3b ships (briefs have no audio today) and absent on quiet days.
 
-`GET /v2/briefs/latest` → `{ "brief": Brief | null, "enabled": true }` (`enabled` is the user's brief switch; off by default, founder 21 Oct).
+`GET /v2/briefs/latest` → `{ "brief": Brief | null, "enabled": true }` (`enabled` is the user's brief switch; **on by default for Beta 1 testers, founder 22 Oct**, migration 026: a new person starts switched on and everyone who existed before was switched on once; `PUT /v2/briefs/enabled { enabled: false }` switches it off and it stays off).
 `GET /v2/briefs?cursor=<opaque>&limit=20` → `{ "briefs": Brief[], "nextCursor": "…" | null }`, newest first (no audio in the list).
 `PUT /v2/briefs/enabled` `{ "enabled": true }` → `{ "enabled": true }`.
 

@@ -67,7 +67,7 @@ Spec:
   - v2 (`spine_movement === 'planner v2'`): parts = `through_line` split on blank lines (`/\n\s*\n/`), each `{ text, sources: [] }`; **`items` are never mapped** (they hold the words "pattern"/"answer").
   - `kind 'quiet'`: one part with the agent's line.
   - `date` = `brief_date` (UTC today; the contract's "local day" lands with BE6.2's per-user brief time, which writes local dates. The PR notes this for the integrator).
-- `GET /v2/briefs/latest` → `{ brief, enabled }` (`enabled` from `users.daily_brief_enabled`); `GET /v2/briefs?cursor=` (opaque base64 of `brief_date`); `PUT /v2/briefs/enabled { enabled: boolean }` (strict boolean; the agent's route treats anything but `true` as false, so the door validates first).
+- `GET /v2/briefs/latest` → `{ brief, enabled }` (`enabled` from `users.daily_brief_enabled`; **on by default** since backend migration `026_brief_on_by_default.sql`, founder 22 Oct: the brain's 128 made the column with `DEFAULT false`, 026 sets `DEFAULT true` and backfills existing rows once; nothing that creates a user sets the column); `GET /v2/briefs?cursor=` (opaque base64 of `brief_date`); `PUT /v2/briefs/enabled { enabled: boolean }` (strict boolean; the agent's route treats anything but `true` as false, so the door validates first).
 - Buckets: reads `read`, the switch `write`. Agent timeouts 10 s, retry `read` on reads, `none` on the switch.
 
 Acceptance: a v1 brief, a v2 brief and a quiet brief each map to readable parts; no part's text is ever just "pattern" or "answer".

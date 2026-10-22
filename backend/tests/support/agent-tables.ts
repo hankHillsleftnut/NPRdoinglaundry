@@ -9,6 +9,8 @@ import type { PGlite } from '@electric-sql/pglite' with { 'resolution-mode': 'im
  * type and default, so a mapping that works here works on the real rows.
  */
 export const AGENT_BRIEF_TABLES_SQL = `
+  -- 128's text; in a database built from the backend's migrations the column already exists
+  -- (026 adds it with DEFAULT true, as 026 leaves it in production after 128), so this is a no-op there.
   ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_brief_enabled BOOLEAN NOT NULL DEFAULT false;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS voice_persona TEXT;
 

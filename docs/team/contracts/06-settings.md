@@ -16,7 +16,7 @@ Nothing in this contract is in Beta 1 (`../first-ship.md`): settings stay on the
 
 ```ts
 type BriefSettings = {
-  enabled: boolean;                       // users.daily_brief_enabled; off until the person opts in (D7)
+  enabled: boolean;                       // users.daily_brief_enabled; on by default for Beta 1 (founder 22 Oct, migration 026; supersedes D7's opt-in), off once the person switches it off
   time: string;                           // "HH:mm", local, 15-minute steps; default "08:00" (new column, BE6.1a)
   length: "short" | "standard" | "long" | "unknown";   // default "standard" (new column, BE6.1a; founder question Q1)
   nextAt: string | null;                  // ISO UTC instant of the next brief, null when off (the journal's "ready by 8:30")
