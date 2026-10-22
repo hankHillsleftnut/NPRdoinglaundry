@@ -130,15 +130,22 @@ Watch out: the dial is the founder's (D11); never flip it in code or migrations.
 
 ### BE1.5 · Entry history and one entry                                     size: M
 Place in the tree: journal › entries › `GET /v2/entries`, `GET /v2/entries/:id`
-Repo · branch: backend · `be/BE1.5-entry-history`
+Repo · branch: backend · `be/BE1.5-entry-history` (stacked on BE1.1)
 Needs: BE1.1      Unblocks: C31, P11, P12
 
-Spec:
-- `GET /v2/entries?cursor=&limit=50&q=`: own words only (the "sent by the person" set), newest first; cursor = base64 of `(coalesce(content_date, created_at), id)`; `q` (1–100 chars): case-insensitive `ilike` with `%`, `_` and `\` escaped; each result carries `matches: [{ start, length }]` computed in the door (case-insensitive, all occurrences, on the returned text); `limit` ≤ 100.
-- `GET /v2/entries/:id`: ownership (`raw_content.user_id`), else `not_found`.
-- Project columns explicitly (never `select('*')`: `raw_content.embedding` is 3,072 floats).
+Spec (as built; the integrator's contract pass §1.5–§1.6):
+- Migration `023_entry_history.sql`: `entry_fields_json` over named columns (never a whole `raw_content` row: the agent's migrations put a 3,072-float embedding on it); `entries_today` redefined on it; `entries_list` (own words, newest first, keyset strictly before `(moment in microseconds, id)`, `ILIKE` with the door's pattern); `entry_get` (the caller's own row of a sent type, else null).
+- `GET /v2/entries?cursor=&limit=50&q=`: strict query. `cursor` = base64url of `<microseconds>|<id>`, opaque to the app (a cursor that doesn't decode is `invalid_request`; the app starts over). `limit` 1–100, default 50. A **full page carries the cursor of its last entry; a short page is the end** (so the page after the last full one may be empty, `{ entries: [], nextCursor: null }`, which the app treats as the end too). `q` 1–100 characters, case-insensitive `ILIKE` with `%`, `_` and `\` escaped; each result carries `matches: [{ start, length }]` computed in the door on the returned text: every non-overlapping occurrence, in **UTF-16 code units** (a range can run past the end for a script whose lower-casing changes length; the app drops it).
+- `GET /v2/entries/:id`: the caller's own entry of a sent type, else `not_found` (another person's, a record of your own, an id that isn't there: all the same); a malformed id is `invalid_request`.
+- `PATCH` and `DELETE /v2/entries/:id` are **BE1.5b, after Beta 1**: a delete must take everything read from the entry with it, which needs the brain's forget route (pass F11–F13).
 
-Tests: door suite · `search escapes wildcards` (searching "50%" finds only that) · `match ranges point at the right words` · `paging never repeats or skips an entry` (entries with equal timestamps) · `another person's entry is not found` · fixtures `entries.list.json`, `entries.search.json`, `entry.json`.
+Tests (door suite, plus; * = fails when its rule is removed), `backend/tests/entries-history.test.ts`:
+- `the list, its last page, search and one entry equal the contract fixtures exactly`
+- `paging never repeats or skips an entry, even with equal timestamps` * (7 rows at one instant; a new entry mid-walk shifts nothing)
+- `search escapes % _ and \, matches every occurrence case-insensitively, and reports UTF-16 ranges` *
+- `a malformed cursor, limit or q is invalid_request; the default page is 50 and the ceiling 100`
+- `another person's entry is not_found on get, as is a record of your own and an id that isn't there` *
+- fixtures: `entries.list.json`'s cursor is opaque and names its last entry (F8); `entries.search.astral.json` (F9) is mapped in the app's `ContractFixtureTests` with a UTF-16 assertion.
 
 ---
 
