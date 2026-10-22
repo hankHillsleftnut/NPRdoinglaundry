@@ -12,11 +12,17 @@ export type RotateResult =
   /** `reuse`: a rotated token presented after its grace window, so the family was ended. */
   | { outcome: 'revoked'; reuse?: true };
 
+/** Whose a refresh token is, and the users.token_version its family was issued under (migration 025). */
+export interface TokenOwner {
+  userId: string;
+  tokenVersion: number;
+}
+
 export interface SessionStore {
-  /** Starts a new family for one device with this token hash. */
-  issue(userId: string, tokenHash: string, nowIso: string, device?: string): Promise<void>;
-  /** Who a refresh token belongs to (any state), or null when it isn't one. */
-  ownerOf(tokenHash: string): Promise<string | null>;
+  /** Starts a new family for one device with this token hash, under the person's current token version. */
+  issue(userId: string, tokenHash: string, nowIso: string, device: string | undefined, tokenVersion: number): Promise<void>;
+  /** Who a refresh token belongs to (any state) and its family's version, or null when it isn't one. */
+  ownerOf(tokenHash: string): Promise<TokenOwner | null>;
   rotate(input: { tokenHash: string; newHash: string; nowIso: string; refreshCiphertext: string }): Promise<RotateResult>;
   /** Ends the presented token's family (this device). */
   revoke(tokenHash: string, nowIso: string): Promise<boolean>;
@@ -30,7 +36,7 @@ export interface RpcClient {
   from(table: string): {
     select(columns: string): {
       eq(column: string, value: string): {
-        maybeSingle(): PromiseLike<{ data: { user_id: string } | null; error: { code?: string } | null }>;
+        maybeSingle(): PromiseLike<{ data: { user_id: string; token_version?: number } | null; error: { code?: string } | null }>;
       };
     };
   };
@@ -44,12 +50,17 @@ export function check<T>(fn: string, r: { data: unknown; error: { code?: string 
 
 export function supabaseSessionStore(db: RpcClient): SessionStore {
   return {
-    async issue(userId, tokenHash, nowIso, device) {
-      check('issue_session', await db.rpc('issue_session', { p_user: userId, p_token_hash: tokenHash, p_now: nowIso, p_device: device ?? null }));
+    async issue(userId, tokenHash, nowIso, device, tokenVersion) {
+      check('issue_session', await db.rpc('issue_session', {
+        p_user: userId, p_token_hash: tokenHash, p_now: nowIso, p_device: device ?? null, p_token_version: tokenVersion,
+      }));
     },
     async ownerOf(tokenHash) {
-      const r = await db.from('refresh_tokens').select('user_id').eq('token_hash', tokenHash).maybeSingle();
-      return check<{ user_id: string } | null>('refresh_tokens lookup', r)?.user_id ?? null;
+      const r = await db.from('refresh_tokens').select('user_id, token_version').eq('token_hash', tokenHash).maybeSingle();
+      const row = check<{ user_id: string; token_version?: number } | null>('refresh_tokens lookup', r);
+      if (!row) return null;
+      // A row from before migration 025 reads as version 0, which the backfill also gives it.
+      return { userId: row.user_id, tokenVersion: typeof row.token_version === 'number' ? row.token_version : 0 };
     },
     async rotate(input) {
       const raw = check<Record<string, unknown>>('rotate_refresh_token', await db.rpc('rotate_refresh_token', {
@@ -81,7 +92,7 @@ export async function startSession(
   store: SessionStore, claims: AccessClaims, secret: string, nowMs: number, opts: { device?: string; random?: (n: number) => Buffer } = {},
 ): Promise<IssuedSession> {
   const refresh = newRefreshToken(opts.random);
-  await store.issue(claims.userId, refresh.hash, new Date(nowMs).toISOString(), opts.device);
+  await store.issue(claims.userId, refresh.hash, new Date(nowMs).toISOString(), opts.device, claims.tokenVersion);
   const access = issueAccessToken(claims, secret, nowMs);
   return { accessToken: access.token, refreshToken: refresh.plain, accessTokenExpiresAt: access.expiresAt };
 }
