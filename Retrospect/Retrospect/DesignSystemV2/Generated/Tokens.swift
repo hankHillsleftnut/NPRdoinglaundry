@@ -648,6 +648,34 @@ public enum RDimension {
     public static let motionLifeFloatAmplitude: CGFloat = 2
     /// Most a tile lags behind the scroll.
     public static let motionScrollLagMaxOffset: CGFloat = 6
+    /// Tab screens: the blur band above the tab bar.
+    public static let blurTabBand: CGFloat = 70
+    /// Tab screens on short phones (SE): the band above the tab bar.
+    public static let blurTabBandCompact: CGFloat = 60
+    /// Tab screens: blur at the band's outer edge.
+    public static let blurTabMax: CGFloat = 14
+    /// Tab screens: the canvas tint covers only this much of the band, at the bottom.
+    public static let blurTabTint: CGFloat = 56
+    /// Journal: the top band's full height; it grows with scroll from 0.
+    public static let blurJournalTopBand: CGFloat = 80
+    /// Journal: blur at the top band's outer edge.
+    public static let blurJournalTopMax: CGFloat = 8
+    /// Player transcript: the top band.
+    public static let blurTranscriptTopBand: CGFloat = 96
+    /// Player transcript on short phones: the top band.
+    public static let blurTranscriptTopBandCompact: CGFloat = 64
+    /// Player transcript: blur at the top band's outer edge.
+    public static let blurTranscriptTopMax: CGFloat = 8
+    /// Player transcript: the bottom band, into the transport.
+    public static let blurTranscriptBottomBand: CGFloat = 140
+    /// Player transcript on short phones: the bottom band.
+    public static let blurTranscriptBottomBandCompact: CGFloat = 80
+    /// Player transcript: blur at the bottom band's outer edge.
+    public static let blurTranscriptBottomMax: CGFloat = 8
+    /// Drawer: the band under the foot.
+    public static let blurDrawerFootBand: CGFloat = 56
+    /// Drawer: blur at the foot band's outer edge.
+    public static let blurDrawerFootMax: CGFloat = 6
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
@@ -664,6 +692,8 @@ public enum RDimension {
     public static let layoutSheetMaxWidth: CGFloat = 560
     /// Content padding inside a widget.
     public static let layoutWidgetPadding: CGFloat = 16
+    /// A screen shorter than this (iPhone SE, 667) takes the compact layout: smaller bands and tighter rhythm, decided by the container's height, never the device model.
+    public static let layoutCompactHeight: CGFloat = 700
     /// Space above the grabber inside a sheet.
     public static let layoutSheetTop: CGFloat = 10
     /// Space between the grabber and the sheet content.
@@ -848,6 +878,12 @@ public enum RNumber {
     public static let motionScrollLagMaxTilt: Double = 1.5
     /// Stagger at most this many items; the rest arrive together.
     public static let motionStaggerMax: Double = 6
+    /// Tab screens: colour boost under the blur, so the edge never greys.
+    public static let blurTabSaturation: Double = 1.5
+    /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
+    public static let blurTranscriptTopTint: Double = 0.3
+    /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
+    public static let blurTranscriptBottomTint: Double = 0.15
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.

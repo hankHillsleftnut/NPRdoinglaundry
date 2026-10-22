@@ -54,6 +54,7 @@ struct RTextStyle {
     }
 
     /// The font's own line height at a scaled size, the box SwiftUI gives one line before any spacing.
+    /// Measured once per family, weight and size, never on every body pass.
     func naturalLineHeight(scaledSize: CGFloat) -> CGFloat {
         let name: String? = switch family {
         case let .inky(axis): ExposureFont.postScriptName(axis: axis, italic: false)
@@ -61,9 +62,36 @@ struct RTextStyle {
         case .label: RFamily.label(weight)
         case .text, .mono: nil
         }
+        let key = "\(name ?? (isMono ? "mono" : "text"))|\(weight.uiWeight.rawValue)|\(scaledSize)" as NSString
+        if let cached = RLineHeightCache.shared.object(forKey: key) {
+            return CGFloat(cached.doubleValue)
+        }
         let uiFont = name.flatMap { UIFont(name: $0, size: scaledSize) }
-            ?? UIFont.systemFont(ofSize: scaledSize, weight: weight.uiWeight)
+            ?? (isMono
+                ? UIFont.monospacedSystemFont(ofSize: scaledSize, weight: weight.uiWeight)
+                : UIFont.systemFont(ofSize: scaledSize, weight: weight.uiWeight))
+        RLineHeightCache.shared.setObject(NSNumber(value: Double(uiFont.lineHeight)), forKey: key)
         return uiFont.lineHeight
+    }
+
+    private var isMono: Bool {
+        if case .mono = family {
+            return true
+        }
+        return false
+    }
+
+    /// Line height ÷ size at accessibility sizes, from the type.ax3 tokens (title 61/52, xl 52/44,
+    /// body 48/40, md 43/36, sm 39/32): Paper sets about 1.2× there, not the default leading, so
+    /// AX3 rows don't grow about 4pt a line beyond what Paper draws.
+    var accessibilityLeading: CGFloat {
+        switch relativeTo {
+        case .largeTitle, .title: 61 / 52
+        case .title2, .title3: 52 / 44
+        case .subheadline, .footnote: 43 / 36
+        case .caption, .caption2: 39 / 32
+        default: 48 / 40
+        }
     }
 
     /// `size` scaled the way iOS scales `relativeTo` at this Dynamic Type size.
@@ -71,6 +99,11 @@ struct RTextStyle {
         let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicTypeSize))
         return UIFontMetrics(forTextStyle: relativeTo.uiTextStyle).scaledValue(for: size, compatibleWith: traits)
     }
+}
+
+/// Measured line heights, keyed by family, weight and size (thread-safe).
+private enum RLineHeightCache {
+    static let shared = NSCache<NSString, NSNumber>()
 }
 
 private extension Font.Weight {
@@ -282,7 +315,8 @@ private struct RTextModifier: ViewModifier {
         // difference goes between lines and, as in CSS, half above and half below the text, so a
         // single line is as tall as Paper draws it too. Tighter leading than the font's own
         // height can't shrink a SwiftUI line, so it stays at the font's height.
-        let extra = max(0, style.leading * size - style.naturalLineHeight(scaledSize: size))
+        let leading = dynamicTypeSize.isAccessibilitySize ? min(style.leading, style.accessibilityLeading) : style.leading
+        let extra = max(0, leading * size - style.naturalLineHeight(scaledSize: size))
         content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)

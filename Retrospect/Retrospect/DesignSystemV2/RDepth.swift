@@ -99,11 +99,10 @@ extension View {
             .shadow(color: RColor.shadowOverlay1, radius: 18, y: 24)
     }
 
-    /// Menus (elevation.menu: 0 8 24 −6 and 0 2 6).
+    /// Menus (elevation.menu: 0 8 24 −6 and 0 2 6). No outline: Paper's menu (QE-0) draws none.
     func rMenu(_ radius: CGFloat = RDimension.radiusField) -> some View {
         let shape = RShape.rect(radius)
         return background(RColor.backgroundRaised, in: shape)
-            .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
             .shadow(color: RColor.shadowMenu2, radius: 3, y: 2)
             .shadow(color: RColor.shadowMenu1, radius: 9, y: 8)
     }
