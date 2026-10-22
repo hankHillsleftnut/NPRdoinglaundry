@@ -36,7 +36,12 @@ struct JournalLaunch: View {
 struct JournalLabPage: View {
     var body: some View {
         let arguments = LaunchArguments.parse(ProcessInfo.processInfo.arguments)
-        JournalLaunch(scenario: JournalScenario(rawValue: arguments.state) ?? .full)
+        if arguments.unknown.isEmpty {
+            JournalLaunch(scenario: JournalScenario(rawValue: arguments.state) ?? .full)
+        } else {
+            // a flag the lab can't honour is shown, not ignored
+            ScreenLauncher()
+        }
     }
 }
 

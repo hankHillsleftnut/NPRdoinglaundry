@@ -23,12 +23,19 @@ struct JournalPageContainer: View {
 
     var body: some View {
         if let data {
+            // a new data source or a new day builds a new page and model
             JournalPage(model: JournalViewModel(data: data, today: today))
+                .id(PageIdentity(data: ObjectIdentifier(data), today: today))
         } else {
             // outside the app (a preview without the seam): nothing to show yet
             RColor.backgroundCanvas.ignoresSafeArea()
         }
     }
+}
+
+private struct PageIdentity: Hashable {
+    let data: ObjectIdentifier
+    let today: String
 }
 
 struct JournalPage: View {
@@ -68,7 +75,15 @@ struct JournalPage: View {
         .rRetroAnnouncement(landed: model.landed, line: model.landedLine)
         .rErrorHaptic(isFailing: model.failure != nil)
         .rErrorAnnouncement(model.failure?.message, attempt: model.loadAttempts)
-        .task { await model.load() }
+        // a guess answer that failed: the same haptic and announcement, once per failure
+        .rErrorHaptic(isFailing: model.answerFailure != nil)
+        .rErrorAnnouncement(
+            model.answerFailure.map { $0.message ?? JournalViewModel.answerFailureLine },
+            attempt: model.answerFailures
+        )
+        // M08: an entry this session sent turning sent, whenever it happens
+        .onChange(of: model.deliveries) { model.noteDeliveries() }
+        .task { await model.loadIfNeeded() }
         .accessibilityIdentifier("screen.JR-1")
     }
 
@@ -165,7 +180,7 @@ struct JournalPage: View {
                     case let .guess(guess):
                         RGuessCard(
                             question: guess.question,
-                            from: "from \(guess.restsOn.count) things",
+                            from: JournalViewModel.sourceLine(count: guess.restsOn.count),
                             sureness: guess.framework.name,
                             phase: JournalViewModel.phase(guess),
                             answer: { verdict in await model.answer(guess, verdict) },

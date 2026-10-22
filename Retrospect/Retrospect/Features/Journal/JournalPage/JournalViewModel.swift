@@ -11,6 +11,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 @Observable
@@ -62,8 +63,21 @@ final class JournalViewModel {
     /// The entry this session watched go from sending to sent: the acknowledgement is announced
     /// once and the `confirm` haptic fires once, for it; a thread loaded already sent never does.
     private(set) var landed: String?
+    /// The entries this session sent or retried that haven't been seen sent yet. `landed` is set
+    /// when one of these turns `.sent` in the data, whenever that happens, so it works the same
+    /// for a send that returns at once (the outbox) and one that waits (the sample).
+    @ObservationIgnored private var watching: Set<String> = []
     /// Counts failed loads, for the error announcement.
     private(set) var loadAttempts = 0
+    /// The last guess answer that failed, until one works; the page plays the error haptic and
+    /// announces it once per failure (a queued answer, offline, is not a failure).
+    private(set) var answerFailure: Flows.Failure?
+    private(set) var answerFailures = 0
+    /// Today has finished loading once for this model; coming back to the page doesn't reload.
+    @ObservationIgnored private var hasLoaded = false
+
+    /// What the guess card says when a failed answer has no message of its own.
+    static let answerFailureLine = "couldn't send your answer. try again."
 
     init(data: any Flows.JournalData, today: String) {
         self.data = data
@@ -120,30 +134,59 @@ final class JournalViewModel {
         if failure != nil {
             loadAttempts += 1
         }
+        if !Task.isCancelled {
+            hasLoaded = true
+        }
     }
 
-    /// Sends the draft and watches it land (M08 v1): the id it gets is the one not there before.
+    /// The page's `.task`: loads once per model, so coming back to the tab doesn't refetch
+    /// and flash the skeleton; "try again" calls `load()`.
+    func loadIfNeeded() async {
+        guard !hasLoaded else { return }
+        await load()
+    }
+
+    /// Sends the draft and watches it land (M08 v1). Empty words are not sent and keep the draft.
     func send(_ text: String) async {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return }
         draft = ""
         let before = Set((data.today.value ?? []).map(\.id))
         await data.send(text: words)
-        if let new = (data.today.value ?? []).first(where: { !before.contains($0.id) }), new.delivery == .sent {
-            landed = new.id
-        }
+        watching.formUnion((data.today.value ?? []).map(\.id).filter { !before.contains($0) })
+        noteDeliveries()
     }
 
     func retry(_ entry: Journal.Entry) async {
         guard let id = entry.clientEntryId else { return }
+        watching.insert(entry.id)
         await data.retry(clientEntryId: id)
-        if (data.today.value ?? []).first(where: { $0.id == entry.id })?.delivery == .sent {
+        noteDeliveries()
+    }
+
+    /// A list that changes whenever an entry's delivery does; the page calls `noteDeliveries`
+    /// on its change.
+    var deliveries: [String] {
+        (data.today.value ?? []).map { "\($0.id):\($0.delivery)" }
+    }
+
+    /// Sets `landed` for a watched entry that is now sent, once (it stops being watched).
+    func noteDeliveries() {
+        guard !watching.isEmpty else { return }
+        for entry in data.today.value ?? [] where entry.delivery == .sent && watching.contains(entry.id) {
+            watching.remove(entry.id)
             landed = entry.id
         }
     }
 
     func answer(_ guess: Journal.Guess, _ verdict: RGuessCard.Verdict) async {
-        _ = await data.answer(guess, verdict: verdict == .yes ? .yes : .no)
+        switch await data.answer(guess, verdict: verdict == .yes ? .yes : .no) {
+        case .recorded, .queued:
+            answerFailure = nil
+        case let .failed(failure):
+            answerFailure = failure
+            answerFailures += 1
+        }
     }
 
     func play() {
@@ -151,9 +194,15 @@ final class JournalViewModel {
     }
 
     /// Copies your words, text only; nothing is logged.
+    /// It stays on this phone (not Universal Clipboard) and expires after two minutes.
     func copy(_ entry: Journal.Entry) {
-        UIPasteboard.general.string = entry.text
+        UIPasteboard.general.setItems(
+            [[UTType.plainText.identifier: entry.text]],
+            options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(Self.copyLasts)]
+        )
     }
+
+    static let copyLasts: TimeInterval = 120
 
     /// Opens the entry (JR-4, P12); the page's host wires it.
     var openEntry: (Journal.Entry) -> Void = { _ in }
@@ -185,10 +234,20 @@ final class JournalViewModel {
                 lastRetro = items.count
             }
         }
-        if let guess, guess.status == .offered || guess.status == .confirmed, let at = lastRetro {
+        // A declined guess stays for the session, dimmed (C28); an expired or unknown one is gone.
+        if let guess, guess.status == .offered || guess.status == .confirmed || guess.status == .declined, let at = lastRetro {
             items.insert(.guess(guess), at: at)
         }
         return items
+    }
+
+    /// The guess card's source line: "from 3 things", "from 1 thing".
+    static func sourceLine(count: Int) -> String {
+        switch count {
+        case ..<1: "from what you've said"
+        case 1: "from 1 thing"
+        default: "from \(count) things"
+        }
     }
 
     /// "today" for the person's day; otherwise the day as "tue 21 oct".
@@ -196,27 +255,30 @@ final class JournalViewModel {
         day == today ? "today" : dateLabel(day)
     }
 
+    private static func formatter(_ format: String, zone: TimeZone?) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        if let zone {
+            formatter.timeZone = zone
+        }
+        formatter.dateFormat = format
+        return formatter
+    }
+
+    private static let dayReader = formatter("yyyy-MM-dd", zone: TimeZone(identifier: "UTC"))
+    private static let dayWriter = formatter("EEE d MMM", zone: TimeZone(identifier: "UTC"))
+    private static let timeWriter = formatter("H:mm", zone: .autoupdatingCurrent)
+
     /// `YYYY-MM-DD` as "tue 21 oct", lowercase, the same in every locale.
     static func dateLabel(_ day: String) -> String {
-        let reader = DateFormatter()
-        reader.locale = Locale(identifier: "en_US_POSIX")
-        reader.timeZone = TimeZone(identifier: "UTC")
-        reader.dateFormat = "yyyy-MM-dd"
-        guard let date = reader.date(from: day) else { return day }
-        let writer = DateFormatter()
-        writer.locale = Locale(identifier: "en_US_POSIX")
-        writer.timeZone = TimeZone(identifier: "UTC")
-        writer.dateFormat = "EEE d MMM"
-        return writer.string(from: date).lowercased()
+        guard let date = dayReader.date(from: day) else { return day }
+        return dayWriter.string(from: date).lowercased()
     }
 
     /// "8:30" in the phone's own time zone.
     static func readyBy(_ date: Date?) -> String? {
         guard let date else { return nil }
-        let writer = DateFormatter()
-        writer.locale = Locale(identifier: "en_US_POSIX")
-        writer.dateFormat = "H:mm"
-        return writer.string(from: date)
+        return timeWriter.string(from: date)
     }
 
     /// "2 min" from the audio's length; nil when there's no audio yet.
@@ -232,7 +294,8 @@ final class JournalViewModel {
         let date = dateLabel(today)
         switch slot {
         case .loading:
-            return BriefCard(date: date, length: nil, headline: "", subline: nil, state: .making(readyBy: nil))
+            // nothing is claimed until the slot is known: not "being made" while merely loading
+            return nil
         case let .failed(failure):
             if !online {
                 return BriefCard(date: date, length: nil, headline: "", subline: nil, state: .offline)
@@ -271,7 +334,7 @@ final class JournalViewModel {
     /// The guess card's phase from the guess's status.
     static func phase(_ guess: Journal.Guess) -> RGuessCard.Phase {
         switch guess.status {
-        case .offered, .expired, .unknown: .offered
+        case .offered, .expired, .unknown: .offered // expired and unknown never reach the thread
         case .confirmed: .confirmed
         case .declined: .declined
         }

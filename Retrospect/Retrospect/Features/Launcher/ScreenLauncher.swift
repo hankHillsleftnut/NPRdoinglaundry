@@ -4,9 +4,13 @@
 //  `-Screen <id> -State <scenario> -Data sample|live -Appearance light|dark -ContentSize <raw>`.
 //  The arguments are parsed by a pure function; the registry maps an id to a builder and each
 //  flow registers its own screens from its own folder; an unknown id or state shows the list of
-//  valid ones (the test's failure message) and never crashes. The app root shows
-//  `ScreenLauncher` when `-Screen` is present (the integrator's one-line hook); until then the
-//  design lab's "journal" page reads the same arguments. Debug and UI-test builds only.
+//  valid ones (the test's failure message) and never crashes. The app root does not show
+//  `ScreenLauncher` yet (the integrator's one-line hook is still to come); until then the
+//  design lab's "journal" page reads the same arguments. A flag it can't honour is reported as
+//  not understood, never ignored: `-Data live` (no live data yet) and `-ReduceMotion YES` (the
+//  simulator's own setting is the only way to turn it on). This parser reads the views half's
+//  flags; `Platform/LaunchOptions` decides live or sample and the environment for the app as a
+//  whole. Debug and UI-test builds only.
 //
 #if DEBUG
 import SwiftUI
@@ -27,7 +31,6 @@ struct LaunchArguments: Equatable {
     var appearance: Appearance?
     /// A `UIContentSizeCategory` raw value.
     var contentSize: String?
-    var reduceMotion = false
     /// Flags whose values weren't understood, by name ("-Data").
     var unknown: [String] = []
 
@@ -48,40 +51,41 @@ struct LaunchArguments: Equatable {
 
     /// Reads one flag; true when it took the value after it.
     private mutating func take(flag: String, value: String?) -> Bool {
+        var understood = true
         switch flag {
         case "-Screen":
             screen = value
         case "-Data":
-            if let value, let source = DataSource(rawValue: value) {
-                data = source
-            } else {
-                unknown.append(flag)
-            }
+            // there is no live journal data yet: asking for it is reported, not silently sampled
+            understood = value == DataSource.sample.rawValue
         case "-State":
-            if let value {
-                state = value
-            } else {
-                unknown.append(flag)
-            }
+            state = value ?? state
+            understood = value != nil
         case "-Appearance":
-            if let value, let appearance = Appearance(rawValue: value) {
-                self.appearance = appearance
-            } else {
-                unknown.append(flag)
-            }
+            appearance = value.flatMap(Appearance.init(rawValue:))
+            understood = appearance != nil
         case "-ContentSize":
-            contentSize = value
+            contentSize = value.flatMap { Self.size(raw: $0) == nil ? nil : $0 }
+            understood = contentSize != nil
         case "-ReduceMotion":
-            reduceMotion = value == "YES"
+            // the environment's reduce-motion value can't be overridden from here
+            understood = value == "NO"
         default:
             return false
+        }
+        if !understood {
+            unknown.append(flag)
         }
         return true
     }
 
+    private static func size(raw: String) -> DynamicTypeSize? {
+        DynamicTypeSize(UIContentSizeCategory(rawValue: raw))
+    }
+
     var dynamicTypeSize: DynamicTypeSize? {
         guard let contentSize else { return nil }
-        return DynamicTypeSize(UIContentSizeCategory(rawValue: contentSize))
+        return Self.size(raw: contentSize)
     }
 }
 
@@ -95,7 +99,12 @@ struct LaunchableScreen {
 
 enum ScreenRegistry {
     /// Every registered screen, by id. Each flow adds its own in its `+Launcher.swift` file.
-    static let all: [String: LaunchableScreen] = Dictionary(uniqueKeysWithValues: journalScreens.map { ($0.id, $0) })
+    static let all: [String: LaunchableScreen] = Dictionary(journalScreens.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+    /// Every id registered by every flow, duplicates included (a test asserts there are none).
+    static var allIDs: [String] {
+        journalScreens.map(\.id)
+    }
 
     static func screen(_ id: String) -> LaunchableScreen? {
         all[id]
@@ -119,7 +128,9 @@ struct ScreenLauncher: View {
             }
         }
         .preferredColorScheme(arguments.appearance.map { $0 == .dark ? .dark : .light })
-        .environment(\.dynamicTypeSize, arguments.dynamicTypeSize ?? DynamicTypeSize.large)
+        .transformEnvironment(\.dynamicTypeSize) { size in
+            size = arguments.dynamicTypeSize ?? size
+        }
         .rReadsScreenHeight()
     }
 

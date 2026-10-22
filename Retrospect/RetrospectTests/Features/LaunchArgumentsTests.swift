@@ -6,15 +6,41 @@ import Testing
 struct LaunchArgumentsTests {
     @Test("every flag is read")
     func allFlags() {
-        let parsed = LaunchArguments.parse(["app", "-Screen", "journal", "-Data", "sample", "-State", "offline", "-Appearance", "dark", "-ContentSize", "UICTContentSizeCategoryAccessibilityXL", "-ReduceMotion", "YES"])
+        let parsed = LaunchArguments.parse([
+            "app",
+            "-Screen",
+            "journal",
+            "-Data",
+            "sample",
+            "-State",
+            "offline",
+            "-Appearance",
+            "dark",
+            "-ContentSize",
+            "UICTContentSizeCategoryAccessibilityXL",
+        ])
         #expect(parsed.screen == "journal")
         #expect(parsed.data == .sample)
         #expect(parsed.state == "offline")
         #expect(parsed.appearance == .dark)
         #expect(parsed.contentSize == "UICTContentSizeCategoryAccessibilityXL")
         #expect(parsed.dynamicTypeSize == .accessibility3)
-        #expect(parsed.reduceMotion)
         #expect(parsed.unknown.isEmpty)
+    }
+
+    @Test("what the launcher can't honour is reported, not ignored")
+    func cannotHonour() {
+        #expect(LaunchArguments.parse(["app", "-Data", "live"]).unknown == ["-Data"])
+        #expect(LaunchArguments.parse(["app", "-ReduceMotion", "YES"]).unknown == ["-ReduceMotion"])
+        #expect(LaunchArguments.parse(["app", "-ReduceMotion", "NO"]).unknown.isEmpty)
+        #expect(LaunchArguments.parse(["app", "-ContentSize", "huge"]).unknown == ["-ContentSize"])
+        #expect(LaunchArguments.parse(["app", "-ContentSize", "huge"]).contentSize == nil)
+    }
+
+    @Test("screen ids are unique across every flow")
+    func uniqueIDs() {
+        #expect(Set(ScreenRegistry.allIDs).count == ScreenRegistry.allIDs.count)
+        #expect(ScreenRegistry.all.count == ScreenRegistry.allIDs.count)
     }
 
     @Test("a missing -Data means sample, a missing -State means full")
