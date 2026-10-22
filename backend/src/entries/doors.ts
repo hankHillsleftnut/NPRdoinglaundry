@@ -144,6 +144,7 @@ export function mountEntryDoors(router: Router, door: DoorFactory, deps: EntryDo
     },
     map: (r) => ({ entry: toEntry(r.entry) }),
     status: (r) => (r.created ? 201 : 200),
-    logCounts: (r) => (r.skewed ? { clockSkew: 1 } : {}),
+    // Counted once, when the entry is stored; a replay of a clamped entry is not a second skew.
+    logCounts: (r) => (r.skewed && r.created ? { clockSkew: 1 } : {}),
   }));
 }
