@@ -1,0 +1,88 @@
+{
+  "success": true,
+  "data": {
+    "portrait": {
+      "builtAt": "2026-10-21T08:00:04.200Z",
+      "sections": [
+        {
+          "slot": "goals",
+          "lines": [
+            {
+              "text": "run the half in march",
+              "ref": {
+                "kind": "fact",
+                "id": "00000000-0000-4000-8000-000000000502"
+              }
+            },
+            {
+              "text": "sleep before midnight",
+              "ref": {
+                "kind": "fact",
+                "id": "00000000-0000-4000-8000-000000000503"
+              }
+            }
+          ]
+        },
+        {
+          "slot": "tensions",
+          "lines": [
+            {
+              "text": "late meetings push the run",
+              "ref": {
+                "kind": "theme",
+                "id": "00000000-0000-4000-8000-000000000201"
+              }
+            }
+          ]
+        },
+        {
+          "slot": "people",
+          "lines": [
+            {
+              "text": "priya",
+              "ref": {
+                "kind": "person",
+                "id": "00000000-0000-4000-8000-000000000101"
+              }
+            },
+            {
+              "text": "sam",
+              "ref": {
+                "kind": "person",
+                "id": "00000000-0000-4000-8000-000000000102"
+              }
+            }
+          ]
+        },
+        {
+          "slot": "selfTalk",
+          "lines": [
+            {
+              "text": "\"i'm better when i plan sundays\"",
+              "ref": {
+                "kind": "fact",
+                "id": "00000000-0000-4000-8000-000000000504"
+              }
+            }
+          ]
+        },
+        {
+          "slot": "changed",
+          "lines": [
+            {
+              "text": "new: dinner with priya on fridays",
+              "ref": {
+                "kind": "fact",
+                "id": "00000000-0000-4000-8000-000000000505"
+              }
+            }
+          ]
+        }
+      ],
+      "empty": [
+        "state",
+        "threads"
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": {
+    "hero": null,
+    "upcoming": {
+      "state": "none"
+    },
+    "items": [],
+    "nextCursor": null
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "data": {
+    "voice": {
+      "persona": "bright",
+      "speed": 1.25,
+      "personas": [
+        {
+          "id": "warm",
+          "name": "warm"
+        },
+        {
+          "id": "steady",
+          "name": "steady"
+        },
+        {
+          "id": "bright",
+          "name": "bright"
+        }
+      ]
+    }
+  }
+}

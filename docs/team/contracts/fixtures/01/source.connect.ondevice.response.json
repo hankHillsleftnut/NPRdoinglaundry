@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "source": {
+      "id": "apple_health",
+      "name": "health",
+      "purpose": "how you sleep and move",
+      "kind": "onDevice",
+      "state": "connected",
+      "group": "onThisIphone"
+    }
+  }
+}

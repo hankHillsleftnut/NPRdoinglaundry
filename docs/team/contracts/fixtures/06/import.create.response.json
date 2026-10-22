@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "import": {
+      "id": "0b6f7c1e-2f4a-4c55-9d1e-6a2b3c4d5e01",
+      "uploadUrl": "https://example.invalid/storage/v1/upload/sign/integration-imports/fake",
+      "expiresAt": "2026-10-21T10:00:00.000Z"
+    }
+  }
+}

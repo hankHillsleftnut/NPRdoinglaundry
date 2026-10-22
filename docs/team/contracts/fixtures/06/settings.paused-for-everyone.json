@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "enabled": true,
+      "time": "08:30",
+      "length": "standard",
+      "nextAt": "2026-10-22T07:30:00.000Z"
+    },
+    "ambient": {
+      "enabled": true,
+      "effective": false,
+      "pausedForEveryone": true
+    },
+    "straightness": {
+      "level": "gentleQuestions",
+      "source": "yours",
+      "why": null
+    },
+    "voice": {
+      "persona": "steady",
+      "speed": 1.25,
+      "personas": [
+        {
+          "id": "warm",
+          "name": "warm"
+        },
+        {
+          "id": "steady",
+          "name": "steady"
+        },
+        {
+          "id": "bright",
+          "name": "bright"
+        }
+      ]
+    },
+    "notifications": {
+      "brief": true,
+      "episode": true,
+      "questions": false,
+      "hideWordsOnLockScreen": true
+    }
+  }
+}

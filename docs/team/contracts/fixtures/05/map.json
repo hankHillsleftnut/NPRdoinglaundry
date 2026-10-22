@@ -1,0 +1,144 @@
+{
+  "success": true,
+  "data": {
+    "map": {
+      "asOf": "2026-10-21T08:00:04.200Z",
+      "nodes": [
+        {
+          "ref": {
+            "kind": "person",
+            "id": "00000000-0000-4000-8000-000000000101"
+          },
+          "label": "priya",
+          "weight": 0.82,
+          "sureness": "very sure",
+          "isGuess": false,
+          "lastMovedAt": "2026-10-19T18:20:00.000Z"
+        },
+        {
+          "ref": {
+            "kind": "person",
+            "id": "00000000-0000-4000-8000-000000000102"
+          },
+          "label": "sam",
+          "weight": 0.64,
+          "sureness": "very sure",
+          "isGuess": true,
+          "lastMovedAt": "2026-10-17T09:05:00.000Z"
+        },
+        {
+          "ref": {
+            "kind": "person",
+            "id": "00000000-0000-4000-8000-000000000103"
+          },
+          "label": "dana reyes",
+          "weight": 0.31,
+          "sureness": "very sure",
+          "isGuess": false
+        },
+        {
+          "ref": {
+            "kind": "theme",
+            "id": "00000000-0000-4000-8000-000000000201"
+          },
+          "label": "late meetings push the run",
+          "weight": 0.7,
+          "sureness": "fairly sure",
+          "isGuess": false,
+          "lastMovedAt": "2026-10-20T07:40:00.000Z"
+        },
+        {
+          "ref": {
+            "kind": "theme",
+            "id": "00000000-0000-4000-8000-000000000202"
+          },
+          "label": "sunday planning",
+          "weight": 0.42,
+          "sureness": "just a hunch",
+          "isGuess": true
+        },
+        {
+          "ref": {
+            "kind": "goal",
+            "id": "00000000-0000-4000-8000-000000000301"
+          },
+          "label": "run the half in march",
+          "weight": 1.0,
+          "sureness": "very sure",
+          "isGuess": false
+        },
+        {
+          "ref": {
+            "kind": "goal",
+            "id": "00000000-0000-4000-8000-000000000302"
+          },
+          "label": "sleep before midnight",
+          "weight": 1.0,
+          "sureness": "very sure",
+          "isGuess": false
+        }
+      ],
+      "edges": [
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000101",
+          "strength": 0.82
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000102",
+          "strength": 0.64
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000103",
+          "strength": 0.31
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000201",
+          "strength": 0.7
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000202",
+          "strength": 0.42
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000301",
+          "strength": 1.0
+        },
+        {
+          "from": "you",
+          "to": "00000000-0000-4000-8000-000000000302",
+          "strength": 1.0
+        },
+        {
+          "from": "00000000-0000-4000-8000-000000000201",
+          "to": "00000000-0000-4000-8000-000000000301",
+          "strength": 0.67
+        },
+        {
+          "from": "00000000-0000-4000-8000-000000000101",
+          "to": "00000000-0000-4000-8000-000000000202",
+          "strength": 0.33
+        }
+      ],
+      "waiting": {
+        "kind": "samePerson",
+        "id": "00000000-0000-4000-8000-000000000401",
+        "about": {
+          "kind": "person",
+          "id": "00000000-0000-4000-8000-000000000102"
+        },
+        "aboutLabel": "sam"
+      },
+      "counts": {
+        "people": 31,
+        "themes": 2,
+        "goals": 2
+      }
+    }
+  }
+}

@@ -185,6 +185,16 @@ extension RTextStyle {
         leading: 1.3,
         relativeTo: .caption
     )
+    /// One-line meta and status lines: the offline line, an evidence row's date and kind, an
+    /// error message (Paper EOL-0, 1FZ1-0, 20R-0: Geist 12, leading snug, no tracking, unlike `.label`).
+    static let metaLine = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeSm,
+        weight: .regular,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .caption
+    )
     /// Pill labels (Paper c:pill: --font-label, --text-md, medium, --tracking-label, --leading-tight).
     static let pill = RTextStyle(
         family: .label,

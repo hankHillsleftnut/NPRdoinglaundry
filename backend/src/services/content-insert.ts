@@ -5,6 +5,7 @@
  * is passed in, and the three outcomes that matter -- stored, already there, and
  * "the column does not exist yet" -- can each be produced on demand.
  */
+import { createHash } from 'node:crypto';
 import { deriveDedupKey, type DedupInput, type DedupStrategy } from './dedup-key.js';
 
 /** Postgres: a row with this key already exists. */
@@ -23,7 +24,10 @@ export interface InsertClient {
     select(columns: string): {
       eq(column: string, value: unknown): {
         eq(column: string, value: unknown): {
-          maybeSingle(): PromiseLike<{ data: { id: string } | null; error: { message: string } | null }>;
+          maybeSingle(): PromiseLike<{
+            data: { id: string; metadata?: Record<string, unknown> | null } | null;
+            error: { message: string } | null;
+          }>;
         };
       };
     };
@@ -32,7 +36,17 @@ export interface InsertClient {
 
 export type InsertOutcome =
   | { kind: 'inserted'; id: string; strategy: DedupStrategy | null }
-  | { kind: 'duplicate'; id: string; strategy: DedupStrategy };
+  | { kind: 'duplicate'; id: string; strategy: DedupStrategy }
+  /** The same explicit key was used before with a different body (a client bug). */
+  | { kind: 'key_reused'; id: string };
+
+/** Where the fingerprint of an explicitly keyed request is kept, in metadata. */
+export const REQUEST_HASH_FIELD = 'request_hash';
+
+/** Fingerprint of what an explicitly keyed request stored, to tell a replay from a reuse. */
+export function requestHash(contentType: string, content: string): string {
+  return createHash('sha256').update(contentType).update('\0').update(content).digest('hex');
+}
 
 /**
  * Store a raw_content row, or report the one that is already there.
@@ -56,11 +70,17 @@ export type InsertOutcome =
  *    mattering, which is the point: a deduplication feature must never be able
  *    to break uploading.
  *
- * Onboarding profiles are deliberately left unkeyed for now. They are one per
- * user and the latest should replace the earlier one, but replacing a row in
- * place keeps its id -- and extraction skips any id it has already processed,
- * so the new profile would never be read. That needs its own change; until then
- * onboarding behaves exactly as before.
+ * An explicit key (the Idempotency-Key header, or metadata.client_event_id)
+ * is enforced for every content type. With an explicit key, each request also
+ * stores a fingerprint of its content type and content (metadata.request_hash);
+ * a later request with the same key but a different body is reported as
+ * `key_reused` instead of silently answered with the old row.
+ *
+ * Onboarding profiles without an explicit key are deliberately left unkeyed.
+ * They are one per user and the latest should replace the earlier one, but
+ * replacing a row in place keeps its id -- and extraction skips any id it has
+ * already processed, so the new profile would never be read. A retry with the
+ * same explicit key is the same profile, not a new one, so keying it is safe.
  */
 export async function insertRawContent(
   client: InsertClient,
@@ -69,10 +89,17 @@ export async function insertRawContent(
   dedup: DedupInput,
 ): Promise<InsertOutcome> {
   const derived = deriveDedupKey(dedup);
-  const enforce = derived.dedupClass !== 'singleton';
+  const explicit = derived.strategy === 'explicit_key';
+  const enforce = explicit || derived.dedupClass !== 'singleton';
+  const hash = requestHash(dedup.contentType, dedup.content);
 
   const keyed = enforce
-    ? { ...row, dedup_key: derived.key, dedup_strategy: derived.strategy }
+    ? {
+        ...row,
+        ...(explicit ? { metadata: { ...asRecord(row.metadata), [REQUEST_HASH_FIELD]: hash } } : {}),
+        dedup_key: derived.key,
+        dedup_strategy: derived.strategy,
+      }
     : row;
 
   const first = await client.from(table).insert(keyed).select('id').single();
@@ -84,11 +111,17 @@ export async function insertRawContent(
   if (first.error?.code === UNIQUE_VIOLATION && enforce) {
     const winner = await client
       .from(table)
-      .select('id')
+      .select('id, metadata')
       .eq('user_id', row.user_id)
       .eq('dedup_key', derived.key)
       .maybeSingle();
     if (winner.data) {
+      // Rows stored before fingerprints existed carry none; they can't be
+      // judged, so they are treated as a replay, as before.
+      const stored = asRecord(winner.data.metadata)[REQUEST_HASH_FIELD];
+      if (explicit && typeof stored === 'string' && stored !== hash) {
+        return { kind: 'key_reused', id: winner.data.id };
+      }
       return { kind: 'duplicate', id: winner.data.id, strategy: derived.strategy };
     }
     // The winner vanished between the conflict and the read -- deleted in the
@@ -106,6 +139,10 @@ export async function insertRawContent(
   }
 
   throw new Error(first.error?.message ?? 'insert failed');
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 let warnedMissingMigration = false;

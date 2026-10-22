@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "8b4f6e2d-3c5a-5b79-8d1e-7f2a3b4c5d58",
+      "kind": "hypothesis",
+      "register": "asked",
+      "text": "could the long standups be leaving less room for the writing you said mattered?",
+      "basis": "both",
+      "sureness": "fairly sure",
+      "guess": {
+        "id": "2e7d9c4b-6a1f-4e3d-b8c2-1a0f9e8d7c69",
+        "question": "could the long standups be leaving less room for the writing you said mattered?",
+        "framework": {
+          "name": "time displacement",
+          "source": "invented for the fixture"
+        },
+        "status": "offered",
+        "restsOn": [
+          {
+            "kind": "pattern",
+            "id": "0f1e2d3c-4b5a-4968-8776-655443322110",
+            "text": "standups run long most mornings"
+          },
+          {
+            "kind": "answer",
+            "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+            "text": "writing matters to you this term"
+          }
+        ]
+      },
+      "moments": [
+        {
+          "episodeId": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01",
+          "episodeTitle": "the week the plan met the calendar",
+          "startSeconds": 488.1,
+          "quote": "I wonder whether the long standups leave less room for the writing you said mattered.",
+          "inThisEpisode": true
+        }
+      ],
+      "evidence": {
+        "rows": [
+          {
+            "kind": "entries",
+            "id": "4c8a2e6f-1d3b-4a5c-9e7f-0b2d4f6a8c80",
+            "date": "2026-10-14",
+            "excerpt": "standup ran over again, didn't get to the draft",
+            "opens": {
+              "kind": "entry",
+              "id": "4c8a2e6f-1d3b-4a5c-9e7f-0b2d4f6a8c80"
+            }
+          },
+          {
+            "kind": "calendar",
+            "id": "1a3c5e7b-9d2f-4b6a-8c0e-2f4a6c8e0b91",
+            "date": "2026-10-14",
+            "excerpt": "team standup · 70 min"
+          }
+        ],
+        "total": 2,
+        "nextCursor": null
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "id": "9e4d7a20-1b3c-4e5f-8a6d-2c0b1f3e5d74",
+      "date": "2026-10-20",
+      "kind": "brief",
+      "parts": [
+        {
+          "text": "a quieter monday than usual.",
+          "sources": [],
+          "startSeconds": 0.0
+        },
+        {
+          "text": "you wrote twice about the draft, both before nine.",
+          "why": "here for your goal: finish the draft",
+          "sources": [
+            {
+              "kind": "entry",
+              "id": "4c8a2e6f-1d3b-4a5c-9e7f-0b2d4f6a8c80"
+            }
+          ],
+          "startSeconds": 3.4
+        }
+      ],
+      "audio": {
+        "url": "https://example.supabase.co/storage/v1/object/sign/podcast-audio/briefs/u/b.mp3?token=invented",
+        "expiresAt": "2026-10-21T09:00:04.200Z",
+        "durationSeconds": 248.0
+      },
+      "createdAt": "2026-10-20T15:00:00.000Z"
+    }
+  }
+}

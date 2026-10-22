@@ -19,17 +19,10 @@
  * Writing never throws: a logging failure must never affect a request.
  */
 
-/**
- * The error codes a door can answer with: contract 00 §2's closed list plus
- * §4's invite codes. Kept here until the door kit's errors.ts (BE0.1a) owns the
- * list; then this imports it.
- */
-export const DOOR_ERROR_CODES = [
-  'invalid_request', 'invalid_credentials', 'unauthenticated', 'session_revoked', 'invite_required', 'suspended',
-  'not_found', 'idempotency_mismatch', 'update_required', 'rate_limited', 'spend_limited', 'upstream_timeout',
-  'upstream_unavailable', 'internal', 'invite_invalid', 'invite_used', 'invite_expired',
-] as const;
-export type DoorErrorCode = (typeof DOOR_ERROR_CODES)[number];
+import { DOOR_ERROR_CODES, type DoorErrorCode } from '../doors/errors.js';
+
+export { DOOR_ERROR_CODES, type DoorErrorCode };
+
 const KNOWN_CODES: ReadonlySet<string> = new Set(DOOR_ERROR_CODES);
 
 export interface DoorLogLine {

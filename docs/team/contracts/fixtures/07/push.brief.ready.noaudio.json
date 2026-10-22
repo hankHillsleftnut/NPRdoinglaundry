@@ -1,0 +1,21 @@
+{
+  "aps": {
+    "alert": {
+      "title": "tuesday, written down",
+      "body": "two things from yesterday, ready to read."
+    },
+    "mutable-content": 1,
+    "category": "BRIEF_READY",
+    "thread-id": "brief",
+    "interruption-level": "active",
+    "sound": "default"
+  },
+  "r": {
+    "v": 2,
+    "kind": "briefReady",
+    "id": "9a1b2c3d-0001-4abc-8def-000000000001",
+    "refId": "b7e1f2a3-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "link": "retrospect://brief/b7e1f2a3-4c5d-4e6f-8a9b-0c1d2e3f4a5b",
+    "sentAt": "2026-10-21T08:00:04.200Z"
+  }
+}

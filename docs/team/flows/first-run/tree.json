@@ -1,0 +1,1287 @@
+{
+ "area": "first-run",
+ "nodes": [
+  {
+   "id": "first-run",
+   "parent": null,
+   "title": "First run",
+   "plain": "from an invite link to your first home, with your first episode ready",
+   "needs": []
+  },
+  {
+   "id": "fr.invite",
+   "parent": "first-run",
+   "title": "the invite (Beta 1)",
+   "plain": "you get in through a friend's link: a ticket prints, you tear it, you're in",
+   "needs": []
+  },
+  {
+   "id": "fr.signin",
+   "parent": "first-run",
+   "title": "sign in",
+   "plain": "the splash, welcome back, and the force-update stop",
+   "needs": []
+  },
+  {
+   "id": "fr.know",
+   "parent": "first-run",
+   "title": "getting to know you",
+   "plain": "Retro asks a few questions, you see the privacy promise, you connect what you want",
+   "needs": []
+  },
+  {
+   "id": "fr.episode",
+   "parent": "first-run",
+   "title": "the first episode",
+   "plain": "your first episode is made while you keep talking, then you hear the start",
+   "needs": []
+  },
+  {
+   "id": "fr.member",
+   "parent": "first-run",
+   "title": "membership",
+   "plain": "become a member to hear the rest, with Apple's real prices",
+   "needs": []
+  },
+  {
+   "id": "fr.home",
+   "parent": "first-run",
+   "title": "first home",
+   "plain": "your journal on day one, with your episode and what you said",
+   "needs": []
+  },
+  {
+   "id": "fr.found",
+   "parent": "first-run",
+   "title": "foundations",
+   "plain": "the shared tokens, haptics, data shapes and push and purchase plumbing first run needs",
+   "needs": []
+  },
+  {
+   "id": "fr.tests",
+   "parent": "first-run",
+   "title": "flow tests",
+   "plain": "one test walks the whole way in",
+   "needs": []
+  },
+  {
+   "id": "pg.PI1",
+   "parent": "fr.invite",
+   "title": "PI1 · the invite gate",
+   "plain": "with a link you see who kept you a place; without one you type the code or join the waitlist",
+   "needs": []
+  },
+  {
+   "id": "pg.PI2",
+   "parent": "fr.invite",
+   "title": "PI2 · M14 you're in",
+   "plain": "the ticket prints, you tear it off, and you're in",
+   "needs": []
+  },
+  {
+   "id": "pg.inviteData",
+   "parent": "fr.invite",
+   "title": "invite data",
+   "plain": "the invite screens on sample data, then the real doors",
+   "needs": []
+  },
+  {
+   "id": "cmp.C41",
+   "parent": "pg.PI2",
+   "title": "C41 · the invite ticket",
+   "plain": "a real ticket: gift colours, a punched line, a stub with your code",
+   "needs": []
+  },
+  {
+   "id": "pg.P01",
+   "parent": "fr.signin",
+   "title": "P01 · ON-1/2 splash",
+   "plain": "who Retro is, and one way in",
+   "needs": []
+  },
+  {
+   "id": "pg.P32",
+   "parent": "fr.signin",
+   "title": "P32 · AC-1 welcome back",
+   "plain": "sign back in and everything comes back",
+   "needs": []
+  },
+  {
+   "id": "pg.PX",
+   "parent": "fr.signin",
+   "title": "PX · force update",
+   "plain": "an old version says so and points to the App Store",
+   "needs": []
+  },
+  {
+   "id": "pg.launch",
+   "parent": "fr.signin",
+   "title": "launch",
+   "plain": "the app opens exactly where you left off",
+   "needs": []
+  },
+  {
+   "id": "pg.P02",
+   "parent": "fr.know",
+   "title": "P02 · ON-3–9 the questions",
+   "plain": "Retro gets to know you in your own words",
+   "needs": []
+  },
+  {
+   "id": "cmp.C34",
+   "parent": "pg.P02",
+   "title": "C34 · the onboarding question",
+   "plain": "a question that types itself out, and your words appearing under it",
+   "needs": []
+  },
+  {
+   "id": "pg.P03",
+   "parent": "fr.know",
+   "title": "P03 · ON-5 privacy",
+   "plain": "the plain promise about your data, read aloud",
+   "needs": []
+  },
+  {
+   "id": "pg.P04",
+   "parent": "fr.know",
+   "title": "P04 · ON-6 connect",
+   "plain": "connect what you want Retro to read and watch it know you better",
+   "needs": []
+  },
+  {
+   "id": "pg.P05",
+   "parent": "fr.episode",
+   "title": "P05 · ON-10 getting ready",
+   "plain": "honest steps while your first episode is made",
+   "needs": []
+  },
+  {
+   "id": "pg.P06",
+   "parent": "fr.episode",
+   "title": "P06 · ON-11 the tease",
+   "plain": "hear the start of your first episode",
+   "needs": []
+  },
+  {
+   "id": "cmp.M06",
+   "parent": "pg.P06",
+   "title": "M06 · player to paywall",
+   "plain": "the player shrinks into a paused pill as the offer rises",
+   "needs": []
+  },
+  {
+   "id": "pg.push",
+   "parent": "fr.episode",
+   "title": "push",
+   "plain": "Retro can tell you when it's ready",
+   "needs": []
+  },
+  {
+   "id": "pg.P07",
+   "parent": "fr.member",
+   "title": "P07 · ON-12 paywall",
+   "plain": "become a member, or not now",
+   "needs": []
+  },
+  {
+   "id": "cmp.C37",
+   "parent": "pg.P07",
+   "title": "C37 · the plan pair",
+   "plain": "yearly or monthly in one tap, real prices",
+   "needs": []
+  },
+  {
+   "id": "pg.billing",
+   "parent": "fr.member",
+   "title": "purchases",
+   "plain": "purchases on the phone, the truth on the server",
+   "needs": []
+  },
+  {
+   "id": "pg.P08",
+   "parent": "fr.home",
+   "title": "P08 · ON-13 first home",
+   "plain": "your journal on day one",
+   "needs": []
+  },
+  {
+   "id": "pg.liveData",
+   "parent": "fr.found",
+   "title": "first-run live data",
+   "plain": "answers, connect, the first episode and the recap on real data",
+   "needs": []
+  },
+  {
+   "id": "pg.shared",
+   "parent": "fr.found",
+   "title": "shared foundations",
+   "plain": "tokens, haptics and the data shapes every screen shares",
+   "needs": []
+  },
+  {
+   "id": "FR0.1",
+   "parent": "pg.shared",
+   "title": "ticket and first-run tokens and haptics (integrator)",
+   "plain": "the rumble, tear and rip feel the same everywhere",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "#42",
+    "#55"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "FR0.2",
+   "parent": "pg.inviteData",
+   "title": "invite flow protocol (integrator)",
+   "plain": "invite screens and live data agree on one shape",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL1.7"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "FR0.3",
+   "parent": "pg.liveData",
+   "title": "first-run flow protocol (integrator)",
+   "plain": "first-run screens and live data agree on one shape",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL2.4"
+   ]
+  },
+  {
+   "id": "FR0.4",
+   "parent": "pg.liveData",
+   "title": "first-run wiring: sample to live (integrator)",
+   "plain": "the new first run runs on the real backend",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "P08",
+    "PL1.9",
+    "PL3.3d",
+    "PL5.1",
+    "PL6.2"
+   ]
+  },
+  {
+   "id": "UI4.0",
+   "parent": "pg.inviteData",
+   "title": "SampleInviteData",
+   "plain": "every invite state can be built before the doors exist",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "FR0.2",
+    "T02"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PL1.7d",
+   "parent": "pg.inviteData",
+   "title": "ticket preview, check, redeem at the tear",
+   "plain": "nothing is spent until the stub separates",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL1.7b",
+    "FR0.2",
+    "BE2.0a",
+    "BE2.0b"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PL1.8",
+   "parent": "pg.inviteData",
+   "title": "the invite gate in the app root",
+   "plain": "new people meet the gate; members never do",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL1.7d",
+    "PL1.4c",
+    "PL5.2",
+    "PI1",
+    "PI2.4"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "BE2.0a",
+   "parent": "pg.inviteData",
+   "title": "invite preview (public)",
+   "plain": "see who kept you a place before signing in",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.12",
+    "BE2.0b"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "BE2.0b",
+   "parent": "pg.inviteData",
+   "title": "invite check, serial, idempotent redeem",
+   "plain": "the ticket prints only what's true and spends once",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.12"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C43",
+   "parent": "pg.PI1",
+   "title": "sign-in buttons (Apple, Google)",
+   "plain": "one calm way in, the same everywhere",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01",
+    "PL1.4a"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C42",
+   "parent": "pg.PI2",
+   "title": "printer slot",
+   "plain": "the ticket comes out of a slot like a receipt",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41.1",
+    "FR0.1"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PI1",
+   "parent": "pg.PI1",
+   "title": "invite gate page",
+   "plain": "never a dead end: link, typed code or waitlist",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "UI4.0",
+    "C43",
+    "C41.4",
+    "C42"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C41.1",
+   "parent": "cmp.C41",
+   "title": "ticket shape and shadow",
+   "plain": "cut like a ticket, with a shadow that follows the bites",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "FR0.1",
+    "#55"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C41.2",
+   "parent": "cmp.C41",
+   "title": "ticket face",
+   "plain": "gift colours and who it's from",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41.1",
+    "#42"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C41.3",
+   "parent": "cmp.C41",
+   "title": "perforation and tear handle",
+   "plain": "the punched line you tear along",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41.1"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C41.4",
+   "parent": "cmp.C41",
+   "title": "stub and code tiles",
+   "plain": "your code on the stub, typed or printed",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C41.1"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "C41.5",
+   "parent": "cmp.C41",
+   "title": "torn halves",
+   "plain": "the stub you keep",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C41.3",
+    "C41.4"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PI2.1",
+   "parent": "pg.PI2",
+   "title": "the print",
+   "plain": "the ticket prints for you with a soft rumble",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "PI1",
+    "C42",
+    "C41.5"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PI2.2",
+   "parent": "pg.PI2",
+   "title": "the tear",
+   "plain": "tear it off yourself, hole by hole",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "PI2.1"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PI2.3",
+   "parent": "pg.PI2",
+   "title": "separation and you're in",
+   "plain": "the stub falls free: you're in",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "PI2.2"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "PI2.4",
+   "parent": "pg.PI2",
+   "title": "accessible path, interruptions, visual pass",
+   "plain": "everyone can get in, however they use their phone",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "PI2.3"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "T03a",
+   "parent": "fr.tests",
+   "title": "invite flow test",
+   "plain": "one test proves the way in works",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "PI2.4",
+    "PL1.8"
+   ],
+   "beta1": true
+  },
+  {
+   "id": "UI4.8",
+   "parent": "pg.launch",
+   "title": "SampleFirstRunData",
+   "plain": "the whole first run on sample data",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "FR0.3",
+    "UI4.0"
+   ]
+  },
+  {
+   "id": "PL1.9",
+   "parent": "pg.launch",
+   "title": "launch resolver",
+   "plain": "opens exactly where you left off",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL1.8",
+    "PL1.6",
+    "FR0.3",
+    "BE2.2b",
+    "BE2.5b"
+   ]
+  },
+  {
+   "id": "BE2.4",
+   "parent": "pg.P01",
+   "title": "Google sign-in",
+   "plain": "sign in with Google",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.4",
+    "BE0.12"
+   ]
+  },
+  {
+   "id": "S10",
+   "parent": "pg.P01",
+   "title": "the mark",
+   "plain": "Retro's one quiet sign",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "C38.1",
+   "parent": "pg.P01",
+   "title": "you map at rest",
+   "plain": "the shape of what Retro will know, still",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T01",
+    "#42"
+   ]
+  },
+  {
+   "id": "P01",
+   "parent": "pg.P01",
+   "title": "splash page",
+   "plain": "who Retro is, and one way in",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.1",
+    "C43",
+    "UI4.8",
+    "PL1.9"
+   ]
+  },
+  {
+   "id": "M01",
+   "parent": "pg.P01",
+   "title": "the opening",
+   "plain": "the first second feels alive and calm",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P01"
+   ]
+  },
+  {
+   "id": "P32",
+   "parent": "pg.P32",
+   "title": "welcome back page",
+   "plain": "sign back in and everything comes back",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C38.1",
+    "C43",
+    "UI4.8",
+    "PL1.9"
+   ]
+  },
+  {
+   "id": "PX",
+   "parent": "pg.PX",
+   "title": "force-update page",
+   "plain": "update to keep going; nothing is lost",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "PL1.6",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "C35",
+   "parent": "pg.P02",
+   "title": "onboarding progress",
+   "plain": "feel how far along you are, without a count",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "C17-o",
+   "parent": "pg.P02",
+   "title": "top bar, onboarding",
+   "plain": "a quiet way back",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C17"
+   ]
+  },
+  {
+   "id": "C34.1",
+   "parent": "cmp.C34",
+   "title": "question types out (M13)",
+   "plain": "Retro writes each question to you",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T01",
+    "FR0.1"
+   ]
+  },
+  {
+   "id": "C34.2",
+   "parent": "cmp.C34",
+   "title": "your words, live (M03)",
+   "plain": "your words appear as you speak",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C34.1"
+   ]
+  },
+  {
+   "id": "C34.3",
+   "parent": "cmp.C34",
+   "title": "quick answers",
+   "plain": "tap a likely answer",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C34.1",
+    "C05"
+   ]
+  },
+  {
+   "id": "C44",
+   "parent": "pg.P02",
+   "title": "Retro's recommendation card",
+   "plain": "Retro leads with its pick and why",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01",
+    "C09"
+   ]
+  },
+  {
+   "id": "M02",
+   "parent": "pg.P02",
+   "title": "listening glow follows your voice",
+   "plain": "you can see it's listening",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "#56"
+   ]
+  },
+  {
+   "id": "P02.1",
+   "parent": "pg.P02",
+   "title": "questions page",
+   "plain": "one question at a time, nothing lost",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C34.3",
+    "C35",
+    "C17-o",
+    "M02",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "P02.2",
+   "parent": "pg.P02",
+   "title": "talk or type, brief time, how straight",
+   "plain": "the choices inside the questions",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P02.1",
+    "C44",
+    "C08"
+   ]
+  },
+  {
+   "id": "BE2.2a",
+   "parent": "pg.P02",
+   "title": "onboarding answers count as your words (agent)",
+   "plain": "what you say while setting up is remembered like anything else",
+   "size": "S",
+   "side": "backend",
+   "needs": []
+  },
+  {
+   "id": "BE2.2b",
+   "parent": "pg.P02",
+   "title": "answers doors and complete",
+   "plain": "each answer saved once",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE1.1",
+    "BE2.2a"
+   ]
+  },
+  {
+   "id": "BE2.1",
+   "parent": "pg.P02",
+   "title": "onboarding goals door",
+   "plain": "goals you named can come back as questions",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.2b",
+    "BEA.4"
+   ]
+  },
+  {
+   "id": "PL3.3a",
+   "parent": "pg.liveData",
+   "title": "answers through the outbox",
+   "plain": "answers saved once, even offline",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "FR0.3",
+    "PL2.2",
+    "BE2.2b"
+   ]
+  },
+  {
+   "id": "UI4.5",
+   "parent": "pg.P03",
+   "title": "privacy disc",
+   "plain": "the promise is the one lit thing",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "P03",
+   "parent": "pg.P03",
+   "title": "privacy page",
+   "plain": "the plain promise, read aloud",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "UI4.5",
+    "C35",
+    "C17-o"
+   ]
+  },
+  {
+   "id": "C36",
+   "parent": "pg.P04",
+   "title": "knows-you meter",
+   "plain": "watch Retro know you better",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "S08"
+   ]
+  },
+  {
+   "id": "P04",
+   "parent": "pg.P04",
+   "title": "connect page",
+   "plain": "connect what you want",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C36",
+    "C10",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "M04",
+   "parent": "pg.P04",
+   "title": "connect → connected moment",
+   "plain": "connecting visibly makes Retro know you better",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P04"
+   ]
+  },
+  {
+   "id": "BE2.3a",
+   "parent": "pg.P04",
+   "title": "understanding summary (agent)",
+   "plain": "an honest count of what Retro has",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BEA.2"
+   ]
+  },
+  {
+   "id": "BE2.3b",
+   "parent": "pg.P04",
+   "title": "knows-you door",
+   "plain": "the meter moves only when true",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.3a"
+   ]
+  },
+  {
+   "id": "BE2.10",
+   "parent": "pg.P04",
+   "title": "sources doors",
+   "plain": "list and connect sources",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.1"
+   ]
+  },
+  {
+   "id": "BE2.9a",
+   "parent": "pg.P04",
+   "title": "Notion OAuth (if D9)",
+   "plain": "connect Notion",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.10"
+   ]
+  },
+  {
+   "id": "BE2.9b",
+   "parent": "pg.P04",
+   "title": "Notion connector (agent, if D9)",
+   "plain": "read the pages you share",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.9a"
+   ]
+  },
+  {
+   "id": "BE2.9c",
+   "parent": "pg.P04",
+   "title": "Notion normalise (agent, if D9)",
+   "plain": "your pages become your words",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.9b"
+   ]
+  },
+  {
+   "id": "BE2.9d",
+   "parent": "pg.P04",
+   "title": "Notion in the sources list (if D9)",
+   "plain": "Notion shows on connect",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.9c"
+   ]
+  },
+  {
+   "id": "PL3.3b",
+   "parent": "pg.liveData",
+   "title": "connect and knows-you",
+   "plain": "connecting really connects",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.3a",
+    "BE2.3b",
+    "BE2.10"
+   ]
+  },
+  {
+   "id": "UI4.1",
+   "parent": "pg.P05",
+   "title": "getting-ready card",
+   "plain": "honest steps, and your words going in",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C26.2",
+    "C06"
+   ]
+  },
+  {
+   "id": "P05",
+   "parent": "pg.P05",
+   "title": "getting-ready page",
+   "plain": "keep talking while it's made",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "UI4.1",
+    "C34.2",
+    "C35",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "M05",
+   "parent": "pg.P05",
+   "title": "honest steps moment",
+   "plain": "the wait feels alive and true",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P05"
+   ]
+  },
+  {
+   "id": "BE2.5a1",
+   "parent": "pg.P05",
+   "title": "podcast jobs table and runner (agent)",
+   "plain": "an episode is a job you can watch",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BEA.4",
+    "BEA.5",
+    "BEA.7",
+    "BEA.8"
+   ]
+  },
+  {
+   "id": "BE2.5a2",
+   "parent": "pg.P05",
+   "title": "job routes and first-episode wiring (agent)",
+   "plain": "one first episode, never two",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.5a1"
+   ]
+  },
+  {
+   "id": "BE2.5b",
+   "parent": "pg.P05",
+   "title": "episode job and episode doors",
+   "plain": "steps and a private audio link",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.5a2",
+    "BEA.7"
+   ]
+  },
+  {
+   "id": "PL3.3c",
+   "parent": "pg.liveData",
+   "title": "first-episode job follower",
+   "plain": "followed until it's ready",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL3.3b",
+    "BE2.5b"
+   ]
+  },
+  {
+   "id": "P06",
+   "parent": "pg.P06",
+   "title": "tease page",
+   "plain": "hear the start",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C23e",
+    "S10",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "M06.1",
+   "parent": "cmp.M06",
+   "title": "player shrinks into the mini-player",
+   "plain": "the episode waits, paused",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P06",
+    "C22-p"
+   ]
+  },
+  {
+   "id": "M06.2",
+   "parent": "cmp.M06",
+   "title": "paywall rises",
+   "plain": "the offer rises under it",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "M06.1",
+    "P07"
+   ]
+  },
+  {
+   "id": "BE2.6",
+   "parent": "pg.push",
+   "title": "device tokens",
+   "plain": "your phone can be told",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE2.7a",
+   "parent": "pg.push",
+   "title": "APNs sender",
+   "plain": "pushes with no content",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE2.6"
+   ]
+  },
+  {
+   "id": "BE2.7b",
+   "parent": "pg.push",
+   "title": "first-episode note trigger",
+   "plain": "a note written for you when it's ready",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.7a",
+    "BE2.5b",
+    "contract 07 note writer"
+   ]
+  },
+  {
+   "id": "PL5.1",
+   "parent": "pg.push",
+   "title": "push registration",
+   "plain": "asked only when you tap",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL1.5",
+    "BE2.6"
+   ]
+  },
+  {
+   "id": "PL5.3",
+   "parent": "pg.push",
+   "title": "notification taps",
+   "plain": "a tap opens the right place",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL5.1",
+    "PL5.2"
+   ]
+  },
+  {
+   "id": "C22-p",
+   "parent": "pg.P07",
+   "title": "paused mini-player",
+   "plain": "the tease waits at the top",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C22"
+   ]
+  },
+  {
+   "id": "C33",
+   "parent": "pg.P07",
+   "title": "benefit rows",
+   "plain": "what membership gives",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "C37.1",
+   "parent": "cmp.C37",
+   "title": "plan pair",
+   "plain": "yearly or monthly, real prices",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C01",
+    "C06",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "C37.2",
+   "parent": "cmp.C37",
+   "title": "plan states",
+   "plain": "pending, failed, offline, done",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "C37.1"
+   ]
+  },
+  {
+   "id": "P07",
+   "parent": "pg.P07",
+   "title": "paywall page",
+   "plain": "member, or not now",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "C22-p",
+    "C33",
+    "C37.2"
+   ]
+  },
+  {
+   "id": "M07",
+   "parent": "pg.P07",
+   "title": "the plan glow",
+   "plain": "one bright thing moves to your choice",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "P07"
+   ]
+  },
+  {
+   "id": "BE2.8a",
+   "parent": "pg.billing",
+   "title": "RevenueCat webhook and table",
+   "plain": "the server knows what you bought",
+   "size": "M",
+   "side": "backend",
+   "needs": [
+    "BE0.2"
+   ]
+  },
+  {
+   "id": "BE2.8b",
+   "parent": "pg.billing",
+   "title": "entitlement door",
+   "plain": "access only from a real purchase",
+   "size": "S",
+   "side": "backend",
+   "needs": [
+    "BE2.8a"
+   ]
+  },
+  {
+   "id": "PL6.1",
+   "parent": "pg.billing",
+   "title": "RevenueCat in the app",
+   "plain": "subscribe at Apple's price",
+   "size": "M",
+   "side": "platform",
+   "needs": [
+    "PL1.5",
+    "PL0.4"
+   ]
+  },
+  {
+   "id": "PL6.2",
+   "parent": "pg.billing",
+   "title": "one source of entitlement",
+   "plain": "you get what you paid for",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL6.1",
+    "BE2.8b"
+   ]
+  },
+  {
+   "id": "PL6.3",
+   "parent": "pg.billing",
+   "title": "bridge the old SubscriptionManager",
+   "plain": "old screens show true prices",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL6.2"
+   ]
+  },
+  {
+   "id": "UI4.2",
+   "parent": "pg.P08",
+   "title": "setup-recap card",
+   "plain": "what you told Retro, in your words",
+   "size": "S",
+   "side": "views",
+   "needs": [
+    "T01"
+   ]
+  },
+  {
+   "id": "P08",
+   "parent": "pg.P08",
+   "title": "first home page",
+   "plain": "day one, episode ready",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "P09",
+    "C26",
+    "UI4.2",
+    "UI4.8"
+   ]
+  },
+  {
+   "id": "PL3.3d",
+   "parent": "pg.liveData",
+   "title": "recap, complete, live assembly",
+   "plain": "the recap is real and you become a member",
+   "size": "S",
+   "side": "platform",
+   "needs": [
+    "PL3.3c",
+    "BE2.2b"
+   ]
+  },
+  {
+   "id": "T03b",
+   "parent": "fr.tests",
+   "title": "first-run flow test",
+   "plain": "the whole way in, in one test",
+   "size": "M",
+   "side": "views",
+   "needs": [
+    "T03a",
+    "P08",
+    "P32",
+    "PX",
+    "M07",
+    "FR0.4"
+   ]
+  }
+ ]
+}

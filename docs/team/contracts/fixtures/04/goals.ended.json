@@ -1,0 +1,32 @@
+{
+  "goals": [
+    {
+      "id": "00000000-0000-4000-8000-000000000105",
+      "title": "run a 10k",
+      "status": "off",
+      "origin": "you",
+      "statedAt": "2026-06-02T08:00:00.000Z",
+      "endedAt": "2026-10-12T19:30:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000106",
+      "title": "learn cello",
+      "status": "merged",
+      "origin": "you",
+      "statedAt": "2026-09-03T10:00:00.000Z",
+      "endedAt": "2026-09-04T06:00:00.000Z",
+      "mergedInto": {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "title": "learn the cello"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000107",
+      "title": "write every morning",
+      "status": "faded",
+      "origin": "onboarding",
+      "statedAt": "2026-05-01T08:00:00.000Z",
+      "endedAt": "2026-08-01T06:00:00.000Z"
+    }
+  ]
+}

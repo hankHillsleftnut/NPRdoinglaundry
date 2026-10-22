@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "writtenAt": "2026-10-21T08:01:00.000Z",
+  "signedIn": false,
+  "brief": {
+    "state": "unknown",
+    "hasAudio": false
+  },
+  "briefOffNoticeShown": false,
+  "lockScreenDetail": false
+}

@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "deleted": true,
+    "access": {
+      "state": "approved"
+    }
+  }
+}

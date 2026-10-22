@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "data": {
+    "straightness": {
+      "level": "honestObservations",
+      "source": "picked",
+      "why": "you answer the hard questions, and say \"not quite\" when i'm wrong."
+    }
+  }
+}

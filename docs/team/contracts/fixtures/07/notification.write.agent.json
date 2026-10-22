@@ -1,0 +1,19 @@
+{
+  "title": "tuesday: the test kitchen, then the long walk",
+  "body": "four minutes on the two meetings and what came after.",
+  "fallback": {
+    "title": "tuesday, in four minutes",
+    "body": "three things from your day worth hearing."
+  },
+  "checks": {
+    "denyListHits": 0,
+    "fallbackDenyListHits": 0,
+    "inventedTerms": 0,
+    "retried": false,
+    "usedNoModelFallback": false
+  },
+  "usage": {
+    "inputTokens": 420,
+    "outputTokens": 60
+  }
+}

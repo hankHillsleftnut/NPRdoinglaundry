@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": {
+    "brief": {
+      "enabled": true,
+      "time": "08:30",
+      "length": "standard",
+      "nextAt": "2026-10-22T07:30:00.000Z"
+    }
+  }
+}

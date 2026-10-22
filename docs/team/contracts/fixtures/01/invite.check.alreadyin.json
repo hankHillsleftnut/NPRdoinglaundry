@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "usable": false,
+    "reason": "alreadyIn",
+    "face": null
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "success": true,
+  "data": {
+    "node": {
+      "ref": {
+        "kind": "theme",
+        "id": "00000000-0000-4000-8000-000000000201"
+      },
+      "kindLabel": "theme",
+      "name": "late meetings",
+      "claim": {
+        "ref": {
+          "kind": "pattern",
+          "id": "00000000-0000-4000-8000-000000000201"
+        },
+        "text": "late meetings push the run",
+        "sureness": "fairly sure",
+        "isGuess": false,
+        "sourceCount": 4,
+        "movedAt": "2026-10-20T07:40:00.000Z",
+        "confirmed": false,
+        "canConfirm": false
+      },
+      "evidence": [
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000605"
+          },
+          "via": "calendar",
+          "date": "2026-10-20",
+          "excerpt": "board prep until 8",
+          "stance": "supports"
+        },
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000606"
+          },
+          "via": "journal",
+          "date": "2026-10-20",
+          "excerpt": "no run again, too late",
+          "stance": "supports"
+        }
+      ],
+      "evidenceTotal": 4,
+      "linked": [
+        {
+          "ref": {
+            "kind": "goal",
+            "id": "00000000-0000-4000-8000-000000000301"
+          },
+          "label": "run the half in march"
+        }
+      ],
+      "question": null
+    }
+  }
+}

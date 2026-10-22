@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "data": {
+    "hero": {
+      "id": "3d9c1f84-2a77-4b1e-8c55-71a0e2b6c3d2",
+      "kind": "weekly",
+      "number": 5,
+      "title": "tuesdays, mostly",
+      "about": "writing mornings, the gym",
+      "durationSeconds": 540.0,
+      "timing": "measured",
+      "createdAt": "2026-10-11T16:00:01.020Z",
+      "coversFrom": "2026-09-13",
+      "coversTo": "2026-10-11",
+      "hasAudio": true
+    },
+    "upcoming": {
+      "state": "making",
+      "readyAt": "2026-10-25T16:00:00.000Z"
+    },
+    "items": [
+      {
+        "kind": "brief",
+        "brief": {
+          "id": "9e4d7a20-1b3c-4e5f-8a6d-2c0b1f3e5d74",
+          "date": "2026-10-20",
+          "title": "a quieter monday than usual",
+          "durationSeconds": 248.0,
+          "hasAudio": true
+        }
+      }
+    ],
+    "nextCursor": null
+  }
+}

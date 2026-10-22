@@ -1,0 +1,77 @@
+{
+  "success": true,
+  "data": {
+    "node": {
+      "ref": {
+        "kind": "person",
+        "id": "00000000-0000-4000-8000-000000000101"
+      },
+      "kindLabel": "person",
+      "name": "priya",
+      "claim": {
+        "ref": {
+          "kind": "fact",
+          "id": "00000000-0000-4000-8000-000000000501"
+        },
+        "text": "priya is your sister",
+        "sureness": "fairly sure",
+        "isGuess": false,
+        "sourceCount": 5,
+        "movedAt": "2026-10-14T19:02:11.000Z",
+        "confirmed": false,
+        "canConfirm": true
+      },
+      "mentions": 5,
+      "evidence": [
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000601"
+          },
+          "via": "journal",
+          "date": "2026-10-14",
+          "excerpt": "called priya after the run, she's coming in november",
+          "stance": "supports"
+        },
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000602"
+          },
+          "via": "calendar",
+          "date": "2026-10-11",
+          "excerpt": "dinner with priya",
+          "stance": "supports"
+        },
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000603"
+          },
+          "via": "voice",
+          "date": "2026-10-02",
+          "excerpt": "my sister priya thinks i should take the job",
+          "stance": "supports"
+        }
+      ],
+      "evidenceTotal": 5,
+      "linked": [
+        {
+          "ref": {
+            "kind": "theme",
+            "id": "00000000-0000-4000-8000-000000000202"
+          },
+          "label": "sunday planning"
+        },
+        {
+          "ref": {
+            "kind": "goal",
+            "id": "00000000-0000-4000-8000-000000000301"
+          },
+          "label": "run the half in march"
+        }
+      ],
+      "question": null
+    }
+  }
+}

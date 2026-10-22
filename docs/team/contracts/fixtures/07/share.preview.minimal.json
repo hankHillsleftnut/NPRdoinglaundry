@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "thing": {
+      "url": "https://example.net/a",
+      "kind": "page",
+      "site": "example.net"
+    },
+    "read": null,
+    "goesWith": null,
+    "reading": "ready"
+  }
+}

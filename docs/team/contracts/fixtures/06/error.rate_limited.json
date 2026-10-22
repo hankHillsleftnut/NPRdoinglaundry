@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "rate_limited",
+    "message": "you can download your data once a day. try again tomorrow.",
+    "retryAfterSeconds": 72000
+  }
+}

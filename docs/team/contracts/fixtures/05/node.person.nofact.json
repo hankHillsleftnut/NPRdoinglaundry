@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "data": {
+    "node": {
+      "ref": {
+        "kind": "person",
+        "id": "00000000-0000-4000-8000-000000000102"
+      },
+      "kindLabel": "person",
+      "name": "sam",
+      "claim": null,
+      "mentions": 3,
+      "evidence": [
+        {
+          "source": {
+            "kind": "entry",
+            "id": "00000000-0000-4000-8000-000000000604"
+          },
+          "via": "journal",
+          "date": "2026-10-17",
+          "excerpt": "sam said the deck is due friday",
+          "stance": "supports"
+        }
+      ],
+      "evidenceTotal": 3,
+      "linked": [],
+      "question": {
+        "id": "00000000-0000-4000-8000-000000000401",
+        "kind": "samePerson",
+        "inYourWriting": "sam",
+        "inYourContacts": "sam okafor",
+        "writingRef": {
+          "kind": "person",
+          "id": "00000000-0000-4000-8000-000000000102"
+        },
+        "contactRef": {
+          "kind": "person",
+          "id": "00000000-0000-4000-8000-000000000104"
+        }
+      }
+    }
+  }
+}
