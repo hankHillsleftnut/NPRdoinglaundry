@@ -20,6 +20,14 @@ extension Platform.Log {
         case refreshed
         /// One outbox drain finished.
         case outboxDrained(sent: Int, failed: Int)
+        /// One request finished: its door, the HTTP status (0 when nothing came
+        /// back) and how long it took.
+        case requestSent(path: Backend.PathTemplate, status: Int, ms: Int)
+        /// A door answered with an error code outside the contract's list. The
+        /// code itself is never logged.
+        case unknownErrorCode(path: Backend.PathTemplate)
+        /// A launch argument was ignored (debug builds only).
+        case launchOptionIgnored(Platform.LaunchOptions.Problem)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -35,6 +43,28 @@ extension Platform.Log {
                 logger.info("session refreshed")
             case let .outboxDrained(sent, failed):
                 logger.info("outbox drained: sent \(sent), failed \(failed)")
+            case let .requestSent(path, status, ms):
+                switch path {
+                case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
+                }
+            case let .unknownErrorCode(path):
+                switch path {
+                case .meta: logger.error("unknown error code from /v2/meta")
+                }
+            case let .launchOptionIgnored(problem):
+                record(problem)
+            }
+        }
+
+        private func record(_ problem: Platform.LaunchOptions.Problem) {
+            switch problem {
+            case .unknownValue(.data): logger.error("launch option -Data: unknown value, using live")
+            case .unknownValue(.environment): logger.error("launch option -Environment: unknown value, using production")
+            case .unknownValue(.account): logger.error("launch option -Account: unknown value, ignored")
+            case .missingValue(.data): logger.error("launch option -Data: no value, using live")
+            case .missingValue(.environment): logger.error("launch option -Environment: no value, using production")
+            case .missingValue(.account): logger.error("launch option -Account: no value, ignored")
+            case .accountNeedsStaging: logger.error("launch option -Account needs -Environment local or staging, ignored")
             }
         }
     }
