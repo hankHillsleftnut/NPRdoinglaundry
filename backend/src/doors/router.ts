@@ -5,6 +5,7 @@ import { DoorError, sendError } from './errors.js';
 import { DiagnosticsReport } from '../diagnostics/schema.js';
 import type { DiagnosticsStore } from '../diagnostics/store.js';
 import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
+import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
 import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 
 /**
@@ -15,6 +16,7 @@ import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 export interface V2RouterDeps {
   diagnostics: DiagnosticsStore;
   invites: InviteDoorDeps;
+  briefs: BriefDoorDeps;
   entries: EntryDoorDeps;
 }
 
@@ -75,6 +77,8 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
   // Access, the waitlist and invites (BE0.12).
   mountInviteDoors(router, door, deps.invites);
 
+  // Today's brief, the list, one brief, the switch (BE1.3, BE1.3b).
+  mountBriefDoors(router, door, deps.briefs);
   // The journal: sending and today (BE1.1).
   mountEntryDoors(router, door, deps.entries);
 

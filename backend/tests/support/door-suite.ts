@@ -48,7 +48,7 @@ export interface DoorSuiteSpec {
   /** Doors a waitlisted person may use (access, waitlist, redeem). */
   openToWaitlisted?: boolean;
   /** Stores the door needs (e.g. access and invites on a test database). */
-  stores?: () => Pick<NonNullable<Parameters<typeof startHarness>[0]>, 'access' | 'invites' | 'entries' | 'startIngest'>;
+  stores?: () => Pick<NonNullable<Parameters<typeof startHarness>[0]>, 'access' | 'invites' | 'briefs' | 'signAudio' | 'entries' | 'startIngest'>;
 }
 
 const USER = '11111111-1111-4111-8111-111111111111';
