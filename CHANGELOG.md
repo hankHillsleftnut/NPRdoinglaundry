@@ -64,3 +64,6 @@ What changed, in plain words, newest first. Every merged PR that changes what th
   - design tokens and depth recipes, so single lines match Paper's height (#85).
 - **CI:** Platform code is linted, Keychain tests run, and package versions are locked (#96).
 - **Changelog started; session diagnostics added to Beta 1** (#91).
+
+## 22 Oct 2026 · prototype mode
+- **Until Beta 1 ships, the team runs in prototype mode** (`docs/team/prototype-mode.md`). Privacy, data safety, the outbox, sign-in and CI stay strict, and so does the journal and ticket design. Reviews, PR size, Paper matching on internal parts and nit-fixing get lighter. Expect about twice the speed at about half the usage.
