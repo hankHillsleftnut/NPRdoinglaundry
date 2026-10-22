@@ -2,6 +2,6 @@
   "success": false,
   "error": {
     "code": "idempotency_mismatch",
-    "message": "This save was already sent with different content."
+    "message": "That was already sent with different words."
   }
 }

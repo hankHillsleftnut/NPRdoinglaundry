@@ -2,7 +2,7 @@
   "success": false,
   "error": {
     "code": "rate_limited",
-    "message": "you can download your data once a day. try again tomorrow.",
+    "message": "Too many tries. Try again in a minute.",
     "retryAfterSeconds": 72000
   }
 }
