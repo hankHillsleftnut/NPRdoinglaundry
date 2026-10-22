@@ -314,6 +314,7 @@ Acceptance and tests: `a forged payload is refused` · `consent-revoked ends ses
 Place in the tree: platform › account rights › deletion
 Repo · branch: agent · `agent/BE0.6-user-delete`
 Needs: —      Unblocks: BE0.7, BE0.8
+Also (integrator, 22 Oct): deletion must call DG.1's diagnostics `deleteFor(userId)` (report rows and their stored files).
 
 Why: deleting an account removes everything, including files and connected-app grants, not just rows (Guideline 5.1.1(v)).
 
@@ -335,6 +336,7 @@ Watch out: storage `list()` returns at most 1,000; loop until empty. Never delet
 Place in the tree: platform › account rights › deletion
 Repo · branch: backend · `be/BE0.7-account-deletion`
 Needs: BE0.6, BE0.5, BE0.4      Unblocks: BE0.13, ST-9, R05
+Also (integrator, 22 Oct): deletion must call DG.1's diagnostics `deleteFor(userId)` (report rows and their stored files).
 
 Why: one tap in settings deletes the account and everything in it.
 
@@ -350,6 +352,7 @@ Watch out: deleting the account doesn't cancel an App Store subscription; the ap
 Place in the tree: platform › account rights › deletion
 Repo · branch: agent then backend · `agent/BE0.8-delete-data`, `be/BE0.8-delete-data`
 Needs: BE0.7      Unblocks: ST-5
+Also (integrator, 22 Oct): deletion must call DG.1's diagnostics `deleteFor(userId)` (report rows and their stored files).
 
 Spec: agent `POST /users/:userId/delete-data`: the same files and grants as BE0.6, then deletes the user's rows in every content table (raw_content, assertions and evidence, entities, patterns and whys, question answers and evidence, briefs, episodes, hypotheses, conversation turns, integration data, reference items, traces) inside one transaction, keeping `users`, `user_preferences` reset to defaults. Backend `DELETE /v2/account/data { confirm: 'delete' }` calls it, keeps sessions, entitlement and invites, resets `access` from `member` to `approved` (onboarding runs again).
 

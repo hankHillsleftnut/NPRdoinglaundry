@@ -121,3 +121,17 @@ test('a unique violation whose winner can no longer be found is an error', async
   const db = fakeUsers({ insertError: { code: '23505', message: 'duplicate key value' } });
   await assert.rejects(getOrCreateUserWith(db.client, 'users', 'apple-1'), /Failed to create user/);
 });
+
+test('an Apple account is created with the first-time name and email, once, even when two sign-ins race', async () => {
+  const { findOrCreateAppleAccount } = await import('../src/services/users.js');
+  const db = fakeUsers();
+  const [a, b] = await Promise.all([
+    findOrCreateAppleAccount(db.client, 'users', 'apple-9', { email: 'a@example.com', firstName: 'Sam' }),
+    findOrCreateAppleAccount(db.client, 'users', 'apple-9', { email: 'a@example.com', firstName: 'Sam' }),
+  ]);
+  assert.equal(a.userId, b.userId);
+  assert.deepEqual([a.isNew, b.isNew].sort(), [false, true], 'exactly one of them created it');
+  const again = await findOrCreateAppleAccount(db.client, 'users', 'apple-9', { email: 'b@example.com', firstName: 'Other' });
+  assert.deepEqual(again, { userId: a.userId, isNew: false });
+  assert.equal(db.updates.length, 0, 'an existing account is never renamed or re-emailed here');
+});

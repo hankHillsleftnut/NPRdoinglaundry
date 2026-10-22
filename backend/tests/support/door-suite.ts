@@ -41,6 +41,8 @@ export interface DoorSuiteSpec {
   diagnostics?: () => NonNullable<AppDeps['diagnostics']>;
   /** For doors not yet in createV2Router (the suite's own self-test). */
   v2Router?: AppDeps['v2Router'];
+  /** Headers every request carries (e.g. an Idempotency-Key the door requires). */
+  headers?: Record<string, string>;
 }
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -69,7 +71,7 @@ const code = (body: unknown) => (body as { error?: { code?: string } }).error?.c
 export function doorSuite(spec: DoorSuiteSpec): void {
   const name = `${spec.method} ${spec.path}`;
   const send = (h: Harness, headers: Record<string, string>, path = spec.path, body = spec.validBody) =>
-    h.request(spec.method, path, body, headers);
+    h.request(spec.method, path, body, { ...spec.headers, ...headers });
 
   test(`${name}: unauthenticated is a 401 envelope`, () => withHarness(spec, async (h) => {
     const res = await send(h, {});

@@ -14,7 +14,11 @@ export interface V2RouterDeps {
   diagnostics: DiagnosticsStore;
 }
 
-/** A report is at most 2 MB as sent (docs/team/flows/diagnostics.md). */
+/**
+ * A report is at most 2 MB (docs/team/flows/diagnostics.md), counted after
+ * gzip is undone, so a small compressed body can't unpack past it. app.ts
+ * gives this route its own body parser with this limit, ahead of the 10 MB one.
+ */
 export const MAX_REPORT_BYTES = 2 * 1024 * 1024;
 
 export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
@@ -34,11 +38,10 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
   // stored under the sender's id for 30 days; the answer is a short reference.
   const { diagnostics } = deps;
   router.post('/diagnostics', (req, res, next) => {
-    const declared = Number(req.header('content-length') ?? 0);
+    // The report id is the Idempotency-Key, required as on every write door.
     const key = req.header('Idempotency-Key');
     const reportId = (req.body as { reportId?: unknown } | undefined)?.reportId;
-    // Too big as sent, or a key that isn't this report's id: refused before the kit runs.
-    if (declared > MAX_REPORT_BYTES || (key !== undefined && key !== reportId)) {
+    if (key === undefined || key !== reportId) {
       sendError(res, new DoorError('invalid_request'));
       return;
     }
@@ -59,6 +62,7 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
       requests: saved.counts.requests,
       failures: saved.counts.failures,
       crashes: saved.counts.crashes,
+      nulledFields: saved.counts.nulledEnvironment,
     }),
   }));
 

@@ -98,7 +98,7 @@
     if (r.note) { detail.append(el('div', 'their note (the only free text)', 'label')); detail.append(el('div', r.note, 'note')); }
 
     const grid = el('div', undefined, 'grid');
-    const card = (title, obj) => { const c = el('div', undefined, 'card'); c.append(el('div', title, 'label')); for (const [k, v] of Object.entries(obj)) c.append(el('div', k + ': ' + (Array.isArray(v) ? v.join(', ') : v))); grid.append(c); };
+    const card = (title, obj) => { const c = el('div', undefined, 'card'); c.append(el('div', title, 'label')); for (const [k, v] of Object.entries(obj)) c.append(el('div', k + ': ' + (v === null ? '(not recognised)' : Array.isArray(v) ? v.join(', ') : v))); grid.append(c); };
     card('environment', r.environment);
     card('account', { ...r.account, userId: d.userId });
     card('outbox', r.outbox);
@@ -109,7 +109,7 @@
     const line = [
       ...r.events.map((e) => ({ t: e.t, what: e.kind, detail: [e.screen, e.control, e.sheet, e.permission, e.granted === undefined ? '' : (e.granted ? 'granted' : 'denied'), e.positionMs === undefined ? '' : e.positionMs + ' ms'].filter(Boolean).join(' · ') })),
       ...r.network.map((n) => ({ t: n.t, what: n.method + ' ' + n.route, detail: n.status + (n.code ? ' ' + n.code : '') + ' · ' + n.ms + ' ms' + (n.retries ? ' · retries ' + n.retries : '') + (n.idempotency ? ' · ' + n.idempotency : ''), bad: n.status >= 400 || n.status === 0 })),
-      ...r.failures.map((f) => ({ t: f.t, what: 'failure ' + f.code, detail: f.screen, bad: true })),
+      ...r.failures.map((f) => ({ t: f.t, what: 'failure ' + f.code, detail: f.screen || 'background', bad: true })),
       ...r.crashes.map((c) => ({ t: c.t, what: c.kind, detail: '', bad: true })),
     ].sort((a, b) => a.t.localeCompare(b.t));
     const table = el('table');

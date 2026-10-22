@@ -59,7 +59,7 @@ test('refresh rotates and the old token stops working', async () => {
   const first = await rotate(s.refreshToken, T0 + 1000);
   assert.deepEqual(first.result, { outcome: 'rotated', userId: s.user });
   const again = await rotate(s.refreshToken, T0 + 1000 + (REFRESH_GRACE_SECONDS + 1) * 1000);
-  assert.deepEqual(again.result, { outcome: 'revoked' });
+  assert.deepEqual(again.result, { outcome: 'revoked', reuse: true }, 'reuse is told apart, for the log');
   // ...and that reuse ended the whole family, successor included.
   assert.deepEqual((await rotate(first.next.plain, T0 + 2 * 60 * 1000)).result, { outcome: 'revoked' });
 });
@@ -92,7 +92,7 @@ test('reuse after the grace window revokes the whole family', async () => {
   const second = await rotate(first.next.plain, T0 + DAY);
   assert.equal(second.result.outcome, 'rotated');
   // Someone replays the first token a day later.
-  assert.deepEqual((await rotate(s.refreshToken, T0 + DAY + 1000)).result, { outcome: 'revoked' });
+  assert.deepEqual((await rotate(s.refreshToken, T0 + DAY + 1000)).result, { outcome: 'revoked', reuse: true });
   const { rows } = await db.query<{ live: number }>(`SELECT count(*) FILTER (WHERE revoked_at IS NULL)::int live FROM refresh_tokens WHERE user_id = $1`, [s.user]);
   assert.equal(rows[0]!.live, 0);
   assert.deepEqual((await rotate(second.next.plain, T0 + DAY + 2000)).result, { outcome: 'revoked' });
