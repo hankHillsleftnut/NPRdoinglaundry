@@ -52,18 +52,20 @@ export interface DoorLogLine {
   crashes?: number;
   /** How many fields of a stored report were dropped as malformed (diagnostics). */
   nulledFields?: number;
+  /** entries.create: 1 when the entry's createdAt was ahead of the server by more than the allowed skew and was clamped. */
+  clockSkew?: number;
   /** auth.refresh only: a rotated refresh token was used again (a possible stolen copy). Written only when true. */
   reuse?: boolean;
 }
 
 /** The numeric size and count fields a door may add to its line (DoorSpec.logCounts). */
-export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes' | 'nulledFields'>;
-export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields'] as const;
+export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes' | 'nulledFields' | 'clockSkew'>;
+export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields', 'clockSkew'] as const;
 
 /** The only fields a door log line can have, in output order. */
 export const DOOR_LOG_FIELDS = [
   'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes', 'nulledFields',
-  'reuse',
+  'clockSkew', 'reuse',
 ] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.

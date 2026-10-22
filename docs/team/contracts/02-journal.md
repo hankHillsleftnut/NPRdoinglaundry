@@ -21,11 +21,11 @@ type SourceRef = {
 
 `GET /v2/entries/today` → `{ "date": "2026-10-21", "entries": Entry[] }` (the user's local day, oldest first).
 
-`POST /v2/entries` — idempotent (`Idempotency-Key: <clientEntryId>`)
+`POST /v2/entries` — idempotent (`Idempotency-Key: <clientEntryId>`, required and equal to the body's `clientEntryId`, compared lowercased; else `invalid_request`)
 ```json
 { "text": "dentist at 3 today, dreading it", "kind": "typed", "clientEntryId": "<uuid>", "createdAt": "2026-10-21T13:02:11.410Z" }
 ```
-→ `{ "entry": Entry }`. Repeating the key returns the same entry.
+→ `201 { "entry": Entry }` for a new entry; repeating the key returns the same entry with `200` (the stored row, no second read). The same key with a different **body** → `409 idempotency_mismatch`, where "body" means `kind` and the trimmed `text`: `createdAt` is not part of it, so a retry whose clock the server corrected is still a replay (BE1.1). `text` is 1–20,000 UTF-16 code units after trimming; `kind` is `typed | voice`; `createdAt` is ISO 8601 UTC with a `Z` (an offset is `invalid_request`). There is no lower bound on `createdAt` (an old offline entry is never thrown away); one more than 5 minutes ahead of the server is stored as the server's now, and the returned `entry.createdAt`/`day` say so (the app overwrites its own). "Today" and `day` are in the zone of `X-Time-Zone`, which the server remembers on the person; without one, the remembered zone, else UTC.
 
 **The acknowledgement** is not from the server. The app shows one short line from a fixed set after each send (copy to be written with the founder, lowercase, in Retro's voice, never pretending to have understood: for example "got it." / "saved." / "it's in."), picked so the same line doesn't repeat twice in a row. Offline, the line waits until the entry is actually sent; until then your bubble shows "waiting to send".
 
@@ -76,7 +76,7 @@ type Guess = {
 ```ts
 type Entry = {
   id: string;                             // raw_content.id
-  kind: "typed" | "voice" | "conversation" | "imported";   // from content_type (text_entry, journal_entry, manual_journal, note → typed; voice_recording, voice_journal → voice; conversation → conversation; everything else the person sent → imported)
+  kind: "typed" | "voice" | "conversation" | "imported";   // from content_type (text_entry, journal_entry, manual_journal, note → typed; voice_recording, voice_journal → voice; conversation → conversation; everything else the person sent → imported; exhaustive, default imported)
   text: string;
   createdAt: string;
   day: string;                            // YYYY-MM-DD local
@@ -84,7 +84,7 @@ type Entry = {
   clientEntryId?: string;                 // the app's Entry.id when it sent one (the outbox key)
 };
 ```
-Only the person's own words are listed (the "sent by the person" set in the agent's planner), never records, mail or third-party items.
+Only the person's own words are listed (the "sent by the person" set in the agent's planner: `text_entry, journal_entry, voice_recording, voice_journal, conversation, manual_journal, link, shared_link, reference, note`), never records, mail or third-party items. `video_entry` (the old app's video notes) is not in that set, so old video entries never appear; new ones are sent as `voice` (Beta 1). `today` lists at most 200; older ones stay in the drawer.
 `GET /v2/entries?cursor=&limit=50&q=` → `{ "entries": Entry[], "nextCursor": … }`, newest first. `q` searches the person's own entries only (matched words come back as ranges for highlighting: `matches: [{ start, length }]`, counted in **UTF-16 code units** of `text`, the unit Swift's `NSRange` and JavaScript strings share).
 `GET /v2/entries/:id` → `{ "entry": Entry }`.
 `PATCH /v2/entries/:id` `{ "text": "…" }` → `{ "entry": Entry }` (editing re-sends it for reading: "retro is reading it again").

@@ -25,6 +25,9 @@ import { createV2Router, MAX_REPORT_BYTES, type V2RouterDeps } from './doors/rou
 import type { DiagnosticsStore } from './diagnostics/store.js';
 import type { AccessStore } from './access/store.js';
 import type { InviteStore } from './invites/store.js';
+import type { EntryStore } from './entries/store.js';
+import { handOffToAgent } from './services/agent-handoff.js';
+import { runAgentIngest } from './services/agent-client.js';
 import { createPublicInviteRouter } from './invites/public.js';
 import { log, type DoorLogLine } from './utils/log.js';
 import { supabaseAdmin } from './utils/supabase.js';
@@ -61,6 +64,10 @@ export interface AppDeps {
   access: AccessStore;
   /** Invites (BE0.12): as above. */
   invites: InviteStore;
+  /** Journal entries (BE1.1): migration 022's functions; tests pass PGlite. */
+  entries: EntryStore;
+  /** Starts the brain's read of a stored entry after the response; the agent's /ingest/run by default (tests record calls). */
+  startIngest?: (userId: string, rawContentId: string) => void;
 }
 
 /**
@@ -168,6 +175,13 @@ export function createApp(deps: AppDeps): express.Express {
     diagnostics,
     invites: {
       access: deps.access, invites: deps.invites, limiter, now: deps.now, codeKey: config.invites.codeKey, baseUrl: config.invites.baseUrl,
+    },
+    entries: {
+      entries: deps.entries,
+      // Same hand-off as /content: after the response, and never able to write the row's status (agent-handoff.ts).
+      startIngest: deps.startIngest ?? ((userId, rawContentId) => {
+        setImmediate(() => { void handOffToAgent(runAgentIngest, { userId, rawContentIds: [rawContentId] }); });
+      }),
     },
   }));
   app.use('/v2', v2ErrorHandler);
