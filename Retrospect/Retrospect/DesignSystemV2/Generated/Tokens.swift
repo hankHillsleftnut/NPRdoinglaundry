@@ -476,6 +476,8 @@ public enum RDimension {
     public static let spaceBetweenEntries: CGFloat = 24
     /// Chips and small icon buttons.
     public static let sizeControlSmall: CGFloat = 32
+    /// Answer pills on a card: a step up from chips, so the answer reads as the card's next move.
+    public static let sizeControlMedium: CGFloat = 36
     /// Ordinary buttons (Apple minimum touch target).
     public static let sizeControlDefault: CGFloat = 44
     /// Prominent buttons.
@@ -548,6 +550,8 @@ public enum RDimension {
     public static let sizeGrabberHeight: CGFloat = 5
     /// Dash length on a guess's edge: guesses never look like facts.
     public static let sizeInferenceDash: CGFloat = 4
+    /// A guess's dashed edge under Increase Contrast, so the edge still reads.
+    public static let sizeInferenceEdgeIncreased: CGFloat = 1.5
     /// The smallest node (mentioned rarely).
     public static let sizeMapNodeMin: CGFloat = 8
     /// The largest node (mentioned most).
@@ -910,6 +914,8 @@ public enum RNumber {
     public static let opacitySourcePressed: Double = 0.7
     /// Something of yours on its way: a message sending, a save in flight. Same value as opacity.pressed, different meaning.
     public static let opacityPending: Double = 0.7
+    /// A guess you said isn't right: it stays readable but steps back from the thread.
+    public static let opacityDeclined: Double = 0.55
     /// With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine.
     public static let opacitySkeletonPulseFloor: Double = 0.6
 }
