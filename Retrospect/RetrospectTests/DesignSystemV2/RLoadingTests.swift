@@ -36,6 +36,18 @@ struct RLoadingTests {
         #expect(clock.heldSleeps == 0)
     }
 
+    @Test("a late wake never pushes still working past 8s from the start")
+    func deadlinesFromTheStart() async {
+        let clock = TestClock()
+        let timer = RLoadingTimer()
+        let run = Task { await timer.run(on: clock) }
+        await settle(clock)
+        // one jump past both deadlines: the second sleep is already due, so both phases pass
+        clock.advance(by: .seconds(8))
+        await run.value
+        #expect(timer.phase == .stillWorking)
+    }
+
     @Test("the skeleton shows at 400ms, and still working at 8s")
     func skeletonThenStillWorking() async {
         let clock = TestClock()

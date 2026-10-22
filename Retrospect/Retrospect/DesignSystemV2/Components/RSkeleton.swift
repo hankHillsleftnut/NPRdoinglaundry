@@ -104,12 +104,15 @@ enum RLoadingPhase: Equatable {
 final class RLoadingTimer {
     private(set) var phase: RLoadingPhase = .waiting
 
+    /// Both deadlines are measured from the load's start, so a late wake never pushes
+    /// "still working" past motion.duration.stillWorking.
     func run(on clock: any Clock<Duration>) async {
         phase = .waiting
+        let start = clock.now
         do {
-            try await clock.sleep(for: .seconds(RNumber.motionDurationSkeletonDelay))
+            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationSkeletonDelay)))
             phase = .skeleton
-            try await clock.sleep(for: .seconds(RNumber.motionDurationStillWorking - RNumber.motionDurationSkeletonDelay))
+            try await clock.sleep(until: start.advanced(by: .seconds(RNumber.motionDurationStillWorking)))
             phase = .stillWorking
         } catch {
             return
@@ -172,6 +175,10 @@ struct RLoading<Content: View, Skeleton: View>: View {
 struct RSkeletonGallery: View {
     @State private var loading = false
     @State private var label = "not loading"
+    /// The load in flight; a new one cancels it, so an old load never ends the new one.
+    @State private var current: Task<Void, Never>?
+    /// Each load gets a fresh identity, so RLoading starts its timer over.
+    @State private var loadCount = 0
 
     var body: some View {
         ScrollView {
@@ -194,6 +201,7 @@ struct RSkeletonGallery: View {
                 .frame(maxWidth: .infinity, minHeight: RDimension.sizeBriefCardMinHeight, alignment: .topLeading)
                 .padding(RDimension.space4)
                 .rRaised()
+                .id(loadCount)
                 HStack(spacing: RDimension.space2) {
                     RPill(title: "0.3s", style: .raised) { load(.milliseconds(300)) }
                     RPill(title: "2s", style: .raised) { load(.seconds(2)) }
@@ -212,13 +220,15 @@ struct RSkeletonGallery: View {
     }
 
     private func load(_ duration: Duration) {
-        Task { await run(duration) }
+        current?.cancel()
+        current = Task { await run(duration) }
     }
 
     private func run(_ duration: Duration) async {
+        loadCount += 1
         label = "loading for \(duration)"
         loading = true
-        try? await Task.sleep(for: duration)
+        do { try await Task.sleep(for: duration) } catch { return }
         loading = false
         label = "loaded"
     }
