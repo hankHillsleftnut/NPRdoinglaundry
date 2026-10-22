@@ -13,9 +13,12 @@ function capture() {
 // The privacy rule (context.md §3) held by the type, not by care: if a field is
 // ever added, this test fails until someone decides it can't carry text.
 test('the door log type has no field that can carry text', () => {
-  assert.deepEqual([...DOOR_LOG_FIELDS], ['door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion']);
+  assert.deepEqual([...DOOR_LOG_FIELDS], [
+    'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes',
+  ]);
   const full: Required<DoorLogLine> = {
     door: 'entries.create', userId: USER, status: 200, code: 'rate_limited', ms: 12, agentMs: 8, costUsd: 0.0123, appVersion: '1.0 (42)',
+    sizeBytes: 2048, events: 5, requests: 2, failures: 1, crashes: 0,
   };
   assert.deepEqual(Object.keys(doorLogLine(full)), [...DOOR_LOG_FIELDS]);
 });
@@ -66,6 +69,17 @@ test('numbers that are not finite are written as null', () => {
   assert.equal(line.status, null);
   assert.equal(line.ms, null);
   assert.equal(line.costUsd, null);
+});
+
+test('size and count fields are numbers or null, never a string', () => {
+  const line = doorLogLine({
+    door: 'diagnostics.create', userId: USER, status: 200, ms: 1,
+    sizeBytes: ENTRY_TEXT as unknown as number, events: 5, requests: Number.NaN, failures: 0, crashes: 2,
+  });
+  assert.deepEqual(
+    { sizeBytes: line.sizeBytes, events: line.events, requests: line.requests, failures: line.failures, crashes: line.crashes },
+    { sizeBytes: null, events: 5, requests: null, failures: 0, crashes: 2 },
+  );
 });
 
 test('optional fields are left out when not given', () => {

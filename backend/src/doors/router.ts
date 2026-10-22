@@ -11,13 +11,13 @@ import type { DiagnosticsStore } from '../diagnostics/store.js';
  * later bytes.
  */
 export interface V2RouterDeps {
-  diagnostics?: DiagnosticsStore;
+  diagnostics: DiagnosticsStore;
 }
 
 /** A report is at most 2 MB as sent (docs/team/flows/diagnostics.md). */
 export const MAX_REPORT_BYTES = 2 * 1024 * 1024;
 
-export function createV2Router(door: DoorFactory, deps: V2RouterDeps = {}): Router {
+export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
   const router = Router();
 
   // The sample door: proves the kit end to end without the agent.
@@ -32,30 +32,35 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps = {}): Rout
   // DG.1: "send a report". The bundle is checked strictly (diagnostics/schema.ts:
   // nothing in it can carry a person's words except their labelled note) and
   // stored under the sender's id for 30 days; the answer is a short reference.
-  const diagnostics = deps.diagnostics;
-  if (diagnostics) {
-    router.post('/diagnostics', (req, res, next) => {
-      const declared = Number(req.header('content-length') ?? 0);
-      const key = req.header('Idempotency-Key');
-      const reportId = (req.body as { reportId?: unknown } | undefined)?.reportId;
-      // Too big as sent, or a key that isn't this report's id: refused before the kit runs.
-      if (declared > MAX_REPORT_BYTES || (key !== undefined && key !== reportId)) {
-        sendError(res, new DoorError('invalid_request'));
-        return;
-      }
-      next();
-    }, door({
-      name: 'diagnostics.create',
-      bucket: 'write',
-      request: DiagnosticsReport,
-      call: async (ctx, report) => {
-        const saved = await diagnostics.save(ctx.userId, report, ctx.now);
-        if (saved.outcome === 'mismatch') throw new DoorError('idempotency_mismatch');
-        return saved;
-      },
-      map: (saved) => ({ reference: saved.reference }),
-    }));
-  }
+  const { diagnostics } = deps;
+  router.post('/diagnostics', (req, res, next) => {
+    const declared = Number(req.header('content-length') ?? 0);
+    const key = req.header('Idempotency-Key');
+    const reportId = (req.body as { reportId?: unknown } | undefined)?.reportId;
+    // Too big as sent, or a key that isn't this report's id: refused before the kit runs.
+    if (declared > MAX_REPORT_BYTES || (key !== undefined && key !== reportId)) {
+      sendError(res, new DoorError('invalid_request'));
+      return;
+    }
+    next();
+  }, door({
+    name: 'diagnostics.create',
+    bucket: 'write',
+    request: DiagnosticsReport,
+    call: async (ctx, report) => {
+      const saved = await diagnostics.save(ctx.userId, report, ctx.now);
+      if (saved.outcome === 'mismatch') throw new DoorError('idempotency_mismatch');
+      return saved;
+    },
+    map: (saved) => ({ reference: saved.reference }),
+    logCounts: (saved) => ({
+      sizeBytes: saved.sizeBytes,
+      events: saved.counts.events,
+      requests: saved.counts.requests,
+      failures: saved.counts.failures,
+      crashes: saved.counts.crashes,
+    }),
+  }));
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {

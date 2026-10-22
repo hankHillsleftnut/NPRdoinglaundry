@@ -46,8 +46,15 @@ export interface DiagnosticsBackend {
   deleteRows(ids: string[]): Promise<void>;
 }
 
+/** What a save stored, for the answer and the door log: sizes and counts, never content. */
+export interface SavedReport {
+  reference: string;
+  sizeBytes: number;
+  counts: ReturnType<typeof countsOf>;
+}
+
 export type SaveResult =
-  | { outcome: 'stored' | 'replayed'; reference: string }
+  | ({ outcome: 'stored' | 'replayed' } & SavedReport)
   | { outcome: 'mismatch' };
 
 export function bodyHash(body: string): string {
@@ -59,30 +66,49 @@ export function createDiagnosticsStore(backend: DiagnosticsBackend, pick?: (n: n
     async save(userId: string, report: DiagnosticsReport, nowMs: number): Promise<SaveResult> {
       const body = JSON.stringify(report);
       const hash = bodyHash(body);
-      const existing = await backend.findById(report.reportId);
-      if (existing) {
-        return existing.user_id === userId && existing.body_hash === hash
-          ? { outcome: 'replayed', reference: existing.reference }
-          : { outcome: 'mismatch' };
-      }
-      // The bundle first: a retry after a failed insert overwrites the same file.
       const path = `${userId}/${report.reportId}.json`;
-      await backend.upload(path, body);
+      const sizeBytes = Buffer.byteLength(body, 'utf8');
+      const counts = countsOf(report);
+
+      // A retry of a report we already have. The bundle is written again
+      // (upsert, same bytes): if an earlier attempt's upload failed and its row
+      // could not be removed, the retry still leaves a complete report.
+      const replay = async (row: ReportRow): Promise<SaveResult> => {
+        if (row.user_id !== userId || row.body_hash !== hash) return { outcome: 'mismatch' };
+        await backend.upload(path, body);
+        return { outcome: 'replayed', reference: row.reference, sizeBytes, counts };
+      };
+
+      const existing = await backend.findById(report.reportId);
+      if (existing) return replay(existing);
+
+      // The row first, then the bundle: every stored file has a row, so the
+      // 30-day purge and deleteFor(userId) always find it. A failed upload
+      // takes its row back out, so the retry starts clean.
       for (let attempt = 0; attempt < 5; attempt++) {
         const row: ReportRow = {
           id: report.reportId, user_id: userId, reference: newReference(pick), body_hash: hash, storage_path: path,
-          size_bytes: Buffer.byteLength(body, 'utf8'), counts: countsOf(report), app_version: report.environment.appVersion,
+          size_bytes: sizeBytes, counts, app_version: report.environment.appVersion,
           created_at: new Date(nowMs).toISOString(), expires_at: new Date(nowMs + REPORT_TTL_DAYS * 86_400_000).toISOString(),
         };
         const { conflict } = await backend.insert(row);
-        if (conflict === null) return { outcome: 'stored', reference: row.reference };
         if (conflict === 'id') {
           // Two sends of one report raced; the other won.
           const winner = await backend.findById(report.reportId);
-          if (winner && winner.user_id === userId && winner.body_hash === hash) return { outcome: 'replayed', reference: winner.reference };
-          return { outcome: 'mismatch' };
+          if (winner) return replay(winner);
+          // The other send's upload failed and took its row back out: a retry starts clean.
+          throw new Error('diagnostics: a racing send of this report failed');
         }
-        // A reference already in use: draw another.
+        if (conflict === 'reference') continue; // a reference already in use: draw another
+        try {
+          await backend.upload(path, body);
+        } catch (err) {
+          // If this fails too, the row stays without a file until it expires;
+          // a retry of the report writes the file (replay, above).
+          await backend.deleteRows([row.id]).catch(() => undefined);
+          throw err;
+        }
+        return { outcome: 'stored', reference: row.reference, sizeBytes, counts };
       }
       throw new Error('diagnostics: no free reference after 5 tries');
     },

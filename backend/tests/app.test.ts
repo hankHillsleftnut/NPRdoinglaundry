@@ -10,7 +10,7 @@ import { routeList } from './support/route-list.js';
 // same comparison with a secret set.
 test('the route list is unchanged by the refactor', async () => {
   const { createApp } = await import('../src/app.js');
-  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null });
+  const app = createApp({ agent: {} as never, limiter: {} as never, now: () => 0, users: async () => null, diagnostics: {} as never });
   assert.deepEqual(routeList(app), [
     'use * query',
     'use * expressInit',

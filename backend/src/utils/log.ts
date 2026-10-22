@@ -4,7 +4,9 @@
  * Privacy is enforced here, not by convention (context.md §3: counts and types
  * only, never a person's words). The line has a fixed set of fields, none of
  * which is free text:
- *   - numbers are numbers (non-finite becomes null);
+ *   - numbers are numbers (non-finite becomes null), including the size and
+ *     counts a door may add (`sizeBytes`, `events`, `requests`, `failures`,
+ *     `crashes`);
  *   - `code` must be one of the contract's error codes (a closed list);
  *   - `userId` must be a UUID, or null on public doors (sign-in, waitlist);
  *   - `appVersion` must be digits and dots, like `1.0 (42)`;
@@ -41,10 +43,23 @@ export interface DoorLogLine {
   costUsd?: number;
   /** The X-App-Version header, e.g. `1.0 (42)`. Optional until BE0.10 requires it. */
   appVersion?: string;
+  /** Size of what a door stored, bytes (diagnostics reports). */
+  sizeBytes?: number;
+  /** How many events, requests, failures and crashes a stored report holds (diagnostics). */
+  events?: number;
+  requests?: number;
+  failures?: number;
+  crashes?: number;
 }
 
+/** The numeric size and count fields a door may add to its line (DoorSpec.logCounts). */
+export type DoorLogCounts = Pick<DoorLogLine, 'sizeBytes' | 'events' | 'requests' | 'failures' | 'crashes'>;
+export const DOOR_LOG_COUNT_FIELDS = ['sizeBytes', 'events', 'requests', 'failures', 'crashes'] as const;
+
 /** The only fields a door log line can have, in output order. */
-export const DOOR_LOG_FIELDS = ['door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion'] as const;
+export const DOOR_LOG_FIELDS = [
+  'door', 'userId', 'status', 'code', 'ms', 'agentMs', 'costUsd', 'appVersion', 'sizeBytes', 'events', 'requests', 'failures', 'crashes',
+] as const;
 
 // Compile-time: DOOR_LOG_FIELDS and DoorLogLine name exactly the same keys.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -81,6 +96,9 @@ export function doorLogLine(entry: DoorLogLine): Record<string, string | number 
   if (entry.agentMs !== undefined) line.agentMs = safeNumber(entry.agentMs);
   if (entry.costUsd !== undefined) line.costUsd = safeNumber(entry.costUsd);
   if (entry.appVersion !== undefined) line.appVersion = safeString('appVersion', entry.appVersion);
+  for (const field of DOOR_LOG_COUNT_FIELDS) {
+    if (entry[field] !== undefined) line[field] = safeNumber(entry[field]);
+  }
   return line;
 }
 

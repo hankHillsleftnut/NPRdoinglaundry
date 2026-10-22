@@ -1,25 +1,26 @@
 import { z } from 'zod';
 import { DOOR_ERROR_CODES } from '../doors/errors.js';
+import { DIAGNOSTIC_CONTROLS, DIAGNOSTIC_FAILURES, DIAGNOSTIC_SCREENS, DIAGNOSTIC_SHEETS, V2_ROUTE_TEMPLATES } from './ids.js';
 
 /**
  * A diagnostics report (DG.1, docs/team/flows/diagnostics.md): how the app
  * behaved in the person's recent sessions, sent only when they choose to.
  *
  * The privacy rule holds by construction, as in the door log: every field is a
- * number, a boolean, a timestamp, a closed list, or a short identifier that
- * matches a strict pattern (a screen id, a control id, a route template).
+ * number, a boolean, a timestamp, a UUID or a closed list. Screens, sheets,
+ * controls, failures and route templates are the closed lists in ids.ts,
+ * shared with the app through the contract fixture `diagnostics.ids.json`.
  * Nothing can carry entry words, names, search text or an email. The one free
  * text is `note`, which the person writes to us on purpose, labelled as such.
  * Every object is strict: an unknown field is refused, not stored.
  */
 
-/** A code-defined identifier: a screen, control, sheet or failure id. Never words a person typed. */
-const id = z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/);
-/** A route template: `/v2/entries/:id`, never a real id. */
-const routeTemplate = z.string().regex(/^\/[a-z0-9/_:.-]{0,127}$/).refine(
-  (r) => !/[0-9a-f]{8}-[0-9a-f]{4}-/.test(r) && !/\/\d{3,}(\/|$)/.test(r),
-  'a route template, not a route with real ids',
-);
+const screen = z.enum(DIAGNOSTIC_SCREENS);
+const sheet = z.enum(DIAGNOSTIC_SHEETS);
+const control = z.enum(DIAGNOSTIC_CONTROLS);
+const failureKind = z.enum(DIAGNOSTIC_FAILURES);
+/** A route template from the server's closed list (`/v2/entries/:id`), never a route with real ids. */
+const routeTemplate = z.enum(V2_ROUTE_TEMPLATES);
 const at = z.string().datetime();
 const count = z.number().int().min(0).max(1_000_000);
 const ms = z.number().int().min(0).max(24 * 60 * 60 * 1000);
@@ -35,9 +36,9 @@ const event = z.object({
     'sheet_opened', 'sheet_closed', 'playback_started', 'playback_paused', 'playback_ended',
     'permission_prompted', 'permission_answered',
   ]),
-  screen: id.optional(),
-  control: id.optional(),
-  sheet: id.optional(),
+  screen: screen.optional(),
+  control: control.optional(),
+  sheet: sheet.optional(),
   /** A playback item's id (an episode or brief id), never its title. */
   itemId: z.string().uuid().optional(),
   positionMs: ms.optional(),
@@ -56,7 +57,7 @@ const request = z.object({
   idempotency: z.enum(['new', 'replayed']).optional(),
 }).strict();
 
-const failure = z.object({ t: at, code: id, screen: id }).strict();
+const failure = z.object({ t: at, code: failureKind, screen }).strict();
 
 const crash = z.object({ t: at, kind: z.enum(['crash', 'hang']) }).strict();
 
@@ -81,6 +82,8 @@ export const DiagnosticsReport = z.object({
   }).strict(),
   account: z.object({
     provider: z.enum(['apple', 'google']),
+    /** Contract 00 §4's access state, as the app last saw it. */
+    access: z.enum(['waitlisted', 'approved', 'member', 'staff', 'suspended']),
     entitlement: z.enum(['none', 'trial', 'active', 'expired']),
   }).strict(),
   events: z.array(event).max(MAX_EVENTS),
@@ -93,7 +96,7 @@ export const DiagnosticsReport = z.object({
   failures: z.array(failure).max(500),
   performance: z.object({
     launchMs: ms.nullable(),
-    hitchRates: z.array(z.object({ screen: id, ratio: z.number().min(0).max(1) }).strict()).max(200),
+    hitchRates: z.array(z.object({ screen, ratio: z.number().min(0).max(1) }).strict()).max(200),
     memoryWarnings: count,
     thermalChanges: z.array(z.object({ t: at, state: z.enum(['nominal', 'fair', 'serious', 'critical']) }).strict()).max(200),
   }).strict(),

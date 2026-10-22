@@ -22,9 +22,7 @@ import { createDoorKit, type DoorFactory } from './doors/door.js';
 import { v2ErrorHandler } from './doors/errors.js';
 import { MemoryLimiter, type Limiter } from './doors/limits.js';
 import { createV2Router, type V2RouterDeps } from './doors/router.js';
-import { createDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store.js';
-import { supabaseDiagnosticsBackend } from './diagnostics/supabase-backend.js';
-import { supabaseAdmin } from './utils/supabase.js';
+import type { DiagnosticsStore } from './diagnostics/store.js';
 import { log, type DoorLogLine } from './utils/log.js';
 
 /**
@@ -43,8 +41,8 @@ export interface AppDeps {
   speechSynth?: SpeechRouteDeps['synth'];
   /** Builds the /v2 router from the door kit; the real one by default. */
   v2Router?: (door: DoorFactory, routerDeps: V2RouterDeps) => Router;
-  /** Diagnostics reports (DG.1); the database and the private bucket by default. */
-  diagnostics?: DiagnosticsStore;
+  /** Diagnostics reports (DG.1): server.ts passes the database and the private bucket; tests pass memory. */
+  diagnostics: DiagnosticsStore;
 }
 
 /**
@@ -112,7 +110,7 @@ export function createApp(deps: AppDeps): express.Express {
     reportBug: (err, name) => captureException(err, { door: name }),
   });
   app.use('/v2', makeAuthMiddleware(deps.users, { envelope: true, now: deps.now }), (deps.v2Router ?? createV2Router)(door, {
-    diagnostics: deps.diagnostics ?? createDiagnosticsStore(supabaseDiagnosticsBackend(supabaseAdmin)),
+    diagnostics: deps.diagnostics,
   }));
   app.use('/v2', v2ErrorHandler);
 

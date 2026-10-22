@@ -15,7 +15,7 @@
     "network": "none",
     "freeDisk": "over_20gb"
   },
-  "account": { "provider": "apple", "entitlement": "none" },
+  "account": { "provider": "apple", "access": "waitlisted", "entitlement": "none" },
   "events": [],
   "network": [],
   "outbox": { "queued": 1, "sending": 0, "sent": 0, "failed": 0, "oldestAgeSeconds": 4, "lastFailureCodes": [] },

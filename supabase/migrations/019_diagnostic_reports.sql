@@ -13,7 +13,9 @@
 --                       counts, where the bundle is stored, when it expires
 --   bucket diagnostics  the bundles themselves, private, under the user's id
 -- Kept 30 days, then deleted by the backend's purge job. Rows cascade with the
--- user; the stored bundles are removed by deleteDiagnosticsFor(userId).
+-- user, but the bucket doesn't: account deletion and delete-my-data (BE0.6-BE0.8)
+-- must call the diagnostics store's deleteFor(userId) (backend/src/diagnostics/
+-- store.ts) before the user row goes, or the bundles are left behind.
 --
 -- Additive. RLS on; nothing for anon/authenticated; service_role only.
 -- Files only: never applied to production by an agent.

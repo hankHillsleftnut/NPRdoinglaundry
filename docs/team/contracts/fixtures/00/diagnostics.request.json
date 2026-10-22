@@ -15,7 +15,7 @@
     "network": "wifi",
     "freeDisk": "5_to_20gb"
   },
-  "account": { "provider": "apple", "entitlement": "trial" },
+  "account": { "provider": "apple", "access": "member", "entitlement": "trial" },
   "events": [
     { "t": "2026-10-22T09:20:00.000Z", "kind": "app_foreground" },
     { "t": "2026-10-22T09:20:01.000Z", "kind": "screen_shown", "screen": "journal" },
@@ -25,10 +25,10 @@
   ],
   "network": [
     { "t": "2026-10-22T09:20:02.000Z", "method": "GET", "route": "/v2/briefs/latest", "status": 200, "ms": 340, "retries": 0 },
-    { "t": "2026-10-22T09:22:09.000Z", "method": "GET", "route": "/v2/briefs/:id/audio", "status": 504, "code": "upstream_timeout", "ms": 30000, "retries": 1 }
+    { "t": "2026-10-22T09:22:09.000Z", "method": "GET", "route": "/v2/briefs/latest", "status": 504, "code": "upstream_timeout", "ms": 30000, "retries": 1 }
   ],
   "outbox": { "queued": 0, "sending": 0, "sent": 12, "failed": 0, "oldestAgeSeconds": null, "lastFailureCodes": [] },
-  "failures": [ { "t": "2026-10-22T09:22:10.000Z", "code": "brief.audio_failed", "screen": "journal" } ],
+  "failures": [ { "t": "2026-10-22T09:22:10.000Z", "code": "server", "screen": "journal" } ],
   "performance": {
     "launchMs": 820,
     "hitchRates": [ { "screen": "journal", "ratio": 0.01 } ],

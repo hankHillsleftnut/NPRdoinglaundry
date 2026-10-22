@@ -8,7 +8,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { DiagnosticsReport } from '../src/diagnostics/schema.js';
-import { createDiagnosticsStore, newReference, REPORT_TTL_DAYS } from '../src/diagnostics/store.js';
+import { DIAGNOSTIC_CONTROLS, DIAGNOSTIC_FAILURES, DIAGNOSTIC_SCREENS, DIAGNOSTIC_SHEETS, V2_ROUTE_TEMPLATES } from '../src/diagnostics/ids.js';
+import { createDiagnosticsStore, newReference, REPORT_TTL_DAYS, type DiagnosticsBackend } from '../src/diagnostics/store.js';
+import { REFERENCE_CONSTRAINT } from '../src/diagnostics/supabase-backend.js';
+import { asServiceRole, freshDatabase, insertUser } from './support/database.js';
 import { doorSuite } from './support/door-suite.js';
 import { startHarness } from './support/harness.js';
 import { memoryDiagnostics } from './support/memory-diagnostics.js';
@@ -130,6 +133,17 @@ const STRING_PATHS: Array<(r: Record<string, any>) => void> = [
   (r) => { r.events[0].text = WORDS; },
   (r) => { r.environment.email = 'sam@example.com'; },
   (r) => { r.searchQuery = WORDS; },
+  // Slugs that read as words: a pattern would pass them, the closed lists don't.
+  (r) => { r.network[0].route = '/v2/search/divorce-lawyer'; },
+  (r) => { r.network[0].route = '/v2/entries/call-mom'; },
+  (r) => { r.events[2].control = 'call_mom'; },
+  (r) => { r.events[1].screen = 'divorce_lawyer'; },
+  (r) => { r.events[0].sheet = 'mom.birthday'; },
+  (r) => { r.failures[0].code = 'call_mom'; },
+  (r) => { r.failures[0].screen = 'call_mom'; },
+  (r) => { r.performance.hitchRates[0].screen = 'call_mom'; },
+  (r) => { r.account.access = 'sam'; },
+  (r) => { r.account.email = 'sam@example.com'; },
 ];
 
 test('no free text gets in anywhere except the labelled note', async () => {
@@ -181,14 +195,16 @@ test('a gzip-compressed report is accepted', async () => {
   }
 });
 
-test('the door log records the request, never the report', async () => {
+test('the door log records the size and counts, never the report', async () => {
   const { h, send } = await harness();
   try {
     await send(ALICE, report());
     const all = h.logLines.join('\n');
     assert.equal(all.includes('brief stopped'), false);
     assert.equal(all.includes('journal'), false);
-    assert.ok(h.logLines.some((l) => l.includes('"door":"diagnostics.create"')));
+    const line = h.logLines.map((l) => JSON.parse(l) as Record<string, unknown>).find((l) => l.door === 'diagnostics.create')!;
+    assert.equal(line.sizeBytes, Buffer.byteLength(JSON.stringify(DiagnosticsReport.parse(report())), 'utf8'));
+    assert.deepEqual([line.events, line.requests, line.failures, line.crashes], [5, 2, 1, 0]);
   } finally {
     await h.close();
   }
@@ -223,8 +239,10 @@ test('a reference already in use is drawn again', async () => {
   const picks = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1];
   const store = createDiagnosticsStore(mem.backend, () => picks.shift() ?? 2);
   const parsed = DiagnosticsReport.parse(report());
-  assert.deepEqual(await store.save(ALICE, parsed, 0), { outcome: 'stored', reference: 'r-0000' });
-  assert.deepEqual(await store.save(ALICE, { ...parsed, reportId: '00000000-0000-4000-8000-0000000000f3' }, 0), { outcome: 'stored', reference: 'r-1111' });
+  const first = await store.save(ALICE, parsed, 0);
+  const second = await store.save(ALICE, { ...parsed, reportId: '00000000-0000-4000-8000-0000000000f3' }, 0);
+  assert.deepEqual([first.outcome, second.outcome], ['stored', 'stored']);
+  assert.deepEqual([(first as { reference: string }).reference, (second as { reference: string }).reference], ['r-0000', 'r-1111']);
   assert.match(newReference(), /^r-[0-9A-HJKMNP-TV-Z]{4}$/);
 });
 
@@ -269,4 +287,133 @@ test('storage and database errors surface as codes only', async () => {
   const backend = supabaseDiagnosticsBackend(failing as never);
   await assert.rejects(backend.findById('id'), (e: unknown) => e instanceof Error && e.message === 'diagnostics lookup failed (42P01)');
   await assert.rejects(backend.upload('p', '{}'), (e: unknown) => e instanceof Error && e.message === 'diagnostics upload failed (500)');
+});
+
+test('the closed lists are the contract fixture exactly, so the app records from the same lists', () => {
+  assert.deepEqual(fixture('diagnostics.ids.json'), {
+    routes: [...V2_ROUTE_TEMPLATES],
+    screens: [...DIAGNOSTIC_SCREENS],
+    sheets: [...DIAGNOSTIC_SHEETS],
+    controls: [...DIAGNOSTIC_CONTROLS],
+    failures: [...DIAGNOSTIC_FAILURES],
+  });
+});
+
+test('the route list is every /v2 route contracts 00-02 define, each a template', () => {
+  const CONTRACTS = join(__dirname, '..', '..', 'docs', 'team', 'contracts');
+  const named = new Set<string>();
+  for (const file of ['00-platform.md', '01-first-run.md', '02-journal.md']) {
+    const text = readFileSync(join(CONTRACTS, file), 'utf8');
+    for (const m of text.matchAll(/\/v2\/[A-Za-z0-9/:_.-]*[A-Za-z0-9]/g)) named.add(m[0]);
+  }
+  named.delete('/v2/auth'); // the router's mount point, not a route
+  assert.deepEqual([...V2_ROUTE_TEMPLATES].sort(), [...named].sort());
+  for (const route of V2_ROUTE_TEMPLATES) {
+    for (const segment of route.split('/').slice(2)) assert.match(segment, /^(:[a-z]+|[a-z][a-z-]*)$/, route);
+  }
+});
+
+/** A backend whose next uploads fail, to prove the order of the writes. */
+function failingUploads(n: number) {
+  const mem = memoryDiagnostics();
+  let failures = n;
+  const backend: DiagnosticsBackend = {
+    ...mem.backend,
+    async upload(path, body) {
+      if (failures > 0) { failures--; throw new Error('storage down'); }
+      return mem.backend.upload(path, body);
+    },
+  };
+  return { mem, backend };
+}
+
+test('a failed upload leaves no row and no file, and the retry stores the report', async () => {
+  const { mem, backend } = failingUploads(1);
+  const store = createDiagnosticsStore(backend, counterPick());
+  const parsed = DiagnosticsReport.parse(report());
+  await assert.rejects(store.save(ALICE, parsed, 0), /storage down/);
+  assert.equal(mem.rows.size, 0, 'the row is taken back out');
+  assert.equal(mem.files.size, 0);
+  const again = await store.save(ALICE, parsed, 0);
+  assert.equal(again.outcome, 'stored');
+  assert.equal(mem.rows.size, 1);
+  assert.equal(mem.files.size, 1);
+});
+
+test('the row is written before the bundle, so no stored file is ever without a row', async () => {
+  const mem = memoryDiagnostics();
+  const order: string[] = [];
+  const backend: DiagnosticsBackend = {
+    ...mem.backend,
+    async insert(row) { order.push('row'); return mem.backend.insert(row); },
+    async upload(path, body) { order.push('file'); assert.equal(mem.rows.size, 1, 'the row exists first'); return mem.backend.upload(path, body); },
+  };
+  await createDiagnosticsStore(backend, counterPick()).save(ALICE, DiagnosticsReport.parse(report()), 0);
+  assert.deepEqual(order, ['row', 'file']);
+});
+
+test('a retry of a report whose file went missing writes the file again', async () => {
+  const mem = memoryDiagnostics();
+  const backend: DiagnosticsBackend = { ...mem.backend, async deleteRows() { throw new Error('database down'); } };
+  const parsed = DiagnosticsReport.parse(report());
+  // The upload fails and the row can't be removed either: a row with no file.
+  const broken = createDiagnosticsStore({ ...backend, async upload() { throw new Error('storage down'); } }, counterPick());
+  await assert.rejects(broken.save(ALICE, parsed, 0), /storage down/, 'the upload error, not the cleanup error');
+  assert.equal(mem.rows.size, 1);
+  assert.equal(mem.files.size, 0);
+  const replay = await createDiagnosticsStore(backend, counterPick()).save(ALICE, parsed, 0);
+  assert.equal(replay.outcome, 'replayed');
+  assert.equal(mem.files.size, 1, 'the report is complete again');
+});
+
+test('a send that loses a race to a send whose upload failed is an error, never a mismatch', async () => {
+  const mem = memoryDiagnostics();
+  // findById misses (the other send hasn't inserted yet), then insert clashes on the id,
+  // then the other send takes its row back out: the winner is gone.
+  const backend: DiagnosticsBackend = { ...mem.backend, async findById() { return null; }, async insert() { return { conflict: 'id' }; } };
+  await assert.rejects(createDiagnosticsStore(backend, counterPick()).save(ALICE, DiagnosticsReport.parse(report()), 0), /racing send/);
+});
+
+test('five reference clashes in a row are an error, not an endless loop', async () => {
+  const mem = memoryDiagnostics();
+  let inserts = 0;
+  const backend: DiagnosticsBackend = { ...mem.backend, async insert() { inserts++; return { conflict: 'reference' }; } };
+  await assert.rejects(createDiagnosticsStore(backend, counterPick()).save(ALICE, DiagnosticsReport.parse(report()), 0), /no free reference/);
+  assert.equal(inserts, 5);
+  assert.equal(mem.files.size, 0, 'nothing uploaded without a row');
+});
+
+test('the real backend tells a reference clash from an id clash by the constraint name', async () => {
+  const { supabaseDiagnosticsBackend } = await import('../src/diagnostics/supabase-backend.js');
+  const clash = (message: string) => supabaseDiagnosticsBackend({
+    from: () => ({ insert: async () => ({ error: { code: '23505', message } }) }),
+  } as never);
+  const row = {} as never;
+  assert.deepEqual(await clash(`duplicate key value violates unique constraint "${REFERENCE_CONSTRAINT}"`).insert(row), { conflict: 'reference' });
+  assert.deepEqual(await clash('duplicate key value violates unique constraint "diagnostic_reports_pkey"').insert(row), { conflict: 'id' });
+});
+
+test('migration 019 on a real Postgres: the reference constraint has the name the backend reads, and the bucket is private', async () => {
+  const db = await freshDatabase();
+  try {
+    const userId = await insertUser(db);
+    const row = (id: string) => [id, userId, 'r-7KQ2', 'h', `${userId}/${id}.json`, 10, '2026-11-21T00:00:00Z'];
+    const insert = `INSERT INTO diagnostic_reports (id, user_id, reference, body_hash, storage_path, size_bytes, expires_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`;
+    await asServiceRole(db, async () => {
+      await db.query(insert, row('00000000-0000-4000-8000-0000000000a1'));
+      await assert.rejects(db.query(insert, row('00000000-0000-4000-8000-0000000000a2')),
+        (e: unknown) => e instanceof Error && e.message.includes(REFERENCE_CONSTRAINT));
+    });
+    const { rows } = await db.query<{ public: boolean }>(`SELECT public FROM storage.buckets WHERE id = 'diagnostics'`);
+    assert.deepEqual(rows, [{ public: false }]);
+    await db.exec('SET ROLE anon');
+    try {
+      await assert.rejects(db.query('SELECT id FROM diagnostic_reports'), 'closed to anon');
+    } finally {
+      await db.exec('RESET ROLE');
+    }
+  } finally {
+    await db.close();
+  }
 });

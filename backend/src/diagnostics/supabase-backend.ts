@@ -5,6 +5,8 @@ const TABLE = 'diagnostic_reports';
 const BUCKET = 'diagnostics';
 const COLUMNS = 'id, user_id, reference, body_hash, storage_path, size_bytes, counts, app_version, created_at, expires_at';
 const UNIQUE_VIOLATION = '23505';
+/** Postgres's name for the `reference TEXT UNIQUE` constraint (migration 019); the id clash is the primary key. */
+export const REFERENCE_CONSTRAINT = 'diagnostic_reports_reference_key';
 
 /** Errors carry the code only: a database or storage message can carry row values. */
 function fail(what: string, error: { code?: string; statusCode?: string; name?: string }): never {
@@ -17,7 +19,8 @@ export function supabaseDiagnosticsBackend(db: SupabaseClient): DiagnosticsBacke
       const { error } = await db.from(TABLE).insert(row);
       if (!error) return { conflict: null };
       if (error.code === UNIQUE_VIOLATION) {
-        return { conflict: /reference/.test(error.message ?? '') ? 'reference' : 'id' };
+        // Only the constraint's name is read from the message, never a value.
+        return { conflict: (error.message ?? '').includes(REFERENCE_CONSTRAINT) ? 'reference' : 'id' };
       }
       return fail('insert', error);
     },
