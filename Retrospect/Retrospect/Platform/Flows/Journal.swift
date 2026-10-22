@@ -379,7 +379,10 @@ extension Flows {
         func load() async
 
         /// Saves the entry on the phone at once (`.waiting`) and sends it exactly once.
-        func send(text: String) async
+        /// `.queued` means it is saved; `.failed` means it is NOT saved (too long, or the phone
+        /// couldn't write it) and the screen must give the words back to the person.
+        @discardableResult
+        func send(text: String) async -> Journal.WriteOutcome
         func sendVoice(_ note: Journal.VoiceNote) async
         func retry(clientEntryId: String) async
         /// Retro's short line for a sent entry: nil until the entry is `.sent`, never the same

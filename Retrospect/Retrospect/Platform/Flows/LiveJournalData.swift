@@ -257,20 +257,27 @@ final class LiveJournalData: Flows.JournalData {
 
     // MARK: Sending
 
-    func send(text: String) async {
+    @discardableResult
+    func send(text: String) async -> Journal.WriteOutcome {
         await enqueue(kind: .typed, text: text, mediaPath: nil)
     }
 
     func sendVoice(_ note: Journal.VoiceNote) async {
-        await enqueue(kind: .voice, text: note.transcript, mediaPath: note.recordingPath)
+        _ = await enqueue(kind: .voice, text: note.transcript, mediaPath: note.recordingPath)
     }
 
-    private func enqueue(kind: Backend.Endpoints.CreateEntry.Kind, text: String, mediaPath: String?) async {
+    /// Saves the entry; `.failed` when nothing was saved, so the screen can hand the words back.
+    private func enqueue(kind: Backend.Endpoints.CreateEntry.Kind, text: String, mediaPath: String?) async -> Journal.WriteOutcome {
         guard text.utf16.count <= Self.longestEntry,
               let draft = Store.EntryDraft(kind: kind, text: text, createdAt: now(), mediaPath: mediaPath)
-        else { return }
+        else { return .failed(Flows.Failure(.invalidRequest)) }
         // The row lands in the store; the observation shows it as waiting. Nothing is appended here.
-        _ = try? await outbox.enqueueEntry(draft)
+        do {
+            _ = try await outbox.enqueueEntry(draft)
+            return .queued
+        } catch {
+            return .failed(Flows.Failure(.unknown))
+        }
     }
 
     func retry(clientEntryId: String) async {
