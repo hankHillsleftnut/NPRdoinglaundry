@@ -4,22 +4,12 @@
 //  reference §C32). Wherever Retro says something about you, these rows show where it came
 //  from, one source each, in your own words. The settings row's shape: min 56, padding 12 / 16,
 //  12 between parts; a 32 kind well, the date and kind in Geist 12 over one line of your words
-//  in SF 14, and › to open. Rows sit in one grouped panel (REvidenceGroup), 1pt border.subtle
+//  in SF 14, and › to open. Rows press like every list row (RListRowStyle: surface.subtle). Rows sit in one grouped panel (REvidenceGroup), 1pt border.subtle
 //  between them, never a stack of cards.
 //
 import SwiftUI
 
 extension RTextStyle {
-    /// The date and kind ("14 oct · your words"): Geist 12, leading snug, no tracking (1FZ1-0).
-    static let evidenceMeta = RTextStyle(
-        family: .label,
-        size: RDimension.fontSizeSm,
-        weight: .regular,
-        tracking: RNumber.fontTrackingNone,
-        leading: RTextStyle.label.leading,
-        relativeTo: .caption
-    )
-
     /// Your words: SF 14, --tracking-card, leading snug (1FZ0-0).
     static let evidenceWords = RTextStyle(
         family: .text,
@@ -55,7 +45,7 @@ struct REvidenceRow: View {
                 leadingView
                 VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
                     Text(meta)
-                        .rText(.evidenceMeta)
+                        .rText(.metaLine)
                         .foregroundStyle(RColor.textLabel)
                     Text(words)
                         .rText(.evidenceWords)
@@ -66,14 +56,20 @@ struct REvidenceRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .multilineTextAlignment(.leading)
-                RSymbol(name: "chevron.right", size: .small, tint: RColor.iconMuted, glyphScale: 0.72) // literal-ok: Paper's 14pt ›
+                // Paper draws › at 14 (--text-md) in RSymbol's 16 frame
+                RSymbol(
+                    name: "chevron.right",
+                    size: .small,
+                    tint: RColor.iconMuted,
+                    glyphScale: RSymbol.defaultGlyphScale * RDimension.fontSizeMd / RDimension.sizeIconSmall
+                )
             }
             .padding(.vertical, RDimension.space3)
             .padding(.horizontal, RDimension.space4)
             .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
             .contentShape(Rectangle())
         }
-        .buttonStyle(RSettingsRowStyle())
+        .buttonStyle(RListRowStyle())
         // one element: "14 oct, your words, <the full excerpt>, button"
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)")
@@ -85,7 +81,8 @@ struct REvidenceRow: View {
             RIconWell(
                 symbol: symbol,
                 fill: onTint ? RColor.surfaceLifted : RColor.surfaceWash,
-                glyphScale: 0.74 // literal-ok: Paper's 18pt glyph, 18 × 0.82 in the 20 frame
+                // Paper draws the glyph at 18 (--text-lg) in RSymbol's 20 frame
+                glyphScale: RSymbol.defaultGlyphScale * RDimension.fontSizeLg / RDimension.sizeIconDefault
             )
             .accessibilityHidden(true)
         }
@@ -103,8 +100,8 @@ struct REvidenceGroup<Content: View>: View {
         let shape = RShape.rect(RDimension.radiusPanel)
         VStack(spacing: RDimension.space0) {
             Group(subviews: content) { rows in
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    if index > 0 {
+                ForEach(rows) { row in
+                    if row.id != rows.first?.id {
                         (contrast == .increased ? RColor.borderStrong : RColor.borderSubtle)
                             .frame(height: RDimension.sizeBorderDefault)
                             .accessibilityHidden(true)

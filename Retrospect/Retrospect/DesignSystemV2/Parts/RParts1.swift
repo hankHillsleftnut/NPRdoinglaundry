@@ -29,7 +29,10 @@ struct RSymbol: View {
     var weight: Font.Weight = .regular
     /// Glyph point size as a share of the frame. Some symbols draw larger than Paper's inked
     /// set at the same frame (↗ needs 0.66 to match its 8.5pt mark), so they set their own.
-    var glyphScale: CGFloat = 0.82 // literal-ok: SF Symbol point size maps to its frame
+    var glyphScale: CGFloat = RSymbol.defaultGlyphScale
+
+    /// Glyph point size as a share of the frame, for most symbols.
+    static let defaultGlyphScale: CGFloat = 0.82 // literal-ok: SF Symbol point size maps to its frame
 
     var body: some View {
         Image(systemName: name)
@@ -49,7 +52,7 @@ struct RIconWell: View {
     /// surface.wash, or status.dangerSubtle for a danger row (part 26).
     var fill: Color = RColor.surfaceWash
     /// The glyph's share of its 20 frame (RSymbol). Some boards draw it at 18 (evidence rows).
-    var glyphScale: CGFloat = 0.82 // literal-ok: RSymbol's default glyph scale
+    var glyphScale: CGFloat = RSymbol.defaultGlyphScale
 
     var body: some View {
         RSymbol(name: symbol, tint: tint, glyphScale: glyphScale)

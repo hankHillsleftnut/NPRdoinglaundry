@@ -84,7 +84,7 @@ struct RSettingsRow: View {
             .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
             .contentShape(Rectangle())
         }
-        .buttonStyle(RSettingsRowStyle())
+        .buttonStyle(RListRowStyle())
         .disabled(disabled)
         // a switch ticks on every change; in a choice group only the newly chosen row ticks,
         // so one choice is one haptic, not one per row that changed
@@ -184,8 +184,9 @@ struct RSettingsRow: View {
 }
 
 /// Pressed: surface.subtle at once, back over 240ms; Reduce Motion: no fade (part 22).
-/// Shared by every list row (settings, evidence) so all lists press the same way.
-struct RSettingsRowStyle: ButtonStyle {
+/// Every list row presses this way (settings, evidence): Paper's row master draws pressed as
+/// surface.subtle (part 22).
+struct RListRowStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
