@@ -17,6 +17,13 @@ struct StoreTests {
         userID: "6f1c2a8e-0000-4000-8000-000000000001"
     )
 
+    private let newer = Session.Credentials(
+        accessToken: "access-newer",
+        accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_574_100),
+        refreshToken: "refresh-newer",
+        userID: "6f1c2a8e-0000-4000-8000-000000000001"
+    )
+
     init() throws {
         defaults = try #require(UserDefaults(suiteName: suite))
     }
@@ -25,9 +32,14 @@ struct StoreTests {
         Session.Store(keychain: keychain, legacyKeychain: legacy, defaults: defaults)
     }
 
+    private func json(_ object: [String: Any]) throws -> Data {
+        try JSONSerialization.data(withJSONObject: object)
+    }
+
+    // MARK: Credentials
+
     @Test("credentials round-trip")
     func credentialsRoundTrip() async throws {
-        defer { defaults.removePersistentDomain(forName: suite) }
         let store = store()
 
         try await store.save(credentials)
@@ -35,18 +47,24 @@ struct StoreTests {
         #expect(try await store.credentials() == credentials)
     }
 
+    @Test("the whole session is one Keychain item")
+    func theWholeSessionIsOneItem() async throws {
+        try await store().save(credentials)
+
+        #expect(Array(keychain.contents.keys) == ["session"])
+    }
+
     @Test("an expiry with milliseconds survives to the millisecond")
     func anExpiryWithMillisecondsSurvives() async throws {
-        defer { defaults.removePersistentDomain(forName: suite) }
         let store = store()
         let expiring = Session.Credentials(
-            accessToken: "a", accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_570_500.25), refreshToken: "r", userID: "u"
+            accessToken: "a", accessTokenExpiresAt: Date(timeIntervalSince1970: 1_792_570_500.123), refreshToken: "r", userID: "u"
         )
 
         try await store.save(expiring)
 
         let read = try #require(try await store.credentials())
-        #expect(abs(read.accessTokenExpiresAt.timeIntervalSince(expiring.accessTokenExpiresAt)) < 0.002)
+        #expect(abs(read.accessTokenExpiresAt.timeIntervalSince(expiring.accessTokenExpiresAt)) <= 0.001)
     }
 
     @Test("nothing saved reads as signed out")
@@ -54,24 +72,67 @@ struct StoreTests {
         #expect(try await store().credentials() == nil)
     }
 
-    @Test("a half-written session reads as signed out")
-    func aHalfWrittenSessionReadsAsSignedOut() async throws {
+    @Test("a save that fails leaves the previous session exactly as it was")
+    func aFailedSaveLeavesThePreviousSession() async throws {
         let store = store()
+        keychain.failCall(2, with: errSecInteractionNotAllowed)
         try await store.save(credentials)
-        try keychain.delete("refresh_token")
+        let before = keychain.contents
 
-        #expect(try await store.credentials() == nil)
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.save(newer) }
+
+        #expect(keychain.contents == before)
+        #expect(try await store.credentials() == credentials)
     }
 
-    @Test("a save that fails partway never leaves a newer access token beside an older refresh token")
-    func aSaveThatFailsPartwayLeavesNoMixedSession() async throws {
+    @Test("a later save replaces the whole session")
+    func aLaterSaveReplacesTheWholeSession() async throws {
         let store = store()
-        keychain.failNext(with: errSecInteractionNotAllowed)
+        try await store.save(credentials)
 
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.save(credentials) }
+        try await store.save(newer)
 
-        keychain.failNext(with: nil)
-        #expect(keychain.contents["access_token"] == nil)
+        #expect(try await store.credentials() == newer)
+        #expect(keychain.contents.count == 1)
+    }
+
+    @Test(
+        "an unreadable expiry reads as long past and keeps the tokens",
+        arguments: [["accessTokenExpiresAt": "not a date"], ["accessTokenExpiresAt": 42], [:]] as [[String: Any]]
+    )
+    func anUnreadableExpiryKeepsTheTokens(_ expiry: [String: Any]) async throws {
+        let item = ["accessToken": "a", "refreshToken": "r", "userID": "u"].merging(expiry) { old, _ in old }
+        try keychain.write(json(item), account: "session")
+
+        let read = try #require(try await store().credentials())
+
+        #expect(read == Session.Credentials(accessToken: "a", accessTokenExpiresAt: .distantPast, refreshToken: "r", userID: "u"))
+    }
+
+    @Test("an expiry without milliseconds is read")
+    func anExpiryWithoutMillisecondsIsRead() async throws {
+        try keychain.write(
+            json(["accessToken": "a", "accessTokenExpiresAt": "2026-10-21T08:00:04Z", "refreshToken": "r", "userID": "u"]),
+            account: "session"
+        )
+
+        let read = try #require(try await store().credentials())
+
+        #expect(read.accessTokenExpiresAt == Date(timeIntervalSince1970: 1_792_569_604))
+    }
+
+    @Test(
+        "an item that isn't a whole session reads as signed out",
+        arguments: [
+            Data("not json".utf8),
+            Data(#"{"accessToken":"a","accessTokenExpiresAt":"2026-10-21T08:00:04.000Z","userID":"u"}"#.utf8),
+            Data(#"{"accessToken":"a","accessTokenExpiresAt":"2026-10-21T08:00:04.000Z","refreshToken":7,"userID":"u"}"#.utf8),
+        ]
+    )
+    func anItemThatIsNotASessionReadsAsSignedOut(_ item: Data) async throws {
+        try keychain.write(item, account: "session")
+
+        #expect(try await store().credentials() == nil)
     }
 
     @Test("clearCredentials keeps hasSignedInBefore and a pending invite")
@@ -86,6 +147,7 @@ struct StoreTests {
         #expect(try await store.credentials() == nil)
         #expect(try await store.hasSignedInBefore)
         #expect(try await store.pendingInviteCode() == "7KQ2-M9XD-4RTA-B")
+        #expect(Set(keychain.contents.keys) == ["has_signed_in_before", "pending_invite_code"])
     }
 
     @Test("a pending invite code can be set and cleared")
@@ -99,15 +161,29 @@ struct StoreTests {
         #expect(try await store.pendingInviteCode() == nil)
     }
 
+    @Test("a Keychain error surfaces its status, never a crash")
+    func aKeychainErrorSurfacesItsStatus() async {
+        let store = store()
+        keychain.failEveryCall(with: errSecInteractionNotAllowed)
+
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.credentials() }
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.save(credentials) }
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.hasSignedInBefore }
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.clearCredentials() }
+    }
+
+    // MARK: Install sentinel
+
     @Test("a fresh install wipes both services and writes the sentinel")
     func aFreshInstallWipesBothServices() async throws {
         defer { defaults.removePersistentDomain(forName: suite) }
-        try keychain.write(Data("left".utf8), account: "access_token")
+        try keychain.write(Data("left".utf8), account: "session")
         try keychain.write(Data("1".utf8), account: "has_signed_in_before")
         try legacy.write(Data("left".utf8), account: "jwt_token")
 
-        try await store().applyInstallSentinel()
+        let check = try await store().applyInstallSentinel()
 
+        #expect(check == .wipedLeftovers)
         #expect(keychain.contents.isEmpty)
         #expect(legacy.contents.isEmpty)
         #expect(defaults.object(forKey: Session.Store.installSentinelKey) != nil)
@@ -118,12 +194,13 @@ struct StoreTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(true, forKey: key)
         try legacy.write(Data("kept".utf8), account: "jwt_token")
-        try keychain.write(Data("kept".utf8), account: "access_token")
+        try keychain.write(Data("kept".utf8), account: "session")
 
-        try await store().applyInstallSentinel()
+        let check = try await store().applyInstallSentinel()
 
+        #expect(check == .keptUpdate)
         #expect(legacy.contents["jwt_token"] == Data("kept".utf8))
-        #expect(keychain.contents["access_token"] == Data("kept".utf8))
+        #expect(keychain.contents["session"] == Data("kept".utf8))
         #expect(defaults.object(forKey: Session.Store.installSentinelKey) != nil)
     }
 
@@ -134,28 +211,96 @@ struct StoreTests {
         try await store.applyInstallSentinel()
         try await store.save(credentials)
 
-        try await store.applyInstallSentinel()
+        let check = try await store.applyInstallSentinel()
 
+        #expect(check == .alreadyDone)
         #expect(try await store.credentials() == credentials)
-    }
-
-    @Test("a Keychain error surfaces its status, never a crash")
-    func aKeychainErrorSurfacesItsStatus() async {
-        let store = store()
-        keychain.failNext(with: errSecInteractionNotAllowed)
-
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.credentials() }
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.hasSignedInBefore }
-        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.clearCredentials() }
     }
 
     @Test("a failed wipe leaves the sentinel unwritten, so the next launch tries again")
     func aFailedWipeLeavesTheSentinelUnwritten() async throws {
         defer { defaults.removePersistentDomain(forName: suite) }
-        legacy.failNext(with: errSecInteractionNotAllowed)
+        legacy.failEveryCall(with: errSecInteractionNotAllowed)
 
         await #expect(throws: Session.KeychainError.self) { try await store().applyInstallSentinel() }
 
         #expect(defaults.object(forKey: Session.Store.installSentinelKey) == nil)
+    }
+
+    // MARK: The launch bridge
+
+    @Test("at launch, the check logs what it did")
+    func theLaunchCheckLogsWhatItDid() throws {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = Platform.Log.Recorder()
+        try legacy.write(Data("left".utf8), account: "jwt_token")
+
+        let check = Session.Store.checkInstallAtLaunch(
+            isUnlockedSinceBoot: true, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
+        )
+
+        #expect(check == .wipedLeftovers)
+        #expect(legacy.contents.isEmpty)
+        #expect(log.events == [.installChecked(.wipedLeftovers)])
+    }
+
+    @Test("before the first unlock, the launch check touches nothing and waits")
+    func beforeTheFirstUnlockTheLaunchCheckWaits() throws {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = Platform.Log.Recorder()
+        try keychain.write(Data("kept".utf8), account: "session")
+        try legacy.write(Data("kept".utf8), account: "jwt_token")
+
+        let check = Session.Store.checkInstallAtLaunch(
+            isUnlockedSinceBoot: false, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
+        )
+
+        #expect(check == .deferredUntilUnlock)
+        #expect(keychain.contents["session"] == Data("kept".utf8))
+        #expect(legacy.contents["jwt_token"] == Data("kept".utf8))
+        #expect(defaults.object(forKey: Session.Store.installSentinelKey) == nil)
+        #expect(log.events == [.installChecked(.deferredUntilUnlock)])
+    }
+
+    @Test("a launch check that fails logs the Keychain status and doesn't throw")
+    func aFailedLaunchCheckLogsTheStatus() {
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let log = Platform.Log.Recorder()
+        keychain.failEveryCall(with: errSecInteractionNotAllowed)
+
+        let check = Session.Store.checkInstallAtLaunch(
+            isUnlockedSinceBoot: true, log: log, keychain: keychain, legacyKeychain: legacy, defaults: defaults
+        )
+
+        #expect(check == nil)
+        #expect(log.events == [.installCheckFailed(status: errSecInteractionNotAllowed)])
+        #expect(defaults.object(forKey: Session.Store.installSentinelKey) == nil)
+    }
+}
+
+@Suite(.timeLimit(.minutes(1)))
+struct MemoryKeychainTests {
+    @Test("failCall fails only the numbered call, once")
+    func failCallFailsOnlyTheNumberedCall() throws {
+        let keychain = Session.MemoryKeychain()
+        keychain.failCall(2, with: errSecIO)
+
+        try keychain.write(Data("1".utf8), account: "a")
+        #expect(throws: Session.KeychainError(status: errSecIO)) { try keychain.write(Data("2".utf8), account: "a") }
+        try keychain.write(Data("3".utf8), account: "b")
+
+        #expect(keychain.contents == ["a": Data("1".utf8), "b": Data("3".utf8)])
+    }
+
+    @Test("failEveryCall fails every call until it's cleared")
+    func failEveryCallFailsUntilCleared() throws {
+        let keychain = Session.MemoryKeychain()
+        keychain.failEveryCall(with: errSecIO)
+
+        #expect(throws: Session.KeychainError(status: errSecIO)) { try keychain.read("a") }
+        #expect(throws: Session.KeychainError(status: errSecIO)) { try keychain.deleteAll() }
+        keychain.failEveryCall(with: nil)
+
+        #expect(try keychain.read("a") == nil)
     }
 }

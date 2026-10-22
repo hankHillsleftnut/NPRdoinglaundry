@@ -70,6 +70,14 @@ struct SystemKeychainTests {
         #expect(try keychain.read("b") == nil)
     }
 
+    @Test("an unlocked phone reads as unlocked since boot, and the probe leaves nothing behind", .enabled(if: isKeychainAvailable, "the test host isn't signed"))
+    func theUnlockProbeLeavesNothing() throws {
+        defer { try? keychain.deleteAll() }
+
+        #expect(keychain.isUnlockedSinceBoot())
+        #expect(try keychain.read("unlock_probe") == nil)
+    }
+
     private func accessibility(of account: String) throws -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: keychain.service, kSecAttrAccount as String: account,

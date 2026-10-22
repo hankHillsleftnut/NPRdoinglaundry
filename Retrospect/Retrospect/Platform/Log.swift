@@ -26,6 +26,11 @@ extension Platform.Log {
         /// A door answered with an error code outside the contract's list. The
         /// code itself is never logged.
         case unknownErrorCode(path: Backend.PathTemplate)
+        /// The launch install check ran (PL1.3): what it found.
+        case installChecked(Session.InstallCheck)
+        /// The launch install check failed with this Keychain status; the next
+        /// launch tries again.
+        case installCheckFailed(status: OSStatus)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -49,6 +54,15 @@ extension Platform.Log {
                 switch path {
                 case .meta: logger.error("unknown error code from /v2/meta")
                 }
+            case let .installChecked(check):
+                switch check {
+                case .alreadyDone: logger.debug("install check: already done")
+                case .wipedLeftovers: logger.info("install check: fresh install, leftovers wiped")
+                case .keptUpdate: logger.info("install check: update from the old app, nothing wiped")
+                case .deferredUntilUnlock: logger.info("install check: deferred until the phone is unlocked")
+                }
+            case let .installCheckFailed(status):
+                logger.error("install check failed: keychain status \(status)")
             }
         }
     }

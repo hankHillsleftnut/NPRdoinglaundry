@@ -64,6 +64,20 @@ extension Session {
             guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status: status) }
         }
 
+        /// Whether the phone has been unlocked since it started: an
+        /// `AfterFirstUnlock` item can be written only then. Writes and removes
+        /// a probe item that holds no data.
+        func isUnlockedSinceBoot() -> Bool {
+            let account = "unlock_probe"
+            do {
+                try write(Data(), account: account)
+                try? delete(account)
+                return true
+            } catch {
+                return false
+            }
+        }
+
         /// What every write sets: the value and its accessibility. An update sets
         /// both, so an item the old app wrote `WhenUnlocked` is moved over too.
         static func attributes(_ data: Data) -> [String: Any] {
@@ -79,11 +93,14 @@ extension Session {
         }
     }
 
-    /// An in-memory Keychain for tests and previews. Can be told to fail.
+    /// An in-memory Keychain for tests and previews. Can be told to fail every
+    /// call, or exactly one call counted from now.
     final class MemoryKeychain: KeychainBackend, @unchecked Sendable {
         private let lock = NSLock()
         private var items: [String: Data] = [:]
-        private var failure: OSStatus?
+        private var everyCall: OSStatus?
+        private var oneCall: (number: Int, status: OSStatus)?
+        private var callsSinceArmed = 0
 
         init(_ items: [String: Data] = [:]) {
             self.items = items
@@ -94,9 +111,18 @@ extension Session {
             lock.withLock { items }
         }
 
-        /// From now on every call fails with `status` (nil: works again).
-        func failNext(with status: OSStatus?) {
-            lock.withLock { failure = status }
+        /// From now on every call fails with `status`; nil makes calls work again.
+        func failEveryCall(with status: OSStatus?) {
+            lock.withLock { everyCall = status }
+        }
+
+        /// Only the `number`th call from now (1 is the next one) fails with
+        /// `status`; every other call works.
+        func failCall(_ number: Int, with status: OSStatus) {
+            lock.withLock {
+                oneCall = (number, status)
+                callsSinceArmed = 0
+            }
         }
 
         func read(_ account: String) throws -> Data? {
@@ -127,9 +153,16 @@ extension Session {
             }
         }
 
+        /// Called with the lock held.
         private func check() throws {
-            if let failure {
-                throw KeychainError(status: failure)
+            if let everyCall {
+                throw KeychainError(status: everyCall)
+            }
+            guard let oneCall else { return }
+            callsSinceArmed += 1
+            if callsSinceArmed == oneCall.number {
+                self.oneCall = nil
+                throw KeychainError(status: oneCall.status)
             }
         }
     }
