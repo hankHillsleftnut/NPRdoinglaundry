@@ -18,6 +18,12 @@ import { speechRouter } from './routes/speech.js';
 import { integrationOauthCallbackRouter, integrationsRouter } from './routes/integrations.js';
 import { graphRouter } from './routes/graph.js';
 import { applyServerTimeouts, globalLimiter, trustRenderProxy } from './server-settings.js';
+import { createAgentDoorClient } from './doors/agent.js';
+import { createDoorKit } from './doors/door.js';
+import { v2ErrorHandler } from './doors/errors.js';
+import { MemoryLimiter } from './doors/limits.js';
+import { createV2Router } from './doors/router.js';
+import { log } from './utils/log.js';
 
 
 const app = express();
@@ -68,6 +74,17 @@ app.use('/claude', authMiddleware, claudeRouter);
 app.use('/speech', authMiddleware, speechRouter);
 app.use('/integrations', authMiddleware, integrationsRouter);
 app.use('/graph', authMiddleware, graphRouter);
+
+// The new app's doors (src/doors). Public /v2 routes are mounted before this in later bytes.
+const door = createDoorKit({
+  agent: createAgentDoorClient({ baseUrl: config.agent.serviceUrl, internalSecret: config.agent.internalSecret }),
+  limiter: new MemoryLimiter(),
+  log,
+  now: Date.now,
+  reportBug: (err, name) => captureException(err, { door: name }),
+});
+app.use('/v2', authMiddleware, createV2Router(door));
+app.use('/v2', v2ErrorHandler);
 
 // Error handling middleware
 app.use(
