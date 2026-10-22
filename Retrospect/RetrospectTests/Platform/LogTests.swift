@@ -56,15 +56,8 @@ struct LogTests {
         }
     }
 
-    /// Every String, Substring, Character, URL or Data anywhere inside `value`,
-    /// through enums, structs, optionals and collections.
     private static func contentValues(in value: Any) -> [Any] {
-        switch value {
-        case is String, is Substring, is Character, is URL, is NSString, is NSURL, is Data, is NSData:
-            return [value]
-        default:
-            return Mirror(reflecting: value).children.flatMap { contentValues(in: $0.value) }
-        }
+        ContentCheck.values(in: value)
     }
 }
 
@@ -99,8 +92,12 @@ extension Platform.Log.Event {
             case .inviteReceived: .inviteReceived
             case .inviteChecked: .inviteChecked(.usable)
             case .inviteTorn: .inviteTorn(.yours)
+<<<<<<< HEAD
             case .versionFloor: .versionFloor(.current)
             case .versionUnreadable: .versionUnreadable(.floor)
+=======
+            case .diagnosticsWriteFailed: .diagnosticsWriteFailed
+>>>>>>> pl/PL1.7-invites
             }
         }
     }
@@ -109,7 +106,11 @@ extension Platform.Log.Event {
         case refreshed, outboxDrained, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
+<<<<<<< HEAD
              inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable
+=======
+             inviteReceived, inviteChecked, inviteTorn, diagnosticsWriteFailed
+>>>>>>> pl/PL1.7-invites
     }
 
     fileprivate var kind: Kind {
@@ -138,8 +139,12 @@ extension Platform.Log.Event {
         case .inviteReceived: .inviteReceived
         case .inviteChecked: .inviteChecked
         case .inviteTorn: .inviteTorn
+<<<<<<< HEAD
         case .versionFloor: .versionFloor
         case .versionUnreadable: .versionUnreadable
+=======
+        case .diagnosticsWriteFailed: .diagnosticsWriteFailed
+>>>>>>> pl/PL1.7-invites
         }
     }
 }

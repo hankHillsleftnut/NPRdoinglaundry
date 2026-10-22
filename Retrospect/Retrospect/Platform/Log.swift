@@ -75,6 +75,8 @@ extension Platform.Log {
         case versionUnreadable(Platform.UnreadableVersion)
         /// A launch argument was ignored (debug builds only).
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
+        /// A batch of diagnostics couldn't be written; it was dropped.
+        case diagnosticsWriteFailed
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -103,7 +105,7 @@ extension Platform.Log {
             case .refreshRetried, .refreshFailed, .sessionRevoked, .signedOut, .requestReplayed, .keychainWriteFailed:
                 recordSession(event)
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
-                 .legacyRefresh, .stagingResolvedToLocal:
+                 .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
                 recordDevice(event)
             case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable:
                 recordGate(event)
@@ -182,11 +184,14 @@ extension Platform.Log {
                 record(legacy: outcome)
             case .stagingResolvedToLocal:
                 logger.info("environment staging resolved to the backend on this Mac")
+            case .diagnosticsWriteFailed:
+                logger.error("diagnostics: a batch couldn't be written, dropped")
             default:
                 break
             }
         }
 
+        /// One fixed line per door: the template is never interpolated.
         private func record(sent path: Backend.PathTemplate, status: Int, ms: Int) {
             switch path {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
