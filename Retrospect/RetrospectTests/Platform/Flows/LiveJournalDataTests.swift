@@ -247,12 +247,14 @@ struct LiveJournalDataTests {
         #expect(sender.sends.count == 2)
     }
 
-    @Test("an empty or over-long entry is never saved")
+    @Test("an empty or over-long entry is never saved, and a refused one says so, so the words can go back")
     func refusedDrafts() async throws {
-        await data.send(text: "   ")
-        await data.send(text: String(repeating: "a", count: LiveJournalData.longestEntry + 1))
-
+        #expect(await data.send(text: "   ") == .failed(Flows.Failure(.invalidRequest)))
+        let long = await data.send(text: String(repeating: "a", count: LiveJournalData.longestEntry + 1))
+        #expect(long == .failed(Flows.Failure(.invalidRequest)))
         #expect(try rowCount() == 0)
+        #expect(await data.send(text: "fine") == .queued)
+        #expect(try rowCount() == 1)
     }
 
     // MARK: Merging

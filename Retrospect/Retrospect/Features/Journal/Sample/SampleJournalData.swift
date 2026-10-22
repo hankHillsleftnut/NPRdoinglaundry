@@ -130,8 +130,10 @@ final class SampleJournalData: Flows.JournalData {
 
     // MARK: - Sending
 
-    func send(text: String) async {
+    @discardableResult
+    func send(text: String) async -> Journal.WriteOutcome {
         await sendNew(kind: .typed, text: text)
+        return isOnline ? .done : .queued
     }
 
     func sendVoice(_ note: Journal.VoiceNote) async {
