@@ -99,11 +99,24 @@ extension Session {
         func complete(_ result: Result<ASAuthorization, any Error>) async throws -> SignInOutcome {
             switch result {
             case let .success(authorization):
-                return try await signIn(with: Self.credential(from: authorization.credential))
+                return try await complete(credential: authorization.credential)
             case let .failure(error):
                 pending = nil
                 throw Self.signInError(for: error)
             }
+        }
+
+        /// The success half of `complete`, from the credential Apple returned.
+        /// An unreadable credential uses the nonce up like every other exit.
+        func complete(credential: any ASAuthorizationCredential) async throws -> SignInOutcome {
+            let read: AppleCredential
+            do {
+                read = try Self.credential(from: credential)
+            } catch {
+                pending = nil
+                throw error
+            }
+            return try await signIn(with: read)
         }
 
         /// The sign-in itself, from a credential already read out of Apple's

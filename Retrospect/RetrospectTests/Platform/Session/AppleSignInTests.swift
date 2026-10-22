@@ -453,6 +453,20 @@ struct AppleSignInTests {
         #expect(familyOnly.isFirstAuthorization)
     }
 
+    @Test("an unreadable credential uses the nonce up too, so nothing can be sent with it later")
+    func anUnreadableCredentialUsesTheNonceUp() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(Fixtures.data("00", "auth.response"))
+        let signIn = fixtureSignIn()
+        signIn.prepare(request())
+        let password = ASPasswordCredential(user: "invented", password: "invented")
+
+        await #expect(throws: Session.SignInError.unreadableCredential) { _ = try await signIn.complete(credential: password) }
+
+        await #expect(throws: Session.SignInError.notPrepared) { _ = try await signIn.signIn(with: first) }
+        #expect(StubProtocol.requests(on: session).isEmpty)
+    }
+
     @Test("a credential that isn't an Apple ID credential is unreadable")
     func aNonAppleCredentialIsUnreadable() {
         let password = ASPasswordCredential(user: "invented", password: "invented")
