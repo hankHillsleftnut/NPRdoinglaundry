@@ -106,7 +106,7 @@ extension Platform.Diagnostics {
                 }
             } catch {
                 log.record(.diagnosticsWriteFailed)
-                pending = Array((batch + pending).suffix(Self.pendingCap))
+                pending = Self.bounded(batch + pending)
             }
         }
 
