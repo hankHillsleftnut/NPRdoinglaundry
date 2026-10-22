@@ -159,6 +159,11 @@ extension Platform.Diagnostics {
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
+            case .access: .access
+            case .waitlist: .waitlist
+            case .invitesCheck: .invitesCheck
+            case .invitesRedeem: .invitesRedeem
+            case .invitesMine: .invitesMine
             }
         }
     }
