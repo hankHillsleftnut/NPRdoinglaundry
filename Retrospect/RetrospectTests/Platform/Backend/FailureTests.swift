@@ -117,11 +117,21 @@ struct FailureTests {
         (.invalidRequest, .invalid),
         (.idempotencyMismatch, .invalid),
         (.spendLimited(retryAfter: .seconds(5)), .spendLimited(retryAfterSeconds: 5)),
-        (.invalidCredentials, .unknown),
-        (.inviteInvalid, .unknown),
+        (.invalidCredentials, .invalidCredentials),
+        (.inviteInvalid, .inviteInvalid),
+        (.inviteUsed, .inviteUsed),
+        (.inviteExpired, .inviteExpired),
+        (.unknown(code: "x"), .unknown),
     ])
     func screensGetTheFlowFailure(_ kind: Backend.Failure.Kind, _ expected: Flows.Failure.Kind) {
         #expect(Backend.Failure(kind, message: "invented").flowFailure.kind == expected)
+    }
+
+    @Test("invite and sign-in failures reach the screen, and none of them is worth retrying")
+    func inviteAndSignInFailuresReachTheScreen() {
+        let kinds: [Flows.Failure.Kind] = [.invalidCredentials, .inviteInvalid, .inviteUsed, .inviteExpired]
+        #expect(kinds.allSatisfy { !Flows.Failure($0).isRetryable })
+        #expect(Backend.Failure(Backend.ErrorBody(code: "invite_used", message: "that one's been used")).flowFailure.message == "that one's been used")
     }
 
     @Test("a phone-side failure carries no message to the screen")

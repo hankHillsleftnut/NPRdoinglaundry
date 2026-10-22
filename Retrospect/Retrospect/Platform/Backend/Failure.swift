@@ -82,7 +82,11 @@ extension Backend {
             case .inviteRequired: Flows.Failure(.inviteRequired, message: message)
             case .suspended: Flows.Failure(.suspended, message: message)
             case .invalidRequest, .idempotencyMismatch: Flows.Failure(.invalid, message: message)
-            case .invalidCredentials, .inviteInvalid, .inviteUsed, .inviteExpired, .unknown: Flows.Failure(.unknown, message: message)
+            case .invalidCredentials: Flows.Failure(.invalidCredentials, message: message)
+            case .inviteInvalid: Flows.Failure(.inviteInvalid, message: message)
+            case .inviteUsed: Flows.Failure(.inviteUsed, message: message)
+            case .inviteExpired: Flows.Failure(.inviteExpired, message: message)
+            case .unknown: Flows.Failure(.unknown, message: message)
             }
         }
 
