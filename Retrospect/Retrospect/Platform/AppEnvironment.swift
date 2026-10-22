@@ -137,8 +137,10 @@ extension Platform {
         /// The scene became active: the session finishes a deferred launch
         /// check, reads, checks Apple, saves what it couldn't, and renews.
         func becameActive() {
+            // The version check is its own task: renewal and the invite retry must not
+            // wait on its round trip, or on its retries over a bad connection.
+            Task { await floor.checkIfDue(using: client) }
             Task {
-                await floor.checkIfDue(using: client)
                 await session.becameActive()
                 await invites.retryIfWaiting()
             }

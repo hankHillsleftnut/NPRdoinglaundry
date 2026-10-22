@@ -22,7 +22,7 @@ extension Backend {
             self.build = build
         }
 
-        private static let pattern = /^(\d{1,4}(?:\.\d{1,4}){0,2}) \((\d{1,8})(?:\.\d{1,8}){0,2}\)$/
+        private static let pattern = /^([0-9]{1,4}(?:\.[0-9]{1,4}){0,2}) \(([0-9]{1,8})(?:\.[0-9]{1,8}){0,2}\)$/
 
         /// Whether this build is below `floor`'s build: told to update.
         func isBelow(floor: AppVersion) -> Bool {

@@ -23,10 +23,17 @@ extension Platform {
         private var loggedUnreadableRunning = false
         private var loggedUnreadableFloor = false
 
-        init(runningVersion: String, log: any Platform.LogSink, uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        init(runningVersion: String, log: any Platform.LogSink, uptime: @escaping @Sendable () -> TimeInterval = VersionFloor.monotonicSeconds) {
             running = Backend.AppVersion(runningVersion)
             self.log = log
             self.uptime = uptime
+        }
+
+        /// Seconds on a clock that never goes backwards and keeps counting while the
+        /// phone sleeps (`systemUptime` stops in sleep, which would stretch "six
+        /// hours" into days for a phone that is locked most of the time).
+        static let monotonicSeconds: @Sendable () -> TimeInterval = {
+            TimeInterval(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000_000
         }
 
         /// A door answered `update_required` (the client calls this on every 426).
