@@ -144,6 +144,25 @@ test('search escapes % _ and \\, matches every occurrence case-insensitively, an
   }
 });
 
+test('NUL in a search is invalid_request before the entry store is called', async (t) => {
+  const listStore = t.mock.method(entries, 'list');
+  const h = await harness();
+  try {
+    const sam = await person(h);
+    for (const q of ['\0', '\0canal', 'ca\0nal', 'canal\0']) {
+      const response = await list(h, sam, `q=${encodeURIComponent(q)}`);
+      assert.equal(response.status, 400);
+      assert.equal(code(response.body), 'invalid_request');
+    }
+    assert.equal(listStore.mock.callCount(), 0);
+    for (const q of ['x', 'x'.repeat(MAX_QUERY_UNITS)]) {
+      assert.equal((await list(h, sam, `q=${q}`)).status, 200);
+    }
+  } finally {
+    await h.close();
+  }
+});
+
 test('a malformed cursor, limit or q is invalid_request; the default page is 50 and the ceiling 100', async () => {
   const h = await harness();
   try {
