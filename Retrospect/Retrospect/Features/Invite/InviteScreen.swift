@@ -51,7 +51,9 @@ struct InviteScreen: View {
                 page
             }
             .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { bottomZone }
-            .rSheet(isPresented: sheetBinding, detent: .medium) { InviteWaitlistSheet(model: model) }
+            // the full detent: at medium the keyboard (typing a note) pushed the sheet's words up over the
+            // page behind and cut "cancel", and SE cut the line to "when there'…"
+            .rSheet(isPresented: sheetBinding, detent: .full) { InviteWaitlistSheet(model: model) }
             .rToast($toast, bottomInset: RDimension.space4)
         }
         // The sheet host clips the page to its safe area, which left a white band under the status

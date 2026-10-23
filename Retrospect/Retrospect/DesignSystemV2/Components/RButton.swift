@@ -73,7 +73,10 @@ struct RButton: View {
     private var label: some View {
         Text(title)
             .rText(variant == .primary ? .buttonLabel : .bodyMedium)
-            .lineLimit(1)
+            // pills hold one line; a text button wraps at large sizes rather than cut its words
+            // ("no invitation? join t…" at AX3)
+            .lineLimit(variant == .text ? nil : 1)
+            .multilineTextAlignment(.center)
             .opacity(status == .pending ? 0.35 : 1) // literal-ok: label kept faint under the pending dots
             .overlay {
                 if status == .pending {

@@ -33,6 +33,7 @@ struct InviteWaitlistSheet: View {
             Text("we'll send you a link when there's a place.")
                 .rText(.body)
                 .foregroundStyle(RColor.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
             RSunkenField(radius: RDimension.radiusField) {
                 EmptyView()
             } content: {
@@ -66,7 +67,10 @@ struct InviteWaitlistSheet: View {
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, RDimension.layoutSheetInset)
+        .padding(.top, RDimension.space5)
         .padding(.bottom, RDimension.space6)
+        // the words start under the grabber (sheets group from the top), so the keyboard never pushes them
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var status: RButton.Status {
