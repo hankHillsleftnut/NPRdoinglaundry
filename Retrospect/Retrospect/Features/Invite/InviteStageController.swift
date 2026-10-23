@@ -29,14 +29,19 @@ final class InviteStageController {
     @ObservationIgnored private var holding: Task<Void, Never>?
     /// A still for proof (the launcher holds mid-print or mid-tear): nothing moves it on.
     @ObservationIgnored private let frozen: Bool
+    @ObservationIgnored private let sleep: @Sendable (Duration) async -> Void
 
     /// The print's own curve: starts gently, ends flat (`motion.curve.print` over `motion.duration.print`, FR0.1).
     static let printCurve = Animation.timingCurve(0.3, 0, 0.2, 1, duration: 1.8) // literal-ok: FR0.1 token, not yet generated
     /// The slot readies before the paper moves (the board's 0.45 s between sign-in and the rise).
     static let slotLead: Duration = .milliseconds(450)
 
-    init(model: InviteModel, printStill: CGFloat? = nil, tear: CGFloat = 0) {
+    init(
+        model: InviteModel, printStill: CGFloat? = nil, tear: CGFloat = 0,
+        sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    ) {
         self.model = model
+        self.sleep = sleep
         tearProgress = tear
         frozen = printStill != nil || tear > 0
         if let printStill {
@@ -192,13 +197,17 @@ final class InviteStageController {
         ticks += 1
         model.tearTouchedDown()
         withAnimation(RMotion.move(0.6)) { holdProgress = 1 } // literal-ok: the board's 0.6 s hold
-        holding = Task { [weak self] in
-            // select at each third of the hold
+        holding = Task { [weak self, sleep] in
+            // select at each third of the hold; the last third completes it, so the tear does not
+            // wait for the finger to lift
             for _ in 0 ..< 2 {
-                try? await Task.sleep(for: .milliseconds(200))
+                await sleep(.milliseconds(200))
                 guard !Task.isCancelled else { return }
                 self?.ticks += 1
             }
+            await sleep(.milliseconds(200))
+            guard !Task.isCancelled else { return }
+            self?.holdReleased(completed: true)
         }
     }
 

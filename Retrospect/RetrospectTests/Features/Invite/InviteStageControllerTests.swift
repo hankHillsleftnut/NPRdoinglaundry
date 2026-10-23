@@ -110,4 +110,18 @@ struct InviteStageControllerTests {
         stage.holdReleased(completed: false)
         #expect(source.tearCalls == 0)
     }
+
+    @Test("the Reduce Motion hold: a full hold commits the tear without the finger lifting")
+    func holdCompletes() async {
+        let source = ScriptedInviteSource()
+        let model = InviteModel(
+            phase: .ready, source: source, signIn: source, preview: SampleInvite.face, face: SampleInvite.face,
+            firstName: "sam", sleep: InviteModelTests.quickly
+        )
+        let stage = InviteStageController(model: model, sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) })
+        stage.holdBegan() // the touch goes down and stays down: only the controller's own timer can finish it
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(source.tearCalls == 1)
+        #expect(stage.tearProgress == 1)
+    }
 }

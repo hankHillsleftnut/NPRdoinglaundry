@@ -22,7 +22,6 @@ struct InviteScreen: View {
     @State private var caretOn = true
     @State private var toast: RToastItem?
     @FocusState private var typing: Bool
-    @GestureState private var pressing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.rCompactHeight) private var compact
     @Environment(\.colorScheme) private var scheme
@@ -92,6 +91,10 @@ struct InviteScreen: View {
             }
         }
         .onChange(of: scenePhase) { _, now in
+            if now != .active {
+                stage.dragCancelled()
+                stage.holdReleased(completed: false)
+            }
             if now == .active {
                 stage.finishPrintNow()
                 Task { await model.retry() }
@@ -280,10 +283,11 @@ struct InviteScreen: View {
             }
     }
 
+    /// Reduce Motion: a touch starts the 0.6 s hold (the controller completes it itself); lifting early empties it.
     private var holdGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.6, maximumDistance: TearMath.wander) // literal-ok: the board's 0.6 s hold
-            .updating($pressing) { value, state, _ in state = value }
-            .onEnded { _ in stage.holdReleased(completed: true) }
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in stage.holdBegan() }
+            .onEnded { _ in stage.holdReleased(completed: false) }
     }
 
     /// The hidden field the tiles read from: any tap on the stub focuses it, never selecting text.
