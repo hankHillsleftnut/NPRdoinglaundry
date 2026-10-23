@@ -77,25 +77,73 @@ export interface ProfileAnswer {
   questionKey: QuestionKey;
   given: Given;
   text: string;
+  /** When the row was stored (raw_content.created_at), when known. */
+  arrivedAt?: string;
+}
+
+/**
+ * The most of the profile the brain's episode prompt reads (agent
+ * src/pipelines/podcast.ts formatOnboardingFoundation: `content.slice(0, 8000)`,
+ * UTF-16 units). The profile is fitted to it so a long early answer can't push
+ * the later ones (this.week, the one the first episode leans on) out unseen.
+ * The answer rows keep every word.
+ */
+export const PROFILE_BUDGET_UNITS = 8_000;
+const CLIPPED = '…';
+
+/** The first code points of `s` that fit in `units` UTF-16 units (never half an emoji). */
+function clipUnits(s: string, units: number): string {
+  let out = '';
+  for (const cp of s) {
+    if (out.length + cp.length > units) break;
+    out += cp;
+  }
+  return out;
+}
+
+/**
+ * The cap per answer so that every answer fits in `room` units: short answers
+ * whole, long ones sharing what is left equally (water-filling). Infinity when
+ * everything already fits.
+ */
+function fairCap(lengths: readonly number[], room: number): number {
+  if (lengths.reduce((s, n) => s + n, 0) <= room) return Infinity;
+  const sorted = [...lengths].sort((a, b) => a - b);
+  let left = room;
+  for (let i = 0; i < sorted.length; i++) {
+    const share = Math.floor(left / (sorted.length - i));
+    if (sorted[i]! > share) return Math.max(0, share);
+    left -= sorted[i]!;
+  }
+  return Infinity;
 }
 
 /**
  * The person's profile: for each key in QUESTION_KEYS order, the question line
- * and their answer, as two lines; blocks apart by a blank line. `latest` must
- * already be the latest answer per key (the store's job); a skipped or empty
- * answer is left out. Empty text when nothing has words.
+ * and their answer, as two lines; blocks apart by a blank line; fitted to
+ * PROFILE_BUDGET_UNITS (a clipped answer ends in "…"). `latest` must already be
+ * the latest answer per key (the store's job); a skipped or empty answer is
+ * left out. Empty text when nothing has words. `newestArrival` is the latest
+ * arrival among the answers used: the profile row is stamped with it, so of two
+ * profiles composed at once, the one that saw more answers reads as newest.
  */
-export function composeProfile(latest: readonly ProfileAnswer[]): { text: string; answerIds: string[] } {
+export function composeProfile(latest: readonly ProfileAnswer[]): { text: string; answerIds: string[]; newestArrival: string | null } {
   const byKey = new Map(latest.map((a) => [a.questionKey, a]));
-  const blocks: string[] = [];
-  const answerIds: string[] = [];
+  const used: { key: QuestionKey; text: string; a: ProfileAnswer }[] = [];
   for (const key of QUESTION_KEYS) {
     const a = byKey.get(key);
     if (!a || a.given === 'skipped' || a.text.trim() === '') continue;
-    blocks.push(`${QUESTION_LINES[key]}\n${a.text.trim()}`);
-    answerIds.push(a.id);
+    used.push({ key, text: a.text.trim(), a });
   }
-  return { text: blocks.join('\n\n'), answerIds };
+  // Fixed cost: each question line, its newline, and the blank line between blocks.
+  const fixed = used.reduce((s, u) => s + QUESTION_LINES[u.key].length + 1, 0) + Math.max(0, used.length - 1) * 2;
+  const cap = fairCap(used.map((u) => u.text.length), PROFILE_BUDGET_UNITS - fixed);
+  const blocks = used.map((u) => {
+    const text = u.text.length <= cap ? u.text : `${clipUnits(u.text, Math.max(0, cap - CLIPPED.length))}${CLIPPED}`;
+    return `${QUESTION_LINES[u.key]}\n${text}`;
+  });
+  const arrivals = used.map((u) => u.a.arrivedAt).filter((t): t is string => typeof t === 'string').sort();
+  return { text: blocks.join('\n\n'), answerIds: used.map((u) => u.a.id), newestArrival: arrivals[arrivals.length - 1] ?? null };
 }
 
 /**

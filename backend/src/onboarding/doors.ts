@@ -75,7 +75,7 @@ export function mountOnboardingDoors(router: Router, door: DoorFactory, deps: On
       if (profile.text !== '') {
         const stored = await deps.onboarding.saveProfile({
           userId: ctx.userId, text: profile.text, key: profileKey(profile.answerIds, profile.text), answers: profile.answerIds.length,
-          nowIso: new Date(ctx.now).toISOString(),
+          createdAtIso: profile.newestArrival ?? new Date(ctx.now).toISOString(), nowIso: new Date(ctx.now).toISOString(),
         });
         if (stored.created) deps.startIngest(ctx.userId, stored.id);
       }

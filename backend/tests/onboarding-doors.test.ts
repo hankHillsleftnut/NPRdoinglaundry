@@ -15,7 +15,7 @@ import { doorSuite } from './support/door-suite.js';
 import { startHarness, type Harness } from './support/harness.js';
 import { userLookupWith, type UserRowsClient } from '../src/middleware/auth.js';
 import { supabaseOnboardingStore, type OnboardingStore } from '../src/onboarding/store.js';
-import { QUESTION_LINES, answerFingerprint } from '../src/onboarding/profile.js';
+import { PROFILE_BUDGET_UNITS, QUESTION_LINES, answerFingerprint, composeProfile, profileKey } from '../src/onboarding/profile.js';
 import { requestHash } from '../src/services/content-insert.js';
 import { deriveDedupKey } from '../src/services/dedup-key.js';
 
@@ -222,7 +222,12 @@ test('validation: skipped carries no words, words need a given, the key and give
     const skipped = await answer(h, u, { questionKey: 'high.low', given: 'skipped', text: '' });
     assert.equal(skipped.status, 201);
     assert.equal(data(skipped.body).answer.text, '');
-    assert.equal(await newestProfile(u), block('name.place', 'x'.repeat(8_000)), 'a skipped answer is stored but not in the profile');
+    const fitted = await newestProfile(u);
+    assert.ok(fitted?.startsWith(`${QUESTION_LINES['name.place']}\nxxx`));
+    assert.equal(fitted?.length, PROFILE_BUDGET_UNITS, 'fitted to what the episode prompt reads');
+    assert.ok(!fitted?.includes(QUESTION_LINES['high.low']), 'a skipped answer is stored but not in the profile');
+    const row = (await rows(u)).answers.find((a) => a.content.length === 8_000);
+    assert.ok(row, 'the answer row keeps every word');
   } finally {
     await h.close();
   }
@@ -279,6 +284,45 @@ test('two people\'s profiles never mix: each is composed from their own rows onl
   } finally {
     await h.close();
   }
+});
+
+test('long answers: the profile fits what the episode reads, short answers whole, long ones share, never half an emoji', async () => {
+  const h = await harness();
+  try {
+    const u = await person();
+    assert.equal((await answer(h, u, { questionKey: 'year.from.now', text: 'y'.repeat(8_000) })).status, 201);
+    assert.equal((await answer(h, u, { questionKey: 'on.your.mind', text: '😀'.repeat(4_000) })).status, 201);
+    assert.equal((await answer(h, u, { questionKey: 'this.week', text: 'that the call goes well.' })).status, 201);
+    const p = (await newestProfile(u))!;
+    assert.ok(p.length <= PROFILE_BUDGET_UNITS, `${p.length}`);
+    assert.ok(p.endsWith(block('this.week', 'that the call goes well.')), 'the last, short answer is whole');
+    assert.ok(p.includes('y…\n\n'), 'a clipped answer says so');
+    assert.equal(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(p), false, 'no emoji split in half');
+    const year = p.split('\n\n').find((b) => b.startsWith(QUESTION_LINES['year.from.now']))!;
+    const mind = p.split('\n\n').find((b) => b.startsWith(QUESTION_LINES['on.your.mind']))!;
+    assert.ok(Math.abs(year.length - QUESTION_LINES['year.from.now'].length - (mind.length - QUESTION_LINES['on.your.mind'].length)) <= 2, 'the two long answers share equally');
+  } finally {
+    await h.close();
+  }
+});
+
+test('two compositions landing out of order: the one that saw more answers is the newest profile', async () => {
+  const u = await person('member');
+  const at = '2026-10-21T13:00:00.000Z';
+  const a = await onboarding.saveAnswer({ userId: u, clientEntryId: newId(), questionKey: 'name.place', given: 'typed', text: 'answer a', createdAtIso: at, appVersion: null });
+  const onlyA = composeProfile(await onboarding.latestAnswers(u));
+  const b = await onboarding.saveAnswer({ userId: u, clientEntryId: newId(), questionKey: 'care.most', given: 'typed', text: 'answer b', createdAtIso: at, appVersion: null });
+  assert.equal(a.outcome, 'created');
+  assert.equal(b.outcome, 'created');
+  const both = composeProfile(await onboarding.latestAnswers(u));
+  const save = (p: typeof both) => onboarding.saveProfile({
+    userId: u, text: p.text, key: profileKey(p.answerIds, p.text), answers: p.answerIds.length, createdAtIso: p.newestArrival!, nowIso: new Date(T0).toISOString(),
+  });
+  // B's request writes first; A's partial profile lands last.
+  await save(both);
+  await save(onlyA);
+  assert.equal((await rows(u)).profiles.length, 2);
+  assert.equal(await newestProfile(u), both.text);
 });
 
 test('a profile that failed to store is made on the retry, once', async () => {

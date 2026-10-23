@@ -42,8 +42,13 @@ export interface OnboardingStore {
   }): Promise<SaveAnswerOutcome>;
   /** The caller's latest answer per key (by their moment, then arrival), in no particular order. */
   latestAnswers(userId: string): Promise<StoredAnswer[]>;
-  /** Stores one composed profile once per key; `created` false when it was already there. */
-  saveProfile(input: { userId: string; text: string; key: string; answers: number; nowIso: string }): Promise<{ id: string; created: boolean }>;
+  /**
+   * Stores one composed profile once per key; `created` false when it was already there.
+   * `createdAtIso` stamps the row (the newest arrival among its answers), so the
+   * brain's "newest profile" is the one that saw the most, whatever order two
+   * concurrent writes land in.
+   */
+  saveProfile(input: { userId: string; text: string; key: string; answers: number; createdAtIso: string; nowIso: string }): Promise<{ id: string; created: boolean }>;
   /** approved -> member (guarded); any other state unchanged. The state now, or null when there is no such person. */
   complete(userId: string): Promise<AccessState | null>;
 }
@@ -139,15 +144,16 @@ export function supabaseOnboardingStore(db: OnboardingDbClient): OnboardingStore
         const newer = !held || a.answer.createdAt > held.answer.createdAt || (a.answer.createdAt === held.answer.createdAt && a.arrivedAt > held.arrivedAt);
         if (newer) latest.set(a.answer.questionKey, a);
       }
-      return [...latest.values()].map((a) => a.answer);
+      return [...latest.values()].map((a) => ({ ...a.answer, arrivedAt: a.arrivedAt }));
     },
 
-    async saveProfile({ userId, text, key, answers, nowIso }) {
+    async saveProfile({ userId, text, key, answers, createdAtIso, nowIso }) {
       const outcome = await insertOnce(db, 'onboarding profile', {
         user_id: userId,
         content_type: PROFILE_TYPE,
         content: text,
         content_date: nowIso,
+        created_at: createdAtIso,
         metadata: { source: 'v2.onboarding.answers', answers },
         authorship: 'self',
       }, { userId, contentType: PROFILE_TYPE, content: text, idempotencyKey: `profile:${key}` });
