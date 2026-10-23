@@ -616,6 +616,8 @@ struct OutboxDrainTests {
 
         await outbox.start()
         await outbox.drain(reason: .manual)
+        // start() also drains on its own task: wait for the state, not the clock
+        try await waitUntil { (try? item(old).status) == .done && (try? item(spend).status) == .done }
 
         #expect(try item(old).status == .done && item(spend).status == .done)
         #expect(try item(real).status == .dead, "a real refusal is not revived")
