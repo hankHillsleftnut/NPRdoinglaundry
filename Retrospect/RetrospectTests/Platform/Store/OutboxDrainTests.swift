@@ -672,6 +672,52 @@ struct OutboxDrainTests {
         #expect(drainedLines.count == 2)
     }
 
+    @Test(
+        "a trigger that comes while a send is pausing still gets its pass: back online (or signed in) mid-send is not lost",
+        arguments: [Backend.Failure.Kind.offline, .unauthenticated]
+    )
+    func aTriggerDuringAPausingSendGetsItsPass(pause: Backend.Failure.Kind) async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.failure(Backend.Failure(pause))])
+        let gate = Gate()
+        sender.gate = gate
+        let first = Task { await outbox.drain(reason: .launch) }
+        try await waitUntil { gate.waiting == 1 }
+
+        // The phone comes back online while the send that will fail offline is still out.
+        await outbox.drain(reason: .reachability)
+        sender.gate = nil
+        gate.open()
+        await first.value
+
+        #expect(sender.sends.map(\.id) == [key(a), key(a)], "the pause ended the first pass; the trigger that came during it got a second")
+        #expect(sender.sends.map(\.attempts) == [0, 0], "a pause counts no attempt")
+        #expect(try item(a).status == .done)
+        #expect(drainedLines.count == 2)
+    }
+
+    @Test("a trigger during a pause that is still offline costs one more pass, then the drain ends: no loop")
+    func aTriggerDuringAPauseStillOfflineEndsAfterOneMorePass() async throws {
+        let outbox = outbox()
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(key(a), [.failure(Backend.Failure(.offline)), .failure(Backend.Failure(.offline))])
+        let gate = Gate()
+        sender.gate = gate
+        let first = Task { await outbox.drain(reason: .launch) }
+        try await waitUntil { gate.waiting == 1 }
+
+        await outbox.drain(reason: .afterWrite)
+        sender.gate = nil
+        gate.open()
+        await first.value
+
+        #expect(sender.sends.map(\.id) == [key(a), key(a)])
+        #expect(try item(a).status == .pending)
+        #expect(try item(a).attempts == 0)
+        #expect(drainedLines.count == 2)
+    }
+
     // MARK: Ordering
 
     @Test("items for one entity go in order; a refused one blocks that entity's later items, not another entity's")
@@ -769,6 +815,8 @@ struct OutboxDrainTests {
         try await waitUntil { sender.sends.count == 3 }
         reachability.send(true)
         try await waitUntil { sender.sends.count == 4 }
+        // the 4th send is counted when it starts; the row is marked done a moment later
+        try await waitUntil { (try? item(c).status) == .done }
         #expect(try item(c).status == .done)
     }
 
