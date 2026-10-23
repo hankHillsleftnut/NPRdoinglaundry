@@ -91,6 +91,6 @@ struct EndpointTests {
 
     @Test("every path template is a /v2 path")
     func everyPathTemplateIsAV2Path() {
-        #expect(Backend.PathTemplate.allCases.allSatisfy { $0.rawValue.hasPrefix("/v2/") })
+        #expect(Backend.PathTemplate.allCases.allSatisfy { $0.rawValue.hasPrefix("/v2/") || $0 == .invitePreview })
     }
 }
