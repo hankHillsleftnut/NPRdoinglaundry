@@ -125,6 +125,8 @@ struct EndpointTests {
         #expect(first.query.isEmpty)
         #expect(next.query == [URLQueryItem(name: "cursor", value: "MjAyNi0xMC0xMQ"), URLQueryItem(name: "limit", value: "20")])
         #expect(first.idempotencyKey == nil && first.retry == .read())
+        #expect(Backend.Endpoints.PodcastLibrary(limit: 100).query == [URLQueryItem(name: "limit", value: "50")], "the door refuses more than 50")
+        #expect(Backend.Endpoints.PodcastLibrary(limit: 0).query == [URLQueryItem(name: "limit", value: "1")])
     }
 
     @Test("one episode is an authenticated GET to /v2/episodes/:id with the id as its parameter")

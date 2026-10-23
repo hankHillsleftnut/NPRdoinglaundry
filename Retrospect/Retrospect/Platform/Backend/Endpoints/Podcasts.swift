@@ -8,7 +8,7 @@ extension Backend.Endpoints {
 
         /// The opaque cursor from the last page; nil for the first page.
         let cursor: String?
-        /// At most 50 (the door's limit); nil leaves the door's default.
+        /// Pulled into the door's 1...50 on the way out (anything else is `invalid_request`); nil leaves the door's default.
         let limit: Int?
 
         init(cursor: String? = nil, limit: Int? = nil) {
@@ -25,7 +25,10 @@ extension Backend.Endpoints {
         }
 
         var query: [URLQueryItem] {
-            [cursor.map { URLQueryItem(name: "cursor", value: $0) }, limit.map { URLQueryItem(name: "limit", value: String($0)) }].compactMap { $0 }
+            [
+                cursor.map { URLQueryItem(name: "cursor", value: $0) },
+                limit.map { URLQueryItem(name: "limit", value: String(min(max($0, 1), 50))) },
+            ].compactMap { $0 }
         }
     }
 
@@ -107,8 +110,9 @@ extension Backend {
             init(from decoder: any Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 switch try container.decode(String.self, forKey: .kind) {
-                case "episode": self = try .episode(container.decode(EpisodeSummary.self, forKey: .episode))
-                case "brief": self = try .brief(container.decode(BriefSummary.self, forKey: .brief))
+                // An item that doesn't read is skipped like an unknown kind, so one bad row never fails the page.
+                case "episode": self = (try? container.decode(EpisodeSummary.self, forKey: .episode)).map(Self.episode) ?? .unknown
+                case "brief": self = (try? container.decode(BriefSummary.self, forKey: .brief)).map(Self.brief) ?? .unknown
                 default: self = .unknown
                 }
             }
@@ -270,7 +274,7 @@ extension Backend.Podcasts.Episode: Decodable {
         hasAudio = try container.decodeIfPresent(Bool.self, forKey: .hasAudio) ?? (audio != nil)
         madeFrom = try container.decodeIfPresent([Backend.Podcasts.MadeFrom].self, forKey: .madeFrom) ?? []
         chapters = try Self.chapters(in: container)
-        lines = try Self.lines(in: container)
+        lines = try Self.lines(in: container, chapters: chapters)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         claims = try container.decodeIfPresent([Backend.Podcasts.ClaimSummary].self, forKey: .claims) ?? []
         feedback = try container.decodeIfPresent(Backend.Podcasts.Feedback.self, forKey: .feedback)
@@ -284,15 +288,25 @@ extension Backend.Podcasts.Episode: Decodable {
         }
     }
 
-    /// `lines` when present, else contract 01's `transcript`: each sentence a craft line with no chapter.
-    private static func lines(in container: KeyedDecodingContainer<CodingKeys>) throws -> [Backend.Podcasts.Line] {
+    /// `lines` when present, else contract 01's `transcript`: each sentence a craft line, in the chapter its start
+    /// time falls in (-1 when there are no chapters or the line has no time).
+    private static func lines(in container: KeyedDecodingContainer<CodingKeys>, chapters: [Backend.Podcasts.Chapter]) throws -> [Backend.Podcasts.Line] {
         if let lines = try container.decodeIfPresent([Backend.Podcasts.Line].self, forKey: .lines) {
             return lines
         }
         let transcript = try container.decodeIfPresent([WireTranscriptLine].self, forKey: .transcript) ?? []
         return transcript.enumerated().map { offset, line in
-            .init(index: offset, text: line.text, chapterIndex: -1, startSeconds: line.startSeconds, register: .craft, claimId: nil)
+            .init(index: offset, text: line.text, chapterIndex: chapterIndex(at: line.startSeconds, in: chapters), startSeconds: line.startSeconds,
+                  register: .craft, claimId: nil)
         }
+    }
+
+    /// The last chapter starting at or before `seconds`.
+    private static func chapterIndex(at seconds: Double?, in chapters: [Backend.Podcasts.Chapter]) -> Int {
+        guard let seconds else {
+            return -1
+        }
+        return chapters.last { $0.startSeconds <= seconds }?.index ?? -1
     }
 
     private struct WireChapter: Decodable {

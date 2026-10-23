@@ -224,13 +224,14 @@ struct ContractFixtureTests {
         #expect(first.chapters.map(\.index) == [0, 1])
         #expect(first.chapters.map(\.startSeconds) == [0, 31])
         #expect(first.lines.map(\.index) == [0, 1])
-        #expect(first.lines.allSatisfy { $0.register == .craft && $0.chapterIndex == -1 })
+        #expect(first.lines.allSatisfy { $0.register == .craft })
+        #expect(first.lines.map(\.chapterIndex) == [0, 1], "a timed transcript line takes the chapter it falls in")
         #expect(first.lines.map(\.startSeconds) == [0, 31])
         #expect(first.madeFrom.isEmpty && first.claims.isEmpty)
 
         let minimal = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "01", "episode.first.minimal").episode
         #expect(minimal.chapters.isEmpty)
-        #expect(minimal.lines.count == 1 && minimal.lines[0].startSeconds == nil)
+        #expect(minimal.lines.count == 1 && minimal.lines[0].startSeconds == nil && minimal.lines[0].chapterIndex == -1)
     }
 
     @Test("a podcasts value the app doesn't know decodes as unknown, never failing the episode or the page")
@@ -248,6 +249,14 @@ struct ContractFixtureTests {
         {"hero":null,"upcoming":{"state":"later"},"items":[{"kind":"clip","clip":{}}],"nextCursor":null}
         """#.utf8))
         #expect(library.upcoming == .unknown && library.items == [.unknown])
+        let broken = try JSONDecoder.contract.decode(Podcasts.Library.self, from: Data(#"""
+        {"hero":null,"items":[{"kind":"episode","episode":{"id":"e"}},{"kind":"brief","brief":{"id":"b","date":"2026-10-20","title":"t","hasAudio":false}}],"nextCursor":null}
+        """#.utf8))
+        #expect(broken.items.first == .unknown, "an episode that doesn't read is skipped, never failing the page")
+        guard case .brief = broken.items.last else {
+            Issue.record("the readable brief beside a broken episode was lost")
+            return
+        }
         let answer = try JSONDecoder.contract.decode(FirstRunAnswer.Answer.self, from: Data(#"""
         {"id":"a","questionKey":"favourite.colour","text":"t","given":"sung","createdAt":"2026-10-21T13:02:11Z"}
         """#.utf8))
