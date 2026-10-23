@@ -6,9 +6,10 @@
 //  (the rows written here, plus the last list the server gave) and refreshed from the server;
 //  delivery comes only from watching the rows, so a bubble's state is whatever the drainer
 //  wrote, never the seam's guess. The brief (PL3.1b) is worked out from the last answer at the
-//  person's day, and looked for again while it's being made. Guesses (PL3.1c) show from the last list with answers waiting to be sent applied. The drawer and
-//  "what
-//  Retro took" are PL3.1d and e; until then they answer as "nothing yet" and never throw.
+//  person's day, and looked for again while it's being made. Guesses (PL3.1c) show from the last
+//  list with answers waiting to be sent applied. The drawer (PL3.1d, in the Drawer extension) reads
+//  the server and the phone. "What Retro took" and corrections are PL3.1e; until then they answer
+//  with a failure and never throw.
 //
 import Foundation
 import Observation
@@ -26,7 +27,7 @@ final class LiveJournalData: Flows.JournalData {
     private(set) var guesses: [Journal.Guess] = []
     private(set) var isOnline = true
 
-    @ObservationIgnored private let repository: Platform.Repositories.Journal
+    @ObservationIgnored let repository: Platform.Repositories.Journal
     @ObservationIgnored private let outbox: Store.Outbox
     @ObservationIgnored private let reachability: any Backend.Reachability
     @ObservationIgnored private let now: @Sendable () -> Date
@@ -311,10 +312,10 @@ final class LiveJournalData: Flows.JournalData {
         return entries.sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) }
     }
 
-    private static func entry(from row: Store.EntryRow) -> Journal.Entry {
+    static func entry(from row: Store.EntryRow, matches: [Journal.Entry.Match]? = nil) -> Journal.Entry {
         Journal.Entry(
             local: row.localID, kind: Journal.Entry.Kind(rawValue: row.kind.rawValue) ?? .typed, text: row.text,
-            createdAt: row.createdAt, day: row.day, delivery: delivery(of: row)
+            createdAt: row.createdAt, day: row.day, delivery: delivery(of: row), matches: matches
         )
     }
 
@@ -369,15 +370,7 @@ final class LiveJournalData: Flows.JournalData {
         acknowledgements[clientEntryId]
     }
 
-    // MARK: Not yet (PL3.1d, e)
-
-    func entries(cursor _: String?, query _: String?) async -> Result<Flows.Page<Journal.Entry>, Flows.Failure> {
-        .failure(Flows.Failure(.unknown))
-    }
-
-    func entry(id _: String) async -> Result<Journal.Entry, Flows.Failure> {
-        .failure(Flows.Failure(.unknown))
-    }
+    // MARK: Not yet (PL3.1e)
 
     func edit(id _: String, text _: String) async -> Journal.WriteOutcome {
         .failed(Flows.Failure(.unknown))
