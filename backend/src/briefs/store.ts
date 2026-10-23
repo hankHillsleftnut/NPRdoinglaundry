@@ -40,6 +40,48 @@ export interface BriefStore {
   enabled(userId: string): Promise<boolean | null>;
   /** Sets the switch; false when there is no such person. */
   setEnabled(userId: string, enabled: boolean): Promise<boolean>;
+  /**
+   * Non-quiet briefs, newest first by `created_at` (then id), strictly after
+   * `before` in that order when given; at most `limit` (BE3.x.lib: the
+   * podcasts library merges briefs with episodes by creation time).
+   */
+  listBeforeCreated(userId: string, before: CreatedBefore | null, limit: number): Promise<Array<BriefRow & { createdKey: string }>>;
+}
+
+/**
+ * A keyset position in a `created_at desc, id desc` list. `at` is the row's
+ * timestamp exactly as the database gave it (microseconds kept), so a page
+ * boundary between two rows a microsecond apart can't skip one. `tie` says
+ * which rows at exactly `at` still come after the position: all of them,
+ * none, or those with an id below the given one.
+ */
+export interface CreatedBefore {
+  at: string;
+  tie: 'all' | 'none' | { below: string };
+}
+
+/** The exact key of a `created_at` value: supabase-js gives a string (kept as is), PGlite a Date. */
+export function createdKey(v: unknown): string {
+  return v instanceof Date ? v.toISOString() : String(v);
+}
+
+/**
+ * One keyset page: the rows strictly before `before.at`, plus the rows at
+ * exactly `before.at` that `before.tie` lets through. Two queries, both
+ * owner-filtered by `base`, so nothing between two pages is skipped or repeated.
+ */
+export async function pageBeforeCreated(
+  base: () => BriefFilter, before: CreatedBefore | null, limit: number, what: string,
+): Promise<Record<string, unknown>[]> {
+  const ordered = (q: BriefFilter) => q.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit);
+  const older = await ordered(before ? base().lt('created_at', before.at) : base());
+  if (older.error) failed(what, older);
+  const rows = (older.data ?? []) as Record<string, unknown>[];
+  if (!before || before.tie === 'none') return rows;
+  const tiedQuery = base().eq('created_at', before.at);
+  const tied = await ordered(before.tie === 'all' ? tiedQuery : tiedQuery.lt('id', before.tie.below));
+  if (tied.error) failed(what, tied);
+  return [...((tied.data ?? []) as Record<string, unknown>[]), ...rows].slice(0, limit);
 }
 
 /** The slice of supabase-js the store uses; tests answer it from PGlite (tests/support/pglite-query.ts). */
@@ -117,6 +159,12 @@ export function supabaseBriefStore(db: BriefDbClient): BriefStore {
       const r = await db.from('users').update({ daily_brief_enabled: enabled }).eq('id', userId).select('daily_brief_enabled').maybeSingle();
       if (r.error) failed('brief switch', r);
       return r.data !== null && r.data !== undefined;
+    },
+    async listBeforeCreated(userId, before, limit) {
+      // Quiet briefs have nothing to play: left out here, so they never use up a page.
+      const base = () => db.from('daily_briefs').select(COLUMNS).eq('user_id', userId).eq('kind', 'brief');
+      const rows = await pageBeforeCreated(base, before, limit, 'briefs list by created');
+      return rows.map((raw) => ({ ...toRow(raw), createdKey: createdKey(raw.created_at) }));
     },
   };
 }

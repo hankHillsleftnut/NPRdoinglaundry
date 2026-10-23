@@ -9,6 +9,7 @@ import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
 import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
 import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 import { mountAccountDoors, type AccountDoorDeps } from '../account/doors.js';
+import { mountPodcastDoors, type PodcastDoorDeps } from '../podcasts/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -23,7 +24,15 @@ export interface V2RouterDeps {
   entries: EntryDoorDeps;
   /** Account deletion (BE0.7). Absent, the door answers `internal` (and reports it): never a silent 404. */
   account?: AccountDoorDeps;
+  /** The podcasts library (BE3.x.lib). Absent, the door answers `internal` (and reports it): never a silent 404. */
+  podcasts?: PodcastDoorDeps;
 }
+
+/** The podcasts door when nothing was passed in: fails closed and loudly. */
+const podcastsNotConfigured: PodcastDoorDeps = {
+  podcasts: { library: () => Promise.reject(new Error('podcasts are not configured')) },
+  briefs: { listBeforeCreated: () => Promise.reject(new Error('podcasts are not configured')) },
+};
 
 /** The account door when nothing was passed in: fails closed and loudly. */
 const accountNotConfigured: AccountDoorDeps = {
@@ -102,6 +111,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
 
   // Deleting the account (BE0.7): open to waitlisted and paused people.
   mountAccountDoors(router, door, deps.account ?? accountNotConfigured);
+
+  // The podcasts tab: this week's episode, earlier episodes and briefs (BE3.x.lib).
+  mountPodcastDoors(router, door, deps.podcasts ?? podcastsNotConfigured);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {
