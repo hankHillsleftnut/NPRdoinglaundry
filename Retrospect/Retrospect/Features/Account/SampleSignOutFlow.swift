@@ -35,8 +35,10 @@ final class SampleSignOutFlow: SignOutFlowing {
     }
 
     func begin() {
-        guard case .asking = state else { return }
+        guard case .asking = state, running == nil else { return }
         let start = unsent
+        // Leave .asking at once, so a second tap in the same frame is refused (not after the task schedules).
+        state = start > 0 ? .sending(remaining: start) : .signingOut
         running = Task { [weak self] in await self?.run(from: start) }
     }
 

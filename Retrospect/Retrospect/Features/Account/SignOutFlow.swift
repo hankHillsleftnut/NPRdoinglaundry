@@ -35,6 +35,8 @@ protocol SignOutFlowing: AnyObject, Observable {
     func begin()
     /// "sign out anyway": a forced sign-out. Only ever offered from `stuck`; ignored from any other state.
     func signOutAnyway()
-    /// "cancel" or "wait": nothing is lost and the person stays signed in.
+    /// "cancel" or "wait": nothing is lost and the person stays signed in. Also called when the sheet goes
+    /// away by a swipe or a scrim tap, so it must be safe to call twice and must do nothing once signing out
+    /// has begun (`signingOut`, `done`).
     func cancel()
 }

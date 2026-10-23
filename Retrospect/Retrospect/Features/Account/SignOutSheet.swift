@@ -20,6 +20,8 @@ struct SignOutSheet: View {
     let flow: any SignOutFlowing
     var provider = "apple"
     let dismiss: () -> Void
+    /// Which button began the sign-out, so the wait keeps its words (the secondary one is not a lit "send").
+    @State private var sentFirst = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: RDimension.space0) {
@@ -47,6 +49,9 @@ struct SignOutSheet: View {
                 AccessibilityNotification.Announcement(Self.stuckTitle(remaining: remaining, reason: reason)).post()
             }
         }
+        // A swipe down or a scrim tap closes the sheet without "cancel": that must stop the send too, or a
+        // sheet the person put away could still finish and sign them out with nothing on screen.
+        .onDisappear { flow.cancel() }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         .accessibilityIdentifier("screen.AC-2")
@@ -82,6 +87,24 @@ struct SignOutSheet: View {
         count == 1 ? "1 entry hasn't sent yet" : "\(count) entries haven't sent yet"
     }
 
+    /// Under the unsent count: what happens to them (Paper `1GVZ-0`, made plural-correct).
+    static func unsentLine(_ count: Int) -> String {
+        count == 1 ? "it goes first, so nothing is lost." : "they go first, so nothing is lost."
+    }
+
+    /// Under the stuck count: what signing out now would cost, or what to do.
+    static func stuckLine(remaining: Int, reason: SignOutState.StuckReason) -> String {
+        switch reason {
+        case .updateRequired: remaining == 1 ? "update retrospect and it'll go." : "update retrospect and they'll go."
+        case .offline, .failed: remaining == 1 ? "if you sign out now, it's lost from this phone." : "if you sign out now, they're lost from this phone."
+        }
+    }
+
+    /// What "sign out anyway" costs, read by VoiceOver with the button (decision 1: name the count).
+    static func anywayHint(remaining: Int) -> String {
+        remaining == 1 ? "1 unsent entry will be erased from this phone" : "\(remaining) unsent entries will be erased from this phone"
+    }
+
     static func stuckTitle(remaining: Int, reason: SignOutState.StuckReason) -> String {
         switch reason {
         case .updateRequired: remaining == 1 ? "1 entry is waiting for an update" : "\(remaining) entries are waiting for an update"
@@ -99,15 +122,16 @@ struct SignOutSheet: View {
     private var card: Card? {
         switch flow.state {
         case let .asking(unsent) where unsent > 0:
-            Card(title: Self.unsentTitle(unsent), line: "it goes first, so nothing is lost.", rolls: nil, spins: false)
+            // Paper AC-2 (`1GW1-0`) draws the waiting entry with the spinner, not a warning: nothing is wrong yet.
+            Card(title: Self.unsentTitle(unsent), line: Self.unsentLine(unsent), rolls: nil, spins: true)
         case let .sending(remaining):
-            Card(title: Self.unsentTitle(remaining), line: "it goes first, so nothing is lost.", rolls: remaining, spins: true)
+            Card(title: Self.unsentTitle(remaining), line: Self.unsentLine(remaining), rolls: remaining, spins: true)
         case .signingOut:
             Card(title: "all sent", line: "signing you out…", rolls: nil, spins: true)
         case let .stuck(remaining, reason):
             Card(
                 title: Self.stuckTitle(remaining: remaining, reason: reason),
-                line: reason == .updateRequired ? "update retrospect and they'll go." : "if you sign out now, it's lost from this phone.",
+                line: Self.stuckLine(remaining: remaining, reason: reason),
                 rolls: nil, spins: false
             )
         default:
@@ -126,9 +150,8 @@ struct SignOutSheet: View {
                 Text(card.title)
                     .rText(.textMdMedium)
                     .foregroundStyle(RColor.textPrimary)
-                    .contentTransition(.numericText())
+                    .contentTransition(.numericText(value: Double(card.rolls ?? 0)))
                     .fixedSize(horizontal: false, vertical: true)
-                    .id(card.title)
                 Text(card.line)
                     .rText(.label)
                     .foregroundStyle(RColor.textLabel)
@@ -152,7 +175,7 @@ struct SignOutSheet: View {
             switch flow.state {
             case let .asking(unsent):
                 if unsent > 0 {
-                    RButton(title: "send, then sign out") { flow.begin() }
+                    RButton(title: "send, then sign out") { sentFirst = true; flow.begin() }
                         .accessibilityIdentifier("signout.confirm")
                 } else {
                     RButton(title: "sign out", variant: .secondary) { flow.begin() }
@@ -160,13 +183,14 @@ struct SignOutSheet: View {
                 }
                 cancelButton("cancel", enabled: true)
             case .sending, .signingOut:
-                RButton(title: "send, then sign out", status: .pending) {}
+                // Nothing to send: the secondary "sign out" the person pressed stays that button, not a lit one.
+                RButton(title: sentFirst ? "send, then sign out" : "sign out", variant: sentFirst ? .primary : .secondary, status: .pending) {}
                     .accessibilityIdentifier("signout.confirm")
                 cancelButton("cancel", enabled: false)
-            case .stuck:
+            case let .stuck(remaining, _):
                 RButton(title: "wait", variant: .secondary) { flow.cancel(); dismiss() }
                     .accessibilityIdentifier("signout.cancel")
-                SignOutAnywayButton { flow.signOutAnyway() }
+                SignOutAnywayButton(hint: Self.anywayHint(remaining: remaining)) { flow.signOutAnyway() }
             case .done:
                 EmptyView()
             }
@@ -194,6 +218,7 @@ struct SignOutSheet: View {
 /// "sign out anyway": a text action in the danger colour. It warns on touch-down, dims to 0.7 while pressed,
 /// and is read with what it costs.
 private struct SignOutAnywayButton: View {
+    let hint: String
     let action: () -> Void
 
     var body: some View {
@@ -205,7 +230,7 @@ private struct SignOutAnywayButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(AnywayStyle())
-        .accessibilityHint("unsent entries will be lost from this phone")
+        .accessibilityHint(hint)
         .accessibilityIdentifier("signout.anyway")
     }
 }

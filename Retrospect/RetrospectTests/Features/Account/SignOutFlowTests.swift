@@ -98,14 +98,15 @@ struct SignOutFlowTests {
         #expect(!flow.forced)
     }
 
-    @Test("a second begin while sending does nothing")
+    @Test("a second begin does nothing, even in the same frame as the first")
     func singleBegin() async {
         let flow = SampleSignOutFlow(unsent: 2, sleep: { _ in try? await Task.sleep(for: .milliseconds(20)) })
         flow.begin()
-        try? await Task.sleep(for: .milliseconds(5))
-        let during = flow.state
-        flow.begin()
-        #expect(flow.state == during)
+        flow.begin() // a double tap before the first run has started
+        flow.cancel()
+        try? await Task.sleep(for: .milliseconds(150))
+        // With two runs started, the orphaned first one would carry on to .done after the cancel.
+        #expect(flow.state != .done)
     }
 
     @Test("an old build says update, not 'can't send'")
@@ -130,9 +131,37 @@ struct SignOutFlowTests {
         #expect(SignOutSheet.stuckTitle(remaining: 2, reason: .offline) == "2 entries can't send right now")
     }
 
-    @Test("the launcher lists the sheet's states and the account page")
+    @Test("the lines under the count agree with the count")
+    func linesAgreeWithCount() {
+        #expect(SignOutSheet.unsentLine(1) == "it goes first, so nothing is lost.")
+        #expect(SignOutSheet.unsentLine(2) == "they go first, so nothing is lost.")
+        #expect(SignOutSheet.stuckLine(remaining: 1, reason: .offline) == "if you sign out now, it's lost from this phone.")
+        #expect(SignOutSheet.stuckLine(remaining: 2, reason: .failed) == "if you sign out now, they're lost from this phone.")
+        #expect(SignOutSheet.stuckLine(remaining: 1, reason: .updateRequired) == "update retrospect and it'll go.")
+        #expect(SignOutSheet.stuckLine(remaining: 3, reason: .updateRequired) == "update retrospect and they'll go.")
+    }
+
+    @Test("sign out anyway is read with what it erases, by count")
+    func anywayNamesTheCount() {
+        #expect(SignOutSheet.anywayHint(remaining: 1) == "1 unsent entry will be erased from this phone")
+        #expect(SignOutSheet.anywayHint(remaining: 4) == "4 unsent entries will be erased from this phone")
+    }
+
+    @Test("cancel is safe twice (the sheet's disappear calls it again) and never undoes a sign-out")
+    func cancelIsIdempotent() async {
+        let flow = SampleSignOutFlow(unsent: 2, sleep: Self.ticking)
+        flow.cancel()
+        flow.cancel()
+        #expect(flow.state == .asking(unsent: 2))
+        flow.begin()
+        await finish(flow) { $0 == .done }
+        flow.cancel()
+        #expect(flow.state == .done)
+    }
+
+    @Test("the launcher lists the sheet's states and the account page's flows")
     func launcher() {
         #expect(ScreenRegistry.screen("AC-2")?.states.count == AccountScenario.allCases.count)
-        #expect(ScreenRegistry.screen("account") != nil)
+        #expect(ScreenRegistry.screen("account")?.states == ["rest", "unsent", "offline"])
     }
 }
