@@ -179,11 +179,15 @@ struct SignInRealSeamTests {
         "the new root shows the sign-in screen when signed out, 'please sign in again' after the server ended it, nothing while locked or unread, the app when signed in"
     )
     func rootScreens() {
-        #expect(NewAppRoot.screen(for: nil) == .blank)
-        #expect(NewAppRoot.screen(for: .locked) == .locked, "a locked phone says so in words")
-        #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: false, reason: .none)) == .signIn(endedByServer: false))
-        #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: true, reason: .signedOut)) == .signIn(endedByServer: false))
-        #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: true, reason: .revoked)) == .signIn(endedByServer: true))
-        #expect(NewAppRoot.screen(for: .signedIn(userID: "u", access: .waitlisted)) == .app)
+        func screen(_ state: Session.State?) -> NewAppRoot.Screen {
+            NewAppRoot.screen(for: state, pendingCode: false, gateHeld: false, storeOpenFailed: false)
+        }
+        #expect(screen(nil) == .blank)
+        #expect(screen(.locked) == .locked, "a locked phone says so in words")
+        #expect(screen(.signedOut(hasSignedInBefore: false, reason: .none)) == .signIn(returning: false, endedByServer: false))
+        #expect(screen(.signedOut(hasSignedInBefore: true, reason: .signedOut)) == .signIn(returning: true, endedByServer: false))
+        #expect(screen(.signedOut(hasSignedInBefore: true, reason: .revoked)) == .signIn(returning: true, endedByServer: true))
+        #expect(screen(.signedIn(userID: "u", access: .waitlisted)) == .inviteGate, "not let in: the gate, never the journal")
+        #expect(screen(.signedIn(userID: "u", access: .member)) == .journal)
     }
 }

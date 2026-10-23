@@ -1,9 +1,13 @@
 //
 //  NewAppRoot.swift
-//  PL1.4b / PL5.2: the app's root on the new backend. What shows comes from the new session's state
-//  and nothing else: a blank page while it is still being read (or the phone is locked), the sign-in
-//  screen when nobody is signed in, the app when someone is (a plain canvas until APP-ROOT mounts the
-//  journal behind it).
+//  PL1.4b / PL5.2 / APP-ROOT: the app's root on the new backend, and in a release build the only root. What
+//  shows comes from the new session's state and nothing else: a blank page while it is still being read, the
+//  sign-in screen (PI0) when nobody is signed in, the invite gate (PI1/PI2) for a person who is not let in
+//  yet or who has a code waiting, a plain "paused" page, and the journal (JR-1) on their live data for a
+//  person who is. If the signed-in person's store can't be opened it says so and offers a retry.
+//
+//  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
+//  with `-OldHome`.
 //
 import SwiftUI
 
@@ -14,30 +18,90 @@ struct NewAppRoot: View {
         case blank
         /// The session could not be read: the phone has not been unlocked since it started, or the Keychain refused. It is read again on the next active scene.
         case locked
-        /// Nobody is signed in; `endedByServer` says "please sign in again".
-        case signIn(endedByServer: Bool)
-        case app
+        /// PI0. `returning` is "welcome back"; `endedByServer` says the session ended on its own.
+        case signIn(returning: Bool, endedByServer: Bool)
+        /// PI1 and PI2: the promise, the ticket, the tear and "you're in" (up to the person's "begin").
+        case inviteGate
+        case paused
+        /// The person's store could not be opened.
+        case storeFailed
+        case journal
     }
 
-    static func screen(for state: Session.State?) -> Screen {
-        switch state {
-        case .signedIn: .app
-        case let .signedOut(_, reason): .signIn(endedByServer: reason == .revoked)
-        case .locked: .locked
-        case nil: .blank
+    /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
+    /// phone waits on a blank canvas rather than flash sign-in before the gate). `gateHeld` is true from the
+    /// moment the gate is up until the person presses "begin": the tear makes them a member before that, and
+    /// the page must not be swapped for the journal under their finger.
+    static func screen(
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true
+    ) -> Screen {
+        guard let state else { return .blank }
+        if case .locked = state {
+            return .locked
+        }
+        if case .signedOut = state, pendingCode == nil {
+            return .blank
+        }
+        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen) {
+            return early
+        }
+        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && youreInSeen == true) {
+        case .blank:
+            return .blank
+        case let .signIn(returning):
+            if case let .signedOut(_, reason) = state {
+                return .signIn(returning: returning, endedByServer: reason == .revoked)
+            }
+            return .signIn(returning: returning, endedByServer: false)
+        case .inviteGate, .youreIn:
+            return .inviteGate
+        case .paused:
+            return .paused
+        case .journal:
+            return storeOpenFailed ? .storeFailed : .journal
         }
     }
 
+    /// An approved person whose store failed gets the retry page; one whose flag is not known yet waits (never the
+    /// journal, never the moment again), unless the gate is already up for them.
+    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?) -> Screen? {
+        guard case .signedIn(_, .approved) = state, !gateHeld else { return nil }
+        if storeOpenFailed {
+            return .storeFailed
+        }
+        return youreInSeen == nil ? .blank : nil
+    }
+
+    /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
+    static func isDefault(arguments: [String], debug: Bool) -> Bool {
+        !(debug && arguments.contains("-OldHome"))
+    }
+
     @Environment(Platform.AppEnvironment.self) private var platform
+    @State private var gateHeld = false
+    /// This person's persisted "begin pressed" flag (`PersonFlags`, per person, erased on Log Out); nil until the store is open.
+    @State private var youreInSeen: Bool?
 
     var body: some View {
+        let screen = Self.screen(
+            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen
+        )
         Group {
-            switch Self.screen(for: platform.sessionState) {
-            case .app:
-                // the app behind the sign-in is mounted by APP-ROOT; until then a plain canvas
-                RColor.backgroundCanvas.ignoresSafeArea().accessibilityIdentifier("newapp.signedin")
-            case let .signIn(endedByServer):
-                SignInGateView(endedByServer: endedByServer)
+            switch screen {
+            case let .signIn(returning, endedByServer):
+                // the splash or welcome back; the session's new state moves the app on, the page needs no hand-off
+                SignInHost(returning: returning || endedByServer)
+            case .inviteGate:
+                InviteGateHost { begin() }
+                    .onAppear { gateHeld = true }
+            case .paused:
+                PausedView()
+            case .storeFailed:
+                StoreFailedView { platform.retryOpeningStore() }
+            case .journal:
+                LiveJournalRoot()
+                    .accessibilityIdentifier("newapp.signedin")
             case .locked:
                 Text("retrospect can't read your sign-in yet. unlock your phone and open it again.")
                     .rText(.bodyReading)
@@ -51,6 +115,35 @@ struct NewAppRoot: View {
                 RColor.backgroundCanvas.ignoresSafeArea()
             }
         }
-        .animation(RMotion.snappy, value: platform.sessionState)
+        .animation(RMotion.snappy, value: screen)
+        .task { await platform.pendingInvite.refresh() }
+        .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
+        // the waiting code is read again whenever something that can change it happens
+        .onChange(of: platform.sessionState) { _, state in
+            if case .signedOut? = state {
+                gateHeld = false // a person who left mid-tear leaves nothing held for the next
+            }
+            Task { await platform.pendingInvite.refresh() }
+        }
+        .onChange(of: platform.invites.ticket) { Task { await platform.pendingInvite.refresh() } }
+        .onChange(of: platform.invites.previewFace) { Task { await platform.pendingInvite.refresh() } }
+    }
+
+    /// Changes when a different person's store (and so flags object) is open, so the flag is read for them.
+    private var flagsIdentity: ObjectIdentifier? {
+        platform.personFlags.map { ObjectIdentifier($0) }
+    }
+
+    /// "begin": remembered for this person on this phone, then the gate lets go.
+    private func begin() {
+        Task {
+            // not remembered (no store open): the gate stays and "begin" can be pressed again, never dropped
+            guard await platform.markYoureInSeen() else {
+                platform.retryOpeningStore() // no store open: ask for it again, so 'begin' has a way forward
+                return
+            }
+            youreInSeen = true
+            gateHeld = false
+        }
     }
 }

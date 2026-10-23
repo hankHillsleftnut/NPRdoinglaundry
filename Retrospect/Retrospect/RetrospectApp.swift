@@ -106,13 +106,12 @@ struct RetrospectApp: App {
         #endif
     }
 
-    /// `-NewApp`: the new root on the new backend (sign in with Apple, then the app). Debug builds only until
-    /// the journal is mounted behind it (APP-ROOT flips the release default).
+    /// The new root on the new backend is the app (APP-ROOT). Debug builds can still open the old home with `-OldHome`.
     private var usesNewApp: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-NewApp")
+        NewAppRoot.isDefault(arguments: ProcessInfo.processInfo.arguments, debug: true)
         #else
-        false
+        NewAppRoot.isDefault(arguments: [], debug: false)
         #endif
     }
 
@@ -277,6 +276,8 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
+                // the launcher and the design lab run on sample data and never touch the live Keychain
+                guard !isLauncherMode, !isDesignLabMode else { return }
                 platform.followSessionState()
                 platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
