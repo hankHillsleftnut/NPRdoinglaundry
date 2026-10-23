@@ -18,12 +18,13 @@ struct SignInScreen: View {
     var body: some View {
         ZStack {
             RBrandWash()
-            ScrollView {
-                page
-                    .frame(maxWidth: .infinity)
-                    .containerRelativeFrame(.vertical, alignment: .top)
+            GeometryReader { proxy in
+                ScrollView {
+                    page
+                        .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top) // min, so big text scrolls
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { bottomZone }
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.phase)
@@ -123,12 +124,14 @@ struct SignInScreen: View {
             RSignInButtons(state: model.buttons, onRequest: model.prepare) { result in
                 Task { await model.appleFinished(result) }
             }
+            #if DEBUG // SampleTap lives in the DEBUG-only launcher
             .overlay {
                 if sampleTaps, model.buttons == .rest {
                     Color.clear.contentShape(Rectangle())
                         .onTapGesture { Task { await model.appleFinished(.failure(SampleTap())) } }
                 }
             }
+            #endif
             .accessibilityIdentifier("signin.apple")
             Text(SignInModel.legal)
                 .rText(.label)

@@ -30,7 +30,9 @@ final class SignInModel {
     private(set) var failures = 0
     private(set) var arrivals = 0
 
-    /// Where the page hands on: the stage follows the access state (PL1.9).
+    /// Where the page hands on: the stage follows the access state (PL1.9). Contract: the root replaces this
+    /// page when this fires. The phase deliberately stays `.signingIn` (the wait holds through the swap and a
+    /// second hand-off is ignored); a root that keeps the page mounted must make a new model.
     var onSignedIn: (_ firstName: String?, _ access: Session.AccessState) -> Void = { _, _ in }
 
     @ObservationIgnored private let coordinator: any SignInCoordinating

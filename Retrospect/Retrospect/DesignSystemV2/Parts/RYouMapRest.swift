@@ -20,7 +20,7 @@ struct RYouMapRest: View {
     private static let sky300 = hex(0x7FCDFF) // palette.sky.300
     private static let sky700 = hex(0x1F7DBA) // palette.sky.700
     private static let sky800 = hex(0x165E8C) // palette.sky.800
-    private static let paper300 = hex(0xE4DBCE) // palette.paper.300
+    private static let sky900 = hex(0x0F3F5E) // palette.sky.900
 
     /// Drawing size inside the 402x380 frame, and the centre every ring is drawn around.
     private static let drawing = CGSize(width: 390, height: 360) // literal-ok: Paper 1F5K-0 drawing
@@ -32,7 +32,7 @@ struct RYouMapRest: View {
     ].map { CGPoint(x: $0.0, y: $0.1) } // literal-ok: Paper edge ends
     /// Top-left corner of each frosted 44 orb.
     private static let frosted: [(CGPoint, Pair)] = [
-        (CGPoint(x: 93, y: 112), (sky200, paper300)), (CGPoint(x: 243, y: 99), (sky300, sky700)),
+        (CGPoint(x: 93, y: 112), (sky200, sky900)), (CGPoint(x: 243, y: 99), (sky300, sky700)),
         (CGPoint(x: 253, y: 204), (RColor.mapNodeTheme, sky800)), (CGPoint(x: 103, y: 217), (RColor.mapNodeGoal, sky800)),
     ] // literal-ok: Paper orb positions and fills
     private static let far: [CGPoint] = [
