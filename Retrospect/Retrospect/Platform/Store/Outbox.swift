@@ -146,7 +146,10 @@ extension Store {
                 id: key.uuidString.lowercased(), operation: .guessAnswer, entityID: guessID, payload: payload, attempts: 0,
                 nextAttemptAt: queuedAt, status: .pending, lastErrorCode: nil, createdAt: queuedAt
             )
-            try database.writer.write { try item.insert($0) }
+            try database.writer.write { db in
+                try Self.dropRefusedAnswers(to: guessID, db)
+                try item.insert(db)
+            }
             log.record(.outbox(.enqueued(operation: .guessAnswer)))
             if started {
                 Task { await drain(reason: .afterWrite) }

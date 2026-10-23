@@ -87,6 +87,24 @@ struct SessionKeepsWordsTests {
         #expect(try rows(for: "user-a") == 1)
     }
 
+    @Test("Log Out after the server already ended the session still asks about the kept words before erasing them")
+    func logOutAsksAboutKeptWords() async throws {
+        let env = environment()
+        let (states, feed) = AsyncStream.makeStream(of: Session.State.self)
+        env.follow(states)
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        try await settle { env.outbox != nil }
+        try await queueWord(in: env)
+        feed.yield(.signedOut(hasSignedInBefore: true, reason: .revoked))
+        try await settle { env.outbox == nil }
+
+        #expect(await env.logOut(confirmed: false) == .hasUnsent(1))
+        #expect(try rows(for: "user-a") == 1, "declined: the kept words stay")
+
+        #expect(await env.logOut(confirmed: true) == .signedOut)
+        #expect(try rows(for: "user-a") == 0, "confirmed: erased")
+    }
+
     @Test("Log Out with words not sent asks first; declined changes nothing; confirmed signs out and erases")
     func logOutAsks() async throws {
         let env = environment()

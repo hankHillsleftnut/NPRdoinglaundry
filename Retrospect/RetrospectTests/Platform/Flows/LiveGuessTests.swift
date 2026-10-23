@@ -154,4 +154,28 @@ struct LiveGuessTests {
         #expect(try outboxRows().first?.status == .dead)
         #expect(live.guesses.first?.status == .offered)
     }
+
+    @Test("answering again after a refused answer sends the new answer: the dead row never holds it back")
+    func anAnswerAfterARefusalIsSent() async throws {
+        defer { StubProtocol.clear(session) }
+        serve()
+        let sender = ScriptedSender()
+        let outbox = Store.Outbox(database: database, sender: sender, log: log)
+        let live = try makeData(outbox: outbox)
+        await live.load()
+        let guess = try #require(live.guesses.first)
+        _ = await live.answer(guess, verdict: .yes)
+        let refused = try #require(try outboxRows().first?.id)
+        sender.script(refused, [.failure(Backend.Failure(.notFound))])
+        await outbox.drain(reason: .manual)
+        await live.load()
+
+        let again = try #require(live.guesses.first)
+        _ = await live.answer(again, verdict: .no)
+        await outbox.drain(reason: .manual)
+
+        let second = try #require(sender.sends.last)
+        #expect(sender.sends.count == 2 && second.id != refused, "the second answer went out under its own key")
+        #expect(try outboxRows().map(\.status) == [.done], "the refused row is gone, the new one is delivered")
+    }
 }

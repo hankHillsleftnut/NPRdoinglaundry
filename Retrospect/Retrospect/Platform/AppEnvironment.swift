@@ -241,7 +241,11 @@ extension Platform {
         /// session ends and the store is erased. The session ends first: if the app dies between, the phone is
         /// signed out with the store kept, which is the safe direction.
         func logOut(confirmed: Bool) async -> LogOutResult {
-            let count = await unsentEntryCount()
+            var count = await unsentEntryCount()
+            if count == 0, openUserID == nil, let kept = keptUserID {
+                // the server already ended the session and the words were kept: Log Out still asks before they go
+                count = await unsentCount(inKeptStoreOf: kept)
+            }
             if count > 0, !confirmed {
                 return .hasUnsent(count)
             }
@@ -284,6 +288,14 @@ extension Platform {
             if erasing, closing == nil, let kept = leftOver {
                 await eraseStore(of: kept) // Log Out after the stack already stopped: the kept words go now
             }
+        }
+
+        /// Entries left in a store that is on the phone but not open. A store that can't be read counts as one.
+        private func unsentCount(inKeptStoreOf userID: String) async -> Int {
+            let open = openDatabase
+            let log = log
+            guard let database = try? await Task.detached(operation: { try open(userID) }).value else { return 1 }
+            return await (try? Store.Outbox(database: database, log: log).unsentCount()) ?? 1
         }
 
         private func eraseStore(of userID: String) async {

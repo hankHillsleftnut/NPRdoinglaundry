@@ -102,3 +102,14 @@ extension Store.Outbox {
         }
     }
 }
+
+extension Store.Outbox {
+    /// A refused earlier answer to this guess would hold a new one behind it for good (an entity's items go in
+    /// order): the new answer replaces it. Runs in the same write as the new answer's insert.
+    static func dropRefusedAnswers(to guessID: String, _ db: GRDB.Database) throws {
+        try db.execute(
+            sql: "DELETE FROM outbox WHERE entity_id = ? AND operation = ? AND status = ?",
+            arguments: [guessID, Store.OutboxOperation.guessAnswer.rawValue, Store.OutboxStatus.dead.rawValue]
+        )
+    }
+}
