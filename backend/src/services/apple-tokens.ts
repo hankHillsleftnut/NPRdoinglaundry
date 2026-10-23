@@ -88,9 +88,11 @@ export function sealAppleToken(plain: string, sealingKey: Buffer, random: (n: nu
 export function openAppleToken(sealed: string, sealingKey: Buffer): string {
   const [version, ...parts] = sealed.split(':');
   if (version !== 'v1' || parts.length !== 3) throw new Error('openAppleToken: not a v1 sealed token');
-  const [iv, tag, body] = parts.map((p) => Buffer.from(p, 'base64url'));
-  const decipher = createDecipheriv('aes-256-gcm', sealingKey, iv!);
-  decipher.setAuthTag(tag!);
+  const [iv, tag, body] = parts.map((p) => Buffer.from(p, 'base64url')) as [Buffer, Buffer, Buffer];
+  // Pinned: GCM would otherwise accept a tag cut down to 4 bytes.
+  if (iv.length !== 12 || tag.length !== 16) throw new Error('openAppleToken: not a v1 sealed token');
+  const decipher = createDecipheriv('aes-256-gcm', sealingKey, iv, { authTagLength: 16 });
+  decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(body!), decipher.final()]).toString('utf8');
 }
 

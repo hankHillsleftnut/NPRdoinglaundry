@@ -90,6 +90,17 @@ test('tokens are encrypted at rest and decrypt to the same value; two seals diff
   assert.throws(() => openAppleToken(a.replace(/^v1/, 'v2'), sealing), 'an unknown version is refused');
 });
 
+test('a sealed token with a shortened auth tag or IV is refused', () => {
+  // GCM accepts tags down to 4 bytes unless the length is pinned, which turns a
+  // 128-bit forgery bound into a 32-bit one.
+  const [v, iv, tag, body] = sealAppleToken('r.apple-refresh-placeholder', sealing).split(':');
+  const cut = (b64: string, n: number) => Buffer.from(b64, 'base64url').subarray(0, n).toString('base64url');
+  for (const n of [4, 8, 12, 15]) {
+    assert.throws(() => openAppleToken([v, iv, cut(tag!, n), body].join(':'), sealing), `a ${n}-byte tag`);
+  }
+  assert.throws(() => openAppleToken([v, cut(iv!, 8), tag, body].join(':'), sealing), 'an 8-byte IV');
+});
+
 test('the encryption setting must be 32 bytes of base64', () => {
   assert.equal(encryptionKeyOf(sealing.toString('base64')).length, 32);
   for (const bad of [null, '', randomBytes(16).toString('base64'), 'not base64 at all']) assert.throws(() => encryptionKeyOf(bad), /TOKEN_ENCRYPTION_KEY/);
