@@ -15,6 +15,7 @@ extension Backend {
         case entriesToday = "/v2/entries/today"
         case briefsLatest = "/v2/briefs/latest"
         case guesses = "/v2/guesses"
+        case entryByID = "/v2/entries/:id"
         case authApple = "/v2/auth/apple"
         case authRefresh = "/v2/auth/refresh"
         case authSignout = "/v2/auth/signout"
