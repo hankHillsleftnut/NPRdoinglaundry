@@ -46,7 +46,14 @@ extension Platform {
 
         /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
         /// nil before. The scene-phase and background-task bridges drain it.
-        var outbox: Store.Outbox?
+        private(set) var outbox: Store.Outbox?
+        /// The same outbox, readable from the session manager's sign-out check (the manager is built first).
+        private let unsentSource: Box<Store.Outbox?>
+        /// Whose store the per-person stack is open on; nil when none is. Asking again for that person does nothing.
+        private var openUserID: String?
+        private var repository: Platform.Repositories.Journal?
+        /// Whose rows were left on the phone when their session ended on its own; erased the moment a different person signs in.
+        private var keptUserID: String?
 
         /// The signed-in person's journal data (PL3.1a); nil while signed out. Set with the store
         /// and dropped before it is erased, so the next person never sees the last one's entries.
@@ -69,8 +76,10 @@ extension Platform {
             invites: Session.InviteCenter,
             floor: Platform.VersionFloor,
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
-            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
+            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) },
+            unsentSource: Box<Store.Outbox?> = Box(nil)
         ) {
+            self.unsentSource = unsentSource
             self.launch = launch
             self.configuration = configuration
             self.log = log
@@ -100,6 +109,7 @@ extension Platform {
                 log.record(.stagingResolvedToLocal)
             }
             let store = Session.Store()
+            let unsentSource = Box<Store.Outbox?>(nil)
             let session = Session.Manager(
                 store: store,
                 mirror: Session.LegacyMirror(
@@ -110,7 +120,8 @@ extension Platform {
                 launchCheck: Launch.installCheck.value,
                 probeUnlock: { Session.SystemKeychain(service: Session.Store.service).probeUnlock() },
                 clearGate: { Bridges.clearSignInGate() },
-                appleCredentialState: Session.AppleRevocationCheck.live
+                appleCredentialState: Session.AppleRevocationCheck.live,
+                unsentCount: { await Self.unsentCount(in: unsentSource) }
             )
             let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
             let client = Backend.Client(
@@ -125,7 +136,8 @@ extension Platform {
             return AppEnvironment(
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor,
-                openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
+                openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) },
+                unsentSource: unsentSource
             )
         }
 
@@ -139,6 +151,7 @@ extension Platform {
         ) -> AppEnvironment {
             let configuration = Backend.Configuration.resolve(.local, info: [:])
             let store = Session.Store(keychain: Session.MemoryKeychain(), legacyKeychain: Session.MemoryKeychain(), defaults: UserDefaults())
+            let unsentSource = Box<Store.Outbox?>(nil)
             let session = Session.Manager(
                 store: store,
                 mirror: Session.LegacyMirror(keychain: Session.MemoryKeychain(), stateChanged: { _ in }),
@@ -146,7 +159,8 @@ extension Platform {
                 launchCheck: .alreadyDone,
                 probeUnlock: { .unlocked },
                 clearGate: {},
-                appleCredentialState: { _ in .unknown }
+                appleCredentialState: { _ in .unknown },
+                unsentCount: { await Self.unsentCount(in: unsentSource) }
             )
             let reachability = Backend.PathReachability(monitor: nil)
             let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
@@ -158,7 +172,8 @@ extension Platform {
             let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
             return AppEnvironment(
                 configuration: configuration, log: log, session: session, client: client, reachability: reachability,
-                invites: invites, floor: floor, backgroundTasks: backgroundTasks, openDatabase: openDatabase
+                invites: invites, floor: floor, backgroundTasks: backgroundTasks, openDatabase: openDatabase,
+                unsentSource: unsentSource
             )
         }
 
@@ -197,29 +212,70 @@ extension Platform {
 
         @discardableResult
         func sessionWillChange() -> Task<Void, Never> {
-            enqueueDiagnostics { [self, diagnostics] in
-                // Stop everything that reads or writes the person's store before it is erased.
-                journalData?.stop()
-                journalData = nil
-                await outbox?.stop()
-                outbox = nil
-                await mediaSource?.erase()
-                mediaSource = nil
-                await diagnostics.detach(erasingDatabase: true)
-            }
+            enqueueDiagnostics { [self] in await closeStore(erasing: true) }
         }
 
         @discardableResult
         func sessionDidChange(to userID: String) -> Task<Void, Never> {
-            enqueueDiagnostics { [self, diagnostics, openDatabase, log] in
-                do {
-                    let database = try await Task.detached { try openDatabase(userID) }.value
-                    await diagnostics.attach(database)
-                    openJournal(on: database)
-                } catch {
-                    log.record(.diagnosticsWriteFailed)
-                }
+            enqueueDiagnostics { [self] in await openStore(for: userID) }
+        }
+
+        /// Stops everything that reads or writes the person's store, in order, and waits for it: the journal's
+        /// loads, the outbox's send in flight, late writes. Then, with `erasing`, the store is erased too
+        /// (sign-out, another person signing in); without it the rows stay on the phone for the same person's
+        /// next sign-in (the server ended the session on its own).
+        func closeStore(erasing: Bool) async {
+            keptUserID = erasing ? nil : openUserID ?? keptUserID
+            openUserID = nil
+            journalData?.stop()
+            journalData = nil
+            await repository?.close()
+            repository = nil
+            await outbox?.stop()
+            outbox = nil
+            unsentSource.value = nil
+            await mediaSource?.erase()
+            mediaSource = nil
+            await diagnostics.detach(erasingDatabase: erasing)
+        }
+
+        /// Opens the person's store and the stack on it. Asking again for the person whose store is open does nothing;
+        /// asking for someone else closes and erases the first person's first.
+        func openStore(for userID: String) async {
+            if openUserID == userID {
+                return
             }
+            if openUserID != nil {
+                await closeStore(erasing: true)
+            }
+            if let kept = keptUserID, kept != userID {
+                // another person on this phone: the last person's unsent words go before anything of the new person's opens
+                let open = openDatabase
+                _ = await Task.detached { try? open(kept).erase() }.value
+                keptUserID = nil
+            }
+            do {
+                let open = openDatabase
+                let database = try await Task.detached { try open(userID) }.value
+                await diagnostics.attach(database)
+                openJournal(on: database)
+                openUserID = userID
+                keptUserID = nil
+            } catch {
+                log.record(.diagnosticsWriteFailed)
+            }
+        }
+
+        /// Entries not yet sent, for the sign-out question (0 when no store is open).
+        func unsentEntryCount() async -> Int {
+            await Self.unsentCount(in: unsentSource)
+        }
+
+        /// What the sign-out check counts: entries in the open outbox. A store that can't be read counts as one,
+        /// so a sign-out never silently discards.
+        nonisolated static func unsentCount(in source: Box<Store.Outbox?>) async -> Int {
+            guard let outbox = source.value else { return 0 }
+            return await (try? outbox.unsentCount()) ?? 1
         }
 
         /// The per-person stack on their store: the outbox (started, so what was left unsent goes out)
@@ -229,7 +285,9 @@ extension Platform {
                 database: database, sender: Store.ClientSender(client: client), reachability: reachability, log: log
             )
             self.outbox = outbox
+            unsentSource.value = outbox
             let repository = Platform.Repositories.Journal(database: database, client: client)
+            self.repository = repository
             journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
             let reachability = reachability
             mediaSource = Platform.Media.Source(

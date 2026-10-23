@@ -372,7 +372,7 @@ struct OutboxDrainTests {
         #expect(try rowByID(flaky.uuidString.lowercased()).status == .dead)
         #expect(try rowByID(flaky.uuidString.lowercased()).attempts == Store.Outbox.attemptLimit)
         #expect(try entryCount() == 0)
-        #expect(try await outbox.unsentCount() == 2, "queued answers count as unsent")
+        #expect(try await outbox.unsentCount() == 0, "a refused guess answer is not an unsent entry")
     }
 
     // MARK: Offline and retries
@@ -769,6 +769,8 @@ struct OutboxDrainTests {
         try await waitUntil { sender.sends.count == 3 }
         reachability.send(true)
         try await waitUntil { sender.sends.count == 4 }
+        // the 4th send is counted when it starts; the row is marked done a moment later
+        try await waitUntil { (try? item(c).status) == .done }
         #expect(try item(c).status == .done)
     }
 

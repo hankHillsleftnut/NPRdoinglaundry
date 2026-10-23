@@ -64,9 +64,11 @@ extension Store {
         private var retryWake: Task<Void, Never>?
         private var isDraining = false
         private var needsAnotherPass = false
+        private var triggered = false
         var started = false
         fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
+        fileprivate var inFlightSend: Task<Store.OutboxSendResult, any Error>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
@@ -148,18 +150,6 @@ extension Store {
             return key
         }
 
-        /// Entries and answers not yet sent: pending, in flight or refused (a
-        /// report isn't the person's words, so it isn't counted). Feeds
-        /// sign-out's "you have unsent entries" (PL1.5).
-        func unsentCount() throws -> Int {
-            try database.writer.read { db in
-                try Store.OutboxRow
-                    .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
-                    .filter(Column(OutboxRow.CodingKeys.operation) != OutboxOperation.diagnosticsSend.rawValue)
-                    .fetchCount(db)
-            }
-        }
-
         /// Puts a refused item back in the queue, due now with its attempts
         /// reset, and its entry back to `local`. Throws `NothingToRetry`
         /// (changing nothing) when the entity has no refused item.
@@ -220,7 +210,7 @@ extension Store {
         /// one whenever the phone comes back online, and one after every
         /// enqueue. Foreground and the background task call `drain` themselves.
         func start() {
-            guard !started else { return }
+            guard !started, !stopped else { return }
             started = true
             guard let reachability else {
                 Task { await drain(reason: .launch) }
@@ -234,13 +224,12 @@ extension Store {
             }
         }
 
-        /// Sends what's due. Safe to call any time: at most one drain runs, and
-        /// a call during a drain adds one more pass at its end, never a second
-        /// drainer. Returns when the drain is over (or was cancelled).
+        /// Sends what's due. At most one drain runs; a call during one adds a pass at its end. Returns when over.
         func drain(reason _: DrainReason) async {
             guard sender != nil, !stopped else { return }
             if isDraining {
                 needsAnotherPass = true
+                triggered = true
                 return
             }
             isDraining = true
@@ -248,8 +237,10 @@ extension Store {
             var paused = false
             repeat {
                 needsAnotherPass = false
+                triggered = false
                 paused = await pass()
-            } while needsAnotherPass && !paused && !stopped && !Task.isCancelled
+                // a trigger that came in mid-pass (back online) is answered even when the pass paused offline
+            } while (triggered || (needsAnotherPass && !paused)) && !stopped && !Task.isCancelled
             // A pause (offline, signed out) is ended by its own trigger:
             // reachability, sign-in, foreground. Otherwise wake for the next retry.
             if !paused, !Task.isCancelled {
@@ -272,7 +263,7 @@ extension Store {
                 guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
-                    let result = try await sender.send(item)
+                    let result = try await send(item, with: sender)
                     try markDone(item, result: result)
                     tally.sent += 1
                     if item.operation == .diagnosticsSend, let reference = result.reference {
@@ -283,6 +274,11 @@ extension Store {
                     try? markPending(item, at: now())
                     break
                 } catch {
+                    if stopped {
+                        // the person signed out mid-send: nothing is counted, the store is about to be erased
+                        try? markPending(item, at: now())
+                        break
+                    }
                     if settle(error, item: item, tally: &tally) == .pause {
                         paused = true
                         break
@@ -534,17 +530,28 @@ extension Store {
     }
 }
 
-// MARK: Stopping (PL3.1a)
-
 extension Store.Outbox {
-    /// The person signed out: no trigger starts another drain, and a pass in flight stops at its next item.
-    /// The outbox is not used again; the next person gets a new one on a new store.
-    func stop() {
+    /// Stopping (PL3.1a). The person signed out: no new drain starts, the send in flight is cancelled, and this returns
+    /// when the drain has ended, so nothing of theirs is sent or written after it.
+    func stop() async {
         stopped = true
-        reachabilityWatch?.cancel()
+        for task in [reachabilityWatch, retryWake] {
+            task?.cancel()
+        }
         reachabilityWatch = nil
-        retryWake?.cancel()
         retryWake = nil
+        inFlightSend?.cancel()
+        while isDraining {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    /// One send as a task of its own, so `stop` can cancel it.
+    fileprivate func send(_ item: Store.OutboxRow, with sender: any Store.OutboxSending) async throws -> Store.OutboxSendResult {
+        let task = Task { try await sender.send(item) }
+        inFlightSend = task
+        defer { inFlightSend = nil }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 }
 
