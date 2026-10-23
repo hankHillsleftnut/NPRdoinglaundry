@@ -16,6 +16,13 @@ struct RGuessCardTests {
         )
     }
 
+    @Test("no action, no why: the card offers why only with somewhere to open it")
+    func noDeadWhy() {
+        let bare = RGuessCard(question: "q?", from: "from 1 thing", sureness: "fairly sure", phase: .offered, answer: { _ in })
+        #expect(bare.offersWhy == false)
+        #expect(card(.offered).offersWhy)
+    }
+
     @Test("answering twice while the first answer is on its way sends one verdict")
     func answeringTwiceSendsOnce() async {
         let once = RAnswerOnce()
