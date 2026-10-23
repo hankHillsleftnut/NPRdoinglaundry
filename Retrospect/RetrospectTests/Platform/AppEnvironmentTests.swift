@@ -350,6 +350,38 @@ struct AppEnvironmentTests {
         #expect(try await Self.networkCount(in: first) == 0)
     }
 
+    @Test("a person whose store never opened: when their session ends, the rows waiting in memory never reach the next person")
+    func rowsOfAPersonWithNoStoreNeverReachTheNextPerson() async throws {
+        struct Unopenable: Error {}
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { userID in
+            guard userID == "user-b" else { throw Unopenable() }
+            return second
+        })
+        let (client, urlSession) = try Self.stubbedClient(recordingInto: environment, status: 200, body: Fixtures.data("00", "meta"))
+        defer { StubProtocol.clear(urlSession) }
+        let (states, feed) = AsyncStream.makeStream(of: Session.State.self)
+        environment.follow(states)
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        try await Self.settle { environment.storeOpenFailed }
+
+        _ = try await client.send(Backend.Endpoints.Meta()) // user-a's: no store to land in, so it waits in memory
+        await client.recordsSettled()
+        feed.yield(.signedOut(hasSignedInBefore: true, reason: .revoked)) // the server ends the session: no Log Out
+        try await Self.settle { !environment.storeOpenFailed }
+        feed.yield(.signedIn(userID: "user-b", access: .member))
+        try await Self.settle { environment.outbox != nil }
+
+        #expect(try await Self.networkCount(in: second) == 0, "user-a's waiting row is dropped, not written for user-b")
+    }
+
+    private static func settle(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0 ..< 500 where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(condition(), "the environment did not settle")
+    }
+
     @Test("guard (stubbed client): a request row holds only method, route, status, code and time; no URL, body, token or message")
     func requestRowsInTheEnvironmentHoldNoContent() async throws {
         let environment = Platform.AppEnvironment.preview()

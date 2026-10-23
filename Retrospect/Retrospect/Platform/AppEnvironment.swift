@@ -267,6 +267,11 @@ extension Platform {
                     case let .signedIn(userID, _):
                         await sessionDidChange(to: userID).value
                     case .signedOut:
+                        if storeOpenFailed, openUserID == nil {
+                            // Signed in with no store: their rows wait in memory; they leave with them, never landing for
+                            // the next person (DG.4.live).
+                            await enqueueDiagnostics { [diagnostics] in await diagnostics.detach() }.value
+                        }
                         storeOpenFailed = false
                         if openUserID != nil {
                             await closeStoreKeeping().value
