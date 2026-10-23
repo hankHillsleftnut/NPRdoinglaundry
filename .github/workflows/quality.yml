@@ -36,6 +36,8 @@ jobs:
       - run: npm test
 
   new-backend-only:
+    permissions:
+      contents: read
     # Founder rule: the new app talks to the new backend only (Backend.Client -> /v2 -> Session). Fails
     # when Platform/ (except Bridges.swift), Features/ or DesignSystemV2/ use the old client, a raw
     # request, or a path outside Backend.PathTemplate.
