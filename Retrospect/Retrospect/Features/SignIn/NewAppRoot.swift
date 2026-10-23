@@ -12,7 +12,7 @@ struct NewAppRoot: View {
     enum Screen: Equatable {
         /// Still being read: nothing to show yet.
         case blank
-        /// The phone hasn't been unlocked since it started, so the session can't be read yet.
+        /// The session could not be read: the phone has not been unlocked since it started, or the Keychain refused. It is read again on the next active scene.
         case locked
         /// Nobody is signed in; `endedByServer` says "please sign in again".
         case signIn(endedByServer: Bool)
@@ -39,7 +39,7 @@ struct NewAppRoot: View {
             case let .signIn(endedByServer):
                 SignInGateView(endedByServer: endedByServer)
             case .locked:
-                Text("unlock your phone to open retrospect.")
+                Text("retrospect can't read your sign-in yet. unlock your phone and open it again.")
                     .rText(.bodyReading)
                     .foregroundStyle(RColor.textSecondary)
                     .multilineTextAlignment(.center)
