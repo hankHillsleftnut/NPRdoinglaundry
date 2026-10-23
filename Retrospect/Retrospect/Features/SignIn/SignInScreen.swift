@@ -138,7 +138,7 @@ struct SignInScreen: View {
         .overlay(alignment: .top) {
             // The failure line floats above the button without taking layout space, so the words
             // and the button hold still when it comes and goes (QA task 4).
-            Color.clear.frame(height: 0).overlay(alignment: .bottom) { failureLine }
+            Color.clear.frame(height: RDimension.space0).overlay(alignment: .bottom) { failureLine }
         }
         .padding(.horizontal, RDimension.spaceScreenMargin)
         .padding(.bottom, compact ? RDimension.space4 : RDimension.space2) // Paper: 40 from the screen edge on a 17 Pro (34 safe area + 6)
