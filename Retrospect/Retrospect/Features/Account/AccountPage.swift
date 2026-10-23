@@ -8,11 +8,15 @@
 //  DG.6.mount: under it, the "send a report" group (DiagnosticsSettingsGroup, plan section 3: "the account
 //  page has it too"), shown only when a report sender is in the environment (decision 4: no dead control).
 //  No Paper drawing: the group is DG.6's own rows, 24 below the sign-out block (between groups).
+//  P31.delete: ST-9's danger row "delete account…" (Paper `1GU8-0`, RSettingsRow danger) sits alone at the
+//  bottom, in the thumb zone; it opens C50.1 #4 (`DeleteAccountDialog`), and once the server has it the page
+//  cross-fades to the goodbye (C50.2, `DeletedPage`). Shown only when a deletion flow is given.
 //
 import SwiftUI
 
 struct AccountPage: View {
     let flow: any SignOutFlowing
+    var deletion: (any DeleteAccountFlowing)?
     var provider = "apple"
     let back: () -> Void
     @State private var confirming = false
@@ -32,12 +36,31 @@ struct AccountPage: View {
                         if reportSender != nil {
                             DiagnosticsSettingsGroup()
                         }
+                        // Accessibility sizes: the row scrolls with the page, so it never covers the rows above it.
+                        if let deletion, typeSize.isAccessibilitySize {
+                            deleteRow(deletion)
+                        }
                     }
                     .padding(.top, RDimension.space6)
                 }
                 .sendReport(bottomInset: RDimension.spaceScreenMargin)
+                if let deletion, !typeSize.isAccessibilitySize {
+                    deleteRow(deletion) // ST-9: alone at the bottom, in the thumb zone
+                }
             }
             .background(RColor.backgroundCanvas)
+            .rDialog(isPresented: dialogShown) {
+                if let deletion {
+                    DeleteAccountDialog(flow: deletion)
+                }
+            }
+            .overlay {
+                if deletion?.state.showsGoodbye == true {
+                    DeletedPage()
+                        .transition(.opacity)
+                }
+            }
+            .animation(RMotion.standard(RNumber.motionDurationSlow), value: deletion?.state.showsGoodbye == true)
             // A sibling of the page, never inside or around `.sendReport`: a sheet request set on a view
             // replaces the requests below it, so nesting the two would hide one of the sheets.
             .background {
@@ -47,6 +70,32 @@ struct AccountPage: View {
             }
         }
         .accessibilityIdentifier("screen.account")
+    }
+
+    /// ST-9's danger row: alone and last, opening the dialog (nothing is deleted from the row itself).
+    private func deleteRow(_ deletion: any DeleteAccountFlowing) -> some View {
+        RSettingsRow(
+            title: "delete account…",
+            subline: "your entries, episodes and everything retro knows",
+            symbol: "exclamationmark.circle",
+            trailing: .none,
+            danger: true
+        ) {
+            deletion.open()
+        }
+        .accessibilityIdentifier("account.delete")
+    }
+
+    /// The dialog is up while the flow asks, works or shows its error; closing it any other way is a cancel.
+    private var dialogShown: Binding<Bool> {
+        Binding(
+            get: { deletion?.state.showsDialog == true },
+            set: { shown in
+                if !shown {
+                    deletion?.cancel()
+                }
+            }
+        )
     }
 
     private var signOutBlock: some View {

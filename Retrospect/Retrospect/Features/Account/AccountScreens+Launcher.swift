@@ -20,7 +20,38 @@ extension ScreenRegistry {
         LaunchableScreen(id: "account", states: AccountPageScenario.allCases.map(\.rawValue)) { arguments in
             AnyView(AccountLaunch(scenario: AccountPageScenario(rawValue: arguments.state) ?? .rest))
         },
+        LaunchableScreen(id: "account-delete", states: DeleteAccountScenario.allCases.map(\.rawValue)) { arguments in
+            AnyView(DeleteAccountLaunch(scenario: DeleteAccountScenario(rawValue: arguments.state) ?? .rest))
+        },
     ]
+}
+
+/// P31.delete in the launcher (`-Screen account-delete -State <name>`): the dialog at rest, with unsent entries,
+/// pending, with its error line, offline, and the goodbye. "delete my account" runs the sample flow from there.
+enum DeleteAccountScenario: String, CaseIterable {
+    case rest, unsent, pending, error, offline, goodbye
+}
+
+/// The account page with the delete dialog (or the goodbye) in one state, on a sample flow.
+struct DeleteAccountLaunch: View {
+    @State private var signOut = SampleSignOutFlow(unsent: 0)
+    @State private var deletion: SampleDeleteAccountFlow
+
+    init(scenario: DeleteAccountScenario) {
+        let deletion = switch scenario {
+        case .rest: SampleDeleteAccountFlow(state: .asking)
+        case .unsent: SampleDeleteAccountFlow(unsent: 2, state: .asking)
+        case .pending: SampleDeleteAccountFlow(state: .pending)
+        case .error: SampleDeleteAccountFlow(script: .fails, state: .failed(.notNow))
+        case .offline: SampleDeleteAccountFlow(isOnline: false, state: .asking)
+        case .goodbye: SampleDeleteAccountFlow(state: .goodbye)
+        }
+        _deletion = State(initialValue: deletion)
+    }
+
+    var body: some View {
+        AccountPage(flow: signOut, deletion: deletion) {}
+    }
 }
 
 /// The account page's flows: nothing waiting, two unsent that send, two unsent that get stuck offline.
@@ -33,8 +64,10 @@ enum AccountPageScenario: String, CaseIterable {
 struct AccountLaunch: View {
     @State private var flow: SampleSignOutFlow
     @State private var reportSender: SampleReportSender
+    @State private var deletion: SampleDeleteAccountFlow
 
     init(scenario: AccountPageScenario = .rest) {
+        _deletion = State(initialValue: SampleDeleteAccountFlow(unsent: scenario == .rest ? 0 : 2, isOnline: scenario != .offline))
         let flow = switch scenario {
         case .rest: SampleSignOutFlow(unsent: 0)
         case .unsent: SampleSignOutFlow(unsent: 2)
@@ -45,7 +78,7 @@ struct AccountLaunch: View {
     }
 
     var body: some View {
-        AccountPage(flow: flow) {}
+        AccountPage(flow: flow, deletion: deletion) {}
             .environment(\.reportSender, reportSender)
     }
 }
@@ -86,4 +119,6 @@ struct SignOutLaunch: View {
 #Preview("sign out · nothing waiting") { SignOutLaunch(scenario: .nothingWaiting) }
 #Preview("sign out · unsent") { SignOutLaunch(scenario: .unsent) }
 #Preview("sign out · stuck") { SignOutLaunch(scenario: .stuck) }
+#Preview("delete account · rest") { DeleteAccountLaunch(scenario: .rest) }
+#Preview("delete account · goodbye") { DeleteAccountLaunch(scenario: .goodbye) }
 #endif
