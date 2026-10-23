@@ -76,6 +76,7 @@ export async function startHarness(opts: {
   keepAppleToken?: AppDeps['keepAppleToken'];
   account?: AppDeps['account'];
   podcasts?: AppDeps['podcasts'];
+  onboarding?: AppDeps['onboarding'];
   /** A real user lookup (e.g. over PGlite) instead of the in-memory table; `asUser` then only signs. */
   userLookup?: AppDeps['users'];
 } = {}): Promise<Harness> {
@@ -126,6 +127,7 @@ export async function startHarness(opts: {
     ...(opts.keepAppleToken ? { keepAppleToken: opts.keepAppleToken } : {}),
     account: opts.account ?? notConfigured<NonNullable<AppDeps['account']>>('account'),
     podcasts: opts.podcasts ?? notConfigured<NonNullable<AppDeps['podcasts']>>('podcasts'),
+    onboarding: opts.onboarding ?? notConfigured<NonNullable<AppDeps['onboarding']>>('onboarding'),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

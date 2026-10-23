@@ -10,6 +10,7 @@ import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
 import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
 import { mountAccountDoors, type AccountDoorDeps } from '../account/doors.js';
 import { mountPodcastDoors, type PodcastDoorDeps } from '../podcasts/doors.js';
+import { mountOnboardingDoors, type OnboardingDoorDeps } from '../onboarding/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -26,7 +27,20 @@ export interface V2RouterDeps {
   account?: AccountDoorDeps;
   /** The podcasts library (BE3.x.lib). Absent, the door answers `internal` (and reports it): never a silent 404. */
   podcasts?: PodcastDoorDeps;
+  /** First run's answers and complete (BE2.2b.min). Absent, the doors answer `internal` (and report it): never a silent 404. */
+  onboarding?: OnboardingDoorDeps;
 }
+
+/** The onboarding doors when nothing was passed in: fail closed and loudly. */
+const onboardingNotConfigured: OnboardingDoorDeps = {
+  onboarding: {
+    saveAnswer: () => Promise.reject(new Error('onboarding is not configured')),
+    latestAnswers: () => Promise.reject(new Error('onboarding is not configured')),
+    saveProfile: () => Promise.reject(new Error('onboarding is not configured')),
+    complete: () => Promise.reject(new Error('onboarding is not configured')),
+  },
+  startIngest: () => undefined,
+};
 
 /** The podcasts door when nothing was passed in: fails closed and loudly. */
 const podcastsNotConfigured: PodcastDoorDeps = {
@@ -114,6 +128,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
 
   // The podcasts tab: this week's episode, earlier episodes and briefs (BE3.x.lib).
   mountPodcastDoors(router, door, deps.podcasts ?? podcastsNotConfigured);
+
+  // First run: the answers and the step into the journal (BE2.2b.min).
+  mountOnboardingDoors(router, door, deps.onboarding ?? onboardingNotConfigured);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {
