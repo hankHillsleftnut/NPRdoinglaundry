@@ -107,3 +107,14 @@ test('a string that only says URLSession or RetrospectAPIClient is not a use, an
   assert.deepEqual(scan(app({ 'Features/A.swift': 'let m = "URLSession failed: RetrospectAPIClient is gone"\n' })), []);
   assert.equal(scan(app({ 'Features/A.swift': 'let m = "ok"; let s = URLSession(configuration: .default)\n' })).length, 1);
 });
+
+test('a backend path at the end of a written-out address fails too; an invite link or a site page does not', () => {
+  const root = app({
+    'Features/Old.swift': 'let u = URL(string: "https://retrospect-api.onrender.com/auth/signin")\nlet v = URL(string: "http://localhost:3000/api/x")\n',
+    'Features/Fine.swift': 'let i = URL(string: "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB")\nlet p = "https://example.com/privacy"\n',
+  });
+  const problems = scan(root);
+  assert.equal(problems.length, 2, problems.join('\n'));
+  assert.ok(problems[0].includes('Features/Old.swift:1') && problems[0].includes('/auth/signin'));
+  assert.ok(problems[1].includes('Features/Old.swift:2') && problems[1].includes('/api/x'));
+});

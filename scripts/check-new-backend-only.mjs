@@ -17,7 +17,8 @@ const FOLDERS = ['Platform', 'Features', 'DesignSystemV2'];
 const OLD_CLIENT_OK = new Set(['Platform/Bridges.swift']);
 const NETWORK_OK = (rel) => rel.startsWith('Platform/Backend/') || rel === 'Platform/Media/MediaSource.swift';
 const PATHS_WRITTEN_HERE = new Set(['Platform/Backend/Endpoint.swift', 'Platform/Diagnostics/Diagnostics.swift']);
-const PATH_LITERAL = /"(\/(?:v2|api|auth|public)(?:\/[^"\s]*)?)"/g;
+// A path on its own ("/v2/x") or at the end of a written-out address ("https://host/auth/signin").
+const PATH_LITERAL = /"(?:https?:\/\/[^"\/\s]+)?(\/(?:v2|api|auth|public)(?:\/[^"\s]*)?)"/g;
 
 /** Every .swift file under dir. A guard must fail loudly: a missing folder, an unreadable entry or a dangling
  * symlink throws (nothing is skipped), so a partial scan can never report "clean". */
