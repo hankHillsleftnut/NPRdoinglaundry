@@ -39,6 +39,9 @@ private struct PageIdentity: Hashable {
 }
 
 struct JournalPage: View {
+    /// True once the composer records speech and hands it to `sendVoice`. Until then the mic is hidden.
+    static let voiceCaptureWired = false
+
     @State private var model: JournalViewModel
     @Environment(\.rCompactHeight) private var compactHeight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -64,6 +67,8 @@ struct JournalPage: View {
             }
             .background(RColor.backgroundCanvas)
             .rMenuHost()
+            // the shake and the "send a report" sheet, once, at the page root (DG.6)
+            .sendReport(bottomInset: RDimension.space16)
         }
         .rSheet(isPresented: $model.playerShown, detent: .full) {
             playerSheet
@@ -212,14 +217,15 @@ struct JournalPage: View {
     // MARK: - The composer
 
     private var composer: some View {
-        RVoiceComposer(mode: $model.composerMode, text: $model.draft) { text in
+        // Beta 1: nothing records yet (no capture, no `sendVoice`), so the mic is not offered.
+        RVoiceComposer(mode: $model.composerMode, text: $model.draft, onSend: { text in
             Task { await model.send(text) }
-        }
-        // the inset proposes the scroll view's height; the bar keeps its own
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, margin)
-        .padding(.bottom, RDimension.space2)
-        .accessibilityIdentifier("journal.composer")
+        }, voiceAvailable: JournalPage.voiceCaptureWired)
+            // the inset proposes the scroll view's height; the bar keeps its own
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, margin)
+            .padding(.bottom, RDimension.space2)
+            .accessibilityIdentifier("journal.composer")
     }
 
     // MARK: - The player sheet (P10 fills it)

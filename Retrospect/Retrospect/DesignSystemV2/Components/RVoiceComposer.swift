@@ -46,6 +46,9 @@ struct RVoiceComposer: View {
     var onSend: (String) -> Void = { _ in }
     /// Speaking: a tap anywhere on the bar.
     var onInterrupt: () -> Void = {}
+    /// False when nothing records yet: the mic is hidden and unreachable (the bar never says
+    /// "listening" over silence), and only typing and send remain.
+    var voiceAvailable = true
 
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
@@ -57,6 +60,11 @@ struct RVoiceComposer: View {
         style: .composerText,
         restHeight: RDimension.sizeControlSmall + 2 * RDimension.space3
     )
+
+    /// The corner shows send, or the mic when there is a mic to use.
+    private var showsCorner: Bool {
+        voiceAvailable || isSend
+    }
 
     private var isSend: Bool {
         mode == .muted && !text.isEmpty
@@ -72,6 +80,9 @@ struct RVoiceComposer: View {
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
             cornerButton
+                .opacity(showsCorner ? 1 : 0)
+                .allowsHitTesting(showsCorner)
+                .accessibilityHidden(!showsCorner)
                 .padding(.top, RDimension.space3)
                 .padding(.bottom, max(
                     RDimension.space3,
@@ -218,7 +229,7 @@ struct RVoiceComposer: View {
         if isSend {
             onSend(text)
             text = ""
-        } else {
+        } else if voiceAvailable {
             mode = mode == .muted ? .listening : .muted
         }
     }

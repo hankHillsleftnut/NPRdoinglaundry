@@ -17,6 +17,8 @@ struct LiveJournalRoot: View {
     var body: some View {
         JournalPageContainer(today: today)
             .environment(\.journalData, platform.journalData)
+            // rebuilt with the person's stack: after an account switch it is the new person's sender
+            .environment(\.reportSender, platform.reportSender)
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     today = Self.day()

@@ -143,3 +143,19 @@ struct ReportTests {
         #expect(summary.lastFailureCodes.last == .notFound)
     }
 }
+
+extension ReportTests {
+    @Test("a note is cut to the door's limit in UTF-16 units, never inside a character")
+    func theNoteIsCutInUTF16Units() throws {
+        let emoji = String(repeating: "\u{1F600}", count: 600) // 1200 UTF-16 units
+        let cut = try #require(Platform.Diagnostics.Report.cleaned(emoji))
+
+        #expect(cut.utf16.count <= Platform.Diagnostics.Report.maxNoteCharacters)
+        #expect(cut.utf16.count == 1000)
+        #expect(cut == String(repeating: "\u{1F600}", count: 500))
+        #expect(Platform.Diagnostics.Report.cut("short") == "short")
+        // a character that would straddle the limit is dropped whole
+        let odd = String(repeating: "a", count: 999) + "\u{1F600}"
+        #expect(Platform.Diagnostics.Report.cut(odd) == String(repeating: "a", count: 999))
+    }
+}

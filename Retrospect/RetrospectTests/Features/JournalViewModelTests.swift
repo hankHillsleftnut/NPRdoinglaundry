@@ -142,6 +142,71 @@ struct JournalViewModelTests {
         #expect(model.landedLine == "got it.")
     }
 
+    @Test("with live timing (the row arrives after send returned) the entry still lands, once, when it is sent")
+    func landsWhenTheRowArrivesLate() async {
+        let data = ScriptedJournalData(entries: SampleJournalContent.todayEntries)
+        data.rowsArriveLater = true
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        model.noteDeliveries()
+
+        await model.send("walked the long way home")
+        #expect(data.today.value?.contains { $0.text == "walked the long way home" } == false, "send returned before the row")
+        data.rowArrives()
+        model.noteDeliveries()
+        let id = data.lastID
+        #expect(model.landed == nil, "waiting is not landed")
+
+        data.set(.sent, for: id)
+        model.noteDeliveries()
+        #expect(model.landed == id)
+        #expect(model.landedLine == "got it.")
+    }
+
+    @Test("two sends in a row each land, in order, when their rows arrive later")
+    func twoLateSendsBothLand() async {
+        let data = ScriptedJournalData(entries: [])
+        data.rowsArriveLater = true
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        model.noteDeliveries()
+
+        await model.send("one")
+        let first = data.lastID
+        await model.send("two")
+        let second = data.lastID
+        data.rowArrives()
+        data.rowArrives()
+        model.noteDeliveries()
+        data.set(.sent, for: first)
+        model.noteDeliveries()
+        #expect(model.landed == first)
+        data.set(.sent, for: second)
+        model.noteDeliveries()
+        #expect(model.landed == second)
+    }
+
+    @Test("an entry already there when the page loaded never lands, even if it is sent later")
+    func olderEntriesDoNotLand() async {
+        let older = SampleJournalContent.todayEntries.map { entry -> Flows.Journal.Entry in
+            var waiting = entry
+            waiting.delivery = .waiting
+            return waiting
+        }
+        let data = ScriptedJournalData(entries: older)
+        data.rowsArriveLater = true
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        model.noteDeliveries()
+        await model.send("new words")
+        if let first = older.first {
+            data.set(.sent, for: first.id)
+        }
+        model.noteDeliveries()
+
+        #expect(model.landed == nil, "the older entry was not this page's send")
+    }
+
     @Test("a watched entry lands once")
     func landsOnce() async {
         let data = ScriptedJournalData(entries: [])
@@ -360,6 +425,9 @@ final class ScriptedJournalData: Flows.JournalData {
     @ObservationIgnored private(set) var loads = 0
     @ObservationIgnored private(set) var sent: [String] = []
     @ObservationIgnored private(set) var lastID = ""
+    /// Live timing: `send` only queues, and the row reaches `today` later, through the store's observation.
+    @ObservationIgnored var rowsArriveLater = false
+    @ObservationIgnored private var queuedText: [(id: String, text: String)] = []
 
     init(entries: [Journal.Entry]) {
         today = .loaded(entries)
@@ -381,6 +449,10 @@ final class ScriptedJournalData: Flows.JournalData {
         }
         sent.append(text)
         lastID = "00000000-0000-4000-8000-\(String(format: "%012d", sent.count + 7000))"
+        if rowsArriveLater {
+            queuedText.append((lastID, text))
+            return .queued
+        }
         today = .loaded((today.value ?? []) + [Journal.Entry(
             local: lastID, kind: .typed, text: text, createdAt: Date(timeIntervalSince1970: 1_792_570_000),
             day: SampleJournalContent.today, delivery: .waiting
@@ -389,6 +461,16 @@ final class ScriptedJournalData: Flows.JournalData {
     }
 
     func sendVoice(_: Journal.VoiceNote) async {}
+
+    /// The store's observation delivers the queued entry's row (as `waiting`), after `send` returned.
+    func rowArrives() {
+        guard let next = queuedText.first else { return }
+        queuedText.removeFirst()
+        today = .loaded((today.value ?? []) + [Journal.Entry(
+            local: next.id, kind: .typed, text: next.text, createdAt: Date(timeIntervalSince1970: 1_792_570_000),
+            day: SampleJournalContent.today, delivery: .waiting
+        )])
+    }
 
     func retry(clientEntryId: String) async {
         set(.waiting, for: clientEntryId)

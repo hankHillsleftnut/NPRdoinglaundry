@@ -20,6 +20,7 @@ extension Platform.Diagnostics {
         let performance: Performance
         let crashes: [Stamped<Crash>]
 
+        /// The door's limit, in UTF-16 units (see `cut`).
         static let maxNoteCharacters = 1000
 
         init(
@@ -51,7 +52,24 @@ extension Platform.Diagnostics {
         /// The note trimmed and cut to the door's limit; nil when nothing is left.
         static func cleaned(_ note: String?) -> String? {
             guard let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
-            return String(trimmed.prefix(maxNoteCharacters))
+            return cut(trimmed)
+        }
+
+        /// `text` cut to the door's limit, which counts UTF-16 units (`z.string().max(1000)`), not
+        /// characters: an emoji is two or more. Cut on a character boundary, never inside one.
+        static func cut(_ text: String) -> String {
+            guard text.utf16.count > maxNoteCharacters else { return text }
+            var units = 0
+            var kept = text.startIndex
+            for index in text.indices {
+                let next = text.index(after: index)
+                units += text[index ..< next].utf16.count
+                if units > maxNoteCharacters {
+                    break
+                }
+                kept = next
+            }
+            return String(text[..<kept])
         }
 
         func encode(to encoder: any Encoder) throws {

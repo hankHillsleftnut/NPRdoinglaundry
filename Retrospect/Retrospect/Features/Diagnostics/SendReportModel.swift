@@ -25,8 +25,8 @@ final class SendReportModel {
     private(set) var phase: Phase = .editing
     var note = "" {
         didSet {
-            if note.count > Self.maxNoteCharacters {
-                note = String(note.prefix(Self.maxNoteCharacters))
+            if note.utf16.count > Self.maxNoteCharacters {
+                note = Platform.Diagnostics.Report.cut(note)
             }
         }
     }

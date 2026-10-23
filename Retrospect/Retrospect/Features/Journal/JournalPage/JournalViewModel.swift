@@ -67,6 +67,10 @@ final class JournalViewModel {
     /// when one of these turns `.sent` in the data, whenever that happens, so it works the same
     /// for a send that returns at once (the outbox) and one that waits (the sample).
     @ObservationIgnored private var watching: Set<String> = []
+    /// Every entry id this page has looked at, so a new one stands out.
+    @ObservationIgnored private var seen: Set<String> = []
+    /// Sends whose entry hasn't shown up in `today` yet.
+    @ObservationIgnored private var expectedNew = 0
     /// Counts failed loads, for the error announcement.
     private(set) var loadAttempts = 0
     /// The last guess answer that failed, until one works; the page plays the error haptic and
@@ -166,7 +170,10 @@ final class JournalViewModel {
             return
         }
         sendFailure = nil
-        watching.formUnion((data.today.value ?? []).map(\.id).filter { !before.contains($0) })
+        // The row may already be in `today` (the sample) or arrive later through the store's
+        // observation (live data): one send expects one new entry, claimed whenever it shows up.
+        seen.formUnion(before)
+        expectedNew += 1
         noteDeliveries()
     }
 
@@ -185,11 +192,23 @@ final class JournalViewModel {
 
     /// Sets `landed` for a watched entry that is now sent, once (it stops being watched).
     func noteDeliveries() {
+        claimNewEntries()
         guard !watching.isEmpty else { return }
         for entry in data.today.value ?? [] where entry.delivery == .sent && watching.contains(entry.id) {
             watching.remove(entry.id)
             landed = entry.id
         }
+    }
+
+    /// Hands each entry that is new since the last look to a send waiting for its entry (oldest first),
+    /// then remembers everything shown.
+    private func claimNewEntries() {
+        let ids = (data.today.value ?? []).map(\.id)
+        for id in ids where expectedNew > 0 && !seen.contains(id) {
+            watching.insert(id)
+            expectedNew -= 1
+        }
+        seen.formUnion(ids)
     }
 
     func answer(_ guess: Journal.Guess, _ verdict: RGuessCard.Verdict) async {

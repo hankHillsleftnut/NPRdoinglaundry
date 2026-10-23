@@ -59,6 +59,10 @@ extension Platform {
         private(set) var journalData: LiveJournalData?
         /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
         private(set) var mediaSource: Platform.Media.Source?
+        /// "Send a report" for the signed-in person (DG.6); built on their outbox, dropped with it.
+        private(set) var reportSender: Platform.Diagnostics.LiveReportSender?
+        /// The access state the session last reported, for the report's account line.
+        private var accountAccess: Session.AccessState = .unknown
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -225,6 +229,7 @@ extension Platform {
             openUserID = nil
             journalData?.stop()
             journalData = nil
+            reportSender = nil
             await outbox?.stop()
             outbox = nil
             unsentSource.value = nil
@@ -268,7 +273,8 @@ extension Platform {
                 for await state in states {
                     guard let self else { return }
                     switch state {
-                    case let .signedIn(userID, _):
+                    case let .signedIn(userID, access):
+                        accountAccess = access
                         await sessionDidChange(to: userID).value
                     case .signedOut:
                         guard openUserID != nil else { continue }
@@ -278,6 +284,18 @@ extension Platform {
                     }
                 }
             }
+        }
+
+        /// The report's device and account lines (the network line reads unknown). Sign in with Apple is the only sign-in on Beta 1 and there is
+        /// no billing yet, so the provider is `apple` and the entitlement `none`; an access state the app does
+        /// not know reads as the least privileged one.
+        static func reportContext(access: Session.AccessState) -> Platform.Diagnostics.ReportContext {
+            Platform.Diagnostics.ReportContext(
+                environment: Platform.Diagnostics.Environment(sources: .device),
+                account: Platform.Diagnostics.Account(
+                    provider: .apple, access: .init(rawValue: access.rawValue) ?? .waitlisted, entitlement: .none
+                )
+            )
         }
 
         /// What the sign-out check counts as unsent: entries and answers in the outbox that is open.
@@ -295,6 +313,12 @@ extension Platform {
             )
             self.outbox = outbox
             unsentSource.value = outbox
+            reportSender = Platform.Diagnostics.LiveReportSender(
+                recorder: diagnostics, outbox: outbox, reachability: reachability,
+                context: { [weak self] in
+                    Self.reportContext(access: self?.accountAccess ?? .unknown)
+                }
+            )
             let repository = Platform.Repositories.Journal(database: database, client: client)
             journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
             let reachability = reachability

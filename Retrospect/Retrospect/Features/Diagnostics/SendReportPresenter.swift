@@ -16,7 +16,14 @@ final class SendReportCoordinator {
     private var sender: (any Flows.ReportSending)?
 
     func attach(_ sender: (any Flows.ReportSending)?) {
+        // A sender belongs to one person's outbox: a different one (an account switch) drops the
+        // sheet and the note meant for the last, so nothing is built from or queued into the old store.
+        if let current = self.sender, let sender, current === sender {
+            return
+        }
         self.sender = sender
+        model = nil
+        isPresented = false
     }
 
     func open() {
@@ -63,7 +70,7 @@ private struct SendReportPresenter: ViewModifier {
                 }
             }
             .rToast($coordinator.toast, bottomInset: bottomInset)
-            .task(id: sender == nil ? 0 : 1) {
+            .task(id: sender.map { ObjectIdentifier($0) }) {
                 coordinator.attach(sender)
                 await coordinator.listen()
             }

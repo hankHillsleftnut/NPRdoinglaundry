@@ -111,4 +111,35 @@ struct SendReportTests {
         #expect(sender.notes.count == 2)
         #expect(handedOn == 0)
     }
+
+    @Test("a report opened after an account switch is built from the new sender, never the old one")
+    func aNewSenderReplacesTheOldOne() async {
+        let coordinator = SendReportCoordinator()
+        let old = SampleReportSender(scenario: .online)
+        let new = SampleReportSender(scenario: .online)
+        coordinator.attach(old)
+        coordinator.open()
+        #expect(coordinator.isPresented)
+
+        coordinator.attach(new)
+        #expect(!coordinator.isPresented, "the last person's sheet and note are gone")
+        #expect(coordinator.model == nil)
+
+        coordinator.open()
+        await coordinator.model?.send()
+        #expect(old.notes.isEmpty)
+        #expect(new.notes.count == 1)
+    }
+
+    @Test("attaching the same sender again keeps the open sheet")
+    func theSameSenderKeepsTheSheet() {
+        let coordinator = SendReportCoordinator()
+        let sender = SampleReportSender(scenario: .online)
+        coordinator.attach(sender)
+        coordinator.open()
+
+        coordinator.attach(sender)
+
+        #expect(coordinator.isPresented)
+    }
 }
