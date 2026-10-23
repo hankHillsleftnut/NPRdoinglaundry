@@ -4,10 +4,10 @@ import Foundation
 import Testing
 
 @MainActor
-@Suite(.timeLimit(.minutes(2)))
+@Suite(.timeLimit(.minutes(3)))
 struct RealEnginePlaybackTests {
     func wav() throws -> URL {
-        let rate = 8000, n = rate * 1
+        let rate = 8000, n = rate * 3 // long enough that a slow runner cannot skip the playing window between polls
         var d = Data()
         func u32(_ v: Int) { var x = UInt32(v).littleEndian; d.append(Data(bytes: &x, count: 4)) }
         func u16(_ v: Int) { var x = UInt16(v).littleEndian; d.append(Data(bytes: &x, count: 2)) }
@@ -20,13 +20,13 @@ struct RealEnginePlaybackTests {
         return url
     }
 
-    func wait(_ p: Platform.Media.LivePlayback, _ want: Flows.PlaybackState, secs: Double = 6) async -> Bool {
+    func wait(_ p: Platform.Media.LivePlayback, _ want: Flows.PlaybackState, secs: Double = 30) async -> Bool {
         let end = Date().addingTimeInterval(secs)
         while Date() < end {
             if p.state == want {
                 return true
             }
-            try? await Task.sleep(for: .milliseconds(50))
+            try? await Task.sleep(for: .milliseconds(20))
         }
         return false
     }
@@ -40,15 +40,18 @@ struct RealEnginePlaybackTests {
             resolve: { _, _ in url },
             log: Platform.Log.Recorder()
         )
-        let item = Flows.PlaybackItem(id: "x", kind: .brief, title: "t", parts: [], durationSeconds: 1)
+        let item = Flows.PlaybackItem(id: "x", kind: .brief, title: "t", parts: [], durationSeconds: 3)
         await p.load(item)
         p.play()
         let played = await wait(p, .playing)
         let ended = await wait(p, .ended)
         p.play()
-        let again = await wait(p, .playing, secs: 3)
+        let again = await wait(p, .playing)
         let ended2 = await wait(p, .ended)
         p.unload()
-        #expect(played && ended && again && ended2)
+        #expect(played, "plays")
+        #expect(ended, "reaches the end")
+        #expect(again, "replay from the end plays again")
+        #expect(ended2, "and reaches the end again")
     }
 }
