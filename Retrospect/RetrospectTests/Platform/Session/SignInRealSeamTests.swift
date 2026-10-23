@@ -157,6 +157,30 @@ struct SignInRealSeamTests {
         #expect(await h.store.kept() == nil, "cleared once a call succeeds")
     }
 
+    @Test("if the Keychain can't keep the name and email, the retry in the same run still carries them")
+    func memoryFallbackWhenTheKeychainFails() async throws {
+        let h = try SessionHarness(stored: nil)
+        let good = try Fixtures.data("00", "auth.response")
+        let down = try Fixtures.data("00", "error.internal")
+        h.serve(["/v2/auth/apple": { count, _ in count == 0 ? (500, down) : (200, good) }])
+        let raw = raw
+        let apple = Session.AppleSignIn(client: h.client, installer: h.manager, log: h.recorder, keeper: Refusing()) { Session.Nonce(raw: raw) }
+        let first = Session.AppleCredential(
+            user: "001234.invented", identityToken: "t1", authorizationCode: "c1", givenName: "sam", familyName: nil, email: "sam@invented.test"
+        )
+        let retry = Session.AppleCredential(
+            user: "001234.invented", identityToken: "t2", authorizationCode: "c2", givenName: nil, familyName: nil, email: nil
+        )
+
+        apple.prepare(ASAuthorizationAppleIDProvider().createRequest())
+        await #expect(throws: (any Error).self) { try await apple.signIn(with: first) }
+        apple.prepare(ASAuthorizationAppleIDProvider().createRequest())
+        _ = try await apple.signIn(with: retry)
+
+        let name = h.bodies(to: "/v2/auth/apple").last?["fullName"] as? [String: Any]
+        #expect(name?["givenName"] as? String == "sam", "carried from memory although the Keychain kept nothing")
+    }
+
     @Test("what was kept for one Apple id is not sent for another")
     func keptDataIsPerAppleID() async throws {
         let h = try SessionHarness(stored: nil)
@@ -186,4 +210,11 @@ struct SignInRealSeamTests {
         #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: true, reason: .revoked)) == .signIn(endedByServer: true))
         #expect(NewAppRoot.screen(for: .signedIn(userID: "u", access: .waitlisted)) == .app)
     }
+}
+
+/// A Keychain that keeps nothing and finds nothing.
+private final class Refusing: Session.FirstAuthorizationKeeping, @unchecked Sendable {
+    func kept() async -> Session.KeptFirstAuthorization? { nil }
+    func keep(_: Session.KeptFirstAuthorization) async {}
+    func clear() async {}
 }

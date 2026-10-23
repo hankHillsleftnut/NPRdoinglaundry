@@ -91,6 +91,8 @@ extension Session {
         private let makeNonce: @Sendable () throws -> Nonce
         private let keeper: (any FirstAuthorizationKeeping)?
         private var pending: Nonce?
+        /// The same value in memory, for when the Keychain write or read fails: a retry in this run still carries it.
+        private var remembered: KeptFirstAuthorization?
 
         init(
             client: Backend.Client,
@@ -172,6 +174,7 @@ extension Session {
                 provider: .apple,
                 appleUserID: credential.user
             ))
+            remembered = nil
             await keeper?.clear()
             log.record(.signedIn(provider: .apple, isNew: response.user.isNew))
             return SignInOutcome(
@@ -186,10 +189,12 @@ extension Session {
                 let value = KeptFirstAuthorization(
                     appleUser: credential.user, givenName: credential.givenName, familyName: credential.familyName, email: credential.email
                 )
+                remembered = value
                 await keeper?.keep(value)
                 return value
             }
-            guard let kept = await keeper?.kept(), kept.appleUser == credential.user else { return nil }
+            let stored = await keeper?.kept()
+            guard let kept = stored ?? remembered, kept.appleUser == credential.user else { return nil }
             return kept
         }
 
