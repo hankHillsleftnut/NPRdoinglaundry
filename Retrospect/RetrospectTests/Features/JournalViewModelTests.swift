@@ -455,6 +455,309 @@ struct JournalViewModelTests {
     }
 }
 
+/// C26.1: the brief card's play plays today's brief through the one player.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct JournalBriefPlayTests {
+    typealias Journal = Flows.Journal
+
+    /// Today's brief with audio: three parts, the last with no start yet.
+    static let brief: Journal.Brief = {
+        let base = SampleJournalContent.brief
+        let parts = [
+            Journal.Brief.Part(text: "first", why: nil, sources: [], startSeconds: 0),
+            Journal.Brief.Part(text: "second", why: nil, sources: [], startSeconds: 41.5),
+            Journal.Brief.Part(text: "third", why: nil, sources: [], startSeconds: nil),
+        ]
+        return Journal.Brief(
+            id: "brief-c261", date: base.date, kind: .brief, parts: parts,
+            audio: .init(url: URL(fileURLWithPath: "/brief.m4a"), expiresAt: Date(timeIntervalSince1970: 1_792_600_000), durationSeconds: 126),
+            createdAt: base.createdAt
+        )
+    }()
+
+    private func setUp(brief: Journal.Brief = Self.brief, withPlayer: Bool = true) -> (JournalViewModel, ScriptedPlayback?) {
+        let playback = withPlayer ? ScriptedPlayback() : nil
+        let data = ScriptedJournalData(entries: [])
+        data.brief = .loaded(.ready(brief))
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        model.playback = playback
+        return (model, playback)
+    }
+
+    @Test("the play loads today's brief into the player once, with its parts and length, then plays it; no sheet")
+    func playLoadsAndPlays() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        await model.play()
+        #expect(player.loads.count == 1)
+        let item = try #require(player.loads.first)
+        #expect(item.id == Self.brief.id)
+        #expect(item.kind == .brief)
+        #expect(item.title == "today's brief")
+        #expect(item.parts.map(\.text) == ["first", "second", "third"])
+        #expect(item.parts.map(\.startSeconds) == [0, 41.5, 41.5], "a part with no start starts where the one before it did")
+        #expect(item.parts.map(\.id) == [0, 1, 2])
+        #expect(item.durationSeconds == 126)
+        #expect(player.plays == 1)
+        #expect(model.playerShown == false)
+    }
+
+    @Test("the ring turns from the tap until the player plays, then the card rests")
+    func ringUntilPlaying() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        #expect(model.briefCard?.state == .rest)
+        await model.play()
+        #expect(model.briefCard?.state == .starting, "loaded and asked to play, the player hasn't answered yet")
+        player.state = .buffering
+        model.notePlayback()
+        #expect(model.briefCard?.state == .starting)
+        player.state = .playing
+        model.notePlayback()
+        #expect(model.briefCard?.state == .rest)
+        player.state = .paused
+        model.notePlayback()
+        #expect(model.briefCard?.state == .rest)
+    }
+
+    @Test("the card's state from the player: the ring while it buffers, at rest when it plays, pauses or gives up")
+    func playStateMapping() {
+        #expect(JournalViewModel.playState(starting: false, player: .buffering) == .starting)
+        #expect(JournalViewModel.playState(starting: false, player: .playing) == .rest)
+        #expect(JournalViewModel.playState(starting: false, player: .paused) == .rest)
+        #expect(JournalViewModel.playState(starting: true, player: .paused) == .starting)
+        #expect(JournalViewModel.playState(starting: true, player: nil) == .starting)
+        for state: Flows.PlaybackState in [.playing, .failed(Flows.Failure(.unknown)), .offline, .idle, .ended] {
+            #expect(JournalViewModel.playState(starting: true, player: state) == .rest, "never stuck on the ring: \(state)")
+        }
+    }
+
+    @Test("a tap while it plays pauses, another resumes; the same brief is never loaded again")
+    func toggles() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        await model.play()
+        player.state = .playing
+        model.notePlayback()
+
+        await model.play()
+        #expect(player.pauses == 1)
+        #expect(player.plays == 1)
+        player.state = .paused
+        model.notePlayback()
+
+        await model.play()
+        #expect(player.plays == 2)
+        #expect(player.loads.count == 1)
+        #expect(model.playerShown == false)
+    }
+
+    @Test("another item in the player is replaced by today's brief")
+    func replacesAnotherItem() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        player.item = Flows.PlaybackItem(id: "episode-1", kind: .episode, title: "an episode", parts: [], durationSeconds: nil)
+        player.state = .playing
+        #expect(model.briefCard?.state == .rest, "someone else's sound is not this card's")
+        await model.play()
+        #expect(player.loads.map(\.id) == [Self.brief.id])
+        #expect(player.pauses == 0)
+    }
+
+    @Test("a load that ends offline or failed rests the card and opens the text sheet")
+    func gaveUpOpensTheSheet() async throws {
+        for outcome: Flows.PlaybackState in [.offline, .failed(Flows.Failure(.unknown))] {
+            let (model, playback) = setUp()
+            let player = try #require(playback)
+            player.afterLoad = outcome
+            await model.play()
+            #expect(model.playerShown, "\(outcome)")
+            #expect(model.briefCard?.state == .rest)
+            #expect(player.plays == 0)
+        }
+    }
+
+    @Test("a start that fails after the tap rests the card and opens the text sheet")
+    func failsWhileStarting() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        await model.play()
+        player.state = .buffering
+        model.notePlayback()
+        player.state = .failed(Flows.Failure(.network))
+        model.notePlayback()
+        #expect(model.briefCard?.state == .rest)
+        #expect(model.playerShown)
+    }
+
+    @Test("a failed try is tried again on the next tap (nothing of it is loaded)")
+    func failedTriesAgain() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        player.afterLoad = .offline
+        await model.play()
+        model.playerShown = false
+        player.afterLoad = .paused
+        await model.play()
+        #expect(player.loads.count == 2)
+        #expect(player.plays == 1)
+    }
+
+    @Test("a brief with no audio, or no player (the sample page), opens the text sheet at once")
+    func noSoundOpensTheSheet() async throws {
+        let quiet = Journal.Brief(
+            id: Self.brief.id, date: Self.brief.date, kind: .brief, parts: Self.brief.parts, audio: nil, createdAt: Self.brief.createdAt
+        )
+        let (silent, playback) = setUp(brief: quiet)
+        await silent.play()
+        #expect(silent.playerShown)
+        #expect(try #require(playback).loads.isEmpty)
+
+        let (sample, _) = setUp(withPlayer: false)
+        await sample.play()
+        #expect(sample.playerShown)
+        #expect(sample.briefCard?.state == .rest)
+    }
+
+    @Test("the card's body opens the text sheet and plays nothing")
+    func bodyOpensTheSheet() throws {
+        let (model, playback) = setUp()
+        model.open()
+        #expect(model.playerShown)
+        #expect(try #require(playback).loads.isEmpty)
+    }
+
+    @Test("a call or the headphones out while it starts: the ring stops, and nothing resumes it but a tap")
+    func stopsByItselfWhileStarting() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        await model.play()
+        player.state = .buffering
+        model.notePlayback()
+        player.state = .paused
+        model.notePlayback()
+        #expect(model.briefCard?.state == .rest)
+        #expect(model.playerShown == false)
+        #expect(player.plays == 1, "never started again by itself")
+    }
+
+    @Test("a second tap while it loads stops it: the brief is not started when the load lands")
+    func secondTapWhileLoading() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        player.holdsLoad = true
+        let first = Task { await model.play() }
+        while !player.isHolding {
+            await Task.yield()
+        }
+        #expect(model.briefCard?.state == .starting)
+        await model.play()
+        #expect(player.pauses == 1)
+        player.finishLoad()
+        await first.value
+        #expect(player.plays == 0)
+        #expect(model.briefCard?.state == .rest)
+        #expect(player.loads.count == 1)
+    }
+
+    @Test("sign-out during the load (the player unloaded): the ring stops and no sheet opens")
+    func unloadedWhileLoading() async throws {
+        let (model, playback) = setUp()
+        let player = try #require(playback)
+        player.afterLoad = .idle
+        player.clearsItemOnLoad = true
+        await model.play()
+        #expect(model.starting == nil)
+        #expect(model.briefCard?.state == .rest)
+        #expect(player.plays == 0)
+        #expect(model.playerShown == false)
+    }
+
+    @Test("after sign-out the page keeps no player: the model holds it weakly, and the play falls back to the sheet")
+    func noStalePlayer() async {
+        let data = ScriptedJournalData(entries: [])
+        data.brief = .loaded(.ready(Self.brief))
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        var player: ScriptedPlayback? = ScriptedPlayback()
+        model.playback = player
+        #expect(model.playback != nil)
+        player = nil
+        #expect(model.playback == nil)
+        await model.play()
+        #expect(model.playerShown)
+    }
+}
+
+/// A player that answers like the live one: `load` sets the item, buffers, then rests paused (or ends
+/// offline, failed, or unloaded); the test moves the state on, as the engine's events would.
+@MainActor
+@Observable
+final class ScriptedPlayback: Flows.Playback {
+    var item: Flows.PlaybackItem?
+    var state: Flows.PlaybackState = .idle
+    var position: Double = 0
+    var duration: Double?
+    var buffered: Double? {
+        nil
+    }
+
+    var currentPart: Int? {
+        nil
+    }
+
+    var rate: Double = 1
+    @ObservationIgnored var afterLoad: Flows.PlaybackState = .paused
+    /// Like an unload (sign-out) landing during the load.
+    @ObservationIgnored var clearsItemOnLoad = false
+    @ObservationIgnored var holdsLoad = false
+    @ObservationIgnored private var gate: CheckedContinuation<Void, Never>?
+    @ObservationIgnored private(set) var loads: [Flows.PlaybackItem] = []
+    @ObservationIgnored private(set) var plays = 0
+    @ObservationIgnored private(set) var pauses = 0
+
+    var isHolding: Bool {
+        gate != nil
+    }
+
+    func load(_ item: Flows.PlaybackItem) async {
+        loads.append(item)
+        self.item = item
+        state = .buffering
+        if holdsLoad {
+            await withCheckedContinuation { gate = $0 }
+        }
+        if clearsItemOnLoad {
+            self.item = nil
+        }
+        state = afterLoad
+    }
+
+    func finishLoad() {
+        gate?.resume()
+        gate = nil
+    }
+
+    func play() {
+        plays += 1
+    }
+
+    func pause() {
+        pauses += 1
+        if state == .playing || state == .buffering {
+            state = .paused
+        }
+    }
+
+    func seek(to seconds: Double) {
+        position = seconds
+    }
+
+    func skip(by seconds: Double) {
+        position += seconds
+    }
+}
+
 /// A journal data source that answers like the live one will: `send` saves at once (`.waiting`)
 /// and returns; the test moves the delivery on.
 @MainActor
@@ -463,7 +766,7 @@ final class ScriptedJournalData: Flows.JournalData {
     typealias Journal = Flows.Journal
 
     private(set) var today: Flows.Loadable<[Journal.Entry]>
-    private(set) var brief: Flows.Loadable<Journal.BriefSlot> = .loaded(.off)
+    var brief: Flows.Loadable<Journal.BriefSlot> = .loaded(.off)
     private(set) var guesses: [Journal.Guess] = []
     private(set) var isOnline = true
     @ObservationIgnored var sendOutcome: Journal.WriteOutcome?
