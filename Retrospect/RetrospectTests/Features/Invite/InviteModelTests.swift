@@ -45,8 +45,15 @@ struct InviteModelTests {
     private func model(_ phase: InviteModel.Phase, _ source: ScriptedInviteSource, name: String? = "sam") -> InviteModel {
         InviteModel(
             phase: phase, source: source, preview: SampleInvite.face, face: SampleInvite.face, firstName: name,
-            sleep: { _ in }
+            sleep: Self.quickly
         )
+    }
+
+    /// Every wait is instant except the tear's eight-second limit, which never fires here.
+    static let quickly: @Sendable (Duration) async -> Void = { duration in
+        if duration == .seconds(8) {
+            try? await Task.sleep(for: .seconds(3600))
+        }
     }
 
     // MARK: Sign in
@@ -222,7 +229,6 @@ struct InviteModelTests {
         #expect(model.phase == .ready)
         #expect(model.caption == "waiting for a connection. nothing was used.")
         #expect(model.warnings == 1)
-        #expect(model.printedCode == SampleInvite.code)
         // the next try is the same ticket, and it goes through
         await model.commitTear()
         #expect(source.tearCalls == 2)

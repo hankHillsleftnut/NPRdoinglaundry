@@ -77,6 +77,7 @@ final class InviteModel {
     @ObservationIgnored private let sleep: @Sendable (Duration) async -> Void
     @ObservationIgnored private var tearTask: Task<Session.TearOutcome, Never>?
     @ObservationIgnored private var lockTask: Task<Void, Never>?
+    @ObservationIgnored private var typedCheck: Task<Void, Never>?
 
     init(
         phase: Phase,
@@ -158,8 +159,19 @@ final class InviteModel {
 
     func submitTyped() async {
         guard phase == .typed, tiles.count == TicketCode.length else { return }
-        let ticket = await source.type(code: tiles)
-        await receive(ticket, access: .waitlisted, typed: true)
+        // one check at a time: the 13th character already started it
+        if let running = typedCheck {
+            await running.value
+            return
+        }
+        let code = tiles
+        let task = Task { [source] in
+            let ticket = await source.type(code: code)
+            await receive(ticket, access: .waitlisted, typed: true)
+        }
+        typedCheck = task
+        await task.value
+        typedCheck = nil
     }
 
     // MARK: The ticket is known

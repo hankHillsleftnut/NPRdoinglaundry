@@ -116,11 +116,17 @@ struct InviteScreen: View {
     // MARK: The page
 
     private var page: some View {
+        GeometryReader { proxy in
+            pageScroll(width: proxy.size.width)
+        }
+    }
+
+    private func pageScroll(width: CGFloat) -> some View {
         ScrollView {
             Group {
                 switch layout {
-                case .promise: promiseColumn
-                case .ticket: ticketColumn
+                case .promise: promiseColumn(width: width)
+                case .ticket: ticketColumn(width: width)
                 case .paused: pausedColumn
                 case .empty: Color.clear
                 }
@@ -134,7 +140,7 @@ struct InviteScreen: View {
 
     // MARK: T1 · the promise
 
-    private var promiseColumn: some View {
+    private func promiseColumn(width: CGFloat) -> some View {
         VStack(spacing: RDimension.space2) {
             if let label = model.promiseLabel {
                 Text(label)
@@ -150,7 +156,7 @@ struct InviteScreen: View {
                 .accessibilityAddTraits(.isHeader)
                 .id(model.promiseTitle)
                 .transition(.blurReplace)
-            RPrinterSlot(ticketWidth: ticketWidth, state: .rest)
+            RPrinterSlot(ticketWidth: ticketWidth(page: width), state: .rest)
                 .padding(.top, RDimension.space2)
             promiseLineView
                 .padding(.top, RDimension.space6 - RDimension.space2)
@@ -178,17 +184,17 @@ struct InviteScreen: View {
 
     // MARK: T-alt … T5 · the ticket
 
-    private var ticketWidth: CGFloat {
-        UIScreen.main.bounds.width - 2 * margin // literal-ok: system-provided screen width for the fixed-width object
+    private func ticketWidth(page: CGFloat) -> CGFloat {
+        page - 2 * margin // literal-ok: two margins
     }
 
-    private var geometry: TicketGeometry {
-        TicketGeometry(width: min(ticketWidth, RDimension.layoutSheetMaxWidth), compact: compact)
+    private func geometry(page: CGFloat) -> TicketGeometry {
+        TicketGeometry(width: min(ticketWidth(page: page), RDimension.layoutSheetMaxWidth), compact: compact)
     }
 
-    private var ticketColumn: some View {
+    private func ticketColumn(width: CGFloat) -> some View {
         VStack(spacing: RDimension.space0) {
-            ticketStage
+            ticketStage(width: width)
                 .padding(.top, compact ? RDimension.space8 : RDimension.space10 + RDimension.space2)
             captionBlock
                 .padding(.top, RDimension.space6)
@@ -199,8 +205,8 @@ struct InviteScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var ticketStage: some View {
-        let geometry = geometry
+    private func ticketStage(width: CGFloat) -> some View {
+        let geometry = geometry(page: width)
         let fallen = model.phase == .torn || model.phase == .youreIn
         return TicketStage(
             geometry: geometry,
@@ -414,6 +420,7 @@ struct InviteScreen: View {
             Task { await model.appleFinished(result) }
         }
         .signInWithAppleButtonStyle(scheme == .dark ? .white : .black) // literal-ok: Apple's own button style, white in dark
+        .id(scheme) // the system button is UIKit: a new look needs a new button
         .frame(height: RDimension.sizeControlHero)
         .clipShape(RShape.pill)
         .shadow(color: RColor.depthShadowContact, radius: 1, y: 1) // literal-ok: Paper T1 contact 0 1 2
