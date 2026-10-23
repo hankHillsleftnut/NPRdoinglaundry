@@ -287,6 +287,15 @@ test('a brief is titled by its first sentence, cut at 80, and has a duration onl
   assert.equal(briefTitle('no full stop at all'), 'no full stop at all');
   assert.equal(briefTitle('x'.repeat(120)).length, 80);
   const p = await person();
+  // An emoji straddling UTF-16 unit 80 is kept whole: a cut through the pair would leave a
+  // lone surrogate, which iOS's JSONDecoder refuses, failing the whole page.
+  const straddling = briefTitle(`${'x'.repeat(79)}😀 and more after it.`);
+  assert.equal(straddling, `${'x'.repeat(79)}😀`);
+  assert.ok(!/\\ud[89ab][0-9a-f]{2}(?!\\ud[c-f])/i.test(JSON.stringify(straddling)), 'no lone surrogate in the JSON');
+  const q = await person();
+  await insertBrief(q.id, { date: '2027-01-04', created: '2027-01-04T08:00:00.000Z', audio: { seconds: 60, first: `${'y'.repeat(79)}🎧 then the rest.` } });
+  const emoji = await library(q.auth);
+  assert.equal(emoji.items[0]?.kind === 'brief' && emoji.items[0].brief.title, `${'y'.repeat(79)}🎧`);
   await insertBrief(p.id, { date: '2027-01-03', created: '2027-01-03T08:00:00.000Z', through: 'two things from the weekend. one more.' });
   const lib = await library(p.auth);
   assert.deepEqual(lib.items, [{ kind: 'brief', brief: { id: (lib.items[0] as { brief: { id: string } }).brief.id, date: '2027-01-03', title: 'two things from the weekend', hasAudio: false } }]);

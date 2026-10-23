@@ -90,13 +90,19 @@ export function episodeSummary(row: EpisodeRow): { summary: EpisodeSummary; unkn
 
 export const BRIEF_TITLE_MAX = 80;
 
-/** The first sentence of `text`, its closing full stop dropped, cut at 80. */
+/**
+ * The first sentence of `text`, its closing full stop dropped, cut at 80 code points.
+ * Cut by code points, never UTF-16 units: a cut through a surrogate pair leaves a lone
+ * surrogate, which JSON carries as `\udXXX` and Swift's JSONDecoder refuses, failing the
+ * whole page on iOS.
+ */
 export function briefTitle(text: string): string {
   const trimmed = text.trim();
   const end = /[.!?](\s|$)/.exec(trimmed);
   const sentence = end ? trimmed.slice(0, end.index + 1) : trimmed;
   const bare = sentence.endsWith('.') ? sentence.slice(0, -1) : sentence;
-  return bare.length > BRIEF_TITLE_MAX ? bare.slice(0, BRIEF_TITLE_MAX).trimEnd() : bare;
+  const chars = Array.from(bare);
+  return chars.length > BRIEF_TITLE_MAX ? chars.slice(0, BRIEF_TITLE_MAX).join('').trimEnd() : bare;
 }
 
 /** The contract's `BriefSummary`: titled by its first spoken sentence; the words themselves are never listed. */
