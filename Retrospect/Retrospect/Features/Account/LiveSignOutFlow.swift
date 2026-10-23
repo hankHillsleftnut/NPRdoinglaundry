@@ -45,13 +45,13 @@ final class LiveSignOutFlow: SignOutFlowing {
     static func make(platform: Platform.AppEnvironment) async -> LiveSignOutFlow {
         let ports = Ports(
             unsent: { await platform.unsentEntryCount() },
-            waiting: { (try? await platform.outbox?.waitingToSendCount()) ?? 0 },
+            waiting: { await (try? platform.outbox?.waitingToSendCount()) ?? 0 },
             drain: { await platform.outbox?.drain(reason: .manual) },
             isOnline: { await platform.reachability.isOnline },
             updateRequired: { platform.updateRequired },
             logOut: { await platform.logOut(confirmed: $0) }
         )
-        return LiveSignOutFlow(ports: ports, unsent: await ports.unsent())
+        return await LiveSignOutFlow(ports: ports, unsent: ports.unsent())
     }
 
     private var isEnding: Bool {
@@ -94,18 +94,8 @@ final class LiveSignOutFlow: SignOutFlowing {
         lastUnsent = remaining
         if remaining > 0 {
             state = .sending(remaining: remaining)
-            for attempt in 0 ..< Self.attempts {
-                await ports.drain()
-                remaining = await ports.unsent()
-                guard mine == generation else { return }
-                lastUnsent = remaining
-                if remaining == 0 { break }
-                state = .sending(remaining: remaining)
-                // refused rows are not waiting for anything; offline and too-old builds will not mend in a second
-                if await ports.waiting() == 0 || !(await ports.isOnline()) || ports.updateRequired() { break }
-                if attempt < Self.attempts - 1 { await ports.sleep(.seconds(1)) }
-                guard mine == generation else { return }
-            }
+            guard let left = await sendWhatIsLeft(generation: mine) else { return }
+            remaining = left
         }
         guard mine == generation else { return }
         if remaining > 0 {
@@ -119,6 +109,32 @@ final class LiveSignOutFlow: SignOutFlowing {
         await endSession(confirmed: false)
     }
 
+    /// Asks the outbox to send, reading the count again, until nothing is left or it will not mend. Nil when cancelled.
+    private func sendWhatIsLeft(generation mine: Int) async -> Int? {
+        var remaining = lastUnsent
+        for attempt in 0 ..< Self.attempts {
+            await ports.drain()
+            remaining = await ports.unsent()
+            guard mine == generation else { return nil }
+            lastUnsent = remaining
+            if remaining == 0 {
+                break
+            }
+            state = .sending(remaining: remaining)
+            // refused rows are not waiting for anything; offline and too-old builds will not mend in a second
+            let waiting = await ports.waiting()
+            let online = await ports.isOnline()
+            if waiting == 0 || !online || ports.updateRequired() {
+                break
+            }
+            if attempt < Self.attempts - 1 {
+                await ports.sleep(.seconds(1))
+            }
+            guard mine == generation else { return nil }
+        }
+        return remaining
+    }
+
     /// Ends the session. Without the person's "anyway", the platform itself refuses if words arrived meanwhile.
     private func endSession(confirmed: Bool) async {
         switch await ports.logOut(confirmed) {
@@ -126,13 +142,15 @@ final class LiveSignOutFlow: SignOutFlowing {
             state = .done
         case let .hasUnsent(count):
             lastUnsent = count
-            state = .stuck(remaining: count, reason: await stuckReason())
+            state = await .stuck(remaining: count, reason: stuckReason())
         }
         running = nil
     }
 
     private func stuckReason() async -> SignOutState.StuckReason {
-        if ports.updateRequired() { return .updateRequired }
+        if ports.updateRequired() {
+            return .updateRequired
+        }
         return await ports.isOnline() ? .failed : .offline
     }
 }

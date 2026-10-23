@@ -53,7 +53,11 @@ struct PausedView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .confirmationDialog(
-            unsent.map { Self.unsentTitle($0) } ?? "", isPresented: Binding(get: { unsent != nil }, set: { if !$0 { unsent = nil } }),
+            unsent.map { Self.unsentTitle($0) } ?? "", isPresented: Binding(get: { unsent != nil }, set: {
+                if !$0 {
+                    unsent = nil
+                }
+            }),
             titleVisibility: .visible
         ) {
             Button("sign out and erase them", role: .destructive) { signOut(confirmed: true) }
@@ -63,7 +67,9 @@ struct PausedView: View {
     }
 
     static func unsentTitle(_ count: Int) -> String {
-        count == 1 ? "1 entry hasn't sent yet. signing out erases it from this phone." : "\(count) entries haven't sent yet. signing out erases them from this phone."
+        count == 1
+            ? "1 entry hasn't sent yet. signing out erases it from this phone."
+            : "\(count) entries haven't sent yet. signing out erases them from this phone."
     }
 
     private func signOut(confirmed: Bool) {

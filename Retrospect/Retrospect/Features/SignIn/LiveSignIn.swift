@@ -20,7 +20,7 @@ final class LiveSignIn: SignInCoordinating {
     }
 
     func complete(_ result: Result<ASAuthorization, any Error>) async -> SignInResult {
-        Self.result(of: await coordinator.complete(result))
+        await Self.result(of: coordinator.complete(result))
     }
 
     /// A dismissed sheet and a second tap while one sign-in runs both show nothing; every real failure is `failed`.

@@ -42,7 +42,11 @@ struct InviteGateHost: View {
             pendingCode: { [pending = platform.pendingInvite] in await pending.code() },
             onBegin: {}
         )
-        let signedIn: Bool = if case .signedIn? = platform.sessionState { true } else { false }
+        let signedIn = if case .signedIn? = platform.sessionState {
+            true
+        } else {
+            false
+        }
         return InviteModel(
             phase: signedIn ? .typed : .promise, source: source, signIn: LiveSignIn(platform.signIn),
             preview: signedIn ? nil : platform.invites.previewFace
