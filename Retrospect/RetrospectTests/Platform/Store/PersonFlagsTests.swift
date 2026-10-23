@@ -158,6 +158,41 @@ struct PersonFlagsEnvironmentTests {
         #expect(await environment.youreInSeen() == false)
     }
 
+    /// Waits until the flag is known (a store is open) or unknown (none is), as `open` asks.
+    private func settle(_ environment: Platform.AppEnvironment, open: Bool) async throws {
+        var tries = 0
+        while await (environment.youreInSeen() != nil) != open, tries < 200 {
+            tries += 1
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    @Test("a session the server ended keeps the flag for the same person; Log Out then erases it")
+    func aServerEndedSessionKeepsIt() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("flags-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let environment = Platform.AppEnvironment.preview(openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0, directory: directory) })
+        let (states, feed) = AsyncStream<Session.State>.makeStream()
+        environment.follow(states)
+
+        feed.yield(.signedIn(userID: "user-a", access: .approved))
+        try await settle(environment, open: true)
+        #expect(await environment.markYoureInSeen())
+
+        feed.yield(.signedOut(hasSignedInBefore: true, reason: .revoked))
+        try await settle(environment, open: false)
+        #expect(await environment.youreInSeen() == nil, "the stack closed")
+
+        feed.yield(.signedIn(userID: "user-a", access: .approved))
+        try await settle(environment, open: true)
+        #expect(await environment.youreInSeen() == true, "the store was kept, and the flag with it")
+
+        _ = await environment.logOut(confirmed: true)
+        feed.yield(.signedIn(userID: "user-a", access: .approved))
+        try await settle(environment, open: true)
+        #expect(await environment.youreInSeen() == false, "Log Out erased it")
+    }
+
     @Test("a begin that comes after the stack closed writes nothing to the erased store")
     func aLateBeginWritesNothing() async throws {
         let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")

@@ -83,3 +83,25 @@ extension Store {
         }
     }
 }
+
+extension Backend.Failure.Kind {
+    /// How long a spend refusal holds its outbox item: the server's Retry-After (contract 00 §2), else an hour.
+    var spendWait: TimeInterval {
+        guard case let .spendLimited(retryAfter?) = self else { return 3600 }
+        return max(1, TimeInterval(retryAfter.components.seconds))
+    }
+}
+
+extension Store.Outbox {
+    /// What a failure means for the item and the pass (kept beside the sender, out of the actor's body).
+    static func outcome(of failure: Backend.Failure) -> Outcome {
+        switch failure.kind {
+        // an old build (426) gates every door: all wait for the update. A spent day (429) holds only its own item.
+        case .offline, .unauthenticated, .sessionRevoked, .updateRequired: .pause
+        case .spendLimited: .wait
+        case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
+        case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch,
+             .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
+        }
+    }
+}

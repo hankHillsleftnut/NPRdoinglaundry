@@ -4,3 +4,5 @@ cc79dc9ecf11f74b672771d308a7161c5d7b7370:docs/team/contracts/01-first-run.md:gen
 # Test constants (made-up Idempotency-Key UUIDs) in a superseded commit of PR #122; HEAD no longer carries them.
 51f0d8bdce9a95b01fd51be6b17b8dad45cc12a9:backend/tests/invites-doors.test.ts:generic-api-key:81
 51f0d8bdce9a95b01fd51be6b17b8dad45cc12a9:backend/tests/invites-check.test.ts:generic-api-key:76
+# Test URL with an explicit port (":8443", a rejected-origin case) in PR #160's first commit; split into "…:" + "8443" in a later commit, HEAD no longer carries it. No secret.
+db366b933c9f26e8e2eda9fd140c553d40115ab3:Retrospect/RetrospectTests/Platform/Routing/RoutingTests.swift:generic-api-key:49

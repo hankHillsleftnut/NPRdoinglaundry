@@ -61,15 +61,18 @@ extension Store {
         let log: any Platform.LogSink
         /// Sleeps until a retry is due; replaceable so tests don't wait.
         private let sleep: @Sendable (TimeInterval) async throws -> Void
-        private var retryWake: Task<Void, Never>?
-        private var isDraining = false
+        var retryWake: Task<Void, Never>?
+        var isDraining = false
+        /// Callers of `stop()` parked until the drain has ended.
+        var drainEndWaiters: [CheckedContinuation<Void, Never>] = []
         private var needsAnotherPass = false
         /// A trigger (back online, a write, foreground) came while a pass ran.
         /// Unlike `needsAnotherPass` it survives a pause: the pause's own trigger may be the one that came.
         private var triggeredDuringPass = false
         var started = false
-        fileprivate var stopped = false
-        private var reachabilityWatch: Task<Void, Never>?
+        var stopped = false
+        var reachabilityWatch: Task<Void, Never>?
+        var inFlightSend: Task<Store.OutboxSendResult, any Error>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
@@ -151,18 +154,6 @@ extension Store {
             return key
         }
 
-        /// Entries and answers not yet sent: pending, in flight or refused (a
-        /// report isn't the person's words, so it isn't counted). Feeds
-        /// sign-out's "you have unsent entries" (PL1.5).
-        func unsentCount() throws -> Int {
-            try database.writer.read { db in
-                try Store.OutboxRow
-                    .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
-                    .filter(Column(OutboxRow.CodingKeys.operation) != OutboxOperation.diagnosticsSend.rawValue)
-                    .fetchCount(db)
-            }
-        }
-
         /// Puts a refused item back in the queue, due now with its attempts
         /// reset, and its entry back to `local`. Throws `NothingToRetry`
         /// (changing nothing) when the entity has no refused item.
@@ -223,8 +214,9 @@ extension Store {
         /// one whenever the phone comes back online, and one after every
         /// enqueue. Foreground and the background task call `drain` themselves.
         func start() {
-            guard !started else { return }
+            guard !started, !stopped else { return }
             started = true
+            try? reviveVersionAndSpendRefusals()
             guard let reachability else {
                 Task { await drain(reason: .launch) }
                 return
@@ -237,9 +229,7 @@ extension Store {
             }
         }
 
-        /// Sends what's due. Safe to call any time: at most one drain runs, and
-        /// a call during a drain adds one more pass at its end, never a second
-        /// drainer. Returns when the drain is over (or was cancelled).
+        /// Sends what's due. At most one drain runs; a call during one adds a pass at its end. Returns when over.
         func drain(reason _: DrainReason) async {
             guard sender != nil, !stopped else { return }
             if isDraining {
@@ -248,7 +238,7 @@ extension Store {
                 return
             }
             isDraining = true
-            defer { isDraining = false }
+            defer { endDrain() }
             var paused = false
             repeat {
                 needsAnotherPass = false
@@ -259,14 +249,9 @@ extension Store {
             } while (paused ? triggeredDuringPass : needsAnotherPass) && !stopped && !Task.isCancelled
             // A pause (offline, signed out) is ended by its own trigger:
             // reachability, sign-in, foreground. Otherwise wake for the next retry.
-            if !paused, !Task.isCancelled {
+            if !paused, !stopped, !Task.isCancelled {
                 scheduleRetryWake()
             }
-        }
-
-        private struct Tally {
-            var sent = 0
-            var failed = 0
         }
 
         /// One pass over what's due, oldest first.
@@ -279,7 +264,7 @@ extension Store {
                 guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
-                    let result = try await sender.send(item)
+                    let result = try await send(item, with: sender)
                     try markDone(item, result: result)
                     tally.sent += 1
                     if item.operation == .diagnosticsSend, let reference = result.reference {
@@ -290,6 +275,11 @@ extension Store {
                     try? markPending(item, at: now())
                     break
                 } catch {
+                    if stopped {
+                        // the person signed out mid-send: nothing is counted; the rows stay for the same person, or are erased for another
+                        try? markPending(item, at: now())
+                        break
+                    }
                     if settle(error, item: item, tally: &tally) == .pause {
                         paused = true
                         break
@@ -306,8 +296,9 @@ extension Store {
             let code = failure.kind.storedCode
             let outcome = Self.outcome(of: failure)
             switch outcome {
-            case .pause:
-                try? markPending(item, at: now())
+            case .pause, .wait:
+                // a wait holds only this item until the server's time (a day's spend); the retry timer wakes it
+                try? markPending(item, at: outcome == .wait ? now().addingTimeInterval(failure.kind.spendWait) : now())
                 log.record(.outbox(.paused(code: code)))
             case .retry:
                 let attempts = item.attempts + 1
@@ -327,20 +318,12 @@ extension Store {
         enum Outcome: Equatable {
             /// Stop the pass; the item goes back to pending, no attempt counted.
             case pause
+            /// This item only waits (no attempt counted) and the pass goes on.
+            case wait
             /// Count an attempt and wait; dead once the attempts run out.
             case retry
             /// Refused for good.
             case dead
-        }
-
-        /// What a failure means for the item and the pass.
-        static func outcome(of failure: Backend.Failure) -> Outcome {
-            switch failure.kind {
-            case .offline, .unauthenticated, .sessionRevoked: .pause
-            case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
-            case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch, .updateRequired,
-                 .spendLimited, .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
-            }
         }
 
         /// How long to wait before attempt `attempt + 1`: full jitter under the
@@ -541,20 +524,6 @@ extension Store {
     }
 }
 
-// MARK: Stopping (PL3.1a)
-
-extension Store.Outbox {
-    /// The person signed out: no trigger starts another drain, and a pass in flight stops at its next item.
-    /// The outbox is not used again; the next person gets a new one on a new store.
-    func stop() {
-        stopped = true
-        reachabilityWatch?.cancel()
-        reachabilityWatch = nil
-        retryWake?.cancel()
-        retryWake = nil
-    }
-}
-
 extension Store.Outbox {
     /// One sleeping task, for the earliest pending item that isn't due yet.
     private func scheduleRetryWake() {
@@ -587,4 +556,10 @@ extension Store.Outbox {
         publish(receipt)
     }
     #endif
+}
+
+/// What one drain pass sent and what it gave up on.
+private struct Tally {
+    var sent = 0
+    var failed = 0
 }
