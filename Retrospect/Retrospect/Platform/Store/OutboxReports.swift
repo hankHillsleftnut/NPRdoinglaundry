@@ -102,3 +102,34 @@ extension Store.Outbox {
         }
     }
 }
+
+extension Store.Outbox {
+    /// Rows an earlier build gave up on for `update_required` or `spend_limited` (it killed what only needed to wait) go back in
+    /// the queue, with their entries, once at start: the words were kept and now they are sent.
+    func reviveVersionAndSpendRefusals() throws {
+        let codes = [Store.FailureCode.updateRequired.rawValue, Store.FailureCode.spendLimited.rawValue]
+        let due = now()
+        try database.writer.write { db in
+            let dead = try Store.OutboxRow
+                .filter(Column(Store.OutboxRow.CodingKeys.status) == Store.OutboxStatus.dead.rawValue && codes
+                    .contains(Column(Store.OutboxRow.CodingKeys.lastErrorCode)))
+                .fetchAll(db)
+            for var item in dead {
+                item.status = .pending
+                item.attempts = 0
+                item.nextAttemptAt = due
+                item.lastErrorCode = nil
+                try item.update(db, columns: [
+                    Column(Store.OutboxRow.CodingKeys.status), Column(Store.OutboxRow.CodingKeys.attempts),
+                    Column(Store.OutboxRow.CodingKeys.nextAttemptAt), Column(Store.OutboxRow.CodingKeys.lastErrorCode),
+                ])
+                if var entry = try Store.EntryRow.fetchOne(db, key: item.entityID), entry.syncState == .failed {
+                    entry.syncState = .local
+                    entry.failureCode = nil
+                    entry.attempts = 0
+                    try entry.update(db)
+                }
+            }
+        }
+    }
+}
