@@ -43,6 +43,14 @@ extension Platform {
         /// foreground and background land in the order the scene changed.
         private var diagnosticsWork: Task<Void, Never>?
         private var sessionLifecycleBound = false
+        private var stateFollow: Task<Void, Never>?
+
+        /// Where the new session stands, as last seen; nil before the first answer. The new root shows the
+        /// sign-in screen or the app from this, never from the old client.
+        private(set) var sessionState: Session.State?
+        /// The one way a person signs in (PL1.4b): Sign in with Apple on `/v2/auth/apple`. It is the only
+        /// thing that gives `Session.Manager` a credential.
+        let signIn: Session.SignInCoordinator
 
         /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
         /// nil before. The scene-phase and background-task bridges drain it.
@@ -79,6 +87,7 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
+            signIn = Session.SignInCoordinator(apple: Session.AppleSignIn(client: client, installer: session, log: log), log: log)
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -162,9 +171,20 @@ extension Platform {
             )
         }
 
-        /// Sign in with Apple, wired to this environment's client and session.
-        func appleSignIn() -> Session.AppleSignIn {
-            Session.AppleSignIn(client: client, installer: session, log: log)
+        /// Follows the new session's states into `sessionState`, once. It changes nothing else: no store is
+        /// opened or erased from here.
+        func followSessionState() {
+            followSessionState(session.states())
+        }
+
+        func followSessionState(_ states: AsyncStream<Session.State>) {
+            guard stateFollow == nil else { return }
+            stateFollow = Task { [weak self] in
+                for await state in states {
+                    guard let self else { return }
+                    sessionState = state
+                }
+            }
         }
 
         /// The scene became active: the session finishes a deferred launch
