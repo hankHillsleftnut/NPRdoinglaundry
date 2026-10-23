@@ -111,6 +111,158 @@ struct ContractFixtureTests {
         "diagnostics.ids": request(DiagnosticsIds.self, required: ["routes", "screens", "sheets", "controls", "failures"]),
     ]
 
+    // MARK: - Contracts 01 and 03: the four doors the app learned in FR.doors
+
+    typealias Podcasts = Backend.Podcasts
+    typealias FirstRunAnswer = Backend.Endpoints.OnboardingAnswer
+
+    /// Folder 01's fixtures for the answers, complete and first-episode doors (the rest of 01 is mapped as its doors land).
+    static let firstRunFixtures: [String: (Data) throws -> Void] = [
+        "answer.create.request": request(FirstRunAnswer.Body.self, required: ["questionKey", "text", "given", "clientEntryId", "createdAt"]),
+        "answer.create.request.skipped": request(FirstRunAnswer.Body.self, required: ["questionKey", "text", "given", "clientEntryId", "createdAt"]),
+        "answer.create.response": decodes(FirstRunAnswer.Saved.self),
+        "onboarding.complete.response": decodes(Backend.Endpoints.OnboardingComplete.Completed.self),
+        "episode.first": decodes(Backend.Endpoints.EpisodeByID.Found.self),
+        "episode.first.minimal": decodes(Backend.Endpoints.EpisodeByID.Found.self),
+    ]
+
+    /// Folder 03's fixtures for the library and episode doors.
+    static let podcastFixtures: [String: (Data) throws -> Void] = [
+        "podcasts.library": decodes(Podcasts.Library.self),
+        "podcasts.library.empty": decodes(Podcasts.Library.self),
+        "podcasts.library.making": decodes(Podcasts.Library.self),
+        "podcasts.library.page2": decodes(Podcasts.Library.self),
+        "podcasts.library.quiet": decodes(Podcasts.Library.self),
+        "episode.v2": decodes(Backend.Endpoints.EpisodeByID.Found.self),
+        "episode.legacy": decodes(Backend.Endpoints.EpisodeByID.Found.self),
+        "episode.noaudio": decodes(Backend.Endpoints.EpisodeByID.Found.self),
+    ]
+
+    @Test("contract 01's answers, complete and first-episode fixtures, and contract 03's library and episode fixtures, all decode")
+    func firstRunAndPodcastFixtures() throws {
+        for (folder, checks) in [("01", Self.firstRunFixtures), ("03", Self.podcastFixtures)] {
+            for (name, check) in checks {
+                do {
+                    try check(data(folder, name))
+                } catch {
+                    Issue.record("\(folder)/\(name): \(error)")
+                }
+            }
+        }
+    }
+
+    @Test("an answer's body is exactly the fixture's, so the bytes the outbox keeps are the contract's")
+    func answerBodyIsTheFixture() throws {
+        for name in ["answer.create.request", "answer.create.request.skipped"] {
+            let bytes = try data("01", name)
+            let body = try JSONDecoder.contract.decode(FirstRunAnswer.Body.self, from: bytes)
+            let sent = try JSONSerialization.jsonObject(with: Backend.Coding.encoder.encode(body)) as? NSDictionary
+            let fixture = try JSONSerialization.jsonObject(with: bytes) as? NSDictionary
+            #expect(sent != nil && sent == fixture, "\(name)")
+        }
+        let skipped = try JSONDecoder.contract.decode(FirstRunAnswer.Body.self, from: data("01", "answer.create.request.skipped"))
+        #expect(skipped.questionKey == .highLow && skipped.given == .skipped && skipped.text.isEmpty)
+        let saved = try envelope(FirstRunAnswer.Saved.self, "01", "answer.create.response").answer
+        #expect(saved.questionKey == .namePlace && saved.given == .voice)
+        #expect(try envelope(Backend.Endpoints.OnboardingComplete.Completed.self, "01", "onboarding.complete.response").access.state == .member)
+    }
+
+    @Test("the library fixtures carry the hero, the items in order, an unknown kind kept as unknown, and what is coming")
+    func libraryValues() throws {
+        let library = try envelope(Podcasts.Library.self, "03", "podcasts.library")
+        #expect(library.hero?.number == 6 && library.hero?.timing == .measured && library.hero?.hasAudio == true)
+        #expect(library.upcoming == .nothing)
+        #expect(library.nextCursor != nil)
+        guard case let .brief(first) = library.items.first, case .episode = library.items.last else {
+            Issue.record("the library's items didn't decode as brief … episode")
+            return
+        }
+        #expect(first.date == "2026-10-20" && first.durationSeconds == 248.0)
+
+        let page2 = try envelope(Podcasts.Library.self, "03", "podcasts.library.page2")
+        #expect(page2.hero == nil && page2.upcoming == nil && page2.nextCursor == nil)
+        #expect(page2.items.last == .unknown, "an item of a kind this build doesn't know is kept as unknown, never failing the page")
+
+        let empty = try envelope(Podcasts.Library.self, "03", "podcasts.library.empty")
+        #expect(empty.hero == nil && empty.items.isEmpty && empty.upcoming == .nothing)
+        guard case let .making(readyAt) = try envelope(Podcasts.Library.self, "03", "podcasts.library.making").upcoming else {
+            Issue.record("making didn't decode as making")
+            return
+        }
+        #expect(readyAt != nil)
+        guard case let .quietWeek(line, nextAt) = try envelope(Podcasts.Library.self, "03", "podcasts.library.quiet").upcoming else {
+            Issue.record("quiet didn't decode as quietWeek")
+            return
+        }
+        #expect(!line.isEmpty && nextAt != nil)
+    }
+
+    @Test("the episode fixtures: v2 with chapters, lines and a guess; legacy with craft lines only; one without audio")
+    func episodeValues() throws {
+        let v2 = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "03", "episode.v2").episode
+        #expect(v2.chapters.map(\.index) == [0, 1, 2])
+        #expect(v2.lines.map(\.register) == [.stated, .stated, .craft, .stated, .asked])
+        #expect(v2.claims.last?.kind == .hypothesis && v2.claims.last?.guessId != nil)
+        #expect(v2.madeFrom.map(\.kind) == [.entries, .calendar, .steps])
+        #expect(v2.audio?.mimeType == "audio/mpeg" && v2.audio?.durationSeconds == 612.4)
+        #expect(v2.feedback?.verdict == .more)
+
+        let legacy = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "03", "episode.legacy").episode
+        #expect(legacy.chapters.isEmpty && legacy.claims.isEmpty && legacy.timing == .estimated)
+        #expect(legacy.lines.allSatisfy { $0.register == .craft && $0.chapterIndex == -1 && $0.claimId == nil })
+
+        let silent = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "03", "episode.noaudio").episode
+        #expect(!silent.hasAudio && silent.audio == nil && silent.lines.isEmpty && silent.description != nil)
+    }
+
+    @Test("contract 01's first-episode shape reads into the same episode: transcript as lines, chapters numbered in order")
+    func firstEpisodeReadsAsAnEpisode() throws {
+        let first = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "01", "episode.first").episode
+        #expect(first.kind == .first)
+        #expect(first.hasAudio && first.audio != nil, "audio present means it has audio")
+        #expect(first.timing == .unknown)
+        #expect(first.chapters.map(\.index) == [0, 1])
+        #expect(first.chapters.map(\.startSeconds) == [0, 31])
+        #expect(first.lines.map(\.index) == [0, 1])
+        #expect(first.lines.allSatisfy { $0.register == .craft })
+        #expect(first.lines.map(\.chapterIndex) == [0, 1], "a timed transcript line takes the chapter it falls in")
+        #expect(first.lines.map(\.startSeconds) == [0, 31])
+        #expect(first.madeFrom.isEmpty && first.claims.isEmpty)
+
+        let minimal = try envelope(Backend.Endpoints.EpisodeByID.Found.self, "01", "episode.first.minimal").episode
+        #expect(minimal.chapters.isEmpty)
+        #expect(minimal.lines.count == 1 && minimal.lines[0].startSeconds == nil && minimal.lines[0].chapterIndex == -1)
+    }
+
+    @Test("a podcasts value the app doesn't know decodes as unknown, never failing the episode or the page")
+    func unknownPodcastValuesDecode() throws {
+        let episode = try JSONDecoder.contract.decode(Podcasts.Episode.self, from: Data(#"""
+        {"id":"e","kind":"special","title":"t","durationSeconds":1,"timing":"guessed","createdAt":"2026-10-21T13:02:11Z","hasAudio":false,
+         "madeFrom":[{"kind":"tv","count":1}],"chapters":[],"claims":[{"id":"c","kind":"mood","register":"murmured","chapterIndex":0}],
+         "lines":[{"index":0,"text":"t","chapterIndex":-1,"register":"aside"}],"feedback":{"verdict":"meh","at":"2026-10-21T13:02:11Z"}}
+        """#.utf8))
+        #expect(episode.kind == .unknown && episode.timing == .unknown)
+        #expect(episode.madeFrom[0].kind == .unknown && episode.lines[0].register == .unknown)
+        #expect(episode.claims[0].kind == .unknown && episode.claims[0].register == .unknown)
+        #expect(episode.feedback?.verdict == .unknown)
+        let library = try JSONDecoder.contract.decode(Podcasts.Library.self, from: Data(#"""
+        {"hero":null,"upcoming":{"state":"later"},"items":[{"kind":"clip","clip":{}}],"nextCursor":null}
+        """#.utf8))
+        #expect(library.upcoming == .unknown && library.items == [.unknown])
+        let broken = try JSONDecoder.contract.decode(Podcasts.Library.self, from: Data(#"""
+        {"hero":null,"items":[{"kind":"episode","episode":{"id":"e"}},{"kind":"brief","brief":{"id":"b","date":"2026-10-20","title":"t","hasAudio":false}}],"nextCursor":null}
+        """#.utf8))
+        #expect(broken.items.first == .unknown, "an episode that doesn't read is skipped, never failing the page")
+        guard case .brief = broken.items.last else {
+            Issue.record("the readable brief beside a broken episode was lost")
+            return
+        }
+        let answer = try JSONDecoder.contract.decode(FirstRunAnswer.Answer.self, from: Data(#"""
+        {"id":"a","questionKey":"favourite.colour","text":"t","given":"sung","createdAt":"2026-10-21T13:02:11Z"}
+        """#.utf8))
+        #expect(answer.questionKey == .unknown && answer.given == .unknown)
+    }
+
     @Test("every contract 02 fixture is mapped, and each one decodes or matches its request shape")
     func journalFixtures() throws {
         try checkFolder("02", responses: Self.journalResponses, requests: Self.journalRequests)

@@ -306,17 +306,17 @@ test('the closed lists are the contract fixture exactly, so the app records from
   });
 });
 
-test('the route list is every /v2 route contracts 00-02 define, each a template', () => {
+test('the route list is every /v2 route contracts 00-03 define, each a template', () => {
   const CONTRACTS = join(__dirname, '..', '..', 'docs', 'team', 'contracts');
   const named = new Set<string>();
-  for (const file of ['00-platform.md', '01-first-run.md', '02-journal.md']) {
+  for (const file of ['00-platform.md', '01-first-run.md', '02-journal.md', '03-podcasts.md']) {
     const text = readFileSync(join(CONTRACTS, file), 'utf8');
     for (const m of text.matchAll(/\/v2\/[A-Za-z0-9/:_.-]*[A-Za-z0-9]/g)) named.add(m[0]);
   }
   named.delete('/v2/auth'); // the router's mount point, not a route
   assert.deepEqual([...V2_ROUTE_TEMPLATES].sort(), [...named].sort());
   for (const route of V2_ROUTE_TEMPLATES) {
-    for (const segment of route.split('/').slice(2)) assert.match(segment, /^(:[a-z]+|[a-z][a-z-]*)$/, route);
+    for (const segment of route.split('/').slice(2)) assert.match(segment, /^(:[a-z][A-Za-z]*|[a-z][a-z-]*)$/, route); // `:claimId` is camelCase
   }
 });
 
