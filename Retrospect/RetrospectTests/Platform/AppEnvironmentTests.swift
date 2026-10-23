@@ -267,6 +267,189 @@ struct AppEnvironmentTests {
         #expect(secondLog.events.isEmpty)
         #expect(second.updateRequired == false)
     }
+
+    // MARK: Request rows (DG.4.live)
+
+    // The first two tests prove the wiring (they fail without it). The last two are regression guards: a stubbed
+    // client writes into the environment's recorder (the one the first two prove is the client's), not the
+    // environment's own client, which no test can point at a stub without a session seam the new-backend guard forbids.
+
+    @Test("live(): the client records into the environment's own recorder, the one sign-in attaches and sign-out detaches")
+    func liveClientSharesTheEnvironmentsRecorder() {
+        let environment = Platform.AppEnvironment.live(
+            launch: .standard, log: Platform.Log.Recorder(), reachability: Backend.PathReachability(monitor: nil)
+        )
+        defer {
+            Platform.Bridges.refreshLegacy = nil
+            Platform.Bridges.legacySignedOut = nil
+        }
+
+        #expect(Self.recorder(of: environment.client) === environment.diagnostics, "one recorder for requests and everything else")
+    }
+
+    @Test("preview(): the client records into the environment's own recorder, so tests and previews see the release wiring")
+    func previewClientSharesTheEnvironmentsRecorder() {
+        let environment = Platform.AppEnvironment.preview()
+
+        #expect(Self.recorder(of: environment.client) === environment.diagnostics)
+        #expect(Self.recorder(of: environment.client) !== Platform.AppEnvironment.preview().diagnostics, "each environment has its own")
+    }
+
+    @Test("guard (stubbed client): request rows wait before sign-in, land in that person's store, never reach the next person")
+    func requestRowsFollowThePerson() async throws {
+        let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { $0 == "user-a" ? first : second })
+        let (client, urlSession) = try Self.stubbedClient(recordingInto: environment, status: 200, body: Fixtures.data("00", "meta"))
+        defer { StubProtocol.clear(urlSession) }
+
+        _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
+        #expect(try await Self.networkCount(in: first) == 0, "no store yet: the row waits in memory")
+        await environment.sessionDidChange(to: "user-a").value
+        #expect(try await Self.networkCount(in: first) == 1, "the waiting row lands when the person's store opens")
+
+        _ = try await client.send(Backend.Endpoints.Meta())
+        _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
+        await environment.sessionWillChange().value
+        #expect(try await Self.networkCount(in: first) == 0, "Log Out erases the person's rows")
+
+        _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
+        await environment.sessionDidChange(to: "user-b").value
+        #expect(try await Self.networkCount(in: second) == 1, "the next person gets only what happened after Log Out")
+        #expect(try await Self.networkCount(in: first) == 0)
+    }
+
+    @Test("a request that started before Log Out and ended after it never lands in the next person's store")
+    func anInFlightRequestNeverReachesTheNextPerson() async throws {
+        let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { $0 == "user-a" ? first : second })
+        let meta = try Fixtures.data("00", "meta")
+        let gate = DispatchSemaphore(value: 0)
+        let (client, urlSession) = Self.stubbedClient(recordingInto: environment) { request in
+            gate.wait() // the server answers only once the test lets it
+            return (HTTPURLResponse.stub(request), meta)
+        }
+        defer { StubProtocol.clear(urlSession) }
+        await environment.sessionDidChange(to: "user-a").value
+
+        let inFlight = Task { try await client.send(Backend.Endpoints.Meta()) }
+        while StubProtocol.requests(on: urlSession).isEmpty {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        await environment.sessionWillChange().value
+        gate.signal()
+        _ = try await inFlight.value
+        await client.recordsSettled()
+        await environment.sessionDidChange(to: "user-b").value
+
+        #expect(try await Self.networkCount(in: second) == 0, "user-a's late answer is dropped, not written for user-b")
+        #expect(try await Self.networkCount(in: first) == 0)
+    }
+
+    @Test("a person whose store never opened: when their session ends, the rows waiting in memory never reach the next person")
+    func rowsOfAPersonWithNoStoreNeverReachTheNextPerson() async throws {
+        struct Unopenable: Error {}
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { userID in
+            guard userID == "user-b" else { throw Unopenable() }
+            return second
+        })
+        let (client, urlSession) = try Self.stubbedClient(recordingInto: environment, status: 200, body: Fixtures.data("00", "meta"))
+        defer { StubProtocol.clear(urlSession) }
+        let (states, feed) = AsyncStream.makeStream(of: Session.State.self)
+        environment.follow(states)
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        try await Self.settle { environment.storeOpenFailed }
+
+        _ = try await client.send(Backend.Endpoints.Meta()) // user-a's: no store to land in, so it waits in memory
+        await client.recordsSettled()
+        feed.yield(.signedOut(hasSignedInBefore: true, reason: .revoked)) // the server ends the session: no Log Out
+        try await Self.settle { !environment.storeOpenFailed }
+        feed.yield(.signedIn(userID: "user-b", access: .member))
+        try await Self.settle { environment.outbox != nil }
+
+        #expect(try await Self.networkCount(in: second) == 0, "user-a's waiting row is dropped, not written for user-b")
+    }
+
+    private static func settle(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0 ..< 500 where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(condition(), "the environment did not settle")
+    }
+
+    @Test("guard (stubbed client): a request row holds only method, route, status, code and time; no URL, body, token or message")
+    func requestRowsInTheEnvironmentHoldNoContent() async throws {
+        let environment = Platform.AppEnvironment.preview()
+        let refusal = Data(#"{"success":false,"error":{"code":"invalid_request","message":"private words from the server"}}"#.utf8)
+        let (client, urlSession) = Self.stubbedClient(recordingInto: environment, status: 400, body: refusal)
+        defer { StubProtocol.clear(urlSession) }
+        try await environment.diagnostics.attach(Store.LocalDatabase.inMemory())
+
+        _ = try? await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
+
+        let rows = try await environment.diagnostics.rows(in: .network)
+        #expect(try Self.requests(in: rows).map(Self.timeless) == [.init(method: .get, route: .meta, status: 400, code: .invalidRequest, ms: 0)])
+        let allowed: Set = ["method", "route", "status", "code", "ms", "retries", "idempotency"]
+        for row in rows {
+            let fields = try #require(JSONSerialization.jsonObject(with: row.payload) as? [String: Any])
+            #expect(Set(fields.keys).isSubset(of: allowed), "no field outside the closed list")
+            let text = try #require(String(bytes: row.payload, encoding: .utf8))
+            for content in ["private words", "Bearer", "X-App-Version", environment.configuration.baseURL.absoluteString] {
+                #expect(!text.contains(content))
+            }
+            let decoded = try Backend.Coding.decoder.decode(Platform.Diagnostics.Request.self, from: row.payload)
+            #expect(ContentCheck.values(in: decoded).isEmpty, "no string, URL or data anywhere in the row")
+        }
+    }
+
+    /// The recorder the client was built with, read by reflection (the client keeps it private).
+    private static func recorder(of client: Backend.Client) -> AnyObject? {
+        let stored = Mirror(reflecting: client).children.first { $0.label == "diagnostics" }?.value
+        return (stored as? any Platform.Diagnostics.Sink).map { $0 as AnyObject }
+    }
+
+    /// A client like the environment's (same recorder, same configuration and session), answering every request
+    /// from a stub with `status` and `body`, so no test reaches a server.
+    private static func stubbedClient(
+        recordingInto environment: Platform.AppEnvironment, status: Int, body: Data
+    ) -> (Backend.Client, URLSession) {
+        stubbedClient(recordingInto: environment) { (HTTPURLResponse.stub($0, status: status), body) }
+    }
+
+    /// The same, answering every request with `handler`.
+    private static func stubbedClient(
+        recordingInto environment: Platform.AppEnvironment, handler: @escaping StubProtocol.Handler
+    ) -> (Backend.Client, URLSession) {
+        let urlSession = URLSession.stubbed()
+        StubProtocol.register(on: urlSession, handler)
+        let client = Backend.Client(
+            configuration: environment.configuration, session: urlSession, tokens: environment.session,
+            reachability: Backend.PathReachability(monitor: nil), log: Platform.Log.Recorder(), diagnostics: environment.diagnostics
+        )
+        return (client, urlSession)
+    }
+
+    private static func requests(in rows: [Store.DiagnosticRow]) throws -> [Platform.Diagnostics.Request] {
+        try rows.map { try Backend.Coding.decoder.decode(Platform.Diagnostics.Request.self, from: $0.payload) }
+    }
+
+    /// The row with its time set to zero: a real clock measures it.
+    private static func timeless(_ request: Platform.Diagnostics.Request) -> Platform.Diagnostics.Request {
+        .init(
+            method: request.method, route: request.route, status: request.status, code: request.code, ms: 0,
+            retries: request.retries, idempotency: request.idempotency
+        )
+    }
+
+    private static func networkCount(in database: Store.LocalDatabase) async throws -> Int {
+        try await database.writer.read { try Store.DiagnosticRow.inRing(.network).fetchCount($0) }
+    }
 }
 
 /// Stands in for UIKit's background tasks: counts begins and ends, and can

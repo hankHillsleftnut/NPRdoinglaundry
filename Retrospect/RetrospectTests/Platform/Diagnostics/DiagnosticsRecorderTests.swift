@@ -289,6 +289,27 @@ struct DiagnosticsRecorderTests {
         #expect(try rows(.events, in: next).isEmpty)
     }
 
+    @Test("a request that started before sign-out is dropped when it ends after it; one that started after is kept for the next person")
+    func aRequestFromBeforeSignOutIsDropped() async throws {
+        let recorder = recorder()
+        let next = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let late = Diagnostics.Record.request(.init(method: .get, route: .entriesToday, status: 200, ms: 0))
+        let fresh = Diagnostics.Record.request(.init(method: .post, route: .authApple, status: 200, ms: 0))
+        let before = recorder.generation
+
+        await recorder.detach()
+        let after = recorder.generation
+        await recorder.record(late, startedIn: before)
+        await recorder.record(fresh, startedIn: after)
+        await recorder.attach(next)
+        await recorder.flush()
+
+        #expect(after != before, "sign-out moves the generation on")
+        let landed = try rows(.network, in: next).map { try Backend.Coding.decoder.decode(Diagnostics.Request.self, from: $0.payload) }
+        #expect(landed.map(\.route) == [.authApple], "only the request that started after sign-out")
+        #expect(recorder.generation == after, "signing in doesn't move it: the sign-in request belongs to the next person")
+    }
+
     @Test("after detach nothing is written anywhere until the next attach")
     func afterDetachNothingIsWritten() async throws {
         let recorder = recorder()

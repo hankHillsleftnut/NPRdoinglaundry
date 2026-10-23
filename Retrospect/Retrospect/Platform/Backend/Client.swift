@@ -91,25 +91,27 @@ extension Backend {
         /// new token and sent again. A second 401 is `.unauthenticated`. Public
         /// doors never refresh.
         func send<E: Endpoint>(_ endpoint: E) async throws -> E.Response {
+            // Read before anything waits: a sign-out while this request is out drops its rows (DG.4.live).
+            let generation = diagnostics?.generation ?? 0
             guard await reachability.isOnline else { throw Failure(.offline) }
             let token = endpoint.requiresAuth ? try await accessToken() : nil
             do {
-                return try await perform(endpoint, token: token)
+                return try await perform(endpoint, token: token, generation: generation)
             } catch let failure as Failure where failure.kind == .unauthenticated && token != nil {
                 let fresh = try await refreshedToken(failedToken: token ?? "")
                 log.record(.requestReplayed(path: endpoint.path))
-                return try await perform(endpoint, token: fresh)
+                return try await perform(endpoint, token: fresh, generation: generation)
             }
         }
 
         /// One send with its retry policy, as `token` allows.
-        private func perform<E: Endpoint>(_ endpoint: E, token: String?) async throws -> E.Response {
+        private func perform<E: Endpoint>(_ endpoint: E, token: String?, generation: Int) async throws -> E.Response {
             let request = try request(for: endpoint, token: token)
             let policy = RetryPolicy.effective(endpoint.retry, method: endpoint.method, hasIdempotencyKey: endpoint.idempotencyKey != nil)
             var attempt = 1
             while true {
                 do {
-                    return try await sendOnce(endpoint, request: request)
+                    return try await sendOnce(endpoint, request: request, generation: generation)
                 } catch let failure as Failure {
                     guard let delay = policy.retryDelay(after: failure, attempt: attempt, jitter: jitter) else { throw failure }
                     try await clock.sleep(for: delay)
@@ -121,34 +123,62 @@ extension Backend {
 
         /// One attempt: sent, decoded, and recorded for diagnostics whatever
         /// happens (a retried request records one row per attempt).
-        private func sendOnce<E: Endpoint>(_ endpoint: E, request: URLRequest) async throws -> E.Response {
+        private func sendOnce<E: Endpoint>(_ endpoint: E, request: URLRequest, generation: Int) async throws -> E.Response {
             switch await load(request, path: endpoint.path) {
             case let .failed(error, ms):
                 if error is Failure {
-                    await record(endpoint, status: 0, ms: ms, code: nil)
+                    record(endpoint, status: 0, ms: ms, code: nil, generation: generation)
                 }
                 throw error
             case let .answered(data, status, ms):
                 do {
                     let response = try decode(E.Response.self, from: data, status: status, path: endpoint.path)
-                    await record(endpoint, status: status, ms: ms, code: nil)
+                    record(endpoint, status: status, ms: ms, code: nil, generation: generation)
                     return response
                 } catch let failure as Failure {
-                    await record(endpoint, status: status, ms: ms, code: failure.kind.diagnosticsCode)
+                    record(endpoint, status: status, ms: ms, code: failure.kind.diagnosticsCode, generation: generation)
                     throw failure
                 }
             }
         }
 
+        /// The most rows waiting for the recorder; past it a row is dropped (and logged as a count), never waited for.
+        static let recordsWaitingCap = 256
+        /// The rows handed to the recorder, one after another, in the order the attempts ended.
+        private var recording: Task<Void, Never>?
+        private var recordsWaiting = 0
+
         /// The request's diagnostics row (DG.4): the route template, status,
         /// time and the contract code if the door sent one. Never the URL, the
-        /// body or the message.
-        private func record(_ endpoint: some Endpoint, status: Int, ms: Int, code: Platform.Diagnostics.ErrorCode?) async {
+        /// body or the message. It never makes the caller wait: the row goes to
+        /// the recorder (disk work) behind the ones before it, and the answer
+        /// returns at once.
+        private func record(_ endpoint: some Endpoint, status: Int, ms: Int, code: Platform.Diagnostics.ErrorCode?, generation: Int) {
             // The public preview isn't one of the closed `/v2` routes a report may name.
             guard let diagnostics, endpoint.path != .invitePreview else { return }
-            await diagnostics.record(.request(Platform.Diagnostics.Request(
+            guard recordsWaiting < Self.recordsWaitingCap else {
+                log.record(.diagnosticsWriteFailed)
+                return
+            }
+            let row = Platform.Diagnostics.Record.request(Platform.Diagnostics.Request(
                 method: endpoint.method, route: Platform.Diagnostics.Route(endpoint.path), status: status, code: code, ms: ms
-            )))
+            ))
+            recordsWaiting += 1
+            let previous = recording
+            recording = Task {
+                await previous?.value
+                await diagnostics.record(row, startedIn: generation)
+                recordLanded()
+            }
+        }
+
+        private func recordLanded() {
+            recordsWaiting -= 1
+        }
+
+        /// Waits until every row handed over so far has reached the recorder. For tests.
+        func recordsSettled() async {
+            await recording?.value
         }
 
         // MARK: Building the request

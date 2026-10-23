@@ -13,6 +13,12 @@ extension Platform.Diagnostics {
     /// Where records go: the `Recorder` in the app, a spy in tests.
     protocol Sink: Sendable {
         func record(_ record: Record) async
+        /// Which person's store records go to now; it moves on at every sign-out. A request reads it when it starts.
+        var generation: Int { get }
+        /// Keeps `record` only if the sink is still in `generation`: a request that started before a sign-out never
+        /// reaches the next person's store.
+        /// No default on purpose: a default would quietly win over the recorder's own and keep late rows.
+        func record(_ record: Record, startedIn generation: Int) async
     }
 }
 
