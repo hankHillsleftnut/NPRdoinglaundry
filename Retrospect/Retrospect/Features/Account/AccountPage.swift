@@ -5,6 +5,9 @@
 //  sign-out glyph and its caption. The rest of ST-9 (plan, restore, delete account) belongs to later
 //  PRs; delete account is App Store 5.1.1(v) and must exist before submission, not before Beta 1.
 //  The sign-out button opens the AC-2 sheet; the sheet asks first when entries haven't sent.
+//  DG.6.mount: under it, the "send a report" group (DiagnosticsSettingsGroup, plan section 3: "the account
+//  page has it too"), shown only when a report sender is in the environment (decision 4: no dead control).
+//  No Paper drawing: the group is DG.6's own rows, 24 below the sign-out block (between groups).
 //
 import SwiftUI
 
@@ -14,20 +17,33 @@ struct AccountPage: View {
     let back: () -> Void
     @State private var confirming = false
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.reportSender) private var reportSender
 
     var body: some View {
         RSheetHost {
             VStack(spacing: RDimension.space0) {
                 RTopBar(variant: .settings(title: "account", back: back))
                 ScrollView {
-                    signOutBlock
-                        .padding(.horizontal, RDimension.spaceScreenMargin)
-                        .padding(.top, RDimension.space6)
+                    VStack(spacing: RDimension.space6) {
+                        signOutBlock
+                            .padding(.horizontal, RDimension.spaceScreenMargin)
+                        // Full width: settings rows and their hairlines carry the screen margin themselves
+                        // (ST-9's rows), so a second margin here would push the group 24 in from the button.
+                        if reportSender != nil {
+                            DiagnosticsSettingsGroup()
+                        }
+                    }
+                    .padding(.top, RDimension.space6)
                 }
+                .sendReport(bottomInset: RDimension.spaceScreenMargin)
             }
             .background(RColor.backgroundCanvas)
-            .rSheet(isPresented: $confirming, detent: SignOutSheet.detent(for: typeSize)) {
-                SignOutSheet(flow: flow, provider: provider) { confirming = false }
+            // A sibling of the page, never inside or around `.sendReport`: a sheet request set on a view
+            // replaces the requests below it, so nesting the two would hide one of the sheets.
+            .background {
+                Color.clear.rSheet(isPresented: $confirming, detent: SignOutSheet.detent(for: typeSize)) {
+                    SignOutSheet(flow: flow, provider: provider) { confirming = false }
+                }
             }
         }
         .accessibilityIdentifier("screen.account")

@@ -88,6 +88,29 @@ struct ReportTests {
         #expect(try report(note: String(repeating: "a", count: 1001)).note?.count == Diagnostics.Report.maxNoteCharacters)
     }
 
+    @Test("an emoji-heavy note is cut in UTF-16 units, as the door counts, so the door takes it")
+    func anEmojiNoteFitsTheDoor() throws {
+        let built = try report(note: String(repeating: "😀", count: 600))
+        let encoded = try object(built)
+
+        // A JSON string's length in the door is NSString's length here: UTF-16 units.
+        let sent = try #require(encoded["note"] as? NSString)
+        #expect(sent.length == Diagnostics.Report.maxNoteCharacters, "600 emoji are 1200 units; the door takes at most 1000")
+        #expect(built.note?.count == 500)
+    }
+
+    @Test("the cut never splits a character: one that would cross the limit is left out whole")
+    func theCutKeepsWholeCharacters() {
+        let family = "👨‍👩‍👧" // one character, 8 UTF-16 units
+        let text = "a" + String(repeating: family, count: 125)
+
+        let capped = Diagnostics.Report.capped(text, utf16: 1000)
+
+        #expect(capped.utf16.count == 993)
+        #expect(capped == "a" + String(repeating: family, count: 124))
+        #expect(Diagnostics.Report.capped("short", utf16: 1000) == "short")
+    }
+
     @Test("each list keeps at most its ring's cap, the newest")
     func eachListIsCapped() throws {
         let at = Date(timeIntervalSince1970: 1_792_569_604)

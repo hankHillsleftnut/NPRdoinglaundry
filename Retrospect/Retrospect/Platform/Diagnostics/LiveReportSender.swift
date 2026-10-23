@@ -11,38 +11,53 @@ extension Platform.Diagnostics {
     /// the app knows of the device and the account, then queues it with the outbox (DG.5b),
     /// which keeps it until it's delivered. Counts for the sheet come from the same builder, so
     /// the preview is the report.
+    ///
+    /// The device is read only on send (`context`), never for the counts: the free-disk class is
+    /// declared for "send a report" alone (privacy reason 7D9E.1). The report names where it came
+    /// from with the existing ids: the sheet opening, then the send button on `origin`.
     @MainActor
     final class LiveReportSender: Flows.ReportSending {
         private let recorder: Recorder
         private let outbox: Store.Outbox
         private let reachability: any Backend.Reachability
-        private let context: @MainActor () -> ReportContext
+        private let origin: Screen
+        private let context: @MainActor (_ isOnline: Bool) -> ReportContext
         private let now: @Sendable () -> Date
 
         init(
             recorder: Recorder,
             outbox: Store.Outbox,
             reachability: any Backend.Reachability,
-            context: @escaping @MainActor () -> ReportContext,
+            origin: Screen = .settings,
+            context: @escaping @MainActor (_ isOnline: Bool) -> ReportContext,
             now: @escaping @Sendable () -> Date = { Date() }
         ) {
             self.recorder = recorder
             self.outbox = outbox
             self.reachability = reachability
+            self.origin = origin
             self.context = context
             self.now = now
         }
 
         func included() async -> Flows.ReportIncluded {
-            guard let report = try? await build(note: nil) else { return .empty }
+            // A closed stack records nothing: a record waiting in memory would land in the next person's rings.
+            guard await !outbox.stopped else { return .empty }
+            await recorder.record(.event(.sheetOpened(.sendReport)))
+            let preview = ReportContext(environment: .unread, account: .preview)
+            guard let report = try? await build(note: nil, known: preview) else { return .empty }
             return Self.included(in: report, now: now())
         }
 
         func send(note: String?) async -> Flows.ReportOutcome {
+            guard await !outbox.stopped else { return .failed(Flows.Failure(.unknown)) }
+            await recorder.record(.event(.controlTapped(.reportSend, on: origin)))
             do {
-                let report = try await build(note: note)
-                try await outbox.enqueueReport(report)
-                return await .queued(reportID: report.reportId, online: reachability.isOnline)
+                let online = await reachability.isOnline
+                let report = try await build(note: note, known: context(online))
+                // The person's stack closed while the sheet was up: nothing is written anywhere.
+                guard try await outbox.enqueueReportIfRunning(report) else { return .failed(Flows.Failure(.unknown)) }
+                return .queued(reportID: report.reportId, online: online)
             } catch {
                 return .failed(Flows.Failure(.unknown))
             }
@@ -61,8 +76,7 @@ extension Platform.Diagnostics {
             return stream
         }
 
-        private func build(note: String?) async throws -> Report {
-            let known = context()
+        private func build(note: String?, known: ReportContext) async throws -> Report {
             let builtAt = now()
             let summary = try OutboxSummary.read(from: outbox.database, now: builtAt)
             return try await ReportBuilder.build(
@@ -84,5 +98,31 @@ extension Platform.Diagnostics {
                 unsent: report.outbox.queued + report.outbox.sending + report.outbox.failed, days: days
             )
         }
+    }
+}
+
+extension Platform.Diagnostics.Environment {
+    /// Nothing read from the phone. The counts preview's stand-in; never sent.
+    static var unread: Self {
+        Self(sources: Sources(
+            info: nil, osVersion: OperatingSystemVersion(), machine: nil, locale: Locale(identifier: ""), timeZone: .gmt,
+            contentSize: .unspecified, reduceMotion: false, voiceOver: false, network: .unknown, freeDiskBytes: nil
+        ))
+    }
+}
+
+extension Platform.Diagnostics.Account {
+    /// The counts preview's stand-in; never sent (a sent report takes the account from `context`).
+    static let preview = Self(provider: .apple, access: .member, entitlement: .none)
+}
+
+extension Store.Outbox {
+    /// Queues `report` unless this outbox has stopped (its person signed out, or their session
+    /// ended, while the sheet was up). One step on the outbox, so a stop can't land between the
+    /// check and the write. False when nothing was written.
+    func enqueueReportIfRunning(_ report: Platform.Diagnostics.Report) throws -> Bool {
+        guard !stopped else { return false }
+        try enqueueReport(report)
+        return true
     }
 }

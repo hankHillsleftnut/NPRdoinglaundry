@@ -9,7 +9,7 @@ extension Platform.Diagnostics {
         /// Lowercase UUID; also the request's `Idempotency-Key`.
         let reportId: String
         let createdAt: Date
-        /// "what happened?", trimmed, at most `maxNoteCharacters`; null when empty.
+        /// "what happened?", trimmed, at most `maxNoteCharacters` UTF-16 units; null when empty.
         let note: String?
         let environment: Environment
         let account: Account
@@ -20,6 +20,8 @@ extension Platform.Diagnostics {
         let performance: Performance
         let crashes: [Stamped<Crash>]
 
+        /// The door's limit, counted as the door counts: UTF-16 units (a JavaScript string's
+        /// length), not characters. An emoji is one character and two or more units.
         static let maxNoteCharacters = 1000
 
         init(
@@ -51,7 +53,21 @@ extension Platform.Diagnostics {
         /// The note trimmed and cut to the door's limit; nil when nothing is left.
         static func cleaned(_ note: String?) -> String? {
             guard let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
-            return String(trimmed.prefix(maxNoteCharacters))
+            return capped(trimmed, utf16: maxNoteCharacters)
+        }
+
+        /// `text` cut to at most `limit` UTF-16 units, never inside a character: a character
+        /// that would cross the limit is left out whole, so the door never refuses the note.
+        static func capped(_ text: String, utf16 limit: Int) -> String {
+            guard text.utf16.count > limit else { return text }
+            var units = 0
+            var end = text.startIndex
+            for index in text.indices {
+                units += text[index].utf16.count
+                guard units <= limit else { break }
+                end = text.index(after: index)
+            }
+            return String(text[..<end])
         }
 
         func encode(to encoder: any Encoder) throws {
