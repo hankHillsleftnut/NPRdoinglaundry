@@ -434,6 +434,10 @@ public enum RDimension {
     public static let fontSizeTitle: CGFloat = 34
     /// One hero word or line per screen at most.
     public static let fontSizeHero: CGFloat = 64
+    /// The player's times and the part name under the scrubber.
+    public static let fontSizePlayerTime: CGFloat = 13
+    /// The player's speed figure beside the transport.
+    public static let fontSizePlayerSpeed: CGFloat = 15
     /// 0pt step.
     public static let space0: CGFloat = 0
     /// 4pt step.
@@ -576,6 +580,20 @@ public enum RDimension {
     public static let sizePlayerThumb: CGFloat = 12
     /// Play / pause in the full player.
     public static let sizePlayerButton: CGFloat = 64
+    /// The scrubber's knob while you hold it, so your finger never hides it.
+    public static let sizePlayerThumbHeld: CGFloat = 20
+    /// The row the scrubber's track and knob sit in, above the times.
+    public static let sizePlayerTrackRow: CGFloat = 16
+    /// Between the scrubber's track row and its times.
+    public static let sizePlayerTimesGap: CGFloat = 10
+    /// Height of the transport's recessed tray (skip, play, skip).
+    public static let sizePlayerTray: CGFloat = 64
+    /// The tray's inner left and right padding.
+    public static let sizePlayerTrayInset: CGFloat = 22
+    /// The skip back and skip forward glyphs in the tray.
+    public static let sizePlayerSkipIcon: CGFloat = 28
+    /// The play / pause glyph inside the raised well.
+    public static let sizePlayerPlayIcon: CGFloat = 22
     /// The daily brief card on Journal.
     public static let sizeBriefCardMinHeight: CGFloat = 120
     /// The writing field, empty.
@@ -640,6 +658,10 @@ public enum RDimension {
     public static let radiusComposer: CGFloat = 28
     /// Drag a sheet down this far, or flick faster than dismissVelocity, and it closes.
     public static let motionGestureDismissDistance: CGFloat = 140
+    /// A held scrub this close to a part's start lands on the start.
+    public static let motionGestureScrubSnap: CGFloat = 12
+    /// Dragging a scrub this far off the line halves its rate; twice as far quarters it (the iOS rule).
+    public static let motionGestureScrubFineStep: CGFloat = 50
     /// A menu or sheet arriving is blurred this much and sharpens as it settles.
     public static let motionBlurEnter: CGFloat = 8
     /// How far an appearing item rises into place.

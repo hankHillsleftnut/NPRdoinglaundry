@@ -37,10 +37,12 @@ struct RLabPage: Identifiable {
         RLabPage("parts") { RPartsLabPage() },
         RLabPage("report") { SendReportGallery() },
         RLabPage("retro") { RRetroLineGallery() },
+        RLabPage("scrubber") { RScrubberGallery() },
         RLabPage("sheet") { RSheetHostGallery() },
         RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
+        RLabPage("transport") { RTransportGallery() },
         RLabPage("voice") { RVoiceBubbleGallery() },
     ]
 
