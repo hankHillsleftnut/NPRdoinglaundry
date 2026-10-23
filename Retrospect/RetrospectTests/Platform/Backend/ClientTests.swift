@@ -291,18 +291,40 @@ struct ClientTests {
     func aSuccessfulRequestIsRecorded() async throws {
         defer { StubProtocol.clear(session) }
         try serve(Fixtures.data("00", "meta"))
+        let client = client()
 
-        _ = try await client().send(Backend.Endpoints.Meta())
+        _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
 
         #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
+    }
+
+    @Test("a request returns without waiting for the recorder, and its row still lands after", .timeLimit(.minutes(1)))
+    func aRequestNeverWaitsOnTheRecorder() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(Fixtures.data("00", "meta"))
+        let held = HeldSink()
+        let client = Backend.Client(
+            configuration: configuration, session: session, tokens: Tokens(), reachability: ManualReachability(), clock: TestClock(),
+            jitter: { _ in .zero }, log: recorder, diagnostics: held
+        )
+
+        _ = try await client.send(Backend.Endpoints.Meta()) // waiting on the held recorder would never return
+
+        #expect(await held.records.isEmpty, "the answer came back while the recorder was still busy")
+        await held.release()
+        await client.recordsSettled()
+        #expect(await held.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
     }
 
     @Test("a door's error is recorded with its status and contract code, one row per attempt")
     func aDoorsErrorIsRecordedWithItsCode() async throws {
         defer { StubProtocol.clear(session) }
         try serve(status: 504, Fixtures.data("00", "error.upstream_timeout"))
+        let client = client()
 
-        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+        _ = await failure { _ = try await client.send(Backend.Endpoints.Meta()) }
+        await client.recordsSettled()
 
         // A read retries a 504 three times (PL1.2); each attempt is its own request row.
         let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 504, code: .upstreamTimeout, ms: 0))
@@ -313,8 +335,10 @@ struct ClientTests {
     func anUnknownCodeIsRecordedWithNoCode() async {
         defer { StubProtocol.clear(session) }
         serve(status: 400, Data(#"{"success":false,"error":{"code":"brand_new","message":"invented words"}}"#.utf8))
+        let client = client()
 
-        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+        _ = await failure { _ = try await client.send(Backend.Endpoints.Meta()) }
+        await client.recordsSettled()
 
         #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 400, ms: 0))])
         #expect(await ContentCheck.values(in: diagnostics.records).isEmpty)
@@ -324,8 +348,10 @@ struct ClientTests {
     func anUnreachedRequestIsRecordedWithStatusZero() async {
         defer { StubProtocol.clear(session) }
         StubProtocol.register(on: session) { _ in throw URLError(.notConnectedToInternet) }
+        let client = client()
 
-        _ = await failure { _ = try await client().send(Backend.Endpoints.Meta()) }
+        _ = await failure { _ = try await client.send(Backend.Endpoints.Meta()) }
+        await client.recordsSettled()
 
         let attempt = Platform.Diagnostics.Record.request(.init(method: .get, route: .meta, status: 0, ms: 0))
         #expect(await diagnostics.records == [attempt, attempt, attempt])
@@ -362,5 +388,33 @@ struct ClientTests {
         #expect(configuration.requestCachePolicy == .reloadIgnoringLocalCacheData)
         #expect(configuration.urlCache == nil)
         #expect(configuration.httpCookieStorage == nil)
+    }
+}
+
+/// A recorder that holds every record until `release`, so a test can show a request never waits on it.
+private actor HeldSink: Platform.Diagnostics.Sink {
+    private(set) var records: [Platform.Diagnostics.Record] = []
+    private var held: [CheckedContinuation<Void, Never>] = []
+    private var released = false
+
+    nonisolated var generation: Int {
+        0
+    }
+
+    func record(_ record: Platform.Diagnostics.Record, startedIn _: Int) async {
+        await self.record(record)
+    }
+
+    func record(_ record: Platform.Diagnostics.Record) async {
+        if !released {
+            await withCheckedContinuation { held.append($0) }
+        }
+        records.append(record)
+    }
+
+    func release() {
+        released = true
+        held.forEach { $0.resume() }
+        held.removeAll()
     }
 }

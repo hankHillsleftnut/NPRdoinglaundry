@@ -29,6 +29,14 @@ extension Platform.Diagnostics {
         private let now: @Sendable () -> Date
         private let clock: any Clock<Duration>
         private let log: any Platform.LogSink
+        /// Moves on at every `detach`; read without waiting on the actor, so a request can note it as it starts.
+        private let generationCounter = GenerationCounter()
+
+        /// Which person's store records go to now (`Sink`). It moves on at sign-out (`detach`), not at sign-in:
+        /// what happens between the two is the next person's sign-in.
+        nonisolated var generation: Int {
+            generationCounter.value
+        }
 
         init(
             database: Store.LocalDatabase? = nil,
@@ -63,6 +71,13 @@ extension Platform.Diagnostics {
             }
         }
 
+        /// Keeps `record` only if no sign-out has happened since `generation` was read: a request that was in flight
+        /// or waiting to retry when the last person signed out is dropped, never written into the next person's store.
+        func record(_ record: Record, startedIn generation: Int) {
+            guard generation == self.generation else { return }
+            self.record(record)
+        }
+
         /// The database to write to, once it's open: drops rows older than
         /// the window ("pruned on launch") and lands what was waiting.
         func attach(_ database: Store.LocalDatabase) {
@@ -81,6 +96,7 @@ extension Platform.Diagnostics {
         /// The authenticated lifecycle also erases the store on sign-out. This
         /// happens after detaching, so a later record cannot repopulate the store.
         func detach(erasingDatabase: Bool = false) {
+            generationCounter.advance() // first: anything that started before now belongs to the person leaving
             let previousDatabase = database
             flush()
             pending = []
@@ -169,6 +185,20 @@ extension Platform.Diagnostics {
             case let .request(request): try Backend.Coding.encoder.encode(request)
             case let .failure(failure): try Backend.Coding.encoder.encode(failure)
             case let .crash(crash): try Backend.Coding.encoder.encode(crash)
+            }
+        }
+
+        /// A number any thread can read; only `detach` moves it on.
+        private final class GenerationCounter: @unchecked Sendable {
+            private let lock = NSLock()
+            private var current = 0
+
+            var value: Int {
+                lock.withLock { current }
+            }
+
+            func advance() {
+                lock.withLock { current += 1 }
             }
         }
     }

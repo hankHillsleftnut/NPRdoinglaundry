@@ -304,18 +304,49 @@ struct AppEnvironmentTests {
         defer { StubProtocol.clear(urlSession) }
 
         _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
         #expect(try await Self.networkCount(in: first) == 0, "no store yet: the row waits in memory")
         await environment.sessionDidChange(to: "user-a").value
         #expect(try await Self.networkCount(in: first) == 1, "the waiting row lands when the person's store opens")
 
         _ = try await client.send(Backend.Endpoints.Meta())
         _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
         await environment.sessionWillChange().value
         #expect(try await Self.networkCount(in: first) == 0, "Log Out erases the person's rows")
 
         _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
         await environment.sessionDidChange(to: "user-b").value
         #expect(try await Self.networkCount(in: second) == 1, "the next person gets only what happened after Log Out")
+        #expect(try await Self.networkCount(in: first) == 0)
+    }
+
+    @Test("a request that started before Log Out and ended after it never lands in the next person's store")
+    func anInFlightRequestNeverReachesTheNextPerson() async throws {
+        let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { $0 == "user-a" ? first : second })
+        let meta = try Fixtures.data("00", "meta")
+        let gate = DispatchSemaphore(value: 0)
+        let (client, urlSession) = Self.stubbedClient(recordingInto: environment) { request in
+            gate.wait() // the server answers only once the test lets it
+            return (HTTPURLResponse.stub(request), meta)
+        }
+        defer { StubProtocol.clear(urlSession) }
+        await environment.sessionDidChange(to: "user-a").value
+
+        let inFlight = Task { try await client.send(Backend.Endpoints.Meta()) }
+        while StubProtocol.requests(on: urlSession).isEmpty {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        await environment.sessionWillChange().value
+        gate.signal()
+        _ = try await inFlight.value
+        await client.recordsSettled()
+        await environment.sessionDidChange(to: "user-b").value
+
+        #expect(try await Self.networkCount(in: second) == 0, "user-a's late answer is dropped, not written for user-b")
         #expect(try await Self.networkCount(in: first) == 0)
     }
 
@@ -328,6 +359,7 @@ struct AppEnvironmentTests {
         try await environment.diagnostics.attach(Store.LocalDatabase.inMemory())
 
         _ = try? await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
 
         let rows = try await environment.diagnostics.rows(in: .network)
         #expect(try Self.requests(in: rows).map(Self.timeless) == [.init(method: .get, route: .meta, status: 400, code: .invalidRequest, ms: 0)])
@@ -355,8 +387,15 @@ struct AppEnvironmentTests {
     private static func stubbedClient(
         recordingInto environment: Platform.AppEnvironment, status: Int, body: Data
     ) -> (Backend.Client, URLSession) {
+        stubbedClient(recordingInto: environment) { (HTTPURLResponse.stub($0, status: status), body) }
+    }
+
+    /// The same, answering every request with `handler`.
+    private static func stubbedClient(
+        recordingInto environment: Platform.AppEnvironment, handler: @escaping StubProtocol.Handler
+    ) -> (Backend.Client, URLSession) {
         let urlSession = URLSession.stubbed()
-        StubProtocol.register(on: urlSession) { (HTTPURLResponse.stub($0, status: status), body) }
+        StubProtocol.register(on: urlSession, handler)
         let client = Backend.Client(
             configuration: environment.configuration, session: urlSession, tokens: environment.session,
             reachability: Backend.PathReachability(monitor: nil), log: Platform.Log.Recorder(), diagnostics: environment.diagnostics
