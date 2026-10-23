@@ -56,6 +56,23 @@ extension Platform.Repositories {
             return today.entries
         }
 
+        /// What the last fetch of the brief left in the store; nil when nothing was kept.
+        func cachedBrief() -> Backend.Endpoints.BriefLatest.Latest? {
+            guard let document = try? database.writer.read({ try Store.CachedDocument.fetchOne($0, key: "brief.latest") }) else { return nil }
+            return try? Backend.Coding.decoder.decode(Backend.Endpoints.BriefLatest.Latest.self, from: document.body)
+        }
+
+        /// Asks the server for the latest brief and keeps the whole answer for next time.
+        func refreshBrief() async throws -> Backend.Endpoints.BriefLatest.Latest {
+            let latest = try await client.send(Backend.Endpoints.BriefLatest())
+            guard !Task.isCancelled else { throw CancellationError() }
+            let document = try Store.CachedDocument(
+                key: "brief.latest", body: Backend.Coding.encoder.encode(latest), fetchedAt: now(), etag: nil
+            )
+            try? await database.writer.write { try document.save($0) }
+            return latest
+        }
+
         /// The entries written in this app for `day`, now and after every change, oldest first.
         nonisolated func rows(day: String) -> AsyncStream<[Store.EntryRow]> {
             let observation = ValueObservation.tracking { db in

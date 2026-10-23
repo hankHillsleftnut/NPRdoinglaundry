@@ -166,6 +166,7 @@ extension Platform.Diagnostics {
             case .diagnostics: .diagnostics
             case .entries: .entries
             case .entriesToday: .entriesToday
+            case .briefsLatest: .briefsLatest
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
@@ -183,7 +184,7 @@ extension Platform.Diagnostics {
             case .invitesCheck: .invitesCheck
             case .invitesRedeem: .invitesRedeem
             case .invitesMine: .invitesMine
-            case .meta, .diagnostics, .entries, .entriesToday, .authApple, .authRefresh, .authSignout, .guessByID:
+            case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }
