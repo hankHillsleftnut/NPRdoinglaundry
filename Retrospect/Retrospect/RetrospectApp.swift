@@ -106,6 +106,16 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-OldHome`: the previous tabbed home instead of the journal (debug builds only; a release
+    /// build always lands in the journal).
+    private var usesOldHome: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-OldHome")
+        #else
+        false
+        #endif
+    }
+
     private var isAnimationPreviewMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
@@ -241,9 +251,15 @@ struct RetrospectApp: App {
                     DarkSplashScreen(isAuthenticated: $isAuthenticated)
                     .transition(.opacity)
                 } else {
-                    // Use new dark UI by default
-                    DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
-                        .transition(.opacity)
+                    if usesOldHome {
+                        // Use new dark UI by default
+                        DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
+                            .transition(.opacity)
+                    } else {
+                        // Bridge (PL5.2): the signed-in person lands in the new journal, on their own data.
+                        LiveJournalRoot()
+                            .transition(.opacity)
+                    }
                 }
                 
                 if showGoogleAuth && isGoogleConfigured && hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {

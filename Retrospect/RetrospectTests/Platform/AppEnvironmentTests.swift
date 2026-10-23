@@ -133,6 +133,91 @@ struct AppEnvironmentTests {
         #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "the next person starts empty")
     }
 
+    // MARK: The stack follows the new session (PL5.2)
+
+    @Test("a session the server ends under the app erases the person's store and stops the stack; a locked phone changes nothing")
+    func aSessionEndingUnderTheAppErasesTheStore() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        let (states, feed) = AsyncStream.makeStream(of: Session.State.self)
+        environment.follow(states)
+
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        try await settle { environment.outbox != nil }
+        let outbox = try #require(environment.outbox)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "private words", createdAt: Date())))
+
+        feed.yield(.locked)
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        feed.yield(.signedOut(hasSignedInBefore: true, reason: .revoked))
+        try await settle { environment.outbox == nil }
+
+        #expect(environment.journalData == nil)
+        #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "the revoked person's entries are erased")
+        #expect(try await database.writer.read { try Store.OutboxRow.fetchCount($0) } == 0)
+    }
+
+    @Test("asking again for the person whose store is open keeps the same stack; another person gets a clean one")
+    func theSameSignedInPersonKeepsTheStackAndANewOneGetsAClean() async throws {
+        let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { $0 == "user-a" ? first : second })
+        await environment.sessionDidChange(to: "user-a").value
+        let outbox = try #require(environment.outbox)
+        let journal = try #require(environment.journalData)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "private words", createdAt: Date())))
+
+        await environment.sessionDidChange(to: "user-a").value
+        #expect(environment.outbox === outbox)
+        #expect(environment.journalData === journal, "a second ask for the same person is a no-op")
+        #expect(try await first.writer.read { try Store.EntryRow.fetchCount($0) } == 1)
+
+        await environment.sessionDidChange(to: "user-b").value
+        #expect(environment.journalData !== journal)
+        #expect(try await first.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "the first person's rows are gone")
+        #expect(try await second.writer.read { try Store.EntryRow.fetchCount($0) } == 0)
+    }
+
+    @Test("a launch with nobody signed in keeps what diagnostics recorded for the first sign-in")
+    func signedOutAtLaunchKeepsWaitingRecords() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        let (states, feed) = AsyncStream.makeStream(of: Session.State.self)
+        environment.follow(states)
+        await environment.diagnostics.record(.event(.screenShown(.signIn)))
+
+        feed.yield(.signedOut(hasSignedInBefore: false, reason: .none))
+        feed.yield(.signedIn(userID: "user-a", access: .member))
+        try await settle { environment.outbox != nil }
+        await environment.diagnostics.flush()
+
+        let events = try await database.writer.read { try Store.DiagnosticRow.inRing(.events).fetchAll($0).map(\.payload) }
+        #expect(try events == [Platform.Diagnostics.Recorder.encode(.event(.screenShown(.signIn)))])
+    }
+
+    @Test("sign-out without force is told about entries not yet sent; with none it signs out")
+    func signOutSeesTheOutbox() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        try await environment.session.install(Session.Credentials(
+            accessToken: "invented.access", accessTokenExpiresAt: Date().addingTimeInterval(900),
+            refreshToken: "invented-refresh", userID: "user-a", access: .member
+        ))
+        await environment.sessionDidChange(to: "user-a").value
+        let outbox = try #require(environment.outbox)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "not sent yet", createdAt: Date())))
+
+        #expect(await environment.session.signOut(force: false) == .hasUnsent(count: 1), "nothing is discarded behind the person's back")
+    }
+
+    /// Polls a condition the stack's tasks make true (they run off the test's own task).
+    private func settle(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0 ..< 400 where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(condition(), "the stack did not settle")
+    }
+
     @Test("opening the authenticated store lands waiting diagnostics in that user's database")
     func openingTheStoreAttachesDiagnostics() async throws {
         let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
