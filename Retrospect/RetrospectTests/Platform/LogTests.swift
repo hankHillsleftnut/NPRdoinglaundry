@@ -98,6 +98,7 @@ extension Platform.Log.Event {
             case .versionFloor: [.versionFloor(.current)]
             case .versionUnreadable: [.versionUnreadable(.floor)]
             case .diagnosticsWriteFailed: [.diagnosticsWriteFailed]
+            case .playbackTrouble: [.playbackTrouble(.itemFailed)]
             }
         }
     }
@@ -106,7 +107,7 @@ extension Platform.Log.Event {
         case refreshed, outbox, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
-             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, diagnosticsWriteFailed
+             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, diagnosticsWriteFailed, playbackTrouble
     }
 
     fileprivate var kind: Kind {
@@ -138,6 +139,7 @@ extension Platform.Log.Event {
         case .versionFloor: .versionFloor
         case .versionUnreadable: .versionUnreadable
         case .diagnosticsWriteFailed: .diagnosticsWriteFailed
+        case .playbackTrouble: .playbackTrouble
         }
     }
 }
