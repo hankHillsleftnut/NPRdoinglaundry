@@ -41,6 +41,7 @@ import { findOrCreateAppleAccount, type UsersClient } from './services/users.js'
 import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessions/store.js';
 import { createAppleTokenKeeper, type AppleTokenDb, type KeepAppleToken } from './services/apple-tokens.js';
 import type { AccountDeletion } from './account/deletion.js';
+import { supabasePodcastStore, type PodcastDbClient, type PodcastStore } from './podcasts/store.js';
 
 /**
  * What the app needs from outside, passed in so tests can build it with a
@@ -93,6 +94,8 @@ export interface AppDeps {
    * answers `internal`.
    */
   account?: AccountDeletion;
+  /** Episodes for the podcasts library (BE3.x.lib): podcast_episodes in the shared database by default; tests pass PGlite. */
+  podcasts?: PodcastStore;
 }
 
 /**
@@ -239,6 +242,10 @@ export function createApp(deps: AppDeps): express.Express {
       }),
     },
     ...(deps.account ? { account: { deletion: deps.account } } : {}),
+    podcasts: {
+      podcasts: deps.podcasts ?? supabasePodcastStore(supabaseAdmin as unknown as PodcastDbClient),
+      briefs: deps.briefs ?? supabaseBriefStore(supabaseAdmin as unknown as BriefDbClient),
+    },
   }));
   app.use('/v2', v2ErrorHandler);
 

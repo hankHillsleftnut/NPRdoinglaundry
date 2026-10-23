@@ -58,3 +58,16 @@ export const AGENT_BRIEF_TABLES_SQL = `
 export async function createAgentBriefTables(db: PGlite): Promise<void> {
   await db.exec(AGENT_BRIEF_TABLES_SQL);
 }
+
+/**
+ * `podcast_episodes` is the backend's own migration 004; the brain's
+ * migration 154 (private audio, BEA.7) adds `audio_path`, which the podcasts
+ * library reads (BE3.x.lib). The other columns it reads are 004's.
+ */
+export const AGENT_PODCAST_COLUMNS_SQL = `
+  ALTER TABLE podcast_episodes ADD COLUMN IF NOT EXISTS audio_path TEXT;
+`;
+
+export async function createAgentPodcastColumns(db: PGlite): Promise<void> {
+  await db.exec(AGENT_PODCAST_COLUMNS_SQL);
+}
