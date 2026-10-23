@@ -39,6 +39,7 @@ import { createSessionRouter, type SessionRouteDeps } from './sessions/routes.js
 import { verifyAppleSignIn, type AppleSignIn } from './services/apple-auth.js';
 import { findOrCreateAppleAccount, type UsersClient } from './services/users.js';
 import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessions/store.js';
+import { createAppleTokenKeeper, type AppleTokenDb, type KeepAppleToken } from './services/apple-tokens.js';
 
 /**
  * What the app needs from outside, passed in so tests can build it with a
@@ -80,6 +81,11 @@ export interface AppDeps {
   startIngest?: (userId: string, rawContentId: string) => void;
   /** The version floor, the newest version and the environment (BE0.10); from config by default. */
   versions?: AppVersions;
+  /**
+   * Keeps Apple's refresh token at sign-in (BE0.5); from config by default,
+   * which is none while APPLE_REVOKE_ENABLED is off. Tests pass one with a fake Apple.
+   */
+  keepAppleToken?: KeepAppleToken;
 }
 
 /**
@@ -176,6 +182,12 @@ export function createApp(deps: AppDeps): express.Express {
   // GET /v2/meta (BE0.10): public, before the /v2 auth, and never behind the version floor.
   app.use('/v2/meta', createMetaRouter({ versions, limiter, now: deps.now, log: deps.log ?? log }));
   const v2Auth = makeAuthMiddleware(deps.users, { envelope: true, now: deps.now });
+  // BE0.5: undefined while APPLE_REVOKE_ENABLED is off; with it on and a key or
+  // TOKEN_ENCRYPTION_KEY missing, this throws and the server does not start.
+  const keepAppleToken = deps.keepAppleToken ?? createAppleTokenKeeper({
+    settings: config.apple,
+    db: supabaseAdmin as unknown as AppleTokenDb,
+  });
   // Sign-in and sessions: public (refresh) or checked inside (signout), so before the /v2 auth.
   app.use('/v2/auth', createSessionRouter({
     store: deps.sessions ?? supabaseSessionStore(supabaseAdmin as unknown as RpcClient),
@@ -191,6 +203,7 @@ export function createApp(deps: AppDeps): express.Express {
       findOrCreateApple: (appleUserId, profile) =>
         findOrCreateAppleAccount(supabaseAdmin as unknown as UsersClient, 'users', appleUserId, profile),
     },
+    ...(keepAppleToken ? { keepAppleToken } : {}),
   }));
   app.use('/v2', v2Auth, (deps.v2Router ?? createV2Router)(door, {
     diagnostics,

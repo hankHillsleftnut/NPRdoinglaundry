@@ -6,6 +6,7 @@ import type { Limiter } from '../doors/limits.js';
 import type { DoorLogLine } from '../utils/log.js';
 import type { AppleSignIn } from '../services/apple-auth.js';
 import { isRejectedAppleToken } from '../services/apple-errors.js';
+import type { KeepAppleToken } from '../services/apple-tokens.js';
 import { startSession, type SessionStore } from './store.js';
 import { hashNonce, hashRefreshToken, issueAccessToken, newRefreshToken, openGrace, sealGrace } from './tokens.js';
 
@@ -38,11 +39,18 @@ export interface SessionRouteDeps {
   verifyApple: (identityToken: string) => Promise<AppleSignIn>;
   /** Finds or creates the account for an Apple subject. */
   accounts: { findOrCreateApple(appleUserId: string, profile: { email?: string; firstName?: string }): Promise<{ userId: string; isNew: boolean }> };
+  /**
+   * Trades the sign-in's authorization code for Apple's refresh token and keeps
+   * it sealed on the user, so account deletion can revoke it (BE0.5,
+   * services/apple-tokens.ts). Absent when APPLE_REVOKE_ENABLED is off: then
+   * the code is dropped and nothing calls Apple. Never fails a sign-in.
+   */
+  keepAppleToken?: KeepAppleToken;
 }
 
 export const AppleBody = z.object({
   identityToken: z.string().min(1).max(8192),
-  // Kept for Apple token revocation (BE0.5); required now so the app always sends it.
+  // Exchanged for Apple's refresh token when APPLE_REVOKE_ENABLED is on (BE0.5); never logged.
   authorizationCode: z.string().min(1).max(1024),
   rawNonce: z.string().min(16).max(128),
   // Cosmetic and optional: never a reason to refuse a sign-in. Unknown name
@@ -71,9 +79,9 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
   const router = Router();
 
   const respond = (name: string, userId: string | null, started: number, reuse = false) => ({
-    ok(res: Response, data: unknown) {
+    ok(res: Response, data: unknown, counts: { failures?: number } = {}) {
       res.status(200).json({ success: true, data });
-      deps.log.door({ door: name, userId, status: 200, ms: deps.now() - started });
+      deps.log.door({ door: name, userId, status: 200, ms: deps.now() - started, ...counts });
     },
     fail(res: Response, err: unknown) {
       if (!(err instanceof DoorError)) {
@@ -129,13 +137,24 @@ export function createSessionRouter(deps: SessionRouteDeps): Router {
       const user = await deps.users(account.userId);
       if (!user || user.tokenVersion === undefined) throw new Error('auth.apple: the account has no token version (is migration 005 applied?)');
 
+      // BE0.5: the code lives ~5 minutes and works once, so it is exchanged now.
+      // Any failure only shows as a count on this line; the sign-in goes ahead.
+      let appleTokenFailures = 0;
+      const keep = deps.keepAppleToken;
+      if (keep) {
+        const kept = await Promise.resolve()
+          .then(() => keep(user.id, verified.appleUserId, body.authorizationCode))
+          .catch(() => false);
+        if (kept !== true) appleTokenFailures = 1;
+      }
+
       const session = await startSession(deps.store, { userId: user.id, tokenVersion: user.tokenVersion }, deps.secret, started);
       out().ok(res, {
         ...session,
         user: { id: user.id, firstName: user.firstName ?? null, isNew: account.isNew },
         // users.access (BE0.12); before migration 007 everyone was a member.
         access: { state: user.access ?? 'member' },
-      });
+      }, appleTokenFailures > 0 ? { failures: appleTokenFailures } : {});
     })().catch((err: unknown) => out().fail(res, err));
   });
 
