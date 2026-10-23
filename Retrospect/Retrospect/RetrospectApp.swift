@@ -264,7 +264,7 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
-                await platform.bindSessionLifecycle(to: apiClient)
+                platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
                 appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }
             }
@@ -386,7 +386,7 @@ struct RetrospectApp: App {
                 }
                 if newPhase == .background {
                     Task {
-                        let unsent = (try? await platform.outbox?.unsentCount()) ?? 0
+                        let unsent = (try? await platform.outbox?.waitingToSendCount()) ?? 0
                         appDelegate.backgroundDrain.scheduleIfNeeded(unsent: unsent)
                     }
                 }
@@ -410,7 +410,14 @@ struct RetrospectApp: App {
                     }
                 }
             }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
+                if let url = activity.webpageURL { platform.router.open(url) }
+            }
             .onOpenURL { url in
+                // Bridge (PL5.2): the router reads every address first (an invite link goes to the invite
+                // center); the branches below still act for the old screens, unchanged.
+                platform.router.open(url)
                 guard url.scheme == "retrospect" else { return }
                 
                 if url.host == "start-recording" {

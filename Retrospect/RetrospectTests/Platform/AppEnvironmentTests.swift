@@ -108,6 +108,21 @@ struct AppEnvironmentTests {
         #expect(tasks.ended == 1)
     }
 
+    @Test("signing out unloads and drops the player, so nothing keeps playing for the next person")
+    func signOutDropsThePlayer() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        await environment.sessionDidChange(to: "user-a").value
+        let player = try #require(environment.playback)
+        await player.load(Flows.PlaybackItem(id: "b1", kind: .brief, title: "today's brief", parts: [], durationSeconds: 60))
+        #expect(player.item?.id == "b1", "the person's brief is the player's item (its fetch fails here; it stays the item)")
+
+        await environment.sessionWillChange().value
+
+        #expect(environment.playback == nil)
+        #expect(player.item == nil && player.state == .idle, "the old person's audio is unloaded, not just dropped")
+    }
+
     @Test("signing in builds the journal stack on that person's store; signing out stops it and erases it, and the next person starts empty")
     func theJournalStackFollowsTheSession() async throws {
         let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
@@ -149,7 +164,31 @@ struct AppEnvironmentTests {
         ])
     }
 
-    @Test("sign-out drains earlier scene work, detaches and erases before the next user's store opens")
+    @Test("a session the server ended keeps the person's unsent words on the phone; the same person gets them back, another person's sign-in erases them first")
+    func serverEndedKeepsRowsUntilAnotherPersonSignsIn() async throws {
+        let a = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let b = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { $0 == "user-a" ? a : b })
+        await environment.sessionDidChange(to: "user-a").value
+        let outbox = try #require(environment.outbox)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "unsent words", createdAt: Date())))
+
+        await environment.closeStore(erasing: false)
+        #expect(environment.outbox == nil && environment.journalData == nil, "everything stopped")
+        #expect(try await a.writer.read { try Store.EntryRow.fetchCount($0) } == 1, "the words are still on the phone")
+        #expect(try await a.writer.read { try Store.OutboxRow.fetchCount($0) } == 1)
+
+        await environment.sessionDidChange(to: "user-a").value
+        #expect(try await a.writer.read { try Store.OutboxRow.fetchCount($0) } == 1, "the same person signs back in and still has them")
+        await environment.closeStore(erasing: false)
+
+        await environment.sessionDidChange(to: "user-b").value
+        #expect(try await a.writer.read { try Store.EntryRow.fetchCount($0) } == 0, "a different person: the last person's rows are gone")
+        #expect(try await a.writer.read { try Store.OutboxRow.fetchCount($0) } == 0)
+        #expect(environment.outbox != nil)
+    }
+
+    @Test("sign-out without force is told, detaches and erases before the next user's store opens")
     func signingOutSeparatesUsers() async throws {
         let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
         let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
