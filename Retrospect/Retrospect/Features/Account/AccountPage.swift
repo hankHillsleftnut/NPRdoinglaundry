@@ -26,11 +26,13 @@ struct AccountPage: View {
                 ScrollView {
                     VStack(spacing: RDimension.space6) {
                         signOutBlock
+                            .padding(.horizontal, RDimension.spaceScreenMargin)
+                        // Full width: settings rows and their hairlines carry the screen margin themselves
+                        // (ST-9's rows), so a second margin here would push the group 24 in from the button.
                         if reportSender != nil {
                             DiagnosticsSettingsGroup()
                         }
                     }
-                    .padding(.horizontal, RDimension.spaceScreenMargin)
                     .padding(.top, RDimension.space6)
                 }
                 .sendReport(bottomInset: RDimension.spaceScreenMargin)
