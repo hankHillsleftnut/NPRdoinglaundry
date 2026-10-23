@@ -410,7 +410,14 @@ struct RetrospectApp: App {
                     }
                 }
             }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
+                if let url = activity.webpageURL { platform.router.open(url) }
+            }
             .onOpenURL { url in
+                // Bridge (PL5.2): the router reads every address first (an invite link goes to the invite
+                // center); the branches below still act for the old screens, unchanged.
+                platform.router.open(url)
                 guard url.scheme == "retrospect" else { return }
                 
                 if url.host == "start-recording" {

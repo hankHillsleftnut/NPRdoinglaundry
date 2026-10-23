@@ -32,6 +32,8 @@ extension Platform {
         let invites: Session.InviteCenter
         /// The version floor (PL1.6): whether this build must update.
         let floor: Platform.VersionFloor
+        /// Every way into the app: links, universal links (PL5.2). An invite goes straight to `invites`.
+        let router: Routing.Router
         /// What the app did, for "send a report" (DG.3). No database until
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
@@ -79,6 +81,7 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
+            router = Routing.Router(inviteBase: configuration.baseURL, log: log, receiveInvite: { await invites.received(code: $0) })
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -199,6 +202,7 @@ extension Platform {
         func sessionWillChange() -> Task<Void, Never> {
             enqueueDiagnostics { [self, diagnostics] in
                 // Stop everything that reads or writes the person's store before it is erased.
+                router.clear()
                 journalData?.stop()
                 journalData = nil
                 await outbox?.stop()
