@@ -34,10 +34,10 @@ struct PersonFlagsTests {
         try await flags.set(.youreInSeen)
 
         #expect(try await flags.isSet(.youreInSeen))
-        let rows = try await database.writer.read { try Row.fetchAll($0, sql: "SELECT key, value, set_at FROM flags") }
-        #expect(rows.count == 1)
-        #expect(rows.first?["key"] as String? == "youre_in_seen")
-        #expect(rows.first?["set_at"] as String? == "2026-10-21T08:00:00.000Z", "the first time stands")
+        let rows: [[String]] = try await database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT key, value, set_at FROM flags").map { [$0["key"], $0["value"], $0["set_at"]] }
+        }
+        #expect(rows == [["youre_in_seen", "1", "2026-10-21T08:00:00.000Z"]], "one row; the first time stands")
     }
 
     @Test("the same person keeps it across a relaunch, or signing back in after the server ended the session (the store is reopened, not erased)")
@@ -102,14 +102,13 @@ struct PersonFlagsTests {
 
         try Store.Migrations.all.migrate(queue)
 
-        try queue.read { db in
-            #expect(try db.tableExists("flags"))
-            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM entries") == 1)
-            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox") == 1)
-            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM cached_documents") == 1)
-            #expect(try String.fetchOne(db, sql: "SELECT value FROM meta WHERE key = 'owner_hash'") == "abc")
-            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM flags") == 0)
+        let counts: [Int?] = try queue.read { db in
+            try ["entries", "outbox", "cached_documents", "flags"].map { try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \($0)") }
         }
+        let owner: String? = try queue.read { try String.fetchOne($0, sql: "SELECT value FROM meta WHERE key = 'owner_hash'") }
+        #expect(try queue.read { try $0.tableExists("flags") })
+        #expect(counts == [1, 1, 1, 0], "every v3 row is kept; flags starts empty")
+        #expect(owner == "abc")
     }
 
     @Test("a closed flags object reads as unknown and writes nothing")
