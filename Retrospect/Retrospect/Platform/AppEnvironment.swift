@@ -97,7 +97,8 @@ extension Platform {
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) },
             unsentSource: Box<Store.Outbox?> = Box(nil),
             firstAuthorization: any Session.FirstAuthorizationKeeping = Session.MemoryFirstAuthorization(),
-            pendingInviteCode: @escaping @Sendable () async -> String? = { nil }
+            pendingInviteCode: @escaping @Sendable () async -> String? = { nil },
+            diagnostics: Platform.Diagnostics.Recorder? = nil
         ) {
             self.unsentSource = unsentSource
             self.launch = launch
@@ -119,8 +120,9 @@ extension Platform {
             )
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
-            diagnostics = Platform.Diagnostics.Recorder(log: log)
-            crashReporter = Platform.Diagnostics.CrashReporter(sink: diagnostics)
+            // The client's recorder when the caller built one (`live`, `preview`), so requests and the rest share one.
+            self.diagnostics = diagnostics ?? Platform.Diagnostics.Recorder(log: log)
+            crashReporter = Platform.Diagnostics.CrashReporter(sink: self.diagnostics)
         }
 
         /// The app's environment, set by this launch's options (always live
@@ -153,8 +155,11 @@ extension Platform {
                 unsentCount: { await Self.unsentCount(in: unsentSource) }
             )
             let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            // Built before the client, so every request lands in the one recorder sign-in attaches (DG.4.live).
+            let diagnostics = Platform.Diagnostics.Recorder(log: log)
             let client = Backend.Client(
                 configuration: configuration, tokens: session, reachability: reachability, log: log,
+                diagnostics: diagnostics,
                 onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
             )
             session.connect(client)
@@ -168,7 +173,8 @@ extension Platform {
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) },
                 unsentSource: unsentSource,
                 firstAuthorization: store,
-                pendingInviteCode: { try? await store.pendingInviteCode() }
+                pendingInviteCode: { try? await store.pendingInviteCode() },
+                diagnostics: diagnostics
             )
         }
 
@@ -195,8 +201,10 @@ extension Platform {
             )
             let reachability = Backend.PathReachability(monitor: nil)
             let floor = VersionFloor(runningVersion: configuration.appVersion, log: log)
+            let diagnostics = Platform.Diagnostics.Recorder(log: log)
             let client = Backend.Client(
                 configuration: configuration, tokens: session, reachability: reachability, log: log,
+                diagnostics: diagnostics,
                 onUpdateRequired: { Task { @MainActor in floor.serverRequiresUpdate() } }
             )
             session.connect(client)
@@ -205,7 +213,8 @@ extension Platform {
                 configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor, backgroundTasks: backgroundTasks, openDatabase: openDatabase,
                 unsentSource: unsentSource,
-                pendingInviteCode: { try? await store.pendingInviteCode() }
+                pendingInviteCode: { try? await store.pendingInviteCode() },
+                diagnostics: diagnostics
             )
         }
 
