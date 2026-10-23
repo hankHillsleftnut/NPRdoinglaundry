@@ -18,8 +18,9 @@ import { checkAppVersion, minBuildOf, type AppVersions } from './versions.js';
  *   1a. the version floor (BE0.10): a build below MIN_APP_VERSION is told to
  *      update (`update_required`, 426) whatever it asked for; a request with
  *      no usable X-App-Version passes until REQUIRE_APP_VERSION is on;
- *   2. the invite gate: a suspended person is refused everywhere
- *      (`suspended`), a waitlisted one everywhere but the doors marked
+ *   2. the invite gate: a suspended person is refused everywhere but the
+ *      doors marked `openToSuspended` (account deletion only) with
+ *      `suspended`, a waitlisted one everywhere but the doors marked
  *      `openToWaitlisted` (`invite_required`), contract 00 §4;
  *   3. the per-user limit for the door's bucket is taken (before anything
  *      else runs, so bad bodies and id probing are limited too); expensive
@@ -76,6 +77,8 @@ export interface DoorSpec<Req, AgentRes, Res> {
   logCounts?: (result: AgentRes) => DoorLogCounts;
   /** A waitlisted person may use this door (contract 00 §4's own doors, and diagnostics). */
   openToWaitlisted?: boolean;
+  /** A suspended (staff-paused) person may use this door: account deletion only (App Review 5.1.1(v)). */
+  openToSuspended?: boolean;
 }
 
 export interface DoorKitDeps {
@@ -102,11 +105,18 @@ function validTimeZone(value: string | undefined): string | null {
   }
 }
 
-/** The request as one object: path params win over body or query fields of the same name. */
+const asFields = (source: unknown): Record<string, unknown> =>
+  source && typeof source === 'object' && !Array.isArray(source) ? source as Record<string, unknown> : {};
+
+/**
+ * The request as one object: path params win over body or query fields of the
+ * same name. GET reads the query; POST/PUT/PATCH the body; DELETE the JSON body
+ * merged over the query (contract 06 §8 sends `DELETE /v2/account` a body).
+ */
 function requestInput(req: Request): unknown {
-  const source = req.method === 'GET' || req.method === 'DELETE' ? req.query : req.body;
-  const fields = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
-  return { ...fields, ...req.params };
+  if (req.method === 'GET') return { ...asFields(req.query), ...req.params };
+  if (req.method === 'DELETE') return { ...asFields(req.query), ...asFields(req.body), ...req.params };
+  return { ...asFields(req.body), ...req.params };
 }
 
 export function createDoorKit(deps: DoorKitDeps) {
@@ -163,7 +173,7 @@ export function createDoorKit(deps: DoorKitDeps) {
         if (checkAppVersion(appVersion, minBuild, deps.versions.requireVersion) === 'update_required') throw new DoorError('update_required');
         // The gate. No access state means migration 007 isn't applied yet: everyone was a member then.
         const access = req.user?.access;
-        if (access === 'suspended') throw new DoorError('suspended');
+        if (access === 'suspended' && !spec.openToSuspended) throw new DoorError('suspended');
         if (access === 'waitlisted' && !spec.openToWaitlisted) throw new DoorError('invite_required');
         const ctx: DoorContext = {
           userId, agent: timedAgent, timeZone: validTimeZone(req.header('X-Time-Zone')), idempotencyKey: req.header('Idempotency-Key') ?? null,

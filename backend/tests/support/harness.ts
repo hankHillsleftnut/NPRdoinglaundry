@@ -74,6 +74,9 @@ export async function startHarness(opts: {
   startIngest?: AppDeps['startIngest'];
   versions?: AppDeps['versions'];
   keepAppleToken?: AppDeps['keepAppleToken'];
+  account?: AppDeps['account'];
+  /** A real user lookup (e.g. over PGlite) instead of the in-memory table; `asUser` then only signs. */
+  userLookup?: AppDeps['users'];
 } = {}): Promise<Harness> {
   let routes: AgentRoutes = opts.agentRoutes ?? {};
   const agentCalls: Harness['agentCalls'] = [];
@@ -102,7 +105,7 @@ export async function startHarness(opts: {
     agent: createAgentDoorClient({ baseUrl: agentUrl, internalSecret: process.env.INTERNAL_API_SECRET ?? '' }),
     limiter,
     now: () => clock.now,
-    users: async (id) => users.get(id) ?? null,
+    users: opts.userLookup ?? (async (id) => users.get(id) ?? null),
     log: createLog((line) => logLines.push(line)),
     ...(opts.v2Router ? { v2Router: opts.v2Router } : {}),
     ...(opts.speechSynth ? { speechSynth: opts.speechSynth } : {}),
@@ -120,6 +123,7 @@ export async function startHarness(opts: {
     ...(opts.startIngest ? { startIngest: opts.startIngest } : {}),
     ...(opts.versions ? { versions: opts.versions } : {}),
     ...(opts.keepAppleToken ? { keepAppleToken: opts.keepAppleToken } : {}),
+    account: opts.account ?? notConfigured<NonNullable<AppDeps['account']>>('account'),
   });
   const appServer = createServer(app);
   const url = await listen(appServer);

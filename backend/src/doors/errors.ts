@@ -29,6 +29,8 @@ export const DOOR_ERRORS = {
   invite_invalid: { status: 400, message: "That code doesn't look right." },
   invite_used: { status: 400, message: "That invite has already been used." },
   invite_expired: { status: 400, message: "That invite has expired." },
+  // Contract 06 §8: deleting an Apple-signed account with no Apple token kept and no fresh code.
+  apple_confirmation_required: { status: 409, message: "Confirm with Apple to finish deleting your account." },
 } as const satisfies Record<string, { status: number; message: string }>;
 
 export type DoorErrorCode = keyof typeof DOOR_ERRORS;

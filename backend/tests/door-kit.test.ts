@@ -286,3 +286,58 @@ test('an unknown /v2 path is the envelope\'s 404', async () => {
     await h.close();
   }
 });
+
+/** Sets req.user.access from x-test-access (after the fake auth), so the gate can be tested. */
+const withAccess: RequestHandler = (req, _res, next) => {
+  const access = req.header('x-test-access');
+  if (req.user && access) req.user.access = access as never;
+  next();
+};
+
+test('a suspended person is refused by every door except one marked openToSuspended (BE0.7)', async () => {
+  const h = await harness((door, router) => {
+    router.use(withAccess);
+    router.get('/plain', door({ name: 'plain', bucket: 'read', request: z.object({}).strict(), call: async () => ({}), map: () => ({}) }));
+    router.get('/waitlisted-ok', door({ name: 'waitlisted-ok', bucket: 'read', openToWaitlisted: true, request: z.object({}).strict(), call: async () => ({}), map: () => ({}) }));
+    router.delete('/leave', door({
+      name: 'leave', bucket: 'write', openToWaitlisted: true, openToSuspended: true, request: z.object({}).strict(), call: async () => ({}), map: () => ({}),
+    }));
+  });
+  try {
+    const as = (access: string) => ({ user: ALICE, headers: { 'x-test-access': access } });
+    for (const path of ['/plain', '/waitlisted-ok']) {
+      const res = await h.request('GET', path, as('suspended'));
+      assert.equal(res.status, 403, path);
+      assert.equal(errorCode(res.body), 'suspended', path);
+    }
+    assert.equal((await h.request('DELETE', '/leave', as('suspended'))).status, 200);
+    assert.equal((await h.request('DELETE', '/leave', as('waitlisted'))).status, 200);
+    assert.equal(errorCode((await h.request('GET', '/plain', as('waitlisted'))).body), 'invite_required');
+  } finally {
+    await h.close();
+  }
+});
+
+test('DELETE reads its JSON body merged over the query; other methods read as before', async () => {
+  const seen: unknown[] = [];
+  const schema = z.object({ confirm: z.literal('delete'), note: z.string().optional() }).strict();
+  const h = await harness((door, router) => {
+    router.delete('/thing', door({ name: 'thing.delete', bucket: 'write', request: schema, call: async (_c, r) => { seen.push(r); return {}; }, map: () => ({}) }));
+    router.post('/thing', door({ name: 'thing.post', bucket: 'write', request: schema, call: async (_c, r) => { seen.push(r); return {}; }, map: () => ({}) }));
+    router.get('/thing', door({ name: 'thing.get', bucket: 'read', request: schema, call: async (_c, r) => { seen.push(r); return {}; }, map: () => ({}) }));
+  });
+  try {
+    assert.equal((await h.request('DELETE', '/thing', { user: ALICE, body: JSON.stringify({ confirm: 'delete' }) })).status, 200, 'the body reaches the schema');
+    assert.equal((await h.request('DELETE', '/thing?note=q', { user: ALICE, body: JSON.stringify({ confirm: 'delete', note: 'b' }) })).status, 200);
+    assert.deepEqual(seen.at(-1), { confirm: 'delete', note: 'b' }, 'the body wins over the query');
+    assert.equal((await h.request('DELETE', '/thing?confirm=delete', { user: ALICE })).status, 200, 'a query-only DELETE still works');
+    const unknown = await h.request('DELETE', '/thing', { user: ALICE, body: JSON.stringify({ confirm: 'delete', userId: BOB }) });
+    assert.equal(unknown.status, 400, 'an unknown body field is refused');
+    assert.equal(errorCode(unknown.body), 'invalid_request');
+    // Unchanged: POST reads the body only, GET the query only.
+    assert.equal((await h.request('POST', '/thing?confirm=delete', { user: ALICE, body: '{}' })).status, 400);
+    assert.equal((await h.request('GET', '/thing?confirm=delete', { user: ALICE })).status, 200);
+  } finally {
+    await h.close();
+  }
+});

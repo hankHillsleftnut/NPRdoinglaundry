@@ -10,6 +10,7 @@ import { decodeProtectedHeader, jwtVerify } from 'jose';
 import {
   APPLE_REVOKE_URL, APPLE_TOKEN_URL, CLIENT_SECRET_TTL_SECONDS, checkAppleTokenSettings, createAppleTokenKeeper, createAppleTokens,
   encryptionKeyOf, openAppleToken, sealAppleToken, type AppleFetch, type AppleTokenDb, type AppleTokenSettings,
+  AppleCallError, createAppleDeletionTools,
 } from '../src/services/apple-tokens.js';
 
 const pair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -218,4 +219,60 @@ test('the keeper never throws: Apple down or refusing is just false', async () =
     const keep = createAppleTokenKeeper({ settings: settings(), db, fetch: fakeApple(reply).fetch, now: () => NOW })!;
     assert.equal(await keep('u1', 'sub-1', 'c'), false);
   }
+});
+
+test('a refused revoke keeps only a documented error word, never the rest of the body (BE0.7)', async () => {
+  const revokeWith = (body: unknown, status = 400) =>
+    createAppleTokens({ settings: settings(), fetch: fakeApple(() => ({ status, body })).fetch, now: () => NOW }).revoke('r.placeholder', 'refresh_token');
+  await assert.rejects(revokeWith({ error: 'invalid_grant', echo: 'r.placeholder' }), (err: unknown) => {
+    assert.ok(err instanceof AppleCallError);
+    assert.equal(err.status, 400);
+    assert.equal(err.word, 'invalid_grant');
+    assert.equal(err.message, 'apple revoke: HTTP 400 invalid_grant');
+    return true;
+  });
+  for (const body of [{ error: 'r.placeholder' }, { error: 'something new' }, 'not json', null, { error: 42 }]) {
+    await assert.rejects(revokeWith(body), (err: unknown) => {
+      assert.ok(err instanceof AppleCallError);
+      assert.equal(err.word, null, 'an undocumented word is dropped');
+      assert.equal(err.message, 'apple revoke: HTTP 400');
+      return true;
+    });
+  }
+  // The exchange (the sign-in keeper's path) still carries the status only.
+  const exchange = createAppleTokens({ settings: settings(), fetch: fakeApple(() => ({ status: 400, body: { error: 'invalid_grant' } })).fetch, now: () => NOW });
+  await assert.rejects(exchange.exchangeCode('code-placeholder'), (err: Error) => err.message === 'apple token: HTTP 400');
+});
+
+test('deletion tools: none with the flag off; the exchange says what went wrong (BE6.6a)', async () => {
+  assert.equal(createAppleDeletionTools({ settings: settings({ revokeEnabled: false, privateKey: '', tokenEncryptionKey: null }) }), undefined);
+  assert.throws(() => createAppleDeletionTools({ settings: settings({ tokenEncryptionKey: null }) }), /TOKEN_ENCRYPTION_KEY/);
+  const toolsWith = (reply: () => { status: number; body?: unknown } | Error) =>
+    createAppleDeletionTools({ settings: settings(), fetch: fakeApple(reply).fetch, now: () => NOW })!;
+  assert.deepEqual(await toolsWith(() => ({ status: 200, body: { refresh_token: 'r.mine', id_token: idTokenFor('sub-1') } })).exchange('c', 'sub-1'),
+    { outcome: 'ok', refreshToken: 'r.mine' });
+  assert.deepEqual(await toolsWith(() => ({ status: 200, body: { refresh_token: 'r.other', id_token: idTokenFor('sub-2') } })).exchange('c', 'sub-1'),
+    { outcome: 'different_subject' });
+  assert.deepEqual(await toolsWith(() => ({ status: 200, body: { refresh_token: 'r.whose' } })).exchange('c', 'sub-1'), { outcome: 'different_subject' });
+  assert.deepEqual(await toolsWith(() => ({ status: 200, body: { id_token: idTokenFor('sub-1') } })).exchange('c', 'sub-1'), { outcome: 'unavailable' });
+  assert.deepEqual(await toolsWith(() => ({ status: 400, body: { error: 'invalid_grant' } })).exchange('c', 'sub-1'), { outcome: 'refused' });
+  assert.deepEqual(await toolsWith(() => ({ status: 503 })).exchange('c', 'sub-1'), { outcome: 'unavailable' });
+  assert.deepEqual(await toolsWith(() => new Error('fetch failed')).exchange('c', 'sub-1'), { outcome: 'unavailable' });
+});
+
+test('deletion tools: revoke outcomes, and seal/open round trip under the same key', async () => {
+  const revokeWith = (reply: () => { status: number; body?: unknown } | Error) =>
+    createAppleDeletionTools({ settings: settings(), fetch: fakeApple(reply).fetch, now: () => NOW })!.revoke('r.placeholder');
+  assert.equal(await revokeWith(() => ({ status: 200, body: {} })), 'revoked');
+  assert.equal(await revokeWith(() => ({ status: 400, body: { error: 'invalid_grant' } })), 'already_revoked');
+  assert.equal(await revokeWith(() => ({ status: 400, body: { error: 'invalid_client' } })), 'refused');
+  assert.equal(await revokeWith(() => ({ status: 400 })), 'refused');
+  assert.equal(await revokeWith(() => ({ status: 429 })), 'unavailable');
+  assert.equal(await revokeWith(() => ({ status: 503 })), 'unavailable');
+  assert.equal(await revokeWith(() => new Error('fetch failed')), 'unavailable');
+  const tools = createAppleDeletionTools({ settings: settings(), fetch: fakeApple().fetch })!;
+  const sealed = tools.seal('r.placeholder');
+  assert.equal(sealed.includes('r.placeholder'), false);
+  assert.equal(tools.open(sealed), 'r.placeholder');
+  assert.equal(openAppleToken(sealed, sealing), 'r.placeholder', 'the same seal the sign-in keeper uses');
 });

@@ -14,9 +14,17 @@ const read = (file: string) => JSON.parse(readFileSync(join(FIXTURES, file), 'ut
 };
 const errorFixtures = readdirSync(FIXTURES).filter((f) => /^error\..+\.json$/.test(f));
 
+/** Codes a later contract adds itself, with the folder that holds their fixture (contract 06 §8). */
+const LATER_CONTRACT_CODES: Record<string, string> = { apple_confirmation_required: '06' };
+
 test('every error code has a fixture, and every fixture is a code', () => {
   const fromFixtures = errorFixtures.map((f) => f.slice('error.'.length, -'.json'.length)).sort();
-  assert.deepEqual([...DOOR_ERROR_CODES].sort(), fromFixtures);
+  assert.deepEqual([...DOOR_ERROR_CODES].filter((c) => !(c in LATER_CONTRACT_CODES)).sort(), fromFixtures);
+  for (const [code, folder] of Object.entries(LATER_CONTRACT_CODES)) {
+    assert.ok((DOOR_ERROR_CODES as string[]).includes(code), `${code} is a code`);
+    const fixture = JSON.parse(readFileSync(join(FIXTURES, '..', folder, `error.${code}.json`), 'utf8')) as Record<string, unknown>;
+    assert.deepEqual(errorBody(new DoorError(code as DoorErrorCode)), fixture, `${folder}/error.${code}.json is exactly what the backend sends`);
+  }
 });
 
 for (const file of errorFixtures) {

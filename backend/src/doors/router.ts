@@ -8,6 +8,7 @@ import { mountInviteDoors, type InviteDoorDeps } from '../invites/doors.js';
 import { mountBriefDoors, type BriefDoorDeps } from '../briefs/doors.js';
 import { mountGuessDoors, type GuessDoorDeps } from '../guesses/doors.js';
 import { mountEntryDoors, type EntryDoorDeps } from '../entries/doors.js';
+import { mountAccountDoors, type AccountDoorDeps } from '../account/doors.js';
 
 /**
  * The `/v2` router. Mounted in index.ts behind the auth middleware; public
@@ -20,7 +21,19 @@ export interface V2RouterDeps {
   briefs: BriefDoorDeps;
   guesses: GuessDoorDeps;
   entries: EntryDoorDeps;
+  /** Account deletion (BE0.7). Absent, the door answers `internal` (and reports it): never a silent 404. */
+  account?: AccountDoorDeps;
 }
+
+/** The account door when nothing was passed in: fails closed and loudly. */
+const accountNotConfigured: AccountDoorDeps = {
+  deletion: {
+    request: () => Promise.reject(new Error('account deletion is not configured')),
+    start: () => undefined,
+    runNow: () => Promise.reject(new Error('account deletion is not configured')),
+    sweep: () => Promise.reject(new Error('account deletion is not configured')),
+  },
+};
 
 /**
  * A report is at most 2 MB (docs/team/flows/diagnostics.md), counted after
@@ -86,6 +99,9 @@ export function createV2Router(door: DoorFactory, deps: V2RouterDeps): Router {
 
   // The guess cards (BE1.4).
   mountGuessDoors(router, door, deps.guesses);
+
+  // Deleting the account (BE0.7): open to waitlisted and paused people.
+  mountAccountDoors(router, door, deps.account ?? accountNotConfigured);
 
   // Any other /v2 path: the envelope's 404, not the old routes' body.
   router.use((_req, res) => {

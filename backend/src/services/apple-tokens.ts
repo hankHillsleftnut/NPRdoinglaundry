@@ -125,6 +125,37 @@ function form(fields: Record<string, string>): string {
   return new URLSearchParams(fields).toString();
 }
 
+/**
+ * The error words Apple's token endpoints document (ErrorResponse.error). Only
+ * these are ever read from a failed answer; anything else in the body is
+ * dropped unread, so no echoed code or token can ride along.
+ */
+export const APPLE_ERROR_WORDS = [
+  'invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope',
+] as const;
+export type AppleErrorWord = (typeof APPLE_ERROR_WORDS)[number];
+
+/** A non-2xx answer from Apple: its status, and for revoke the documented error word when there is one. */
+export class AppleCallError extends Error {
+  readonly status: number;
+  readonly word: AppleErrorWord | null;
+  constructor(what: string, status: number, word: AppleErrorWord | null) {
+    super(`apple ${what}: HTTP ${status}${word ? ` ${word}` : ''}`);
+    this.name = 'AppleCallError';
+    this.status = status;
+    this.word = word;
+  }
+}
+
+async function errorWordOf(res: { json(): Promise<unknown> }): Promise<AppleErrorWord | null> {
+  try {
+    const word = ((await res.json()) as { error?: unknown } | null)?.error;
+    return typeof word === 'string' && (APPLE_ERROR_WORDS as readonly string[]).includes(word) ? word as AppleErrorWord : null;
+  } catch {
+    return null;
+  }
+}
+
 export function createAppleTokens(opts: {
   settings: AppleTokenSettings;
   fetch?: AppleFetch;
@@ -153,7 +184,7 @@ export function createAppleTokens(opts: {
     return jwt;
   }
 
-  async function post(url: string, fields: Record<string, string>, what: string) {
+  async function post(url: string, fields: Record<string, string>, what: string, readErrorWord = false) {
     // The gate: with the flag off nothing here reaches Apple.
     if (!settings.revokeEnabled) throw new Error(`apple ${what}: APPLE_REVOKE_ENABLED is off`);
     const secret = await clientSecret();
@@ -163,8 +194,9 @@ export function createAppleTokens(opts: {
       body: form({ client_id: settings.clientId, client_secret: secret, ...fields }),
       signal: AbortSignal.timeout(APPLE_CALL_TIMEOUT_MS),
     });
-    // Status only: Apple's error body is never carried along.
-    if (!res.ok) throw new Error(`apple ${what}: HTTP ${res.status}`);
+    // Status only: Apple's error body is never carried along. Revoke (BE0.7)
+    // also keeps Apple's error word when it is one of the documented words.
+    if (!res.ok) throw new AppleCallError(what, res.status, readErrorWord ? await errorWordOf(res) : null);
     return res;
   }
 
@@ -186,7 +218,7 @@ export function createAppleTokens(opts: {
       return { refreshToken: typeof body?.refresh_token === 'string' && body.refresh_token ? body.refresh_token : null, appleUserId };
     },
     async revoke(token, hint) {
-      await post(APPLE_REVOKE_URL, { token, token_type_hint: hint }, 'revoke');
+      await post(APPLE_REVOKE_URL, { token, token_type_hint: hint }, 'revoke', true);
     },
   };
 }
@@ -240,5 +272,69 @@ export function createAppleTokenKeeper(opts: {
     } catch {
       return false;
     }
+  };
+}
+
+/**
+ * A fresh code exchanged inside the deletion request (BE6.6a). Unlike the
+ * sign-in keeper this one has to say what went wrong, because the door answers
+ * with it: `different_subject` and `refused` (a used, expired or foreign code)
+ * are `invalid_credentials`; `unavailable` (Apple down, slow, or a grant with no
+ * refresh token) is `upstream_unavailable`. Nothing is locked in any of them.
+ */
+export type DeletionExchange =
+  | { outcome: 'ok'; refreshToken: string }
+  | { outcome: 'different_subject' }
+  | { outcome: 'refused' }
+  | { outcome: 'unavailable' };
+
+/** What a revoke at deletion ended as: Apple's `invalid_grant` means the token is already dead. */
+export type DeletionRevoke = 'revoked' | 'already_revoked' | 'refused' | 'unavailable';
+
+/** Apple, as account deletion (BE0.7) uses it. Undefined while APPLE_REVOKE_ENABLED is off. */
+export interface AppleDeletionTools {
+  exchange(code: string, appleUserId: string): Promise<DeletionExchange>;
+  /** The sealed form of a refresh token, for the users row. */
+  seal(refreshToken: string): string;
+  /** Opens the stored token; throws (without the value) when it can't. */
+  open(sealed: string): string;
+  revoke(refreshToken: string): Promise<DeletionRevoke>;
+}
+
+export function createAppleDeletionTools(opts: {
+  settings: AppleTokenSettings;
+  fetch?: AppleFetch;
+  now?: () => number;
+}): AppleDeletionTools | undefined {
+  checkAppleTokenSettings(opts.settings);
+  if (!opts.settings.revokeEnabled) return undefined;
+  const sealingKey = encryptionKeyOf(opts.settings.tokenEncryptionKey);
+  const apple = createAppleTokens(opts);
+  return {
+    async exchange(code, appleUserId) {
+      let grant: AppleTokenGrant;
+      try {
+        grant = await apple.exchangeCode(code);
+      } catch (err) {
+        // A 4xx is the code's fault; anything else (5xx, timeout, network) is Apple's.
+        return err instanceof AppleCallError && err.status >= 400 && err.status < 500 ? { outcome: 'refused' } : { outcome: 'unavailable' };
+      }
+      // A grant for another Apple account (or one that doesn't say whose it is) never deletes this one.
+      if (grant.appleUserId !== appleUserId) return { outcome: 'different_subject' };
+      if (!grant.refreshToken) return { outcome: 'unavailable' };
+      return { outcome: 'ok', refreshToken: grant.refreshToken };
+    },
+    seal: (refreshToken) => sealAppleToken(refreshToken, sealingKey),
+    open: (sealed) => openAppleToken(sealed, sealingKey),
+    async revoke(refreshToken) {
+      try {
+        await apple.revoke(refreshToken, 'refresh_token');
+        return 'revoked';
+      } catch (err) {
+        if (err instanceof AppleCallError && err.word === 'invalid_grant') return 'already_revoked';
+        if (err instanceof AppleCallError && err.status >= 400 && err.status < 500 && err.status !== 429) return 'refused';
+        return 'unavailable';
+      }
+    },
   };
 }
