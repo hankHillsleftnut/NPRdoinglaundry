@@ -115,6 +115,22 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// PLP.1b: the old root's podcast hooks (the notification-tap cover, the first-podcast cover and the recurring
+    /// podcast notifications) run only on the old home, so under the new root the new brief player is the only
+    /// thing that plays and nothing calls the old backend. Debug `-OldHome` keeps them as before.
+    static func oldHooksActive(usesNewApp: Bool) -> Bool {
+        !usesNewApp
+    }
+
+    private var oldHooksActive: Bool {
+        Self.oldHooksActive(usesNewApp: usesNewApp)
+    }
+
+    /// An old podcast cover can only show while the old hooks run (PLP.1b).
+    private func oldHookCover(_ shown: Binding<Bool>) -> Binding<Bool> {
+        Binding(get: { oldHooksActive && shown.wrappedValue }, set: { shown.wrappedValue = $0 })
+    }
+
     private var isAnimationPreviewMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
@@ -304,8 +320,8 @@ struct RetrospectApp: App {
                     }
                 }
                 
-                // Schedule recurring notifications for existing users
-                if hasCompletedOnboarding {
+                // Schedule recurring notifications for existing users (old home only: PLP.1b)
+                if hasCompletedOnboarding && oldHooksActive {
                     PodcastNotificationService.shared.scheduleAllRecurringNotifications()
                 }
                 
@@ -330,19 +346,21 @@ struct RetrospectApp: App {
                     }
                 }
                 
-                // Listen for podcast notification tap
-                NotificationCenter.default.addObserver(
-                    forName: NSNotification.Name("ShowPodcastFromNotification"),
-                    object: nil,
-                    queue: .main
-                ) { notification in
-                    if let podcastId = notification.userInfo?["podcastId"] as? String {
-                        notificationPodcastId = podcastId
-                        showPodcastFromNotification = true
+                // Listen for podcast notification tap (old home only: PLP.1b)
+                if oldHooksActive {
+                    NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("ShowPodcastFromNotification"),
+                        object: nil,
+                        queue: .main
+                    ) { notification in
+                        if let podcastId = notification.userInfo?["podcastId"] as? String {
+                            notificationPodcastId = podcastId
+                            showPodcastFromNotification = true
+                        }
                     }
                 }
             }
-            .fullScreenCover(isPresented: $showPodcastFromNotification) {
+            .fullScreenCover(isPresented: oldHookCover($showPodcastFromNotification)) {
                 // Show the podcast arrival view
                 if let podcastId = notificationPodcastId {
                     // Try to find existing transcript or create a placeholder
@@ -364,7 +382,7 @@ struct RetrospectApp: App {
                     )
                 }
             }
-            .fullScreenCover(isPresented: $showFirstPodcastArrival) {
+            .fullScreenCover(isPresented: oldHookCover($showFirstPodcastArrival)) {
                 if let transcript = firstPodcastTranscript {
                     NewPodcastArrivalView(
                         transcript: transcript,

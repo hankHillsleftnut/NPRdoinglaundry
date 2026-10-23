@@ -70,4 +70,14 @@ struct NewAppRootTests {
         #expect(NewAppRoot.isDefault(arguments: [], debug: true))
         #expect(!NewAppRoot.isDefault(arguments: ["-OldHome"], debug: true))
     }
+
+    @Test("PLP.1b: the old podcast hooks are off under the new root and on only for debug -OldHome")
+    func oldPodcastHooks() {
+        #expect(!RetrospectApp.oldHooksActive(usesNewApp: true), "the new root: no old podcast cover, observer or scheduling")
+        #expect(RetrospectApp.oldHooksActive(usesNewApp: false), "the old home keeps them as before")
+        let release = NewAppRoot.isDefault(arguments: [], debug: false)
+        #expect(!RetrospectApp.oldHooksActive(usesNewApp: release), "a release build never runs them")
+        let oldHome = NewAppRoot.isDefault(arguments: ["-OldHome"], debug: true)
+        #expect(RetrospectApp.oldHooksActive(usesNewApp: oldHome), "debug -OldHome behaves exactly as before")
+    }
 }
