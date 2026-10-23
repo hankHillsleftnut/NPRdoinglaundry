@@ -33,12 +33,16 @@ struct AccountPage: View {
                     .padding(.horizontal, RDimension.spaceScreenMargin)
                     .padding(.top, RDimension.space6)
                 }
+                .sendReport(bottomInset: RDimension.spaceScreenMargin)
             }
             .background(RColor.backgroundCanvas)
-            .rSheet(isPresented: $confirming, detent: SignOutSheet.detent(for: typeSize)) {
-                SignOutSheet(flow: flow, provider: provider) { confirming = false }
+            // A sibling of the page, never inside or around `.sendReport`: a sheet request set on a view
+            // replaces the requests below it, so nesting the two would hide one of the sheets.
+            .background {
+                Color.clear.rSheet(isPresented: $confirming, detent: SignOutSheet.detent(for: typeSize)) {
+                    SignOutSheet(flow: flow, provider: provider) { confirming = false }
+                }
             }
-            .sendReport(bottomInset: RDimension.spaceScreenMargin)
         }
         .accessibilityIdentifier("screen.account")
     }
