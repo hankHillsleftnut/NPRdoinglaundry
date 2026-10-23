@@ -9,6 +9,7 @@ extension Store {
             migrator.registerMigration("v1", migrate: v1)
             migrator.registerMigration("v2", migrate: v2)
             migrator.registerMigration("v3", migrate: v3)
+            migrator.registerMigration("v4", migrate: v4)
             return migrator
         }
 
@@ -71,6 +72,17 @@ extension Store {
         private static func v3(_ db: GRDB.Database) throws {
             try db.alter(table: "entries") { table in
                 table.add(column: "acknowledgement", .text)
+            }
+        }
+
+        /// INVITE-FLAGS (decisions 4, 5): small facts about this person on this
+        /// phone ("you're in" seen; later a brief's "played"). A data table, so
+        /// `erase()` empties it with everything else; never in `meta`.
+        private static func v4(_ db: GRDB.Database) throws {
+            try db.create(table: "flags") { table in
+                table.primaryKey("key", .text)
+                table.column("value", .text).notNull()
+                table.column("set_at", .text).notNull()
             }
         }
     }

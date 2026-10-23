@@ -76,6 +76,8 @@ extension Platform {
         private(set) var mediaSource: Platform.Media.Source?
         /// The one player (PLP.1a): plays today's brief from `mediaSource`; unloaded and dropped with the store.
         private(set) var playback: Platform.Media.LivePlayback?
+        /// The person's small flags ("you're in" seen, INVITE-FLAGS); built and dropped with the stack.
+        private(set) var personFlags: Store.PersonFlags?
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -313,6 +315,8 @@ extension Platform {
             let leftOver = keptUserID
             keptUserID = erasing ? nil : closing ?? keptUserID
             openUserID = nil
+            await personFlags?.close() // first: a late "begin" can't land in a store being erased or kept
+            personFlags = nil
             journalData?.stop()
             journalData = nil
             await repository?.close()
@@ -389,6 +393,7 @@ extension Platform {
                 database: database, sender: Store.ClientSender(client: client), reachability: reachability, log: log
             )
             self.outbox = outbox
+            personFlags = Store.PersonFlags(database: database)
             unsentSource.value = outbox
             let repository = Platform.Repositories.Journal(database: database, client: client)
             self.repository = repository
