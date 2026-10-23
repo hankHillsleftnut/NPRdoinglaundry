@@ -69,6 +69,38 @@ struct InviteCenterTests {
         #expect(h.requests(to: "/v2/invites/check").count == before, "a string that isn't a code sends nothing")
     }
 
+    // MARK: The signed-out preview (PL1.7e)
+
+    @Test("a link opened signed out shows the live code's face from the public door, with no token and no code in the log")
+    func aLiveCodeHasAFace() async throws {
+        let (h, center) = try harness(access: .member, pending: nil)
+        let live = try fixture("01", "invite.preview.live")
+        h.serve(["/public/invites/\(Self.code)": { _, _ in (200, live) }])
+
+        let face = await center.preview(code: "7kq2-m9xd-4rta-b")
+
+        #expect(face == self.face)
+        let sent = h.requests(to: "/public/invites/\(Self.code)")
+        #expect(sent.count == 1)
+        #expect(sent.first?.httpMethod == "GET")
+        #expect(sent.first?.value(forHTTPHeaderField: "Authorization") == nil, "a public door carries no token")
+        #expect(h.recorder.events.allSatisfy { !String(describing: $0).contains(Self.code) })
+    }
+
+    @Test("a code that isn't live, an error, or no connection gives no face and no complaint; a string that isn't a code sends nothing")
+    func noFaceQuietly() async throws {
+        let (h, center) = try harness(access: .member, pending: nil)
+        let notLive = try fixture("01", "invite.preview.notlive")
+        h.serve(["/public/invites/\(Self.code)": { _, _ in (200, notLive) }])
+
+        #expect(await center.preview(code: Self.code) == nil)
+        #expect(await center.preview(code: "nonsense") == nil)
+        #expect(h.requests(to: "/public/invites/nonsense").isEmpty)
+
+        h.serve(["/public/invites/\(Self.code)": { _, _ in try (429, Fixtures.data("00", "error.rate_limited")) }])
+        #expect(await center.preview(code: Self.code) == nil)
+    }
+
     // MARK: Check after sign-in
 
     @Test("signing in checks the pending code and never redeems it; usable prints the ticket and keeps the code")

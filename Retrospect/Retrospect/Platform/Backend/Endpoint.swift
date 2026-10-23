@@ -15,6 +15,7 @@ extension Backend {
         case entriesToday = "/v2/entries/today"
         case briefsLatest = "/v2/briefs/latest"
         case guesses = "/v2/guesses"
+        case entryByID = "/v2/entries/:id"
         case authApple = "/v2/auth/apple"
         case authRefresh = "/v2/auth/refresh"
         case authSignout = "/v2/auth/signout"
@@ -23,6 +24,8 @@ extension Backend {
         case invitesCheck = "/v2/invites/check"
         case invitesRedeem = "/v2/invites/redeem"
         case invitesMine = "/v2/invites/mine"
+        /// The one public door outside `/v2` (contract 01 §2.1): the ticket's face for a link, signed out.
+        case invitePreview = "/public/invites/:code"
         case guessByID = "/v2/guesses/:id"
     }
 

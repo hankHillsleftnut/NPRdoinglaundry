@@ -124,7 +124,8 @@ struct ContractFixtureTests {
     @Test("every door the app calls is in the diagnostics route list, so a report can name it")
     func pathTemplatesAreDiagnosticRoutes() throws {
         let ids = try JSONDecoder.contract.decode(DiagnosticsIds.self, from: data("00", "diagnostics.ids"))
-        for path in Backend.PathTemplate.allCases {
+        // The signed-out preview is outside `/v2`: a report never names it.
+        for path in Backend.PathTemplate.allCases where path != .invitePreview {
             #expect(ids.routes.contains(path.rawValue), "\(path.rawValue) is missing from fixtures/00/diagnostics.ids.json")
         }
     }

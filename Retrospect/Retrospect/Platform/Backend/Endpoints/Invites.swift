@@ -182,3 +182,38 @@ extension Backend.Endpoints {
         }
     }
 }
+
+extension Backend.Endpoints {
+    /// `GET /public/invites/:code` (contract 01 §2.1): public, no token. For a live code, the ticket's face; for
+    /// a code that is unknown, used, revoked or expired, the same 200 with nothing in it, so a preview never says which.
+    struct InvitePreview: Backend.Endpoint {
+        struct Preview: Decodable, Sendable, Equatable {
+            let live: Bool
+            let face: Session.TicketFace?
+        }
+
+        typealias Response = Preview
+
+        let code: String
+
+        var method: Backend.Method {
+            .get
+        }
+
+        var path: Backend.PathTemplate {
+            .invitePreview
+        }
+
+        var pathParameters: [String: String] {
+            ["code": code]
+        }
+
+        var requiresAuth: Bool {
+            false
+        }
+
+        var timeout: Duration {
+            .seconds(10)
+        }
+    }
+}
