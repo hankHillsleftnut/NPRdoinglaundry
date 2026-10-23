@@ -138,7 +138,10 @@ struct NewAppRoot: View {
     private func begin() {
         Task {
             // not remembered (no store open): the gate stays and "begin" can be pressed again, never dropped
-            guard await platform.markYoureInSeen() else { return }
+            guard await platform.markYoureInSeen() else {
+                platform.retryOpeningStore() // no store open: ask for it again, so 'begin' has a way forward
+                return
+            }
             youreInSeen = true
             gateHeld = false
         }

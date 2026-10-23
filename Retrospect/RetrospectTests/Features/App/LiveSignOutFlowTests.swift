@@ -183,7 +183,8 @@ struct LiveSignOutFlowTests {
 
     @Test("an unreadable count is not 'nothing waiting': it keeps trying, then says stuck, never offers a quiet erase")
     func unreadableCountKeepsTrying() async {
-        let world = World(unsent: 2, waiting: nil)
+        let world = World(unsent: 2)
+        world.waiting = nil
         world.online = true
         world.sendsPerDrain = 0
         let flow = flow(world)
