@@ -72,6 +72,23 @@ struct DiagnosticsRecordTests {
         }
     }
 
+    /// FR.doors: the backend refuses a whole report naming a route outside its list, so these four must be recorded
+    /// under their own route; first run's screens and controls are in the closed lists too.
+    @Test("the first-run and podcasts doors are recorded under their own routes, and first run's screens and controls are listed")
+    func theFirstRunDoorsAreRecorded() {
+        let doors: [Backend.PathTemplate: Diagnostics.Route] = [
+            .podcasts: .podcasts, .episodeByID: .episodesById, .onboardingAnswers: .onboardingAnswers, .onboardingComplete: .onboardingComplete,
+        ]
+        for (door, route) in doors {
+            #expect(!Backend.unrecordedPaths.contains(door), "\(door.rawValue) must be recorded")
+            #expect(Diagnostics.Route(door) == route)
+        }
+        #expect(Diagnostics.Screen(rawValue: "first_run") == .firstRun && Diagnostics.Screen(rawValue: "first_episode") == .firstEpisode)
+        #expect([Diagnostics.Control.firstRunSend, .firstEpisodePlay, .firstEpisodeContinue].map(\.rawValue) == [
+            "first_run.send", "first_episode.play", "first_episode.continue",
+        ])
+    }
+
     @Test("every error code a request may carry is a contract 00 error fixture, and every error fixture is a code")
     func theErrorCodesAreTheErrorFixtures() throws {
         let fixtures = try FileManager.default.contentsOfDirectory(atPath: Fixtures.root.appendingPathComponent("00").path)

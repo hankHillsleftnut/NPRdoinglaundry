@@ -29,6 +29,14 @@ extension Backend {
         case guessByID = "/v2/guesses/:id"
         /// Contract 06 §8: `DELETE` deletes the person's account (PL3.7g.min).
         case account = "/v2/account"
+        /// Contract 03 §2: the podcasts library (FR.doors).
+        case podcasts = "/v2/podcasts"
+        /// Contract 03 §3 (and 01 §6, the first episode): one episode with its signed audio link.
+        case episodeByID = "/v2/episodes/:id"
+        /// Contract 01 §4: one first-run answer, keyed by its `clientEntryId`.
+        case onboardingAnswers = "/v2/onboarding/answers"
+        /// Contract 01 §3: first run is over (approved → member).
+        case onboardingComplete = "/v2/onboarding/complete"
     }
 
     /// Doors a diagnostics report never names, so the client records no request row for them: the signed-out

@@ -77,6 +77,21 @@ struct LogTests {
         sink.record(.requestReplayed(path: .account))
     }
 
+    /// The four first-run and podcasts doors (FR.doors): a request line carries the template, the status and the time,
+    /// never a filled-in id, an episode title or an answer's words.
+    @Test("each first-run and podcasts door reaches its fixed lines, and its events carry no content")
+    func theFirstRunDoorsReachTheirLines() {
+        let doors: [Backend.PathTemplate] = [.podcasts, .episodeByID, .onboardingAnswers, .onboardingComplete]
+        let sink = Platform.Log.SystemSink()
+        for door in doors {
+            let events: [Platform.Log.Event] = [.requestSent(path: door, status: 200, ms: 40), .unknownErrorCode(path: door), .requestReplayed(path: door)]
+            for event in events {
+                #expect(Self.contentValues(in: event).isEmpty, "\(event) carries content")
+                sink.record(event)
+            }
+        }
+    }
+
     private static func contentValues(in value: Any) -> [Any] {
         ContentCheck.values(in: value)
     }

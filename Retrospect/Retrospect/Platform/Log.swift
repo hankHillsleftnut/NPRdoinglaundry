@@ -246,7 +246,8 @@ extension Platform.Log {
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
             case .guessByID: logger.info("request /v2/guesses/:id: status \(status), \(ms) ms")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account:
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account, .podcasts, .episodeByID,
+                 .onboardingAnswers, .onboardingComplete:
                 record(sentInvite: path, status: status, ms: ms)
             }
         }
@@ -290,6 +291,18 @@ extension Platform.Log {
             case .invitesMine: logger.info("request /v2/invites/mine: status \(status), \(ms) ms")
             case .invitePreview: logger.info("request /public/invites/:code: status \(status), \(ms) ms")
             case .account: logger.info("request /v2/account: status \(status), \(ms) ms")
+            case .podcasts, .episodeByID, .onboardingAnswers, .onboardingComplete: record(sentFirstRun: path, status: status, ms: ms)
+            default: break
+            }
+        }
+
+        /// First run's and the podcasts' doors (FR.doors), kept apart so each switch stays small.
+        private func record(sentFirstRun path: Backend.PathTemplate, status: Int, ms: Int) {
+            switch path {
+            case .podcasts: logger.info("request /v2/podcasts: status \(status), \(ms) ms")
+            case .episodeByID: logger.info("request /v2/episodes/:id: status \(status), \(ms) ms")
+            case .onboardingAnswers: logger.info("request /v2/onboarding/answers: status \(status), \(ms) ms")
+            case .onboardingComplete: logger.info("request /v2/onboarding/complete: status \(status), \(ms) ms")
             default: break
             }
         }
@@ -304,7 +317,9 @@ extension Platform.Log {
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
             case .guessByID: logger.error("unknown error code from /v2/guesses/:id")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: record(unknownCodeFromInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account, .podcasts, .episodeByID,
+                 .onboardingAnswers, .onboardingComplete:
+                record(unknownCodeFromInvite: path)
             }
         }
 
@@ -317,6 +332,17 @@ extension Platform.Log {
             case .invitesMine: logger.error("unknown error code from /v2/invites/mine")
             case .invitePreview: logger.error("unknown error code from /public/invites/:code")
             case .account: logger.error("unknown error code from /v2/account")
+            case .podcasts, .episodeByID, .onboardingAnswers, .onboardingComplete: record(unknownCodeFromFirstRun: path)
+            default: break
+            }
+        }
+
+        private func record(unknownCodeFromFirstRun path: Backend.PathTemplate) {
+            switch path {
+            case .podcasts: logger.error("unknown error code from /v2/podcasts")
+            case .episodeByID: logger.error("unknown error code from /v2/episodes/:id")
+            case .onboardingAnswers: logger.error("unknown error code from /v2/onboarding/answers")
+            case .onboardingComplete: logger.error("unknown error code from /v2/onboarding/complete")
             default: break
             }
         }
@@ -385,7 +411,9 @@ extension Platform.Log {
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
             case .guessByID: logger.info("401 on /v2/guesses/:id: refreshed and replayed once")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: record(replayedInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account, .podcasts, .episodeByID,
+                 .onboardingAnswers, .onboardingComplete:
+                record(replayedInvite: path)
             }
         }
 
@@ -398,7 +426,18 @@ extension Platform.Log {
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
             case .invitePreview: logger.info("401 on /public/invites/:code: refreshed and replayed once")
             case .account: logger.info("401 on /v2/account: refreshed and replayed once")
+            case .podcasts, .episodeByID, .onboardingAnswers, .onboardingComplete: record(replayedFirstRun: path)
             case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID: break
+            }
+        }
+
+        private func record(replayedFirstRun path: Backend.PathTemplate) {
+            switch path {
+            case .podcasts: logger.info("401 on /v2/podcasts: refreshed and replayed once")
+            case .episodeByID: logger.info("401 on /v2/episodes/:id: refreshed and replayed once")
+            case .onboardingAnswers: logger.info("401 on /v2/onboarding/answers: refreshed and replayed once")
+            case .onboardingComplete: logger.info("401 on /v2/onboarding/complete: refreshed and replayed once")
+            default: break
             }
         }
 

@@ -38,6 +38,9 @@ extension Platform.Diagnostics {
         case legacyGoals = "legacy.goals"
         case legacyYou = "legacy.you"
         case legacySettings = "legacy.settings"
+        /// First run's questions and its first episode (FR.doors).
+        case firstRun = "first_run"
+        case firstEpisode = "first_episode"
     }
 
     enum Sheet: String, CaseIterable, Codable, Sendable {
@@ -77,6 +80,9 @@ extension Platform.Diagnostics {
         case reportSend = "report.send"
         case reportShakeSwitch = "report.shake_switch"
         case stateTryAgain = "state.try_again"
+        case firstRunSend = "first_run.send"
+        case firstEpisodePlay = "first_episode.play"
+        case firstEpisodeContinue = "first_episode.continue"
     }
 
     enum Permission: String, CaseIterable, Codable, Sendable {
@@ -165,6 +171,11 @@ extension Platform.Diagnostics {
         case sources = "/v2/sources"
         case sourcesByIdConnect = "/v2/sources/:id/connect"
         case waitlist = "/v2/waitlist"
+        // Contract 03's doors (FR.doors).
+        case briefsById = "/v2/briefs/:id"
+        case episodesByIdClaimsByClaimId = "/v2/episodes/:id/claims/:claimId"
+        case episodesByIdFeedback = "/v2/episodes/:id/feedback"
+        case podcasts = "/v2/podcasts"
 
         init(_ path: Backend.PathTemplate) {
             self = switch path {
@@ -176,7 +187,9 @@ extension Platform.Diagnostics {
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
             case .guessByID: .guessesById
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: Self.gate(path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account, .podcasts, .episodeByID,
+                 .onboardingAnswers, .onboardingComplete:
+                Self.gate(path)
             }
         }
 
@@ -191,8 +204,19 @@ extension Platform.Diagnostics {
             }
         }
 
+        /// First run's and the podcasts' doors (FR.doors), kept apart so each switch stays small.
+        private static func firstRun(_ path: Backend.PathTemplate) -> Route {
+            switch path {
+            case .podcasts: .podcasts
+            case .episodeByID: .episodesById
+            case .onboardingAnswers: .onboardingAnswers
+            case .onboardingComplete: .onboardingComplete
+            default: preconditionFailure("not a first-run door: \(path.rawValue)")
+            }
+        }
+
         /// The sign-in gate's doors, kept apart so each switch stays small. A door
-        /// outside the gate never reaches here (`init` sends only these five).
+        /// outside the gate never reaches here (`init` sends only these, and hands first run's on to `firstRun`).
         private static func gate(_ path: Backend.PathTemplate) -> Route {
             switch path {
             case .access: .access
@@ -204,6 +228,7 @@ extension Platform.Diagnostics {
             case .invitePreview: .invitesCheck
             // Not in the backend's closed route list: the client records nothing for it (`Backend.unrecordedPaths`).
             case .account: .authSignout
+            case .podcasts, .episodeByID, .onboardingAnswers, .onboardingComplete: firstRun(path)
             case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }

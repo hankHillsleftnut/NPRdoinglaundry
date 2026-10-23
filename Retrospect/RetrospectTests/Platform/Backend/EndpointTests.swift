@@ -115,4 +115,53 @@ struct EndpointTests {
     func everyPathTemplateIsAV2Path() {
         #expect(Backend.PathTemplate.allCases.allSatisfy { $0.rawValue.hasPrefix("/v2/") || $0 == .invitePreview })
     }
+
+    @Test("the library is an authenticated GET to /v2/podcasts; cursor and limit go in the query only when given")
+    func theLibraryIsAGetWithItsPage() {
+        let first = Backend.Endpoints.PodcastLibrary()
+        let next = Backend.Endpoints.PodcastLibrary(cursor: "MjAyNi0xMC0xMQ", limit: 20)
+
+        #expect(first.method == .get && first.path == .podcasts && first.path.rawValue == "/v2/podcasts" && first.requiresAuth)
+        #expect(first.query.isEmpty)
+        #expect(next.query == [URLQueryItem(name: "cursor", value: "MjAyNi0xMC0xMQ"), URLQueryItem(name: "limit", value: "20")])
+        #expect(first.idempotencyKey == nil && first.retry == .read())
+    }
+
+    @Test("one episode is an authenticated GET to /v2/episodes/:id with the id as its parameter")
+    func episodeByIDIsAGetWithItsID() {
+        let episode = Backend.Endpoints.EpisodeByID(id: "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01")
+
+        #expect(episode.method == .get)
+        #expect(episode.path == .episodeByID && episode.path.rawValue == "/v2/episodes/:id")
+        #expect(episode.pathParameters == ["id": "0b6f3a52-6c1e-4d0a-9b1e-2f7c0d4e9a01"])
+        #expect(episode.requiresAuth && episode.idempotencyKey == nil)
+    }
+
+    @Test("an onboarding answer is a POST keyed by its clientEntryId, retried with the same key, sent as the contract writes it")
+    func anOnboardingAnswerIsKeyedByItsClientEntryID() throws {
+        let id = try #require(UUID(uuidString: "B1F0C6A2-4C1E-4A57-9D34-0F8F6F2E1A02"))
+        let body = Backend.Endpoints.OnboardingAnswer.Body(
+            questionKey: .highLow, text: "", given: .skipped, clientEntryID: id, createdAt: Date(timeIntervalSince1970: 1_792_588_180)
+        )
+        let answer = Backend.Endpoints.OnboardingAnswer(body: body)
+
+        #expect(answer.method == .post)
+        #expect(answer.path == .onboardingAnswers && answer.path.rawValue == "/v2/onboarding/answers")
+        #expect(answer.requiresAuth)
+        #expect(answer.idempotencyKey == id, "the key is the answer's own id, so a retry can't make a second answer")
+        #expect(answer.retry == .keyedWrite())
+        let json = try #require(String(data: Backend.Coding.encoder.encode(answer.body), encoding: .utf8))
+        #expect(json == #"{"clientEntryId":"b1f0c6a2-4c1e-4a57-9d34-0f8f6f2e1a02","createdAt":"2026-10-21T13:09:40.000Z","given":"skipped","questionKey":"high.low","text":""}"#)
+    }
+
+    @Test("onboarding complete is an authenticated POST with an empty object as its body and no key")
+    func onboardingCompleteIsAPostWithAnEmptyBody() throws {
+        let complete = Backend.Endpoints.OnboardingComplete()
+
+        #expect(complete.method == .post)
+        #expect(complete.path == .onboardingComplete && complete.path.rawValue == "/v2/onboarding/complete")
+        #expect(complete.requiresAuth && complete.idempotencyKey == nil)
+        let body = try #require(complete.body)
+        #expect(try #require(String(data: Backend.Coding.encoder.encode(body), encoding: .utf8)) == "{}")
+    }
 }

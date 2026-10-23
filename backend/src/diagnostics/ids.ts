@@ -13,7 +13,7 @@
 
 /**
  * Every `/v2` route the app can call, as templates (`:param` for every dynamic
- * segment): the routes contracts 00-02 define. A test reads the contracts and
+ * segment): the routes contracts 00-03 define. A test reads the contracts and
  * fails when a route is added there and not here.
  */
 export const V2_ROUTE_TEMPLATES = [
@@ -23,6 +23,7 @@ export const V2_ROUTE_TEMPLATES = [
   '/v2/auth/refresh',
   '/v2/auth/signout',
   '/v2/briefs',
+  '/v2/briefs/:id',
   '/v2/briefs/enabled',
   '/v2/briefs/latest',
   '/v2/conversation',
@@ -38,6 +39,8 @@ export const V2_ROUTE_TEMPLATES = [
   '/v2/entries/:id/took',
   '/v2/entries/today',
   '/v2/episodes/:id',
+  '/v2/episodes/:id/claims/:claimId',
+  '/v2/episodes/:id/feedback',
   '/v2/episodes/jobs',
   '/v2/episodes/jobs/:id',
   '/v2/episodes/jobs/first',
@@ -53,12 +56,13 @@ export const V2_ROUTE_TEMPLATES = [
   '/v2/onboarding/answers',
   '/v2/onboarding/complete',
   '/v2/onboarding/goals',
+  '/v2/podcasts',
   '/v2/sources',
   '/v2/sources/:id/connect',
   '/v2/waitlist',
 ] as const;
 
-/** Beta 1's screens (first-ship.md): the new journal and gate, and the old screens as one id each. */
+/** Beta 1's screens (first-ship.md): the new journal and gate, the old screens as one id each, and first run's two (FR.doors). */
 export const DIAGNOSTIC_SCREENS = [
   'sign_in',
   'invite_gate',
@@ -75,6 +79,8 @@ export const DIAGNOSTIC_SCREENS = [
   'legacy.goals',
   'legacy.you',
   'legacy.settings',
+  'first_run',
+  'first_episode',
 ] as const;
 
 export const DIAGNOSTIC_SHEETS = [
@@ -114,6 +120,9 @@ export const DIAGNOSTIC_CONTROLS = [
   'report.send',
   'report.shake_switch',
   'state.try_again',
+  'first_run.send',
+  'first_episode.play',
+  'first_episode.continue',
 ] as const;
 
 /** `Flows.Failure.Kind` in the app (Platform/Flows/FlowTypes.swift), snake_case. */
