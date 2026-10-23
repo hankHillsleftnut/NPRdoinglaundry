@@ -65,6 +65,24 @@ struct InviteStageControllerTests {
         #expect(source.tearCalls == 0)
     }
 
+    @Test("after wandering off the line the drag stays ended until the finger lifts: one touch-down, no tick per frame")
+    func wanderedStaysEnded() async {
+        let (stage, _, source) = make()
+        stage.dragChanged(x: 0.4 * width, dy: 0, width: width)
+        stage.dragChanged(x: 0.5 * width, dy: 60, width: width)
+        let ticks = stage.ticks
+        stage.dragChanged(x: 0.55 * width, dy: 70, width: width) // the next frames, still off the line
+        stage.dragChanged(x: 0.9 * width, dy: 0, width: width) // and back on it: still the same, ended drag
+        #expect(source.tearTouchDowns == 1)
+        #expect(stage.ticks == ticks)
+        #expect(stage.tearProgress == 0)
+        stage.dragEnded(x: 0.9 * width, velocity: 0, width: width) // the lift: nothing commits
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(source.tearCalls == 0)
+        stage.dragChanged(x: 0.2 * width, dy: 0, width: width) // a new touch tears again
+        #expect(source.tearTouchDowns == 2)
+    }
+
     @Test("a cancelled gesture (a call, the app backgrounding) leaves the ticket whole")
     func cancelled() {
         let (stage, model, source) = make()
@@ -125,5 +143,64 @@ struct InviteStageControllerTests {
         try? await Task.sleep(for: .milliseconds(300))
         #expect(source.tearCalls == 1)
         #expect(stage.tearProgress == 1)
+    }
+
+    @Test("the Reduce Motion hold: a failed tear empties the fill, and the same finger can't start another hold")
+    func holdFailsOffline() async {
+        let source = ScriptedInviteSource()
+        source.tears = [.offline]
+        let model = InviteModel(
+            phase: .ready, source: source, signIn: source, preview: SampleInvite.face, face: SampleInvite.face,
+            firstName: "sam", sleep: InviteModelTests.quickly
+        )
+        let stage = InviteStageController(model: model, sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) })
+        stage.holdBegan()
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(source.tearCalls == 1)
+        #expect(model.phase == .ready)
+        stage.phaseChanged(reduceMotion: true) // what the page's onChange(of: phase) does
+        #expect(stage.holdProgress == 0)
+        stage.holdBegan() // the finger never lifted: a jitter must not start a second hold
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(source.tearCalls == 1)
+        stage.holdReleased(completed: false) // the lift
+        stage.holdBegan() // a new touch holds again
+        #expect(stage.holdProgress == 1)
+    }
+
+    @Test("back from the background mid-print it is simply done: the late animation completion plays no landing")
+    func skippedPrintIsSilent() {
+        let source = ScriptedInviteSource()
+        let model = InviteModel(phase: .printing, source: source, signIn: source, face: SampleInvite.face, sleep: InviteModelTests.quickly)
+        let stage = InviteStageController(model: model)
+        stage.startPrint(reduceMotion: true)
+        stage.finishPrintNow()
+        #expect(model.phase == .ready)
+        let landed = stage.landings // (the headless test may complete the animation at once)
+        stage.printLanded() // the print's withAnimation completion, arriving after the skip
+        #expect(stage.landings == landed)
+    }
+
+    @Test("a print that runs to the end lands once, with the settle tick")
+    func printLandsOnce() {
+        let source = ScriptedInviteSource()
+        let model = InviteModel(phase: .printing, source: source, signIn: source, face: SampleInvite.face, sleep: InviteModelTests.quickly)
+        let stage = InviteStageController(model: model)
+        stage.startPrint(reduceMotion: true)
+        stage.printLanded()
+        stage.printLanded()
+        #expect(stage.landings == 1)
+        #expect(model.phase == .ready)
+    }
+
+    @Test("the tear action is offered only while the ticket is ready")
+    func tearActionOnlyWhenReady() {
+        let source = ScriptedInviteSource()
+        for phase: InviteModel.Phase in [.typed, .printing, .sealing, .torn, .youreIn, .refused(.used)] {
+            let stage = InviteStageController(model: InviteModel(phase: phase, source: source, signIn: source))
+            #expect(!stage.canTear, "\(phase)")
+        }
+        let (ready, _, _) = make()
+        #expect(ready.canTear)
     }
 }
