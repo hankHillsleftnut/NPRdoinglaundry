@@ -67,6 +67,12 @@ final class JournalViewModel {
     /// when one of these turns `.sent` in the data, whenever that happens, so it works the same
     /// for a send that returns at once (the outbox) and one that waits (the sample).
     @ObservationIgnored private var watching: Set<String> = []
+    /// Sends that saved but whose row hasn't shown up yet: the live store delivers the row after
+    /// `send` returns (its observation is asynchronous), so the row is claimed when it arrives:
+    /// an id that wasn't in the thread when the send began, with the words that were sent.
+    @ObservationIgnored private var awaiting: [Awaited] = []
+    /// Every row ever claimed for a send, so one row is never claimed twice.
+    @ObservationIgnored private var claimed: Set<String> = []
     /// Counts failed loads, for the error announcement.
     private(set) var loadAttempts = 0
     /// The last guess answer that failed, until one works; the page plays the error haptic and
@@ -79,6 +85,8 @@ final class JournalViewModel {
     /// Today has finished loading once for this model; coming back to the page doesn't reload.
     @ObservationIgnored private var hasLoaded = false
 
+    /// What the page shows and announces when a failed load has no message of its own.
+    static let loadFailureLine = "retro couldn't be reached. try again."
     /// What the guess card says when a failed answer has no message of its own.
     static let sendFailureLine = "couldn't save that. your words are still in the box."
     static let answerFailureLine = "couldn't send your answer. try again."
@@ -106,6 +114,11 @@ final class JournalViewModel {
             return failure
         }
         return nil
+    }
+
+    /// The failed load's words, shown and announced: the server's message, else the fallback.
+    var failureLine: String? {
+        failure.map { $0.message ?? Self.loadFailureLine }
     }
 
     /// The thread, oldest first; empty while loading or failed.
@@ -157,17 +170,26 @@ final class JournalViewModel {
         draft = ""
         let before = Set((data.today.value ?? []).map(\.id))
         if case let .failed(failure) = await data.send(text: words) {
-            // nothing was saved: the words go back in the composer and the person is told
-            if draft.isEmpty {
-                draft = text
-            }
+            // nothing was saved: the words go back in the composer, ahead of anything typed
+            // since, and the person is told
+            draft = Self.restored(failed: text, typed: draft)
             sendFailure = failure
             sendFailures += 1
             return
         }
         sendFailure = nil
-        watching.formUnion((data.today.value ?? []).map(\.id).filter { !before.contains($0) })
+        awaiting.append(Awaited(words: words, before: before))
         noteDeliveries()
+    }
+
+    /// The draft after a send that saved nothing: the failed words, then whatever was typed
+    /// while it was on its way. Neither is dropped.
+    static func restored(failed: String, typed: String) -> String {
+        if typed.isEmpty {
+            return failed
+        }
+        let words = failed.trimmingCharacters(in: .whitespacesAndNewlines)
+        return words.isEmpty ? typed : words + " " + typed
     }
 
     func retry(_ entry: Journal.Entry) async {
@@ -185,10 +207,24 @@ final class JournalViewModel {
 
     /// Sets `landed` for a watched entry that is now sent, once (it stops being watched).
     func noteDeliveries() {
+        claimArrivals()
         guard !watching.isEmpty else { return }
         for entry in data.today.value ?? [] where entry.delivery == .sent && watching.contains(entry.id) {
             watching.remove(entry.id)
             landed = entry.id
+        }
+    }
+
+    /// Watches the rows of sends that arrived since the last look (oldest send first).
+    private func claimArrivals() {
+        guard !awaiting.isEmpty else { return }
+        for entry in data.today.value ?? [] where !claimed.contains(entry.id) {
+            guard let index = awaiting.firstIndex(where: { $0.words == entry.text && !$0.before.contains(entry.id) }) else {
+                continue
+            }
+            awaiting.remove(at: index)
+            claimed.insert(entry.id)
+            watching.insert(entry.id)
         }
     }
 
@@ -217,12 +253,32 @@ final class JournalViewModel {
 
     static let copyLasts: TimeInterval = 120
 
-    /// Opens the entry (JR-4, P12); the page's host wires it.
-    var openEntry: (Journal.Entry) -> Void = { _ in }
+    /// An entry's long-press menu: copy, and "open this entry ›" only once the entry page is
+    /// wired (a row that does nothing is never drawn).
+    func menu(for entry: Journal.Entry) -> [RMenuRow] {
+        var rows = [RMenuRow(id: "copy", title: "copy", symbol: "doc.on.doc") { [weak self] in self?.copy(entry) }]
+        if let open = openEntry {
+            rows.append(RMenuRow(id: "open", title: "open this entry", symbol: "arrow.up.right", opensMore: true) { open(entry) })
+        }
+        return rows
+    }
+
+    /// Opens the entry (JR-4, P12); the page's host wires it. Nil until JR-4 exists: the menu
+    /// then offers copy only (no dead controls).
+    var openEntry: ((Journal.Entry) -> Void)?
+    /// The composer offers the mic. Off on the live page until voice capture exists, so the
+    /// corner button is only the send (no dead controls).
+    var voice = false
     /// Opens the drawer (JR-3, P11); the page's host wires it.
     var openDrawer: () -> Void = {}
 
     // MARK: - The mappings (pure)
+
+    /// A send waiting for its row.
+    private struct Awaited {
+        let words: String
+        let before: Set<String>
+    }
 
     /// The thread from today's entries: a day label above each day's first entry, your bubble,
     /// Retro's line once the entry is sent and acknowledged, and the one guess as Retro's item

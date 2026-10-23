@@ -35,8 +35,9 @@ struct RGuessCard: View {
     let phase: Phase
     /// Sends the answer; the card sends one verdict at a time, until this returns.
     let answer: (Verdict) async -> Void
-    /// Opens "why": what it rests on.
-    let openWhy: () -> Void
+    /// Opens "why": what it rests on. Nil while there is nowhere to open it (UI1.2 isn't
+    /// built): the source line is then plain text and VoiceOver offers no "why" (decision 4).
+    var openWhy: (() -> Void)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var contrast
@@ -100,7 +101,9 @@ struct RGuessCard: View {
                 Button("that's right") { choose(.yes) }
                 Button("not quite") { choose(.no) }
             }
-            Button("why", action: openWhy)
+            if let openWhy {
+                Button("why", action: openWhy)
+            }
         }
         .onChange(of: phase) { _, new in
             // once per change, never on appearing
@@ -135,15 +138,26 @@ struct RGuessCard: View {
     }
 
     /// "from … · … · fairly sure" (B7Y-0); confirmed, "kept · from …" (27U-0). Tapping it opens why.
-    private var whyLine: some View {
-        Button(action: openWhy) {
+    @ViewBuilder private var whyLine: some View {
+        if let openWhy {
+            Button(action: openWhy) {
+                whyText
+                    .rText(.metaLine)
+                    .multilineTextAlignment(.leading)
+                    // the line keeps Paper's 12 rhythm; its hit area reaches 44 beyond the words
+                    .contentShape(Rectangle().inset(by: -(RDimension.sizeTouchTarget - RDimension.space4) / 2))
+            }
+            .buttonStyle(RDimPressStyle())
+        } else {
             whyText
                 .rText(.metaLine)
                 .multilineTextAlignment(.leading)
-                // the line keeps Paper's 12 rhythm; its hit area reaches 44 beyond the words
-                .contentShape(Rectangle().inset(by: -(RDimension.sizeTouchTarget - RDimension.space4) / 2))
         }
-        .buttonStyle(RDimPressStyle())
+    }
+
+    /// The card offers "why" (the tappable source line and the VoiceOver action) only with somewhere to open it.
+    var offersWhy: Bool {
+        openWhy != nil
     }
 
     /// One Text whatever the phase, so confirming changes its words, not its identity.
