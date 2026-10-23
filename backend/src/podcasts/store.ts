@@ -1,4 +1,6 @@
 import { createdKey, pageBeforeCreated, type BriefDbClient, type CreatedBefore } from '../briefs/store.js';
+import { supabaseSignAudio, type SignAudio, type SigningClient } from '../briefs/audio.js';
+import type { SignedLink } from '../briefs/map.js';
 
 /**
  * Episodes in the shared database (BE3.x.lib): the brain's `podcast_episodes`
@@ -29,15 +31,77 @@ export interface EpisodeRow {
   hasAudio: boolean;
 }
 
+/** One ready episode as the player reads it (BE3.x.ep): the library row plus the words. */
+export interface EpisodeDetailRow extends EpisodeRow {
+  /** The spoken script; read only to build `lines`, never logged. */
+  script: string;
+  /** The agent's one-line description; shown only when there are no lines. */
+  description: string | null;
+}
+
+/** An episode with its private audio link (null: no audio, or storage refused). */
+export interface EpisodeFound {
+  row: EpisodeDetailRow;
+  audio: SignedLink | null;
+}
+
 export interface PodcastStore {
   /** Ready episodes, newest first by `created_at` then id, strictly after `before` when given; at most `limit`. */
   library(userId: string, before: CreatedBefore | null, limit: number): Promise<EpisodeRow[]>;
+  /**
+   * The person's own ready episode with this id, its audio signed for an hour
+   * from `nowMs`; null for anyone else's, a missing id, or a row not `ready`.
+   * Optional so a store built without it fails closed (`internal`) instead of 404ing.
+   */
+  episode?(userId: string, id: string, nowMs: number): Promise<EpisodeFound | null>;
 }
 
 /** The same supabase-js slice the brief store uses (tests answer it from PGlite). */
 export type PodcastDbClient = BriefDbClient;
 
-export const EPISODE_COLUMNS = 'id,title,generation_type,episode_number,duration_seconds,created_at,covers_period_start,covers_period_end,audio_path';
+export const EPISODE_COLUMNS = 'id,title,generation_type,episode_number,duration_seconds,created_at,covers_period_start,covers_period_end,audio_path,audio_url';
+
+/** The player's columns: the library's plus the script and description (never the outline or the embedding). */
+export const EPISODE_DETAIL_COLUMNS = `${EPISODE_COLUMNS},description,script`;
+
+/** The brain's private episode audio bucket (BEA.7). */
+export const PODCAST_AUDIO_BUCKET = 'podcast-audio';
+
+/**
+ * Where the row's audio lives, as the brain reads it (agent `audioPathOf`):
+ * `audio_path`, else the path inside the old public `audio_url` (rows written
+ * before migration 154's code, or missed by its backfill).
+ */
+export function audioPathOf(raw: Record<string, unknown>): string | null {
+  if (typeof raw.audio_path === 'string' && raw.audio_path.length > 0) return raw.audio_path;
+  if (typeof raw.audio_url !== 'string') return null;
+  const m = /\/storage\/v1\/object\/public\/podcast-audio\/(.+)$/.exec(raw.audio_url);
+  if (!m) return null;
+  const path = m[1]!.split('?')[0]!;
+  if (!path) return null;
+  try { return decodeURIComponent(path); } catch { return path; }
+}
+
+/** A file name the brain writes (`<run>.mp3`): letters, digits, `_`, `-`, `.`, spaces; never `.`/`..`, `%`, `?`, `#`, `\\` or `/`. */
+const SAFE_FILE = /^[A-Za-z0-9_][A-Za-z0-9_. -]*$/;
+
+/**
+ * Defence in depth: the service role can sign any object in the bucket, and
+ * storage-js puts the path into the URL unescaped, so a path is signed only
+ * when it is exactly `podcasts/<callerId>/<one safe file name>` (what the
+ * brain writes, and always has). Checked on the decoded form: a path that
+ * still decodes to something else (`%2e%2e`, `%252e`) is refused, as are
+ * `..`, `.`, empty or extra segments, `?`, `#`, a backslash and any folder
+ * outside `podcasts/`.
+ */
+export function inOwnFolder(path: string, userId: string): boolean {
+  let decoded: string;
+  try { decoded = decodeURIComponent(path); } catch { return false; }
+  if (decoded !== path) return false;
+  const parts = path.split('/');
+  return parts.length === 3 && parts[0] === 'podcasts' && parts[1]!.toLowerCase() === userId.toLowerCase()
+    && parts[2] !== '.' && parts[2] !== '..' && SAFE_FILE.test(parts[2]!);
+}
 
 const day = (v: unknown): string | null => {
   if (v === null || v === undefined) return null;
@@ -56,16 +120,50 @@ function toRow(raw: Record<string, unknown>): EpisodeRow {
     createdKey: createdKey(raw.created_at),
     coversFrom: day(raw.covers_period_start),
     coversTo: day(raw.covers_period_end),
-    hasAudio: typeof raw.audio_path === 'string' && raw.audio_path.length > 0,
+    hasAudio: audioPathOf(raw) !== null,
   };
 }
 
-export function supabasePodcastStore(db: PodcastDbClient): PodcastStore {
+function toDetail(raw: Record<string, unknown>): EpisodeDetailRow {
+  return {
+    ...toRow(raw),
+    script: typeof raw.script === 'string' ? raw.script : '',
+    description: typeof raw.description === 'string' && raw.description.trim() ? raw.description.trim() : null,
+  };
+}
+
+/** A signer for the podcast bucket from the client the store already has; none when it has no storage. */
+function podcastSigner(db: PodcastDbClient): SignAudio {
+  const storage = (db as Partial<SigningClient>).storage;
+  if (storage && typeof storage.from === 'function') return supabaseSignAudio({ storage }, undefined, PODCAST_AUDIO_BUCKET);
+  return () => {
+    console.warn('[podcasts] audio link not signed (no storage)');
+    return Promise.resolve(null);
+  };
+}
+
+/** `signAudio` defaults to signing in `podcast-audio` with `db`'s own storage (supabase-js); tests pass their own. */
+export function supabasePodcastStore(db: PodcastDbClient, opts: { signAudio?: SignAudio } = {}): PodcastStore {
+  const sign = opts.signAudio ?? podcastSigner(db);
   return {
     async library(userId, before, limit) {
       const base = () => db.from('podcast_episodes').select(EPISODE_COLUMNS).eq('user_id', userId).eq('status', 'ready');
       const rows = await pageBeforeCreated(base, before, limit, 'podcasts library');
       return rows.map(toRow);
+    },
+    async episode(userId, id, nowMs) {
+      // The owner filter is the only guard (the service role skips RLS): never drop it.
+      const r = await db.from('podcast_episodes').select(EPISODE_DETAIL_COLUMNS).eq('user_id', userId).eq('id', id).eq('status', 'ready').maybeSingle();
+      if (r.error) throw new Error(`podcasts episode failed (${r.error.code ?? 'unknown'})`);
+      if (!r.data) return null;
+      const raw = r.data as Record<string, unknown>;
+      const row = toDetail(raw);
+      const path = audioPathOf(raw);
+      if (path && !inOwnFolder(path, userId)) {
+        console.warn('[podcasts] audio link not signed (path outside the owner folder)');
+        return { row, audio: null };
+      }
+      return { row, audio: path ? await sign(path, nowMs) : null };
     },
   };
 }

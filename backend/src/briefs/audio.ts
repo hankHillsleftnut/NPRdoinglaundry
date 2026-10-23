@@ -18,18 +18,27 @@ export interface SigningClient {
   storage: { from(bucket: string): { createSignedUrl(path: string, expiresIn: number): Promise<{ data: { signedUrl: string } | null; error: { message?: string; statusCode?: string | number } | null }> } };
 }
 
-export function supabaseSignAudio(client: SigningClient, log: (line: string) => void = (l) => console.warn(l)): SignAudio {
+/**
+ * `bucket` defaults to the brief bucket; the episode door (BE3.x.ep) passes
+ * `podcast-audio`. The log tag names the bucket's door, never the path.
+ */
+export function supabaseSignAudio(
+  client: SigningClient,
+  log: (line: string) => void = (l) => console.warn(l),
+  bucket: string = BRIEF_AUDIO_BUCKET,
+): SignAudio {
+  const tag = bucket === BRIEF_AUDIO_BUCKET ? '[briefs]' : '[podcasts]';
   return async (path, nowMs) => {
     // A rejection (storage-js throws for what it doesn't classify) is the same as a refusal: the brief reads as text.
     try {
-      const { data, error } = await client.storage.from(BRIEF_AUDIO_BUCKET).createSignedUrl(path, SIGNED_AUDIO_TTL_SECONDS);
+      const { data, error } = await client.storage.from(bucket).createSignedUrl(path, SIGNED_AUDIO_TTL_SECONDS);
       if (error || !data?.signedUrl) {
-        log(`[briefs] audio link not signed (${error?.statusCode ?? 'no url'})`);
+        log(`${tag} audio link not signed (${error?.statusCode ?? 'no url'})`);
         return null;
       }
       return { url: data.signedUrl, expiresAt: new Date(nowMs + SIGNED_AUDIO_TTL_SECONDS * 1000).toISOString() };
     } catch {
-      log('[briefs] audio link not signed (exception)');
+      log(`${tag} audio link not signed (exception)`);
       return null;
     }
   };
