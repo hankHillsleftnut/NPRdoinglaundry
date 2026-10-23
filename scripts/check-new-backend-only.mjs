@@ -31,19 +31,43 @@ function swiftFiles(dir) {
   return out;
 }
 
-/** The text with `//` comments removed (string literals containing `//` are kept: URLs). */
+// The text with line comments and block comments removed (string literals containing a double slash are kept:
+// URLs). Block comments keep their line breaks so line numbers stay right.
 export function withoutComments(text) {
-  return text
-    .split('\n')
-    .map((line) => {
-      let inString = false;
-      for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"' && line[i - 1] !== '\\') inString = !inString;
-        if (!inString && line[i] === '/' && line[i + 1] === '/') return line.slice(0, i);
+  const out = [];
+  let inBlock = false;
+  for (const line of text.split('\n')) {
+    let result = '';
+    let inString = false;
+    for (let i = 0; i < line.length; i++) {
+      if (inBlock) {
+        if (line[i] === '*' && line[i + 1] === '/') {
+          inBlock = false;
+          i++;
+        }
+        continue;
       }
-      return line;
-    })
-    .join('\n');
+      if (inString) {
+        if (line[i] === '\\') {
+          result += line[i] + (line[i + 1] ?? '');
+          i++;
+          continue;
+        }
+        if (line[i] === '"') inString = false;
+      } else if (line[i] === '"') {
+        inString = true;
+      } else if (line[i] === '/' && line[i + 1] === '/') {
+        break;
+      } else if (line[i] === '/' && line[i + 1] === '*') {
+        inBlock = true;
+        i++;
+        continue;
+      }
+      result += line[i];
+    }
+    out.push(result);
+  }
+  return out.join('\n');
 }
 
 export function pathTemplates(appRoot) {

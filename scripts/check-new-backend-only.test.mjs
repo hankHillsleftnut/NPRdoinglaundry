@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { scan, withoutComments } from './check-new-backend-only.mjs';
 
 const ENDPOINT = `
@@ -71,7 +72,7 @@ test('comments are removed but a URL in a string is kept', () => {
 });
 
 test('the real tree is clean', () => {
-  assert.deepEqual(scan('Retrospect/Retrospect'), []);
+  assert.deepEqual(scan(fileURLToPath(new URL('../Retrospect/Retrospect', import.meta.url))), []);
 });
 
 test('a configured, injected or split-line URLSession outside Backend fails, not only URLSession.shared', () => {
@@ -95,4 +96,9 @@ test('a dangling symlink fails loudly instead of being skipped', () => {
 
 test('there is no exemption for AppEnvironment: the old client there fails', () => {
   assert.equal(scan(app({ 'Platform/AppEnvironment.swift': 'func bind(to client: RetrospectAPIClient) {}\n' })).length, 1);
+});
+
+test('block comments are ignored, and an escaped backslash does not hide a comment', () => {
+  assert.deepEqual(scan(app({ 'Features/A.swift': '/* RetrospectAPIClient\n   URLSession.shared */\nlet x = 1\n' })), []);
+  assert.equal(scan(app({ 'Features/A.swift': 'let s = "\\\\" // RetrospectAPIClient\nlet c = RetrospectAPIClient.shared\n' })).length, 1);
 });
