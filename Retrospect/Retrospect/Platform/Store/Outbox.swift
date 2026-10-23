@@ -336,18 +336,6 @@ extension Store {
             case dead
         }
 
-        /// What a failure means for the item and the pass.
-        static func outcome(of failure: Backend.Failure) -> Outcome {
-            switch failure.kind {
-            // an old build (426) gates every door: all wait for the update. A spent day (429) holds only its own item.
-            case .offline, .unauthenticated, .sessionRevoked, .updateRequired: .pause
-            case .spendLimited: .wait
-            case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
-            case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch,
-                 .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
-            }
-        }
-
         /// How long to wait before attempt `attempt + 1`: full jitter under the
         /// backoff ceiling, or the server's retry-after when that's longer.
         func retryWait(_ failure: Backend.Failure, attempt: Int) -> TimeInterval {

@@ -91,3 +91,17 @@ extension Backend.Failure.Kind {
         return max(1, TimeInterval(retryAfter.components.seconds))
     }
 }
+
+extension Store.Outbox {
+    /// What a failure means for the item and the pass (kept beside the sender, out of the actor's body).
+    static func outcome(of failure: Backend.Failure) -> Outcome {
+        switch failure.kind {
+        // an old build (426) gates every door: all wait for the update. A spent day (429) holds only its own item.
+        case .offline, .unauthenticated, .sessionRevoked, .updateRequired: .pause
+        case .spendLimited: .wait
+        case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
+        case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch,
+             .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
+        }
+    }
+}
