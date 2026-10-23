@@ -58,6 +58,9 @@ final class FirstEpisodeModel {
         self.clock = clock
         self.now = now
         self.finish = finish
+        // the page's first frame: a wait already past 15 minutes draws slow, not the plain line
+        // that then blur-replaces (appear() runs after that frame is built)
+        checkSlow()
     }
 
     isolated deinit {
@@ -91,6 +94,8 @@ final class FirstEpisodeModel {
     /// The page appeared: check where things are, then ask every 10 s until it's made.
     func appear() {
         guard watcher == nil, !hasFinished else { return }
+        // back on screen after a while: slow at once, not after the first ask
+        checkSlow()
         watcher = Task { [weak self] in
             await self?.watch()
         }
@@ -152,11 +157,17 @@ final class FirstEpisodeModel {
         }
     }
 
+    private func checkSlow() {
+        if case let .waiting(since) = source.state {
+            isSlow = now().timeIntervalSince(since) >= Self.slowAfter
+        }
+    }
+
     /// Reads the seam's state: the slow check while waiting, the player load once ready.
     private func settle() async {
         switch source.state {
-        case let .waiting(since):
-            isSlow = now().timeIntervalSince(since) >= Self.slowAfter
+        case .waiting:
+            checkSlow()
         case let .ready(item, _, _):
             guard loadedID != item.id else { return }
             loadedID = item.id
@@ -165,6 +176,18 @@ final class FirstEpisodeModel {
             isPlayerLoaded = true
         case .unavailable:
             break
+        }
+    }
+
+    /// What VoiceOver says when the page changes under the person (the headline is swapped, not
+    /// moved to, so nothing is read on its own): the slow pair, the ready line, or the title when
+    /// it arrives without its audio. Nothing for the plain wait (it's the line on arrival).
+    static func announcement(for look: Look, title: String?) -> String? {
+        switch look {
+        case .waiting: nil
+        case .slow: "\(slowLine) \(slowDescription)"
+        case .ready: readyLine
+        case .unavailable: title
         }
     }
 

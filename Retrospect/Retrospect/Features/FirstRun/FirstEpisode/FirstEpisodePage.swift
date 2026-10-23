@@ -72,6 +72,12 @@ struct FirstEpisodePage: View {
             default: break
             }
         }
+        // the headline is swapped in place, so VoiceOver hears the turn to slow or ready said aloud
+        .onChange(of: model.look) { _, look in
+            if let words = FirstEpisodeModel.announcement(for: look, title: model.episodeTitle) {
+                AccessibilityNotification.Announcement(words).post()
+            }
+        }
         .accessibilityIdentifier("screen.ON-11")
     }
 
@@ -142,7 +148,8 @@ struct FirstEpisodePage: View {
             Text(title)
                 .rText(.inkCard)
                 .foregroundStyle(RColor.textPrimary)
-                .lineLimit(3)
+                // like the headline: three lines, then the ellipsis; AX sizes wrap in full and scroll
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("firstepisode.title")
             if model.look == .ready, model.isPlayerLoaded {

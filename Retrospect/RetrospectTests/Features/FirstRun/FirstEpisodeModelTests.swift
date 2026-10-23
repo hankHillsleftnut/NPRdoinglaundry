@@ -165,7 +165,10 @@ struct FirstEpisodeModelTests {
     func slowOnArrival() async {
         let source = SampleFirstEpisode(scenario: .slow, now: start)
         let (model, _) = make(source)
+        // before appear (the page's first frame) and with no await: never a flash of the plain line
+        #expect(model.look == .slow)
         model.appear()
+        #expect(model.look == .slow)
         await settle { model.isSlow }
         #expect(model.look == .slow)
         model.leave()
@@ -234,6 +237,19 @@ struct FirstEpisodeModelTests {
         #expect(source.refreshes == 0)
         model.continueTapped()
         #expect(exits.all == [.continued])
+    }
+
+    // MARK: VoiceOver
+
+    @Test("VoiceOver hears the turn to slow (both lines), to ready, and an audio-less title; not the plain wait")
+    func announcesTheTurn() {
+        let title = SampleFirstEpisode.title
+        #expect(FirstEpisodeModel.announcement(for: .waiting, title: nil) == nil)
+        let slow = FirstEpisodeModel.announcement(for: .slow, title: nil)
+        #expect(slow?.contains(FirstEpisodeModel.slowLine) == true)
+        #expect(slow?.contains(FirstEpisodeModel.slowDescription) == true)
+        #expect(FirstEpisodeModel.announcement(for: .ready, title: title) == FirstEpisodeModel.readyLine)
+        #expect(FirstEpisodeModel.announcement(for: .unavailable, title: title) == title)
     }
 
     // MARK: Privacy
