@@ -73,7 +73,8 @@ struct FirstEpisodeModelTests {
         let source = HeldFirstEpisode(.waiting(since: start))
         let (model, _) = make(source)
         model.appear()
-        await tick(9)
+        // at 9 s the watch must still be on its first sleep (a shorter cadence would have asked and slept again)
+        await tick(9) { clock.pendingSleeps >= 1 }
         #expect(source.refreshes == 0)
         await tick(1) { source.refreshes == 1 }
         #expect(source.refreshes == 1)

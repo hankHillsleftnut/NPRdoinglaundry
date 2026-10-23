@@ -18,6 +18,8 @@ struct FirstEpisodePage: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.scenePhase) private var scenePhase
     @State private var overflows = false
+    /// False once the hero artwork was found to push the player below the first screen.
+    @State private var heroFits = true
 
     /// 20 on the smallest phones (craft 8.4), 24 elsewhere.
     private var margin: CGFloat {
@@ -27,7 +29,7 @@ struct FirstEpisodePage: View {
     /// The hero on a full phone; the player size on a short one or at large text, so the title and
     /// the controls stay on the first screen.
     private var artworkSize: CGFloat {
-        compact || dynamicTypeSize.isAccessibilitySize ? RDimension.sizeArtworkPlayer : RDimension.sizeArtworkHero
+        compact || dynamicTypeSize.isAccessibilitySize || !heroFits ? RDimension.sizeArtworkPlayer : RDimension.sizeArtworkHero
     }
 
     var body: some View {
@@ -36,6 +38,12 @@ struct FirstEpisodePage: View {
             GeometryReader { proxy in
                 ScrollView {
                     content
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                            // the player belongs on the first screen: if the hero pushes it off, step down once
+                            if model.episodeTitle != nil, height > proxy.size.height {
+                                heroFits = false
+                            }
+                        }
                         .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -46,8 +54,10 @@ struct FirstEpisodePage: View {
                 }
                 .rProgressiveBlur(.tabEdge, active: overflows)
             }
+            // under the scroll, never over it: the controls can't slide beneath the button
+            action
+                .padding(.top, RDimension.space2)
         }
-        .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { action }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.gentle, value: model.look)
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.gentle, value: model.isPlayerLoaded)
