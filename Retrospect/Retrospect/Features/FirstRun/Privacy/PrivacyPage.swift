@@ -33,6 +33,7 @@ struct PrivacyPage: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
     /// Where the progress line is drawn: `from` on the first frame, `to` once the page is up.
     @State private var shownProgress: Double?
     @State private var overflows = false
@@ -78,7 +79,9 @@ struct PrivacyPage: View {
             shownProgress = progress.to
             AccessibilityNotification.Announcement(PrivacyModel.arrival).post()
         }
-        .onChange(of: voiceOverEnabled, initial: true) { _, running in
+        .onDisappear { model.pageLeft() }
+        // Switch Control moves as slowly as VoiceOver: it holds the page too
+        .onChange(of: voiceOverEnabled || switchControlEnabled, initial: true) { _, running in
             model.voiceOver(running: running)
         }
         .onChange(of: model.isWaitingForVoiceOver) { _, waiting in

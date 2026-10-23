@@ -42,6 +42,7 @@ import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessi
 import { createAppleTokenKeeper, type AppleTokenDb, type KeepAppleToken } from './services/apple-tokens.js';
 import type { AccountDeletion } from './account/deletion.js';
 import { supabasePodcastStore, type PodcastDbClient, type PodcastStore } from './podcasts/store.js';
+import { supabaseOnboardingStore, type OnboardingDbClient, type OnboardingStore } from './onboarding/store.js';
 
 /**
  * What the app needs from outside, passed in so tests can build it with a
@@ -96,6 +97,8 @@ export interface AppDeps {
   account?: AccountDeletion;
   /** Episodes for the podcasts library (BE3.x.lib): podcast_episodes in the shared database by default; tests pass PGlite. */
   podcasts?: PodcastStore;
+  /** First run's answers and complete (BE2.2b.min): raw_content and users in the shared database by default; tests pass PGlite. */
+  onboarding?: OnboardingStore;
 }
 
 /**
@@ -245,6 +248,19 @@ export function createApp(deps: AppDeps): express.Express {
     podcasts: {
       podcasts: deps.podcasts ?? supabasePodcastStore(supabaseAdmin as unknown as PodcastDbClient),
       briefs: deps.briefs ?? supabaseBriefStore(supabaseAdmin as unknown as BriefDbClient),
+    },
+    onboarding: {
+      onboarding: deps.onboarding ?? supabaseOnboardingStore(supabaseAdmin as unknown as OnboardingDbClient),
+      // The composed profile goes to the brain the way an entry does (above): the
+      // agent's /ingest/run, one row, after the response, never writing its status.
+      startIngest: deps.startIngest ?? ((userId, rawContentId) => {
+        setImmediate(() => {
+          void handOffToAgent(
+            (args) => deps.agent.post('/ingest/run', { userId: args.userId, rawContentIds: args.rawContentIds, daysBack: 1, notes: 'Triggered by retrospect-api POST /v2/onboarding/answers' }, { timeoutMs: 10_000, retry: 'none' }),
+            { userId, rawContentIds: [rawContentId] },
+          );
+        });
+      }),
     },
   }));
   app.use('/v2', v2ErrorHandler);

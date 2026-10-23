@@ -138,14 +138,37 @@ struct PrivacyModelTests {
 
     // MARK: Leaving the screen
 
-    @Test("the page going off screen (its run cancelled) stops Retro, and nothing moves on")
+    @Test("the page going off screen stops Retro, and the cancelled run doesn't move on")
     func leavingTheScreenStopsTheReading() async {
         let model = make()
         let run = await start(model)
         run.cancel()
-        await settle { reading.stops == 1 }
+        model.pageLeft()
+        await run.value
         #expect(reading.stops == 1)
         #expect(exits.advances == 0)
+        #expect(!model.hasLeft)
+    }
+
+    @Test("a reading cut short from outside (a call, Siri) still moves the page on: never stuck")
+    func interruptedReadingAdvances() async {
+        let model = make()
+        let run = await start(model)
+        // the voice ends early on its own: read() returns false, the page isn't cancelled
+        reading.stop()
+        await run.value
+        #expect(exits.advances == 1)
+    }
+
+    @Test("an interrupted reading under VoiceOver is held like a finished one")
+    func interruptedReadingUnderVoiceOver() async {
+        let model = make()
+        model.voiceOver(running: true)
+        let run = await start(model)
+        reading.stop()
+        await run.value
+        #expect(exits.advances == 0)
+        #expect(model.isWaitingForVoiceOver)
     }
 
     // MARK: VoiceOver

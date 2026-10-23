@@ -1,18 +1,49 @@
 //
 //  FirstRunScreens+Launcher.swift
-//  First run's screens in the launcher (T02): `-Screen first-run -State privacy` opens ON-5 on
-//  sample data (a silent ~8 s read-aloud, then the page moves on). Nothing is mounted in the app yet (FR.root): leaving the page shows a
-//  quiet line saying which way it went.
+//  First run's screens in the launcher (T02): `-Screen first-run -State questions|questions-resume|
+//  questions-offline` opens ON-3–9 on `SampleFirstRunData` in that scenario; `-State privacy` opens
+//  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on. Nothing is mounted in the
+//  app yet (FR.root): when a page is left it says so in a quiet line.
 //
 #if DEBUG
 import SwiftUI
 
 extension ScreenRegistry {
     static let firstRunScreens: [LaunchableScreen] = [
-        LaunchableScreen(id: "first-run", states: PrivacyScenario.allCases.map(\.rawValue)) { arguments in
-            AnyView(PrivacyLaunch(scenario: PrivacyScenario(rawValue: arguments.state) ?? .privacy))
+        LaunchableScreen(
+            id: "first-run",
+            states: FirstRunScenario.allCases.map(\.rawValue) + PrivacyScenario.allCases.map(\.rawValue)
+        ) { arguments in
+            if let privacy = PrivacyScenario(rawValue: arguments.state) {
+                return AnyView(PrivacyLaunch(scenario: privacy))
+            }
+            return AnyView(QuestionsLaunch(scenario: FirstRunScenario(rawValue: arguments.state) ?? .questions))
         },
     ]
+}
+
+/// ON-3–9 on the sample data for one scenario, through the seam, the way the host will mount it.
+struct QuestionsLaunch: View {
+    @State private var data: SampleFirstRunData
+    @State private var done = false
+
+    init(scenario: FirstRunScenario) {
+        _data = State(initialValue: SampleFirstRunData(scenario: scenario))
+    }
+
+    var body: some View {
+        if done {
+            // stands in for the host's next page (getting ready, P05.min)
+            Text("questions done")
+                .rText(.textMd)
+                .foregroundStyle(RColor.textSecondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RColor.backgroundCanvas)
+                .accessibilityIdentifier("questions.done")
+        } else {
+            QuestionsPageContainer(data: data) { done = true }
+        }
+    }
 }
 
 /// ON-5 on the sample read-aloud, on the real clock, the way the host will mount it.
@@ -49,5 +80,8 @@ struct PrivacyLaunch: View {
     }
 }
 
+#Preview("questions · fresh") { QuestionsLaunch(scenario: .questions) }
+#Preview("questions · resume") { QuestionsLaunch(scenario: .questionsResume) }
+#Preview("questions · offline") { QuestionsLaunch(scenario: .questionsOffline) }
 #Preview("privacy") { PrivacyLaunch(scenario: .privacy) }
 #endif

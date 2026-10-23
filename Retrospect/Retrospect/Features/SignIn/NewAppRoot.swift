@@ -6,6 +6,10 @@
 //  yet or who has a code waiting, a plain "paused" page, and the journal (JR-1) on their live data for a
 //  person who is. If the signed-in person's store can't be opened it says so and offers a retry.
 //
+//  PX.root: once the version floor says this build is too old (`platform.updateRequired`), the force-update
+//  page (PX) replaces whatever was showing, signed in or not. Nothing is erased or signed out: the store and
+//  the paused outbox stay as they are, so queued words send from the updated build (decision 3).
+//
 //  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
 //  with `-OldHome`.
 //
@@ -26,14 +30,52 @@ struct NewAppRoot: View {
         /// The person's store could not be opened.
         case storeFailed
         case journal
+        /// PX: this build is too old for the server. Shown over every other case, whatever the session is doing.
+        case updateRequired
     }
 
     /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
     /// phone waits on a blank canvas rather than flash sign-in before the gate). `gateHeld` is true from the
     /// moment the gate is up until the person presses "begin": the tear makes them a member before that, and
-    /// the page must not be swapped for the journal under their finger.
+    /// the page must not be swapped for the journal under their finger. `updateRequired` (the version floor)
+    /// wins over all of it: an old build can't do anything useful in any of those pages.
     static func screen(
-        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true,
+        updateRequired: Bool = false
+    ) -> Screen {
+        if updateRequired {
+            return .updateRequired
+        }
+        return sessionScreen(for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen)
+    }
+
+    /// VoiceOver is told the screen changed when the update page replaces a page (it would otherwise keep
+    /// reading where it was); never again while the page stays up.
+    static func announcesUpdatePage(from old: Screen, to new: Screen) -> Bool {
+        new == .updateRequired && old != .updateRequired
+    }
+
+    /// The update page just replaced another page: the brief player is stopped (PX has no player, so a brief
+    /// left playing could never be stopped) and the answer says whether VoiceOver hears a new screen. Only the
+    /// audio stops: the store, the outbox and the session stay as they are (decision 3).
+    static func updatePageArrived(from old: Screen, to new: Screen, stopAudio: () -> Void) -> Bool {
+        guard announcesUpdatePage(from: old, to: new) else { return false }
+        stopAudio()
+        return true
+    }
+
+    /// What the body routes on, read off the app's environment, so the version floor can't be left out of the call.
+    static func screen(on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?) -> Screen {
+        screen(
+            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
+            updateRequired: platform.updateRequired
+        )
+    }
+
+    /// The page for the session alone (the version floor is down).
+    private static func sessionScreen(
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?
     ) -> Screen {
         guard let state else { return .blank }
         if case .locked = state {
@@ -78,17 +120,18 @@ struct NewAppRoot: View {
     }
 
     @Environment(Platform.AppEnvironment.self) private var platform
+    @Environment(\.openURL) private var openURL
     @State private var gateHeld = false
     /// This person's persisted "begin pressed" flag (`PersonFlags`, per person, erased on Log Out); nil until the store is open.
     @State private var youreInSeen: Bool?
 
     var body: some View {
-        let screen = Self.screen(
-            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen
-        )
+        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen)
         Group {
             switch screen {
+            case .updateRequired:
+                // replaces the page outright, so the journal's own covers (the account page) go with it
+                ForceUpdateScreen(model: ForceUpdateModel(open: { openURL($0) }))
             case let .signIn(returning, endedByServer):
                 // the splash or welcome back; the session's new state moves the app on, the page needs no hand-off
                 SignInHost(returning: returning || endedByServer)
@@ -116,6 +159,11 @@ struct NewAppRoot: View {
             }
         }
         .animation(RMotion.snappy, value: screen)
+        .onChange(of: screen) { old, new in
+            if Self.updatePageArrived(from: old, to: new, stopAudio: { platform.playback?.unload() }) {
+                AccessibilityNotification.ScreenChanged().post()
+            }
+        }
         .task { await platform.pendingInvite.refresh() }
         .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
         // the waiting code is read again whenever something that can change it happens

@@ -4,7 +4,7 @@
 //  can be tested. Founder, 23 Oct: exactly as Paper draws it, with no continue button. Retro reads
 //  the page aloud and the page moves on by itself when the reading ends; a tap anywhere moves on
 //  early. Two holds keep it from moving under someone: the policy sheet being open, and VoiceOver
-//  (VoiceOver users move on with the "move on" action or the magic tap, never automatically).
+//  or Switch Control (they move on with the "move on" action or the magic tap, never by itself).
 //  The host hears `onAdvance` or `onBack`, once, never both. Nothing here logs.
 //
 import Foundation
@@ -38,8 +38,13 @@ protocol PrivacyReadAloud: AnyObject, Sendable {
 final class PrivacyModel {
     /// ON-5's place in the flow: 48% in Paper (1F8F-0), arriving from the questions' 41%.
     static let progress = FlowProgress(from: 0.41, to: 0.48)
-    /// FOUNDER: real URL. A placeholder until AC.legal's LegalLinks reads the configured one.
+    // FOUNDER: real URL. A placeholder until AC.legal's LegalLinks reads the configured one;
+    // release builds hide the link until then rather than send the promise to example.com.
+    #if DEBUG
     static let policyURL = URL(string: "https://example.com/privacy")
+    #else
+    static let policyURL: URL? = nil
+    #endif
 
     /// The privacy policy sheet is open.
     private(set) var isPolicyOpen = false
@@ -67,18 +72,21 @@ final class PrivacyModel {
 
     // MARK: Page events
 
-    /// The page is on screen: Retro reads it. Cancelled with the page (`.task`), which stops the
-    /// reading: no voice without the page.
+    /// The page is on screen: Retro reads it (`.task`). However the reading ends (the last word, or
+    /// cut short by the system: a call, Siri, a route change), the page moves on, so it can never
+    /// sit there with nothing to press. A run cancelled with the page ends quietly; `pageLeft()`
+    /// stops the voice, on the main actor and in order, so it can't cut off a newer reading.
     func run() async {
         guard !hasLeft, !finishedReading else { return }
-        let readAloud = readAloud
-        let finished = await withTaskCancellationHandler {
-            await readAloud.read()
-        } onCancel: {
-            Task { @MainActor in readAloud.stop() }
-        }
-        guard finished, !Task.isCancelled else { return }
+        _ = await readAloud.read()
+        // every stop the model makes itself sets `hasLeft` first, so only an outside end gets here
+        guard !Task.isCancelled else { return }
         readAloudFinished()
+    }
+
+    /// The page went off screen: no voice without the page. It reads again if the page returns.
+    func pageLeft() {
+        readAloud.stop()
     }
 
     /// A tap anywhere on the page (the composer included): move on now, Retro stops.
@@ -106,7 +114,8 @@ final class PrivacyModel {
         advanceIfFree()
     }
 
-    /// VoiceOver turned on or off (the page reports it on arrival and on every change).
+    /// VoiceOver or Switch Control turned on or off (the page reports it on arrival and on every
+    /// change): both move slowly through a page, so both hold it.
     func voiceOver(running: Bool) {
         voiceOverRunning = running
         if !running {
