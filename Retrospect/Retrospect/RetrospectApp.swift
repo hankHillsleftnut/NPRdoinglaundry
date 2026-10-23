@@ -386,7 +386,7 @@ struct RetrospectApp: App {
                 }
                 if newPhase == .background {
                     Task {
-                        let unsent = (try? await platform.outbox?.unsentCount()) ?? 0
+                        let unsent = (try? await platform.outbox?.waitingToSendCount()) ?? 0
                         appDelegate.backgroundDrain.scheduleIfNeeded(unsent: unsent)
                     }
                 }

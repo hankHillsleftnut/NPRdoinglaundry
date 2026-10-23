@@ -91,4 +91,14 @@ extension Store.Outbox {
                 .fetchCount(db)
         }
     }
+
+    /// Rows the drainer still has to send, of every kind (entries, guess answers, reports): pending or in flight.
+    /// A refused row (dead) is not waiting for the network. Feeds the background drain, not the sign-out question.
+    func waitingToSendCount() throws -> Int {
+        try database.writer.read { db in
+            try Store.OutboxRow
+                .filter([Store.OutboxStatus.pending, .inFlight].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.status)))
+                .fetchCount(db)
+        }
+    }
 }

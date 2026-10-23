@@ -61,14 +61,18 @@ extension Store {
         let log: any Platform.LogSink
         /// Sleeps until a retry is due; replaceable so tests don't wait.
         private let sleep: @Sendable (TimeInterval) async throws -> Void
-        private var retryWake: Task<Void, Never>?
-        private var isDraining = false
+        var retryWake: Task<Void, Never>?
+        var isDraining = false
+        /// Callers of `stop()` parked until the drain has ended.
+        var drainEndWaiters: [CheckedContinuation<Void, Never>] = []
         private var needsAnotherPass = false
-        private var triggered = false
+        /// A trigger (back online, a write, foreground) came while a pass ran.
+        /// Unlike `needsAnotherPass` it survives a pause: the pause's own trigger may be the one that came.
+        private var triggeredDuringPass = false
         var started = false
-        fileprivate var stopped = false
-        private var reachabilityWatch: Task<Void, Never>?
-        fileprivate var inFlightSend: Task<Store.OutboxSendResult, any Error>?
+        var stopped = false
+        var reachabilityWatch: Task<Void, Never>?
+        var inFlightSend: Task<Store.OutboxSendResult, any Error>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
@@ -229,21 +233,22 @@ extension Store {
             guard sender != nil, !stopped else { return }
             if isDraining {
                 needsAnotherPass = true
-                triggered = true
+                triggeredDuringPass = true
                 return
             }
             isDraining = true
-            defer { isDraining = false }
+            defer { endDrain() }
             var paused = false
             repeat {
                 needsAnotherPass = false
-                triggered = false
+                triggeredDuringPass = false
                 paused = await pass()
-                // a trigger that came in mid-pass (back online) is answered even when the pass paused offline
-            } while (triggered || (needsAnotherPass && !paused)) && !stopped && !Task.isCancelled
+                // A pause ends the drain, unless a trigger came while the pass ran: then the
+                // pause's own trigger (back online) may already have come and gone. One more pass.
+            } while (paused ? triggeredDuringPass : needsAnotherPass) && !stopped && !Task.isCancelled
             // A pause (offline, signed out) is ended by its own trigger:
             // reachability, sign-in, foreground. Otherwise wake for the next retry.
-            if !paused, !Task.isCancelled {
+            if !paused, !stopped, !Task.isCancelled {
                 scheduleRetryWake()
             }
         }
@@ -275,7 +280,7 @@ extension Store {
                     break
                 } catch {
                     if stopped {
-                        // the person signed out mid-send: nothing is counted, the store is about to be erased
+                        // the person signed out mid-send: nothing is counted; the rows stay for the same person, or are erased for another
                         try? markPending(item, at: now())
                         break
                     }
@@ -527,31 +532,6 @@ extension Store {
             let parts = calendar.dateComponents([.year, .month, .day], from: date)
             return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
         }
-    }
-}
-
-extension Store.Outbox {
-    /// Stopping (PL3.1a). The person signed out: no new drain starts, the send in flight is cancelled, and this returns
-    /// when the drain has ended, so nothing of theirs is sent or written after it.
-    func stop() async {
-        stopped = true
-        for task in [reachabilityWatch, retryWake] {
-            task?.cancel()
-        }
-        reachabilityWatch = nil
-        retryWake = nil
-        inFlightSend?.cancel()
-        while isDraining {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-    }
-
-    /// One send as a task of its own, so `stop` can cancel it.
-    fileprivate func send(_ item: Store.OutboxRow, with sender: any Store.OutboxSending) async throws -> Store.OutboxSendResult {
-        let task = Task { try await sender.send(item) }
-        inFlightSend = task
-        defer { inFlightSend = nil }
-        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 }
 
