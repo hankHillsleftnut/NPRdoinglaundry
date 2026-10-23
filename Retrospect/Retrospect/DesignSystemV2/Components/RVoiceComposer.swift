@@ -4,7 +4,8 @@
 //  (Paper approvals part 07 c:voice-composer/*, and the current board "everything · latest" JR-1;
 //  the dark file's copies). A raised 56 pill, radius.composer, the state words 20 in from the
 //  leading edge, and one 32 corner button that never moves: mute while voice is on, mic once
-//  muted, the lit send once there are words.
+//  muted, the lit send once there are words. With `voice` off (a host with nothing to record
+//  into) there is no mic: the corner is empty until there are words, then the lit send.
 //
 //  Listening (and thinking) take the current board's look: a 0.5 glow.primary.ring edge and
 //  four offset glows outside the bar (founder c-tmcs3y). Typing grows like the composer
@@ -38,6 +39,9 @@ struct RVoiceComposer: View {
 
     @Binding var mode: Mode
     @Binding var text: String
+    /// Offers the mic. Off for a host that can't record yet, so the bar never says
+    /// "listening…" while keeping nothing (decision 4); on by default.
+    var voice = true
     /// The live voice level, 0…1: yours while listening, Retro's while speaking. Nil rests the bars.
     var level: Double?
     /// The muted field's placeholder, and the name VoiceOver reads for it.
@@ -60,6 +64,27 @@ struct RVoiceComposer: View {
 
     private var isSend: Bool {
         mode == .muted && !text.isEmpty
+    }
+
+    /// Whether the corner button is there: always with voice; without it, only as the send.
+    static func showsCorner(voice: Bool, mode: Mode, text: String) -> Bool {
+        voice || (mode == .muted && !text.isEmpty)
+    }
+
+    /// What a tap on the corner does: send the words, or switch between talking and typing.
+    /// Without voice there is nothing to switch to, so only the send.
+    enum CornerTap: Equatable {
+        case send
+        case toggle(to: Mode)
+        case none
+    }
+
+    static func cornerTap(voice: Bool, mode: Mode, text: String) -> CornerTap {
+        if mode == .muted, !text.isEmpty {
+            return .send
+        }
+        guard voice else { return .none }
+        return .toggle(to: mode == .muted ? .listening : .muted)
     }
 
     /// Listening and thinking light the bar's edge and glow.
@@ -195,9 +220,17 @@ struct RVoiceComposer: View {
             .contentShape(Circle().inset(by: (RDimension.sizeControlSmall - RDimension.sizeTouchTarget) / 2))
         }
         .rPress(small: true, haptic: isSend ? RHaptic.press : nil)
+        // without voice the empty corner keeps its frame, so the field never reflows as send rises
+        .opacity(showsCorner ? 1 : 0)
+        .allowsHitTesting(showsCorner)
+        .accessibilityHidden(!showsCorner)
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.popover, value: isSend)
         .animation(RMotion.standard(RNumber.motionDurationFast), value: mode)
         .accessibilityLabel(cornerLabel)
+    }
+
+    private var showsCorner: Bool {
+        Self.showsCorner(voice: voice, mode: mode, text: text)
     }
 
     private var cornerSymbol: String {
@@ -215,11 +248,14 @@ struct RVoiceComposer: View {
     }
 
     private func cornerAction() {
-        if isSend {
+        switch Self.cornerTap(voice: voice, mode: mode, text: text) {
+        case .send:
             onSend(text)
             text = ""
-        } else {
-            mode = mode == .muted ? .listening : .muted
+        case let .toggle(to):
+            mode = to
+        case .none:
+            break
         }
     }
 

@@ -6,10 +6,11 @@
 //  below it, becoming the slim bar as the thread scrolls; the thread in one scroll view, oldest
 //  at the top and newest at the bottom (anchored there), 24 between turns, your bubbles (C30.1)
 //  with their long-press menu (C20), Retro's lines (C30.2), the one guess (C28), the day label
-//  8 above a day's first entry; the voice composer (C14) pinned above the tab bar, mic off until
-//  tapped; the top edge blurred under the bar and the bottom under the composer (UI0.1). Loading
-//  shows the thread's skeleton after 400ms (C39.1); a failed load shows the error with try again
-//  (C39.3) and the composer still works. Margins 24 (20 on SE). The sheet host sits at the page
+//  8 above a day's first entry; the voice composer (C14) pinned above the tab bar, with no mic
+//  until voice capture exists (`voice`), so its corner is only the lit send; the top edge
+//  blurred under the bar and the bottom under the composer (UI0.1). Loading shows the thread's
+//  skeleton after 400ms (C39.1); a failed load shows the error with try again (C39.3) and the
+//  composer still works. Margins 24 (20 on SE). The sheet host sits at the page
 //  root; the brief's play opens the player sheet (P10 fills it). Data comes only through
 //  `Flows.JournalData` (`\.journalData`), sample or live.
 //
@@ -21,6 +22,9 @@ struct JournalPageContainer: View {
     let today: String
     /// The drawer button's action (JR-3 is not mounted yet: the app root points it at the account page).
     var openDrawer: () -> Void = {}
+    /// The composer's mic. Off by default: nothing records yet, and a mic that keeps nothing
+    /// would lose spoken words (decision 4, no dead controls).
+    var voice = false
     @Environment(\.journalData) private var data
 
     var body: some View {
@@ -39,6 +43,7 @@ extension JournalPageContainer {
     private func model(for data: any Flows.JournalData) -> JournalViewModel {
         let model = JournalViewModel(data: data, today: today)
         model.openDrawer = openDrawer
+        model.voice = voice
         return model
     }
 }
@@ -84,7 +89,7 @@ struct JournalPage: View {
         .sensoryFeedback(RHaptic.confirm, trigger: model.landed) { old, new in old != new && new != nil }
         .rRetroAnnouncement(landed: model.landed, line: model.landedLine)
         .rErrorHaptic(isFailing: model.failure != nil)
-        .rErrorAnnouncement(model.failure?.message, attempt: model.loadAttempts)
+        .rErrorAnnouncement(model.failureLine, attempt: model.loadAttempts)
         // a guess answer that failed: the same haptic and announcement, once per failure
         .rErrorHaptic(isFailing: model.answerFailure != nil)
         .rErrorAnnouncement(
@@ -167,8 +172,8 @@ struct JournalPage: View {
 
     @ViewBuilder
     private var threadContent: some View {
-        if let failure = model.failure {
-            RErrorState(message: failure.message ?? "retro couldn't be reached. try again.") {
+        if let line = model.failureLine {
+            RErrorState(message: line) {
                 Task { await model.load() }
             }
             .accessibilityIdentifier("journal.error")
@@ -196,8 +201,7 @@ struct JournalPage: View {
                             from: JournalViewModel.sourceLine(count: guess.restsOn.count),
                             sureness: guess.framework.name,
                             phase: JournalViewModel.phase(guess),
-                            answer: { verdict in await model.answer(guess, verdict) },
-                            openWhy: {}
+                            answer: { verdict in await model.answer(guess, verdict) }
                         )
                         .accessibilityIdentifier("journal.guess")
                     }
@@ -222,7 +226,7 @@ struct JournalPage: View {
     // MARK: - The composer
 
     private var composer: some View {
-        RVoiceComposer(mode: $model.composerMode, text: $model.draft) { text in
+        RVoiceComposer(mode: $model.composerMode, text: $model.draft, voice: model.voice) { text in
             Task { await model.send(text) }
         }
         // the inset proposes the scroll view's height; the bar keeps its own
@@ -258,7 +262,7 @@ struct JournalPage: View {
 }
 
 /// One of your entries in the thread: the bubble with its delivery, its retry, and its
-/// long-press menu (copy · open this entry ›).
+/// long-press menu (copy, and "open this entry ›" once the entry page is wired).
 private struct JournalMessageRow: View {
     let entry: Flows.Journal.Entry
     let model: JournalViewModel
@@ -268,10 +272,7 @@ private struct JournalMessageRow: View {
         RMessageBubble(text: entry.text, delivery: JournalViewModel.delivery(entry)) {
             Task { await model.retry(entry) }
         }
-        .rMessageMenu(isPresented: $menuOpen, rows: [
-            RMenuRow(id: "copy", title: "copy", symbol: "doc.on.doc") { model.copy(entry) },
-            RMenuRow(id: "open", title: "open this entry", symbol: "arrow.up.right", opensMore: true) { model.openEntry(entry) },
-        ])
+        .rMessageMenu(isPresented: $menuOpen, rows: model.menu(for: entry))
         .accessibilityIdentifier("journal.entry.\(entry.id)")
     }
 }

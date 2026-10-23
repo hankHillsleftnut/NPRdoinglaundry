@@ -214,6 +214,117 @@ struct JournalViewModelTests {
         #expect(model.draft.isEmpty)
     }
 
+    @Test("a row that arrives after send returns, as the live store's does, still lands: once, haptic and announcement follow")
+    func landsWhenTheRowArrivesLater() async {
+        let data = ScriptedJournalData(entries: SampleJournalContent.todayEntries)
+        data.holdsRows = true
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+
+        await model.send("walked the long way home")
+        model.noteDeliveries()
+        #expect(model.landed == nil, "no row yet")
+
+        data.deliverHeldRows()
+        model.noteDeliveries()
+        let id = data.lastID
+        #expect(model.landed == nil, "the row is waiting, not sent")
+
+        data.set(.sending, for: id)
+        model.noteDeliveries()
+        data.set(.sent, for: id)
+        model.noteDeliveries()
+        #expect(model.landed == id, "the entry this session sent lands when it turns sent")
+        #expect(model.landedLine == "got it.", "the announcement has its line")
+
+        // it stops being watched: a second look, or the row going round again, never lands it twice
+        data.set(.waiting, for: id)
+        data.set(.sent, for: id)
+        model.noteDeliveries()
+        await model.send("another")
+        data.deliverHeldRows()
+        let second = data.lastID
+        model.noteDeliveries()
+        #expect(model.landed == id, "the second send hasn't sent yet")
+        data.set(.sent, for: second)
+        model.noteDeliveries()
+        #expect(model.landed == second)
+    }
+
+    @Test("a row that was already in the thread is never mistaken for the new send, even with the same words")
+    func sameWordsAlreadyThere() async {
+        let data = ScriptedJournalData(entries: [])
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        data.holdsRows = true
+        await model.send("same")
+        data.deliverHeldRows()
+        let first = data.lastID
+        data.set(.sent, for: first)
+        model.noteDeliveries()
+        #expect(model.landed == first)
+
+        await model.send("same")
+        model.noteDeliveries()
+        #expect(model.landed == first, "the old row is not the new send")
+        data.deliverHeldRows()
+        let second = data.lastID
+        data.set(.sent, for: second)
+        model.noteDeliveries()
+        #expect(model.landed == second)
+    }
+
+    @Test("a send that fails while new words were typed keeps both: the failed words, then the new ones")
+    func failedSendKeepsNewWords() async {
+        let data = ScriptedJournalData(entries: [])
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        data.sendOutcome = .failed(Flows.Failure(.unknown))
+        data.whileSending = { model.draft = "and then the rain" }
+
+        await model.send("walked home")
+
+        #expect(model.draft == "walked home and then the rain")
+        #expect(model.sendFailures == 1)
+        #expect(JournalViewModel.restored(failed: "walked home", typed: "") == "walked home")
+        #expect(JournalViewModel.restored(failed: "  ", typed: "new") == "new")
+    }
+
+    @Test("a failed load with no message shows and announces the same fallback words")
+    func failedLoadAnnouncesTheFallback() async {
+        let data = ScriptedJournalData(entries: [])
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        data.loadFailure = Flows.Failure(.network)
+        await model.load()
+        #expect(model.failure?.message == nil)
+        #expect(model.failureLine == "retro couldn't be reached. try again.")
+        #expect(model.failureLine == JournalViewModel.loadFailureLine)
+        #expect(model.loadAttempts == 1)
+    }
+
+    // MARK: - No dead controls
+
+    @Test("the menu offers copy only until the entry page is wired; then open this entry too")
+    func menuHasNoDeadRows() {
+        let data = ScriptedJournalData(entries: SampleJournalContent.todayEntries)
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        let entry = SampleJournalContent.todayEntries[0]
+        #expect(model.menu(for: entry).map(\.id) == ["copy"])
+        var opened: String?
+        model.openEntry = { opened = $0.id }
+        let rows = model.menu(for: entry)
+        #expect(rows.map(\.id) == ["copy", "open"])
+        rows[1].action()
+        #expect(opened == entry.id)
+    }
+
+    @Test("the live page's composer has no mic unless the host turns it on")
+    func noMicByDefault() {
+        let model = JournalViewModel(data: ScriptedJournalData(entries: []), today: SampleJournalContent.today)
+        #expect(model.voice == false)
+        #expect(JournalPageContainer(today: SampleJournalContent.today).voice == false)
+    }
+
     // MARK: - A guess answer
 
     @Test("an answer that fails is kept for the page's error haptic and announcement; recorded and queued are not failures")
@@ -360,6 +471,12 @@ final class ScriptedJournalData: Flows.JournalData {
     @ObservationIgnored private(set) var loads = 0
     @ObservationIgnored private(set) var sent: [String] = []
     @ObservationIgnored private(set) var lastID = ""
+    /// Like the live store: a sent row shows up only later (`deliverHeldRows`), after `send` returned.
+    @ObservationIgnored var holdsRows = false
+    @ObservationIgnored private var held: [Journal.Entry] = []
+    /// Runs while the send is on its way (the person typing meanwhile).
+    @ObservationIgnored var whileSending: (() -> Void)?
+    @ObservationIgnored var loadFailure: Flows.Failure?
 
     init(entries: [Journal.Entry]) {
         today = .loaded(entries)
@@ -371,20 +488,34 @@ final class ScriptedJournalData: Flows.JournalData {
         today = .loaded(entries)
     }
 
+    func deliverHeldRows() {
+        today = .loaded((today.value ?? []) + held)
+        held = []
+    }
+
     func load() async {
         loads += 1
+        if let loadFailure {
+            today = .failed(loadFailure)
+        }
     }
 
     func send(text: String) async -> Journal.WriteOutcome {
+        whileSending?()
         if let sendOutcome {
             return sendOutcome
         }
         sent.append(text)
         lastID = "00000000-0000-4000-8000-\(String(format: "%012d", sent.count + 7000))"
-        today = .loaded((today.value ?? []) + [Journal.Entry(
+        let row = Journal.Entry(
             local: lastID, kind: .typed, text: text, createdAt: Date(timeIntervalSince1970: 1_792_570_000),
             day: SampleJournalContent.today, delivery: .waiting
-        )])
+        )
+        if holdsRows {
+            held.append(row)
+        } else {
+            today = .loaded((today.value ?? []) + [row])
+        }
         return .queued
     }
 
