@@ -83,3 +83,11 @@ extension Store {
         }
     }
 }
+
+extension Backend.Failure.Kind {
+    /// How long a spend refusal holds its outbox item: the server's Retry-After (contract 00 §2), else an hour.
+    var spendWait: TimeInterval {
+        guard case let .spendLimited(retryAfter?) = self else { return 3600 }
+        return max(1, TimeInterval(retryAfter.components.seconds))
+    }
+}

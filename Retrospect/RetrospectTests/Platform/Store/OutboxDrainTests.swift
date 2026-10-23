@@ -529,7 +529,7 @@ struct OutboxDrainTests {
 
     @Test(
         "a pause ends the drain even with two items for one entity: one send, no loop",
-        arguments: [Backend.Failure.Kind.offline, .unauthenticated, .sessionRevoked, .updateRequired, .spendLimited(retryAfter: nil)]
+        arguments: [Backend.Failure.Kind.offline, .unauthenticated, .sessionRevoked, .updateRequired]
     )
     func aPauseWithTwoItemsForOneEntityDoesNotLoop(kind: Backend.Failure.Kind) async throws {
         let outbox = outbox()
@@ -551,20 +551,55 @@ struct OutboxDrainTests {
             let outbox = outbox()
             let id = UUID()
             try await outbox.enqueueEntry(draft(id))
-            sender.script(key(id), [.failure(Backend.Failure(kind)), .failure(Backend.Failure(kind))])
+            // 426 is sent again on each trigger; a spend refusal is not due again until its wait ends
+            let refusals = kind == .updateRequired ? 2 : 1
+            sender.script(key(id), Array(repeating: .failure(Backend.Failure(kind)), count: refusals))
 
             await outbox.drain(reason: .manual)
             await outbox.drain(reason: .foreground)
 
             #expect(try item(id).status == .pending, "\(kind): waits")
             #expect(try item(id).attempts == 0, "\(kind): no attempt counted")
-            #expect(try await outbox.unsentCount() >= 1)
+            #expect(try entry(id).syncState == .local, "\(kind): the person sees 'not sent yet', never 'failed'")
+            #expect(try await outbox.unsentCount() == 1)
 
-            await outbox.drain(reason: .foreground) // the build was updated: the script has run out, the send succeeds
+            now.advance(seconds: 3600) // a spend refusal with no Retry-After holds its item an hour
+            await outbox.drain(reason: .foreground) // the build was updated / the day passed: the script has run out, the send succeeds
             #expect(try item(id).status == .done, "\(kind): sent after the update")
+            #expect(sender.sends.filter { $0.id == key(id) }.count == refusals + 1, "\(kind): one send per due drain, no spin")
             try execute("DELETE FROM outbox")
             try execute("DELETE FROM entries")
         }
+    }
+
+    @Test("a spent day holds only the refused item: an entry queued behind a spend-refused answer still goes, and the answer goes when the wait ends")
+    func aSpendRefusalHoldsOnlyItsItem() async throws {
+        let waits = Waits()
+        let outbox = outbox(sleep: waits.sleep)
+        let answer = try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .yes).uuidString.lowercased()
+        try await outbox.enqueueEntry(draft(a))
+        sender.script(answer, [.failure(Backend.Failure(.spendLimited(retryAfter: .seconds(86400))))])
+
+        await outbox.start()
+        for _ in 0 ..< 500 where waits.values.isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(try item(a).status == .done, "the person's entry is not held behind the spent day")
+        #expect(try rowByID(answer).status == .pending)
+        #expect(try rowByID(answer).attempts == 0, "a spent day is not the answer's fault: no attempt counted")
+        #expect(waits.values == [86400], "a timer wakes the answer when the server's wait ends, no sooner")
+        #expect(sender.sends.count == 2)
+
+        now.advance(seconds: 86400)
+        waits.gate.open()
+        for _ in 0 ..< 500 where try rowByID(answer).status != .done {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(try rowByID(answer).status == .done)
+        #expect(sender.sends.map(\.id) == [answer, key(a), answer], "same key on the retry")
+        #expect(sender.sends.first?.payload == sender.sends.last?.payload, "same bytes on the retry")
     }
 
     // MARK: Retry timer
