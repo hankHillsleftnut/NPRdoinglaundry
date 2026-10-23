@@ -94,6 +94,8 @@ extension Platform.Log {
         case routeUnknown(Routing.UnknownKind)
         /// Audio could not be played (PLP.1a): which step failed, never what was playing.
         case playbackTrouble(Platform.Media.Trouble)
+        /// A step of deleting the account (PL3.7g.min): what happened, never the Apple code, a token or an id.
+        case accountDeletion(Session.DeletionStep)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -121,7 +123,8 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
                 recordDevice(event)
-            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable, .routeUnknown, .playbackTrouble:
+            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable, .routeUnknown, .playbackTrouble,
+                 .accountDeletion:
                 recordGate(event)
             }
         }
@@ -143,6 +146,8 @@ extension Platform.Log {
                 record(unknownLink: kind)
             case let .playbackTrouble(trouble):
                 record(trouble: trouble)
+            case let .accountDeletion(step):
+                record(deletion: step)
             default:
                 break
             }
@@ -241,7 +246,8 @@ extension Platform.Log {
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
             case .guessByID: logger.info("request /v2/guesses/:id: status \(status), \(ms) ms")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(sentInvite: path, status: status, ms: ms)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account:
+                record(sentInvite: path, status: status, ms: ms)
             }
         }
 
@@ -283,6 +289,7 @@ extension Platform.Log {
             case .invitesRedeem: logger.info("request /v2/invites/redeem: status \(status), \(ms) ms")
             case .invitesMine: logger.info("request /v2/invites/mine: status \(status), \(ms) ms")
             case .invitePreview: logger.info("request /public/invites/:code: status \(status), \(ms) ms")
+            case .account: logger.info("request /v2/account: status \(status), \(ms) ms")
             default: break
             }
         }
@@ -297,7 +304,7 @@ extension Platform.Log {
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
             case .guessByID: logger.error("unknown error code from /v2/guesses/:id")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(unknownCodeFromInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: record(unknownCodeFromInvite: path)
             }
         }
 
@@ -309,6 +316,7 @@ extension Platform.Log {
             case .invitesRedeem: logger.error("unknown error code from /v2/invites/redeem")
             case .invitesMine: logger.error("unknown error code from /v2/invites/mine")
             case .invitePreview: logger.error("unknown error code from /public/invites/:code")
+            case .account: logger.error("unknown error code from /v2/account")
             default: break
             }
         }
@@ -377,7 +385,7 @@ extension Platform.Log {
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
             case .guessByID: logger.info("401 on /v2/guesses/:id: refreshed and replayed once")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(replayedInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: record(replayedInvite: path)
             }
         }
 
@@ -389,6 +397,7 @@ extension Platform.Log {
             case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
             case .invitePreview: logger.info("401 on /public/invites/:code: refreshed and replayed once")
+            case .account: logger.info("401 on /v2/account: refreshed and replayed once")
             case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID: break
             }
         }
@@ -480,6 +489,34 @@ extension Platform.Log {
 
         func record(_ event: Event) {
             lock.withLock { recorded.append(event) }
+        }
+    }
+}
+
+extension Platform.Log.SystemSink {
+    /// The account deletion's lines (PL3.7g.min): fixed words, never the Apple code, a token or an id.
+    fileprivate func record(deletion step: Session.DeletionStep) {
+        switch step {
+        case .cancelledAtApple: logger.info("account deletion: cancelled at apple, nothing sent")
+        case .differentAppleAccount: logger.info("account deletion: a different apple account, nothing sent")
+        case .appleUnavailable: logger.error("account deletion: apple gave no code, nothing sent")
+        case .flagNotKept: logger.error("account deletion: the pending flag couldn't be kept, nothing sent")
+        case let .refused(failure): logger.info("account deletion: refused (\(Self.name(failure))), nothing erased")
+        case .unsure: logger.info("account deletion: no answer, flag kept for the next launch")
+        case .underWay: logger.info("account deletion: under way, erasing the phone")
+        case .finished: logger.info("account deletion: the phone is erased")
+        case .resumeCleared: logger.info("account deletion: the request never landed, flag cleared")
+        case .resumeKept: logger.info("account deletion: the server couldn't be asked, flag kept")
+        }
+    }
+
+    private static func name(_ failure: Session.DeletionFailure) -> String {
+        switch failure {
+        case .appleConfirmationRequired: "apple confirmation required"
+        case .appleRefused: "apple refused the code"
+        case .unavailable: "server unavailable"
+        case .rateLimited: "rate limited"
+        case .other: "other"
         }
     }
 }

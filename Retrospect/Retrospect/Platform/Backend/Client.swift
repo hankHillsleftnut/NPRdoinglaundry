@@ -154,8 +154,8 @@ extension Backend {
         /// the recorder (disk work) behind the ones before it, and the answer
         /// returns at once.
         private func record(_ endpoint: some Endpoint, status: Int, ms: Int, code: Platform.Diagnostics.ErrorCode?, generation: Int) {
-            // The public preview isn't one of the closed `/v2` routes a report may name.
-            guard let diagnostics, endpoint.path != .invitePreview else { return }
+            // The public preview and the account door aren't routes a report may name (`unrecordedPaths`).
+            guard let diagnostics, !Backend.unrecordedPaths.contains(endpoint.path) else { return }
             guard recordsWaiting < Self.recordsWaitingCap else {
                 log.record(.diagnosticsWriteFailed)
                 return

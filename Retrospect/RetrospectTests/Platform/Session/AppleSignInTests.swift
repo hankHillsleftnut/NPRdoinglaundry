@@ -423,6 +423,16 @@ struct AppleSignInTests {
         #expect(StubProtocol.requests(on: session).isEmpty)
     }
 
+    @Test("the fresh code for deleting the account is read only from an Apple ID credential, and a closed sheet is cancelled")
+    func theFreshCodeNeedsAnAppleCredential() {
+        let password = ASPasswordCredential(user: "invented", password: "invented")
+        #expect(throws: Session.SignInError.unreadableCredential) {
+            try Session.SystemAppleReauthorizer.code(from: password)
+        }
+        let cancelled = NSError(domain: ASAuthorizationError.errorDomain, code: ASAuthorizationError.canceled.rawValue)
+        #expect(Session.AppleSignIn.signInError(for: cancelled) == .cancelled, "the deletion reads this as 'nothing sent, no message'")
+    }
+
     @Test("a credential that isn't an Apple ID credential is unreadable")
     func aNonAppleCredentialIsUnreadable() {
         let password = ASPasswordCredential(user: "invented", password: "invented")

@@ -80,6 +80,9 @@ extension Session {
             case pendingInviteCode = "pending_invite_code"
             /// The name and email Apple hands over once, kept until a sign-in succeeds (PL1.4b).
             case pendingFirstAuthorization = "pending_first_authorization"
+            /// Set before `DELETE /v2/account` is sent, cleared once the phone is erased or the server is known
+            /// not to have heard it (PL3.7g.min). No content: its presence is the whole value.
+            case pendingDeletion = "pending_deletion"
         }
 
         private let keychain: any KeychainBackend
@@ -171,6 +174,36 @@ extension Session {
 
         func clear() {
             try? keychain.delete(Account.pendingFirstAuthorization.rawValue)
+        }
+
+        // MARK: Deleting the account (PL3.7g.min)
+
+        /// Whether a deletion was sent and the phone isn't erased yet. Unreadable (a locked phone) reads as not
+        /// known: the caller asks again on the next launch rather than erase on a guess.
+        func isDeletionPending() throws -> Bool {
+            try string(.pendingDeletion) == "1"
+        }
+
+        /// Kept BEFORE the request is sent, so a kill after the 202 still finishes the erase on the next launch.
+        func markDeletionPending() throws {
+            try write("1", .pendingDeletion)
+        }
+
+        /// The server never heard the request (the next launch found a working session): nothing is erased.
+        func clearDeletionPending() throws {
+            try keychain.delete(Account.pendingDeletion.rawValue)
+        }
+
+        /// The account is deleted: every item goes, deeper than sign-out (which keeps `hasSignedInBefore`, the
+        /// pending invite and Apple's kept first authorization), so the phone opens on the first-time splash.
+        /// The pending flag goes last, and only when everything before it went, so a failed delete is tried
+        /// again on the next launch. The old client's service is not touched here (PL3.7i, the old app's leftovers).
+        func eraseEverything() throws {
+            for account in [Account.session, .hasSignedInBefore, .pendingInviteCode, .pendingFirstAuthorization] {
+                try keychain.delete(account.rawValue)
+            }
+            clearSessionEnded()
+            try keychain.delete(Account.pendingDeletion.rawValue)
         }
 
         // MARK: Launch hygiene

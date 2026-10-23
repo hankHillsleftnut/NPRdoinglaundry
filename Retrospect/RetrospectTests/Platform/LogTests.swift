@@ -58,6 +58,25 @@ struct LogTests {
         }
     }
 
+    /// Every deletion step, every refusal kind: none carries text (so never the Apple code or a token), and each
+    /// reaches a fixed line, as does the account door in every path switch (PL3.7g.min).
+    @Test("every account-deletion step carries no text and reaches the system log, and so does the account door")
+    func everyAccountDeletionStepIsContentFree() {
+        let refusals: [Session.DeletionFailure] = [.appleConfirmationRequired, .appleRefused, .unavailable, .rateLimited, .other]
+        let steps: [Session.DeletionStep] = [
+            .cancelledAtApple, .differentAppleAccount, .appleUnavailable, .flagNotKept, .unsure, .underWay, .finished,
+            .resumeCleared, .resumeKept,
+        ] + refusals.map { .refused($0) }
+        let sink = Platform.Log.SystemSink()
+        for step in steps {
+            #expect(Self.contentValues(in: Platform.Log.Event.accountDeletion(step)).isEmpty, "\(step) carries content")
+            sink.record(.accountDeletion(step))
+        }
+        sink.record(.requestSent(path: .account, status: 202, ms: 40))
+        sink.record(.unknownErrorCode(path: .account))
+        sink.record(.requestReplayed(path: .account))
+    }
+
     private static func contentValues(in value: Any) -> [Any] {
         ContentCheck.values(in: value)
     }
@@ -100,6 +119,7 @@ extension Platform.Log.Event {
             case .diagnosticsWriteFailed: [.diagnosticsWriteFailed]
             case .routeUnknown: [.routeUnknown(.appLink)]
             case .playbackTrouble: [.playbackTrouble(.itemFailed)]
+            case .accountDeletion: [.accountDeletion(.refused(.appleConfirmationRequired))]
             }
         }
     }
@@ -108,7 +128,8 @@ extension Platform.Log.Event {
         case refreshed, outbox, requestSent, unknownErrorCode, launchOptionIgnored, signedIn, nonceUnavailable, installChecked,
              installCheckFailed, installCheckErrored, refreshRetried, refreshFailed, sessionRevoked, signedOut, requestReplayed,
              keychainWriteFailed, sessionLocked, sessionNotConnected, appleCredentialRevoked, legacyRefresh, stagingResolvedToLocal,
-             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, diagnosticsWriteFailed, routeUnknown, playbackTrouble
+             inviteReceived, inviteChecked, inviteTorn, versionFloor, versionUnreadable, diagnosticsWriteFailed, routeUnknown, playbackTrouble,
+             accountDeletion
     }
 
     fileprivate var kind: Kind {
@@ -142,6 +163,7 @@ extension Platform.Log.Event {
         case .diagnosticsWriteFailed: .diagnosticsWriteFailed
         case .routeUnknown: .routeUnknown
         case .playbackTrouble: .playbackTrouble
+        case .accountDeletion: .accountDeletion
         }
     }
 }

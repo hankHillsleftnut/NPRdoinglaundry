@@ -89,6 +89,28 @@ struct EndpointTests {
         #expect(try #require(String(data: Backend.Coding.encoder.encode(answer.body), encoding: .utf8)) == #"{"verdict":"no"}"#)
     }
 
+    @Test("delete account is an authenticated DELETE to /v2/account, sent once, with the word and Apple's code")
+    func deleteAccountIsAnAuthenticatedDeleteSentOnce() throws {
+        let delete = Backend.Endpoints.DeleteAccount(appleAuthorizationCode: "c0de.fake.0000")
+
+        #expect(delete.method == .delete)
+        #expect(delete.path == .account)
+        #expect(delete.path.rawValue == "/v2/account")
+        #expect(delete.requiresAuth)
+        #expect(delete.idempotencyKey == nil)
+        #expect(delete.retry == .never)
+        #expect(Backend.RetryPolicy.effective(delete.retry, method: .delete, hasIdempotencyKey: false).attempts == 1)
+        #expect(delete.timeout == .seconds(30))
+        let body = try #require(String(data: Backend.Coding.encoder.encode(delete.body), encoding: .utf8))
+        #expect(body == #"{"appleAuthorizationCode":"c0de.fake.0000","confirm":"delete"}"# || body ==
+            #"{"confirm":"delete","appleAuthorizationCode":"c0de.fake.0000"}"#)
+    }
+
+    @Test("the account door and the public preview are the doors a report never names")
+    func theUnrecordedDoors() {
+        #expect(Backend.unrecordedPaths == [.invitePreview, .account])
+    }
+
     @Test("every path template is a /v2 path")
     func everyPathTemplateIsAV2Path() {
         #expect(Backend.PathTemplate.allCases.allSatisfy { $0.rawValue.hasPrefix("/v2/") || $0 == .invitePreview })
