@@ -60,6 +60,8 @@ extension Platform {
         private(set) var journalData: LiveJournalData?
         /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
         private(set) var mediaSource: Platform.Media.Source?
+        /// The one player (PLP.1a): plays today's brief from `mediaSource`; unloaded and dropped with the store.
+        private(set) var playback: Platform.Media.LivePlayback?
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -274,6 +276,8 @@ extension Platform {
             await outbox?.stop()
             outbox = nil
             unsentSource.value = nil
+            playback?.unload()
+            playback = nil
             await mediaSource?.erase()
             mediaSource = nil
             await diagnostics.detach(erasingDatabase: erasing)
@@ -337,11 +341,40 @@ extension Platform {
             self.repository = repository
             journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
             let reachability = reachability
-            mediaSource = Platform.Media.Source(
+            let source = Platform.Media.Source(
                 isOnline: { await reachability.isOnline },
                 refetch: { try await repository.refreshBrief().brief }
             )
+            mediaSource = source
+            playback = Platform.Media.LivePlayback(
+                engine: Platform.Media.AVPlayerEngine(), session: Platform.Media.SystemAudioSession(),
+                resolve: { item, rate in try await Self.audioFile(for: item, rate: rate, repository: repository, source: source) },
+                log: log
+            )
             Task { await outbox.start() }
+        }
+
+        /// The file the player plays for a brief: the day's brief as the store has it (or the server's, when the
+        /// store has another), through the media source's download rules. Only briefs play so far.
+        nonisolated static func audioFile(
+            for item: Flows.PlaybackItem, rate: Double, repository: Platform.Repositories.Journal, source: Platform.Media.Source
+        ) async throws -> URL {
+            guard item.kind == .brief else { throw Platform.Media.Source.Failure.unavailable }
+            var brief = await repository.cachedBrief()?.brief
+            if brief?.id != item.id {
+                do {
+                    brief = try await repository.refreshBrief().brief
+                } catch let failure as Backend.Failure where failure.kind == .offline {
+                    // no connection and not the brief on the phone: say offline (a tap later retries), not "can't play"
+                    throw Platform.Media.Source.Failure.offline
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    brief = nil
+                }
+            }
+            guard let brief, brief.id == item.id else { throw Platform.Media.Source.Failure.unavailable }
+            return try await source.playableFile(for: brief, rate: rate)
         }
 
         /// Once, when the app's first scene is up: records the launch and
