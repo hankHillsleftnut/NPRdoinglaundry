@@ -67,9 +67,9 @@ extension Session {
     /// a server or a phone. The platform builds the ports (`Platform.AppEnvironment.deleteAccount`).
     ///
     /// online? -> Apple's fresh code (cancel = nothing) -> the same Apple account? -> keep the pending flag ->
-    /// hold the session -> `DELETE /v2/account` -> 202 / `session_revoked` / `unauthenticated` = under way:
-    /// hold everything and erase the phone; a refusal clears the flag and erases nothing; no answer keeps the
-    /// flag for the next launch and erases nothing.
+    /// hold the session -> `DELETE /v2/account` -> 202 / `session_revoked` = under way (a plain 401 is checked
+    /// with one refresh first): hold everything and erase the phone; a refusal clears the flag and erases nothing;
+    /// no answer or a 5xx keeps the flag for the next launch and erases nothing.
     struct AccountDeletion: Sendable {
         struct Ports: Sendable {
             var isOnline: @Sendable () async -> Bool
@@ -82,6 +82,9 @@ extension Session {
             var clearPending: @Sendable () async -> Void
             var hold: @Sendable (DeletionHold) async -> Void
             var send: @Sendable (_ appleCode: String) async throws -> Backend.AccountDeletion
+            /// After a 401 `unauthenticated`: one refresh tells a locked account from a token that simply expired
+            /// (checker m1 on #188: an expired token answers the same 401).
+            var probe: @Sendable () async -> DeletionResume
             /// Stops and erases everything per-person on the phone (the store, outbox, media, diagnostics).
             var eraseLocal: @Sendable () async -> Void
             var log: @Sendable (DeletionStep) -> Void
@@ -123,15 +126,17 @@ extension Session {
             }
         }
 
-        /// What a failure after sending means. A dead token is the first request's own lock (QA #187).
+        /// What a failure after sending means. `session_revoked` is the first request's own lock (QA #187); a plain
+        /// 401 is checked with one refresh. No answer, or a 5xx (which can come after the server locked the account,
+        /// checker m2 on #188), keeps the flag for the next launch's question.
         private func answered(_ failure: Backend.Failure) async -> DeletionOutcome {
             switch failure.kind {
-            case .sessionRevoked, .unauthenticated:
+            case .sessionRevoked:
                 return await underWay()
-            case .offline, .timedOut, .transport, .decoding:
-                ports.log(.unsure)
-                await ports.hold(.none)
-                return .failed(.noAnswer)
+            case .unauthenticated:
+                return await afterProbe()
+            case .offline, .timedOut, .transport, .decoding, .internal, .upstreamTimeout, .upstreamUnavailable:
+                return await unsure()
             default:
                 let refusal = Self.refusal(failure.kind)
                 ports.log(.refused(refusal))
@@ -139,6 +144,28 @@ extension Session {
                 await ports.hold(.none)
                 return .failed(refusal == .appleRefused ? .appleRefused : .notNow)
             }
+        }
+
+        /// The refresh after a 401: refused = the account is locked (under way); a new pair = the token had only
+        /// expired and the request never reached the lock (flag cleared, nothing erased); no answer = unsure.
+        private func afterProbe() async -> DeletionOutcome {
+            switch await ports.probe() {
+            case .finish:
+                return await underWay()
+            case .clear:
+                ports.log(.resumeCleared)
+                await ports.clearPending()
+                await ports.hold(.none)
+                return .failed(.notNow)
+            case .keep:
+                return await unsure()
+            }
+        }
+
+        private func unsure() async -> DeletionOutcome {
+            ports.log(.unsure)
+            await ports.hold(.none)
+            return .failed(.noAnswer)
         }
 
         private func underWay() async -> DeletionOutcome {
@@ -214,6 +241,19 @@ extension Session.Manager {
         try? await store.clearDeletionPending()
     }
 
+    /// One refresh, under the deletion's hold (a refused refresh doesn't end the session here): `session_revoked` or a
+    /// 401 means the account is locked; a new pair means it isn't (the 401 was only an expired token).
+    func probeDeletion() async -> Session.DeletionResume {
+        do {
+            _ = try await refresh()
+            return .clear
+        } catch let failure as Backend.Failure {
+            return .after(failure.kind)
+        } catch {
+            return .keep
+        }
+    }
+
     /// Whether a sent deletion waits to be finished on this phone; nil when the Keychain can't be read yet.
     var isDeletionPending: Bool? {
         get async { try? await store.isDeletionPending() }
@@ -239,6 +279,7 @@ extension Platform.AppEnvironment {
             clearPending: { await session.clearDeletionPending() },
             hold: { await session.setDeletionHold($0) },
             send: { try await client.send(Backend.Endpoints.DeleteAccount(appleAuthorizationCode: $0)) },
+            probe: { await session.probeDeletion() },
             eraseLocal: { [weak self] in await self?.eraseForDeletion() },
             log: { log.record(.accountDeletion($0)) }
         ))
@@ -270,6 +311,8 @@ extension Platform.AppEnvironment {
         do {
             _ = try await client.send(Backend.Endpoints.Access())
             decision = .after(nil)
+        } catch let failure as Backend.Failure where failure.kind == .unauthenticated {
+            decision = await session.probeDeletion() // an expired token answers 401 too (checker m1 on #188)
         } catch let failure as Backend.Failure {
             decision = .after(failure.kind)
         } catch {
