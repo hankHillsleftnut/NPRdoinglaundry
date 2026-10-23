@@ -90,6 +90,10 @@ extension Platform.Log {
         case launchOptionIgnored(Platform.LaunchOptions.Problem)
         /// A batch of diagnostics couldn't be written; it was dropped.
         case diagnosticsWriteFailed
+        /// A link was not a destination (PL5.2): what kind of address it was, never the address.
+        case routeUnknown(Routing.UnknownKind)
+        /// Audio could not be played (PLP.1a): which step failed, never what was playing.
+        case playbackTrouble(Platform.Media.Trouble)
     }
 
     /// Writes to the unified log, subsystem `com.shauryanarang.Retrospect`,
@@ -117,7 +121,7 @@ extension Platform.Log {
             case .installChecked, .installCheckFailed, .installCheckErrored, .sessionLocked, .sessionNotConnected, .appleCredentialRevoked,
                  .legacyRefresh, .stagingResolvedToLocal, .diagnosticsWriteFailed:
                 recordDevice(event)
-            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable:
+            case .inviteReceived, .inviteChecked, .inviteTorn, .versionFloor, .versionUnreadable, .routeUnknown, .playbackTrouble:
                 recordGate(event)
             }
         }
@@ -135,8 +139,29 @@ extension Platform.Log {
                 record(floor: outcome)
             case let .versionUnreadable(which):
                 record(unreadable: which)
+            case let .routeUnknown(kind):
+                record(unknownLink: kind)
+            case let .playbackTrouble(trouble):
+                record(trouble: trouble)
             default:
                 break
+            }
+        }
+
+        private func record(unknownLink kind: Routing.UnknownKind) {
+            switch kind {
+            case .appLink: logger.info("link ignored: an app link that is not a route")
+            case .inviteHostLink: logger.info("link ignored: an address on the invite host that is not an invite")
+            case .other: logger.info("link ignored: not a destination")
+            }
+        }
+
+        private func record(trouble: Platform.Media.Trouble) {
+            switch trouble {
+            case .sessionPrepare: logger.error("player: the audio session could not be prepared")
+            case .sessionActivate: logger.error("player: the audio session could not be activated")
+            case .itemFailed: logger.error("player: the audio could not be played")
+            case .couldNotLoad: logger.error("player: the audio could not be loaded")
             }
         }
 

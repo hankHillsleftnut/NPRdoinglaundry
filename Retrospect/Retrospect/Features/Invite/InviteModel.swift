@@ -50,6 +50,8 @@ final class InviteModel {
     private(set) var youreIn: Session.YoureIn?
     /// The tiles, while typing (C41.4). Never logged.
     private(set) var tiles = ""
+    /// True while a wrong code's tiles are clearing: the field ignores edits.
+    private var clearing = false
     /// The code on a printed stub (a link's), for the tiles. Never logged.
     private(set) var printedCode = ""
     private(set) var codeLocked = false
@@ -180,7 +182,7 @@ final class InviteModel {
 
     /// Whatever the field holds now: normalised onto the tiles; the 13th character checks it.
     func setCode(_ raw: String) {
-        guard phase == .typed, !codeLocked else { return }
+        guard phase == .typed, !codeLocked, !clearing else { return }
         let next = TicketCode.tiles(from: raw)
         guard next != tiles else { return }
         tiles = next
@@ -274,10 +276,12 @@ final class InviteModel {
     private func wrongCode() async {
         notice = .wrongCode
         wrongCodes += 1
-        // the tiles clear right to left, 30ms apart
+        // the tiles clear right to left, 30ms apart; the field is locked meanwhile so typing is not eaten
+        clearing = true
+        defer { clearing = false }
         while !tiles.isEmpty {
             await sleep(.milliseconds(30))
-            tiles.removeLast()
+            _ = tiles.popLast()
         }
     }
 

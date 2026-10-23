@@ -41,6 +41,11 @@ final class ScriptedInviteSource: InviteSource, SignInCoordinating {
 private struct AppleStub: Error {}
 
 @MainActor
+final class ModelBox {
+    var model: InviteModel?
+}
+
+@MainActor
 struct InviteModelTests {
     private func model(_ phase: InviteModel.Phase, _ source: ScriptedInviteSource, name: String? = "sam") -> InviteModel {
         InviteModel(
@@ -266,6 +271,27 @@ struct InviteModelTests {
         await model.commitTear()
         await first.value
         #expect(source.tearCalls == 1)
+    }
+
+    @Test("editing the field while a wrong code clears neither crashes nor eats typed characters")
+    func editWhileClearing() async {
+        let source = ScriptedInviteSource()
+        source.typed = .refused(nil, .invalid)
+        let box = ModelBox()
+        let model = InviteModel(
+            phase: .typed, source: source, signIn: source, preview: SampleInvite.face, face: SampleInvite.face, firstName: "sam",
+            sleep: { _ in
+                await MainActor.run {
+                    box.model?.setCode("")
+                    box.model?.setCode("A")
+                }
+            }
+        )
+        box.model = model
+        model.setCode(SampleInvite.code)
+        await model.submitTyped()
+        #expect(model.tiles.isEmpty)
+        #expect(model.phase == .typed)
     }
 
     @Test("a tear over eight seconds springs back, and a late success still lets the person in")

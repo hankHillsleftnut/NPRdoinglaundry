@@ -243,7 +243,7 @@ struct RTicketStubPiece: View {
             VStack(spacing: RDimension.space3) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(label.words).rText(.labelMedium).foregroundStyle(RColor.textPrimary)
-                        .transition(.blurReplace)
+                        .rBlurReplace()
                     Spacer(minLength: RDimension.space2)
                     Text("one use · yours alone").rText(.ticketSmall).foregroundStyle(RColor.textLabel)
                 }

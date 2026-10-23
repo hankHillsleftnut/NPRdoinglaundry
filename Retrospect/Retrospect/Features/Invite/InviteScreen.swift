@@ -18,7 +18,6 @@ struct InviteScreen: View {
     var sampleTaps = false
 
     @State private var stage: InviteStageController
-    @State private var field = ""
     @State private var caretOn = true
     @State private var toast: RToastItem?
     @FocusState private var typing: Bool
@@ -60,9 +59,15 @@ struct InviteScreen: View {
                 page
             }
             .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { bottomZone }
-            .rSheet(isPresented: sheetBinding, detent: .medium) { InviteWaitlistSheet(model: model) }
+            // the full detent: at medium the keyboard (typing a note) pushed the sheet's words up over the
+            // page behind and cut "cancel", and SE cut the line to "when there'…"
+            .rSheet(isPresented: sheetBinding, detent: .full) { InviteWaitlistSheet(model: model) }
             .rToast($toast, bottomInset: RDimension.space4)
         }
+        // The sheet host clips the page to its safe area, which left a white band under the status
+        // bar; the same wallpaper behind it fills the band (seamless: both span the whole screen),
+        // and shows round the page when the waitlist sheet makes it recede.
+        .background { RInviteWallpaper() }
         .animation(RMotion.standard(RNumber.motionDurationSlow), value: model.phase)
         .animation(RMotion.standard(RNumber.motionDurationBase), value: model.notice)
         .animation(RMotion.standard(RNumber.motionDurationBase), value: model.waitlist)
@@ -89,6 +94,10 @@ struct InviteScreen: View {
             if new == .youreIn, old == .torn || old == .sealing {
                 announce("it's yours. you're in.")
             }
+            // a link's refused or waiting check speaks on arrival (a tear's refusal speaks through `warnings`)
+            if old != .sealing, new != old, model.isRefusedOrWaiting, let words = model.spokenFailure {
+                announce(words)
+            }
         }
         .onChange(of: scenePhase) { _, now in
             if now != .active {
@@ -100,11 +109,9 @@ struct InviteScreen: View {
                 Task { await model.retry() }
             }
         }
-        .onChange(of: model.tiles) { _, new in
-            if field != new {
-                field = new
-            }
-        }
+        // every failure is said as well as felt, each time (a second wrong code in a row too)
+        .onChange(of: model.warnings) { announceFailure() }
+        .onChange(of: model.wrongCodes) { announceFailure() }
         .task {
             guard !reduceMotion else { return }
             withAnimation(RMotion.standard(RNumber.motionDurationShimmer / 2).repeatForever(autoreverses: true)) { caretOn.toggle() }
@@ -154,7 +161,7 @@ struct InviteScreen: View {
                     Text(label)
                         .rText(.labelMedium)
                         .foregroundStyle(RColor.textLabel)
-                        .transition(.blurReplace)
+                        .rBlurReplace()
                 }
                 Text(model.promiseTitle)
                     .rText(.inviteTitle)
@@ -163,7 +170,7 @@ struct InviteScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                     .id(model.promiseTitle)
-                    .transition(.blurReplace)
+                    .rBlurReplace()
             }
             .frame(maxWidth: .infinity)
             .padding(.bottom, RDimension.space8)
@@ -193,7 +200,7 @@ struct InviteScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .id(model.promiseLine)
-        .transition(.blurReplace)
+        .rBlurReplace()
     }
 
     // MARK: T-alt · the ticket
@@ -237,6 +244,7 @@ struct InviteScreen: View {
         )
         .animation(RMotion.settle, value: fallen)
         .overlay(alignment: .bottom) { slotOverlay(geometry) }
+        .overlay(alignment: .topLeading) { holdFill(geometry) }
         .overlay(alignment: .topLeading) { handleLayer(geometry) }
         .overlay(alignment: .topLeading) { codeField(geometry) }
         .rShake(trigger: model.wrongCodes)
@@ -273,43 +281,25 @@ struct InviteScreen: View {
             .animation(RMotion.standard(RNumber.motionDurationBase), value: available)
     }
 
-    private func tearDrag(_ geometry: TicketGeometry) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("ticket"))
-            .onChanged { value in
-                stage.dragChanged(x: value.location.x, dy: value.location.y - geometry.perforationY, width: geometry.width)
-            }
-            .onEnded { value in
-                stage.dragEnded(x: value.location.x, velocity: value.velocity.width, width: geometry.width)
-            }
-    }
-
-    /// Reduce Motion: a touch starts the 0.6 s hold (the controller completes it itself); lifting early empties it.
-    private var holdGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { _ in stage.holdBegan() }
-            .onEnded { _ in stage.holdReleased(completed: false) }
-    }
-
     /// The hidden field the tiles read from: any tap on the stub focuses it, never selecting text.
     @ViewBuilder private func codeField(_ geometry: TicketGeometry) -> some View {
         if model.phase == .typed {
-            TextField("", text: $field)
+            // Bound straight to the model: whatever the field holds is read whole and normalised onto
+            // the tiles, so a refused character (a dash, a space) never leaves the field and the tiles
+            // disagreeing. (A separate @State copy written back in onChange lost later keystrokes.)
+            TextField("", text: Binding(get: { model.tiles }, set: { model.setCode($0) }))
                 .keyboardType(.asciiCapable)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
                 .textContentType(.none)
                 .focused($typing)
                 .disabled(model.codeLocked)
+                .foregroundStyle(Color.clear) // the tiles show the characters; the field's own never show through
+                .tint(Color.clear)
                 .opacity(0.02) // literal-ok: a field must stay in the hierarchy to keep focus
                 .frame(width: geometry.width, height: geometry.stubHeight)
                 .contentShape(Rectangle())
                 .offset(y: geometry.perforationY + TicketGeometry.holeRowHeight / 2)
-                .onChange(of: field) { _, new in
-                    model.setCode(new)
-                    if field != model.tiles {
-                        field = model.tiles
-                    }
-                }
                 .accessibilityLabel("invitation code, \(model.tiles.count) of \(TicketCode.length) characters")
                 .accessibilityValue(TicketCode.spelled(model.tiles))
                 .accessibilityIdentifier("ticket.field")
@@ -327,7 +317,7 @@ struct InviteScreen: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .id(caption)
-                    .transition(.blurReplace)
+                    .rBlurReplace()
                     .accessibilityIdentifier("invite.caption")
             }
             if let sub = model.subcaption {
@@ -336,12 +326,12 @@ struct InviteScreen: View {
                     .foregroundStyle(RColor.textSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .transition(.blurReplace)
+                    .rBlurReplace()
             }
             if let hint = model.hint {
                 hintPill(hint)
                     .padding(.top, RDimension.space2)
-                    .transition(.blurReplace)
+                    .rBlurReplace()
             }
             if model.offersWaitlist {
                 RButton(title: "no invitation? join the waitlist", variant: .text) { model.openWaitlist() }
@@ -427,8 +417,14 @@ struct InviteScreen: View {
             }
         }
         .padding(.horizontal, margin)
-        .padding(.bottom, compact ? RDimension.space4 : RDimension.space6)
+        .padding(.bottom, bottomPadding)
         .transition(.opacity)
+    }
+
+    /// Paper T1/T-alt: the bottom zone ends 40 above the screen's edge (the sheet host lays the page
+    /// under the home indicator, so this is from the edge); 16 on SE, which has none.
+    private var bottomPadding: CGFloat {
+        compact ? RDimension.space4 : RDimension.space10
     }
 
     private var isWaiting: Bool {
@@ -446,19 +442,25 @@ struct InviteScreen: View {
                 .padding(.bottom, RDimension.space4)
                 .transition(.blurReplace)
                 .accessibilityIdentifier("invite.begin")
-        } else if let footer = model.footer {
+        } else if let footer = model.footer, !typing { // the footer gives way to the keyboard: above it, it would sit on the caption
             Text(footer)
                 .rText(.label)
                 .foregroundStyle(RColor.textLabel)
                 .multilineTextAlignment(.center)
-                .padding(.bottom, RDimension.space6)
+                .padding(.bottom, bottomPadding)
                 .id(footer)
-                .transition(.blurReplace)
+                .rBlurReplace()
         }
     }
 
     private func announce(_ words: String) {
         AccessibilityNotification.Announcement(words).post()
+    }
+
+    private func announceFailure() {
+        if let words = model.spokenFailure {
+            announce(words)
+        }
     }
 }
 
@@ -468,4 +470,38 @@ struct SampleSignInTap: Error {}
 enum TicketFeedback {
     /// The rip: a rigid impact on the frame the stub lets go (FR0.1's `haptic.rip`).
     static let rip: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.8) // literal-ok: FR0.1 token, not yet generated
+}
+
+/// The tear and hold gestures, kept out of the struct body.
+extension InviteScreen {
+    /// Reduce Motion: the 0.6 s hold fills along the tear line from the left, so the wait is seen
+    /// (it empties again when the finger lifts early).
+    @ViewBuilder private func holdFill(_ geometry: TicketGeometry) -> some View {
+        if reduceMotion {
+            RShape.pill
+                .fill(RColor.glowPrimaryGradientBottom)
+                .frame(width: geometry.width * stage.holdProgress, height: RDimension.sizeBorderRing)
+                .offset(y: geometry.perforationY - RDimension.sizeBorderRing / 2)
+                .opacity(stage.holdProgress > 0 ? 1 : 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func tearDrag(_ geometry: TicketGeometry) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("ticket"))
+            .onChanged { value in
+                stage.dragChanged(x: value.location.x, dy: value.location.y - geometry.perforationY, width: geometry.width)
+            }
+            .onEnded { value in
+                stage.dragEnded(x: value.location.x, velocity: value.velocity.width, width: geometry.width)
+            }
+    }
+
+    /// Reduce Motion: a touch starts the 0.6 s hold (the controller completes it itself); lifting early empties it.
+    private var holdGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in stage.holdBegan() }
+            .onEnded { _ in stage.holdReleased(completed: false) }
+    }
 }

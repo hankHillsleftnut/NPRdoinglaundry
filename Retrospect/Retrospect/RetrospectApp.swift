@@ -106,6 +106,16 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-NewApp`: the new root on the new backend (sign in with Apple, then the app). Debug builds only until
+    /// the journal is mounted behind it (APP-ROOT flips the release default).
+    private var usesNewApp: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-NewApp")
+        #else
+        false
+        #endif
+    }
+
     private var isAnimationPreviewMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
@@ -186,6 +196,9 @@ struct RetrospectApp: App {
                     #if DEBUG
                     PodcastLayoutDiagnosticsHost()
                     #endif
+                } else if usesNewApp {
+                    // Bridge (PL1.4b): the new session decides what shows; the old onboarding, sign-in gate and home are not on this path.
+                    NewAppRoot()
                 } else {
                 // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
                 if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
@@ -264,7 +277,8 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
-                await platform.bindSessionLifecycle(to: apiClient)
+                platform.followSessionState()
+                platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
                 appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }
             }
@@ -386,7 +400,7 @@ struct RetrospectApp: App {
                 }
                 if newPhase == .background {
                     Task {
-                        let unsent = (try? await platform.outbox?.unsentCount()) ?? 0
+                        let unsent = (try? await platform.outbox?.waitingToSendCount()) ?? 0
                         appDelegate.backgroundDrain.scheduleIfNeeded(unsent: unsent)
                     }
                 }
@@ -410,7 +424,14 @@ struct RetrospectApp: App {
                     }
                 }
             }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
+                if let url = activity.webpageURL { platform.router.open(url) }
+            }
             .onOpenURL { url in
+                // Bridge (PL5.2): the router reads every address first (an invite link goes to the invite
+                // center); the branches below still act for the old screens, unchanged.
+                platform.router.open(url)
                 guard url.scheme == "retrospect" else { return }
                 
                 if url.host == "start-recording" {

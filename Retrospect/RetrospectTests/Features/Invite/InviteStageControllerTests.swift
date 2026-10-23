@@ -107,7 +107,9 @@ struct InviteStageControllerTests {
     func holdReleasedEarly() {
         let (stage, _, source) = make()
         stage.holdBegan()
+        #expect(stage.holdProgress == 1) // the fill along the tear line is running
         stage.holdReleased(completed: false)
+        #expect(stage.holdProgress == 0) // and empties on an early lift
         #expect(source.tearCalls == 0)
     }
 

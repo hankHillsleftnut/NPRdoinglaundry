@@ -79,6 +79,23 @@ extension InviteModel {
         }
     }
 
+    /// What VoiceOver hears when something fails or is refused: the same words the page shows
+    /// (checklist 2; the brief's "every failure announces the SAME words it shows").
+    var spokenFailure: String? {
+        switch phase {
+        case .promise where notice == .signInFailed, .waiting: promiseLine
+        case .typed where notice != nil, .ready where notice != nil, .refused: caption
+        default: nil
+        }
+    }
+
+    var isRefusedOrWaiting: Bool {
+        switch phase {
+        case .refused, .waiting: true
+        default: false
+        }
+    }
+
     /// The second line under the ticket, when there is one.
     var subcaption: String? {
         if phase == .typed, waitlist == .joined {

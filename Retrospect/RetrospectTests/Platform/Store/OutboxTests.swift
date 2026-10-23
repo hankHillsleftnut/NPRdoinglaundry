@@ -176,6 +176,20 @@ struct OutboxTests {
         #expect(try await outbox.unsentCount() == 3)
     }
 
+    @Test("the background drain counts every kind that waits for the network, and never a refused row")
+    func waitingToSendCountsEveryKindButDead() async throws {
+        let outbox = outbox()
+        let ids = (0 ..< 3).map { _ in UUID() }
+        for id in ids {
+            try await outbox.enqueueEntry(draft(id: id))
+        }
+        try setStatus(.inFlight, of: ids[1])
+        try setStatus(.dead, of: ids[2])
+        try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .yes)
+
+        #expect(try await outbox.waitingToSendCount() == 3, "a pending entry, one in flight and a guess answer")
+    }
+
     /// A row written by a later build, with an operation this one doesn't know. Synchronous, see above.
     private func insertRow(id: String, operation: String, status: Store.OutboxStatus) throws {
         try database.writer.write { db in
