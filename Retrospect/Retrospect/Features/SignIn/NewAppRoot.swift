@@ -32,7 +32,9 @@ struct NewAppRoot: View {
     /// phone waits on a blank canvas rather than flash sign-in before the gate). `gateHeld` is true from the
     /// moment the gate is up until the person presses "begin": the tear makes them a member before that, and
     /// the page must not be swapped for the journal under their finger.
-    static func screen(for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool) -> Screen {
+    static func screen(
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true
+    ) -> Screen {
         guard let state else { return .blank }
         if case .locked = state {
             return .locked
@@ -40,7 +42,10 @@ struct NewAppRoot: View {
         if case .signedOut = state, pendingCode == nil {
             return .blank
         }
-        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld) {
+        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen) {
+            return early
+        }
+        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && youreInSeen == true) {
         case .blank:
             return .blank
         case let .signIn(returning):
@@ -57,6 +62,16 @@ struct NewAppRoot: View {
         }
     }
 
+    /// An approved person whose store failed gets the retry page; one whose flag is not known yet waits (never the
+    /// journal, never the moment again), unless the gate is already up for them.
+    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?) -> Screen? {
+        guard case .signedIn(_, .approved) = state, !gateHeld else { return nil }
+        if storeOpenFailed {
+            return .storeFailed
+        }
+        return youreInSeen == nil ? .blank : nil
+    }
+
     /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
     static func isDefault(arguments: [String], debug: Bool) -> Bool {
         !(debug && arguments.contains("-OldHome"))
@@ -64,11 +79,13 @@ struct NewAppRoot: View {
 
     @Environment(Platform.AppEnvironment.self) private var platform
     @State private var gateHeld = false
+    /// This person's persisted "begin pressed" flag (`PersonFlags`, per person, erased on Log Out); nil until the store is open.
+    @State private var youreInSeen: Bool?
 
     var body: some View {
         let screen = Self.screen(
             for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen
         )
         Group {
             switch screen {
@@ -76,7 +93,7 @@ struct NewAppRoot: View {
                 // the splash or welcome back; the session's new state moves the app on, the page needs no hand-off
                 SignInHost(returning: returning || endedByServer)
             case .inviteGate:
-                InviteGateHost { gateHeld = false }
+                InviteGateHost { begin() }
                     .onAppear { gateHeld = true }
             case .paused:
                 PausedView()
@@ -100,6 +117,7 @@ struct NewAppRoot: View {
         }
         .animation(RMotion.snappy, value: screen)
         .task { await platform.pendingInvite.refresh() }
+        .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
         // the waiting code is read again whenever something that can change it happens
         .onChange(of: platform.sessionState) { _, state in
             if case .signedOut? = state {
@@ -109,5 +127,19 @@ struct NewAppRoot: View {
         }
         .onChange(of: platform.invites.ticket) { Task { await platform.pendingInvite.refresh() } }
         .onChange(of: platform.invites.previewFace) { Task { await platform.pendingInvite.refresh() } }
+    }
+
+    /// Changes when a different person's store (and so flags object) is open, so the flag is read for them.
+    private var flagsIdentity: ObjectIdentifier? {
+        platform.personFlags.map { ObjectIdentifier($0) }
+    }
+
+    /// "begin": remembered for this person on this phone, then the gate lets go.
+    private func begin() {
+        Task {
+            await platform.markYoureInSeen()
+            youreInSeen = true
+            gateHeld = false
+        }
     }
 }

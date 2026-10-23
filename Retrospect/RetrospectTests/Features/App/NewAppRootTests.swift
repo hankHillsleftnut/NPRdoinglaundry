@@ -4,9 +4,9 @@ import Testing
 /// APP-ROOT: which page each session lands on, and that a release build opens the new root.
 struct NewAppRootTests {
     private func screen(
-        _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false
+        _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false, seen: Bool? = true
     ) -> NewAppRoot.Screen {
-        NewAppRoot.screen(for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed)
+        NewAppRoot.screen(for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen)
     }
 
     private func signedIn(_ access: Session.AccessState) -> Session.State {
@@ -46,6 +46,15 @@ struct NewAppRootTests {
         }
         #expect(screen(signedIn(.approved), held: true) == .inviteGate, "the tear made them a member; the page stays until begin")
         #expect(screen(signedIn(.member), held: true) == .journal)
+    }
+
+    @Test("approved and not yet seen on this phone shows the moment; unknown waits; a failed store retries")
+    func approvedSeenFlag() {
+        #expect(screen(signedIn(.approved), seen: false) == .inviteGate)
+        #expect(screen(signedIn(.approved), seen: nil) == .blank)
+        #expect(screen(signedIn(.approved), seen: true) == .journal)
+        #expect(screen(signedIn(.approved), failed: true, seen: nil) == .storeFailed)
+        #expect(screen(signedIn(.member), seen: nil) == .journal, "members never wait on the flag")
     }
 
     @Test("a store that cannot be opened is its own page with a retry, only where the journal would show")
