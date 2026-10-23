@@ -35,6 +35,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  new-backend-only:
+    # Founder rule: the new app talks to the new backend only (Backend.Client -> /v2 -> Session). Fails
+    # when Platform/ (except Bridges.swift), Features/ or DesignSystemV2/ use the old client, a raw
+    # request, or a path outside Backend.PathTemplate.
+    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/
+      - run: node scripts/check-new-backend-only.mjs
+
   changes:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
     # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained). Contract
