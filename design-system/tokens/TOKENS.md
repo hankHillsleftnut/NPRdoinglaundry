@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**580 tokens** · 504 semantic · 276 marked *to set*
+**591 tokens** · 515 semantic · 276 marked *to set*
 
 ## palette
 
@@ -317,6 +317,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `font.size.body` | Reading and controls text: iOS body size. | 17pt |  | decided by the design system (20 Oct): key 23 / screen token pass |
 | `font.size.title` | Page and episode titles, splash lines. | 34pt |  | decided by the design system (20 Oct): key 23 / screen token pass |
 | `font.size.hero` | One hero word or line per screen at most. | 64pt |  | decided by the design system (20 Oct): key 23 / screen token pass |
+| `font.size.playerTime` | The player's times and the part name under the scrubber. | 13pt |  | Paper JR-2 1FN8-0 |
+| `font.size.playerSpeed` | The player's speed figure beside the transport. | 15pt |  | Paper JR-2 1FMU-0 |
 | `font.weight.regular` | Default. | 400 |  | lime |
 | `font.weight.medium` | Gentle emphasis. | 500 |  | lime |
 | `font.weight.semibold` | Titles in text type. | 600 |  | lime |
@@ -438,6 +440,13 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.player.scrubber` | The player's progress bar. | 4pt |  | to set: app need |
 | `size.player.thumb` | The knob you drag on the progress bar. | 12pt |  | to set: app need |
 | `size.player.button` | Play / pause in the full player. | 64pt |  | to set: app need |
+| `size.player.thumbHeld` | The scrubber's knob while you hold it, so your finger never hides it. | 20pt |  | docs/team/ui/C25.md, Paper part 09 held scrub (A3D-0) |
+| `size.player.trackRow` | The row the scrubber's track and knob sit in, above the times. | 16pt |  | Paper JR-2 1FNC-0 |
+| `size.player.timesGap` | Between the scrubber's track row and its times. | 10pt |  | Paper JR-2 1FN7-0 |
+| `size.player.tray` | Height of the transport's recessed tray (skip, play, skip). | 64pt |  | Paper JR-2 1FMV-0 |
+| `size.player.trayInset` | The tray's inner left and right padding. | 22pt |  | Paper JR-2 1FMV-0 |
+| `size.player.skipIcon` | The skip back and skip forward glyphs in the tray. | 28pt |  | Paper JR-2 1FN1-0, 1FMW-0 |
+| `size.player.playIcon` | The play / pause glyph inside the raised well. | 22pt |  | Paper JR-2 1FMZ-0 |
 | `size.briefCard.minHeight` | The daily brief card on Journal. | 120pt |  | to set: app need |
 | `size.composer.minHeight` | The writing field, empty. | 44pt |  | to set: app need |
 | `size.composer.maxHeight` | The writing field before it scrolls. | 160pt |  | to set: app need |
@@ -528,6 +537,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `motion.gesture.dismissDistance` | Drag a sheet down this far, or flick faster than dismissVelocity, and it closes. | 140pt |  | to set: choreography |
 | `motion.gesture.dismissVelocity` | Points per second that count as a flick down. | 800 |  | to set: choreography |
 | `motion.gesture.rubberBand` | How much a sheet resists being pulled up past its top (iOS-like). | 0.55 |  | to set: choreography |
+| `motion.gesture.scrubSnap` | A held scrub this close to a part's start lands on the start. | 12pt |  | docs/team/ui/C25.md (snap to a part start within 12pt) |
+| `motion.gesture.scrubFineStep` | Dragging a scrub this far off the line halves its rate; twice as far quarters it (the iOS rule). | 50pt |  | docs/team/ui/C25.md (rate halves past 50pt, quarters past 100pt) |
 | `motion.blur.enter` | A menu or sheet arriving is blurred this much and sharpens as it settles. | 8pt |  | to set: from the title-menu recording (20 Oct) |
 | `motion.appear.rise` | How far an appearing item rises into place. | 8pt |  | founder 21 Oct: motion-system.md |
 | `motion.appear.blurFrom` | Blur an appearing item sharpens from. | 8pt |  | founder 21 Oct: motion-system.md |
