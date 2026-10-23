@@ -430,20 +430,45 @@ test('flag off: nothing calls Apple, no 409, Apple is skipped and the account is
 });
 
 test('a brain sweep failing every time never blocks the users-row delete, and is called again after it', async () => {
-  const brain = fakeBrain([{ kind: 'retry', grantsFailed: 2, objectsSkipped: 0 }]);
+  const script: { reply: BrainSweepResult } = { reply: { kind: 'retry', grantsFailed: 2, objectsSkipped: 0 } };
+  const calls: { userId: string; userRowExisted: boolean }[] = [];
+  const brain = {
+    calls,
+    brain: {
+      async sweep(userId: string) {
+        const { rows } = await db.query<{ n: number }>('SELECT count(*)::int n FROM users WHERE id = $1', [userId]);
+        calls.push({ userId, userRowExisted: rows[0]!.n === 1 });
+        return script.reply;
+      },
+    } satisfies BrainSweep,
+  };
   const w = await world({ brain });
   try {
     const alice = await person();
     await del(w, alice.auth);
     const id = String((await row(alice.id))!.id);
-    const runs = await finish(w, id);
-    assert.equal(runs, MAX_RUNS);
+    // Many runs, hours apart: the users row goes after MAX_RUNS, the deletion stays open.
+    for (let i = 0; i < MAX_RUNS + 10; i++) {
+      assert.equal(await w.deletion.runNow(id), 'deferred', `run ${i + 1} is not finished while files may remain`);
+      w.clock.now += 7 * 60 * 60 * 1000;
+    }
     assert.equal(await userRow(alice.id), null, 'the users row went anyway');
-    const log = await row(alice.id);
-    assert.equal(log!.state, 'deleted');
+    let log = await row(alice.id);
+    assert.equal(log!.state, 'user_deleted', 'never marked deleted while the second sweep has not succeeded');
     assert.equal(log!.sweep_before, 'failed');
-    assert.equal(log!.sweep_after, 'failed');
+    assert.equal(log!.sweep_after, 'failed', 'the record says what is still to do');
     assert.equal(log!.grants_failed, 2, 'what the brain could not revoke is recorded');
+
+    // The brain is deployed or fixed: a later sweeper run (a new server) finishes it from the record.
+    script.reply = { kind: 'ok', grantsFailed: 0, objectsSkipped: 1 };
+    const restarted = createAccountDeletion({
+      store: supabaseDeletionStore(pgliteRpc(db)), brain: brain.brain,
+      diagnostics: { deleteFor: async () => 0 }, now: () => w.clock.now, sleep: async () => undefined, report: () => undefined, log: () => undefined,
+    });
+    assert.equal(await restarted.runNow(id), 'finished');
+    log = await row(alice.id);
+    assert.equal(log!.state, 'deleted');
+    assert.equal(log!.sweep_after, 'ok');
     assert.ok(brain.calls.some((c) => !c.userRowExisted), 'swept again after the users row went');
     const lastBefore = brain.calls.map((c) => c.userRowExisted).lastIndexOf(true);
     const firstAfter = brain.calls.findIndex((c) => !c.userRowExisted);
@@ -483,12 +508,14 @@ test('killed after the lock: a new server\'s sweeper finishes it; killed mid-run
       store: supabaseDeletionStore(pgliteRpc(db)), brain: fakeBrain().brain,
       diagnostics: { deleteFor: async () => 0 }, now: () => w.clock.now, sleep: async () => undefined, report: () => undefined, log: () => undefined,
     });
-    assert.ok(await restarted.sweep() >= 1);
+    // Ticks until nothing is due (rows other tests left open are swept too; batches are SWEEP_BATCH).
+    const drain = async () => { let n = 0; while (n < 50 && (await restarted.sweep()) > 0) n++; };
+    await drain();
     assert.equal(await userRow(alice.id), null, 'Alice finished by the sweeper');
     assert.ok(await userRow(bob.id), "Bob's row is still held by the dead worker's lease");
 
     w.clock.now += (LEASE_SECONDS + 1) * 1000;
-    await restarted.sweep();
+    await drain();
     assert.equal(await userRow(bob.id), null, 'finished once the lease ran out');
     assert.equal((await row(bob.id))!.state, 'deleted');
   } finally {

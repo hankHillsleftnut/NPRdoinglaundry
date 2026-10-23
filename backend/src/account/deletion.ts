@@ -24,7 +24,10 @@ import type { AppleResult, DeletionNote, DeletionRow, DeletionStore, StepResult 
  * over MAX_RUNS runs with backoff, then recorded as `failed` and the deletion
  * goes on: the users-row delete is never gated on Apple or the brain. A
  * failing users-row delete is retried for as long as it takes, with an alert
- * each time.
+ * each time. The sweep AFTER the row delete is never given up on either: the
+ * deletion stays 'user_deleted' (sweep_after 'failed') and is retried up to
+ * every six hours until the brain answers ok:true, so files and grants are
+ * never left with no record pointing at them.
  *
  * Never logged or stored in the log: an Apple code, a token, a ciphertext, an
  * email, a name, an Apple subject. The log line (below) has a closed shape.
@@ -48,6 +51,12 @@ export const SWEEP_BATCH = 5;
 /** The wait before the next run: 2, 4, 8, 16 ... minutes, at most an hour. */
 export function backoffMs(runs: number): number {
   return Math.min(60, 2 ** Math.max(1, runs)) * 60_000;
+}
+
+/** After the users row is gone the second sweep is retried for good, on a longer schedule: at most every six hours. */
+export const AFTER_ROW_RETRY_MAX_MS = 6 * 60 * 60 * 1000;
+export function afterRowBackoffMs(runs: number): number {
+  return Math.min(AFTER_ROW_RETRY_MAX_MS, backoffMs(runs) * 2 ** Math.max(0, runs - MAX_RUNS));
 }
 
 // ---------------------------------------------------------------------------
@@ -348,15 +357,22 @@ export function createAccountDeletion(deps: AccountDeletionDeps): AccountDeletio
     }
 
     if (row.state === 'user_deleted') {
-      if (row.sweepAfter === null) {
+      // The second sweep is the last thing that can find the person's files and
+      // grants once the users row is gone (the brain sweeps from the id alone).
+      // So it is never given up on: until the brain answers ok:true the row stays
+      // 'user_deleted' with sweep_after 'failed', and the sweeper keeps trying on a
+      // longer schedule (e.g. while the brain's route is not deployed yet).
+      if (row.sweepAfter !== 'ok') {
         const s = await sweepStep(row, 'sweep_after');
-        if ('retry' in s && !finalRun) {
+        if (!('done' in s) || s.done.result !== 'ok') {
+          if (row.sweepAfter !== 'failed') await note({ sweepAfter: 'failed' });
           step('sweep_after', 'retry');
-          return defer();
+          await store.defer(row.id, iso(deps.now() + afterRowBackoffMs(row.runs)));
+          step('run', 'deferred');
+          return 'deferred';
         }
-        const done = 'done' in s ? s.done : s.partial ?? { result: 'failed' as const, grantsFailed: 0, objectsSkipped: 0 };
-        await note({ sweepAfter: done.result, objectsSkipped: row.objectsSkipped + done.objectsSkipped });
-        step('sweep_after', done.result, { objectsSkipped: done.objectsSkipped });
+        await note({ sweepAfter: 'ok', objectsSkipped: row.objectsSkipped + s.done.objectsSkipped });
+        step('sweep_after', 'ok', { objectsSkipped: s.done.objectsSkipped });
       }
       await store.finish(row.id, iso(deps.now()));
       step('run', 'deleted');
