@@ -102,3 +102,8 @@ test('block comments are ignored, and an escaped backslash does not hide a comme
   assert.deepEqual(scan(app({ 'Features/A.swift': '/* RetrospectAPIClient\n   URLSession.shared */\nlet x = 1\n' })), []);
   assert.equal(scan(app({ 'Features/A.swift': 'let s = "\\\\" // RetrospectAPIClient\nlet c = RetrospectAPIClient.shared\n' })).length, 1);
 });
+
+test('a string that only says URLSession or RetrospectAPIClient is not a use, and a real use after it still is', () => {
+  assert.deepEqual(scan(app({ 'Features/A.swift': 'let m = "URLSession failed: RetrospectAPIClient is gone"\n' })), []);
+  assert.equal(scan(app({ 'Features/A.swift': 'let m = "ok"; let s = URLSession(configuration: .default)\n' })).length, 1);
+});

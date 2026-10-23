@@ -70,6 +70,24 @@ export function withoutComments(text) {
   return out.join('\n');
 }
 
+/** A line with the inside of its string literals blanked (the quotes stay): a message that merely says "URLSession failed" is not a use. */
+export function maskStrings(line) {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < line.length; i++) {
+    if (inString && line[i] === '\\') {
+      out += '  ';
+      i++;
+    } else if (line[i] === '"') {
+      inString = !inString;
+      out += '"';
+    } else {
+      out += inString ? ' ' : line[i];
+    }
+  }
+  return out;
+}
+
 export function pathTemplates(appRoot) {
   const text = readFileSync(join(appRoot, 'Platform/Backend/Endpoint.swift'), 'utf8');
   const start = text.indexOf('enum PathTemplate');
@@ -89,10 +107,11 @@ export function scan(appRoot) {
       const lines = withoutComments(readFileSync(file, 'utf8')).split('\n');
       lines.forEach((line, index) => {
         const where = `${rel}:${index + 1}`;
-        if (line.includes('RetrospectAPIClient') && !OLD_CLIENT_OK.has(rel)) {
+        const code = maskStrings(line);
+        if (code.includes('RetrospectAPIClient') && !OLD_CLIENT_OK.has(rel)) {
           problems.push(`${where}: uses RetrospectAPIClient (the old client); only Platform/Bridges.swift may`);
         }
-        if (!NETWORK_OK(rel) && /\b(URLRequest|URLSession)\b/.test(line)) {
+        if (!NETWORK_OK(rel) && /\b(URLRequest|URLSession)\b/.test(code)) {
           problems.push(`${where}: talks to a server outside Backend.Client (URLRequest / URLSession)`);
         }
         if (!PATHS_WRITTEN_HERE.has(rel)) {
