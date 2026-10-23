@@ -13,6 +13,7 @@ struct SignInScreen: View {
     /// The sample launcher plays a tap on the button as the sign-in (Apple's sheet can't run on invented data).
     var sampleTaps = false
     @Environment(\.rCompactHeight) private var compact
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -26,9 +27,21 @@ struct SignInScreen: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { bottomZone }
-        .animation(RMotion.standard(RNumber.motionDurationSlow), value: model.phase)
-        .animation(RMotion.standard(RNumber.motionDurationBase), value: model.isOnline)
+        .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.phase)
+        .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationBase), value: model.isOnline)
         .sensoryFeedback(RHaptic.error, trigger: model.failures)
+        // Every failure is said as well as felt (checklist 2), each time, not only the first.
+        .rErrorAnnouncement(SignInModel.failureLine, attempt: model.failures)
+        .onChange(of: model.phase) { _, phase in
+            if phase == .signingIn {
+                AccessibilityNotification.Announcement(model.waitLine).post()
+            }
+        }
+        .onChange(of: model.isOnline, initial: true) { _, online in
+            if !online {
+                AccessibilityNotification.Announcement(SignInModel.offlineReason).post()
+            }
+        }
         .accessibilityIdentifier("screen.PI0")
     }
 
@@ -50,20 +63,31 @@ struct SignInScreen: View {
         .rAppear()
     }
 
+    /// The rest line and the wait share one slot sized for the taller of the two (both are laid
+    /// out, hidden), so the title and the mark never move when one becomes the other.
     private var line: some View {
+        ZStack(alignment: .top) {
+            lineRow(model.restLine, waiting: false).hidden()
+            lineRow(model.waitLine, waiting: true).hidden()
+            lineRow(model.line, waiting: model.phase == .signingIn)
+                .id(model.line)
+                .rBlurReplace()
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Paper AC-1 restoring: the 16 syncing ring, 8 before the words.
+    private func lineRow(_ text: String, waiting: Bool) -> some View {
         HStack(spacing: RDimension.space2) {
-            if model.phase == .signingIn {
-                RSpinner(diameter: RDimension.sizeIconDefault)
-                    .transition(.opacity)
+            if waiting {
+                RSpinner(diameter: RDimension.sizeIconSmall)
             }
-            Text(model.line)
+            Text(text)
                 .rText(.body)
                 .foregroundStyle(RColor.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .id(model.line)
-        .transition(.blurReplace)
     }
 
     // MARK: Bottom zone
@@ -80,7 +104,7 @@ struct SignInScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, RDimension.space2)
-                .transition(.blurReplace)
+                .rBlurReplace()
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("signin.failure")
             }

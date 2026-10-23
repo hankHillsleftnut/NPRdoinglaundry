@@ -12,7 +12,8 @@ import SwiftUI
 struct RSignInButtons: View {
     enum State: Equatable {
         case rest
-        /// Sign-in is under way: the button dims to `opacity.pending` and can't be pressed twice.
+        /// Sign-in is under way: the button rests disabled at `opacity.disabled` (Paper AC-1
+        /// restoring) so it plainly can't be pressed twice; the wait is said under the title.
         case pending
         /// Can't be used now; the reason shows under it ("connect to sign in").
         case disabled(reason: String)
@@ -45,17 +46,19 @@ struct RSignInButtons: View {
                     RSymbol(name: "wifi.slash", size: .small, tint: RColor.textLabel)
                     Text(reason).rText(.metaLine).foregroundStyle(RColor.textLabel)
                 }
-                .transition(.blurReplace)
+                .rBlurReplace()
             }
         }
         .animation(RMotion.standard(RNumber.motionDurationFast), value: state)
     }
 
+    /// Anything but rest is disabled, and looks it: Paper dims the restoring buttons to
+    /// `opacity.disabled`, not the lighter `opacity.pending`, which left the black pill looking live.
+    static func opacity(_ state: State) -> Double {
+        state == .rest ? 1 : RNumber.opacityDisabled
+    }
+
     private var opacity: Double {
-        switch state {
-        case .rest: 1
-        case .pending: RNumber.opacityPending
-        case .disabled: RNumber.opacityDisabled
-        }
+        Self.opacity(state)
     }
 }

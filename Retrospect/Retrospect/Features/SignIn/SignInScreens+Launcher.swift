@@ -20,13 +20,26 @@ extension ScreenRegistry {
 /// The sign-in page on the sample coordinator, the way the app will mount it.
 struct SignInLaunch: View {
     @State private var model: SignInModel
+    private let scenario: SignInScenario
 
     init(scenario: SignInScenario) {
+        self.scenario = scenario
         _model = State(initialValue: SignInModel.sample(scenario))
     }
 
     var body: some View {
         SignInScreen(model: model, sampleTaps: true)
+            .task {
+                // Offline comes back after a few seconds, through the same `watch` the app uses.
+                guard scenario == .offline else { return }
+                let (changes, continuation) = AsyncStream.makeStream(of: Bool.self)
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    continuation.yield(true)
+                    continuation.finish()
+                }
+                await model.watch(changes)
+            }
     }
 }
 

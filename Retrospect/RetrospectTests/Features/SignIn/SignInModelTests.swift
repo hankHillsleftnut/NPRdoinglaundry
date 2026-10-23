@@ -67,7 +67,7 @@ struct SignInModelTests {
         #expect(access == .approved)
     }
 
-    @Test("welcome back says your entries are safe, and restoring names what comes back")
+    @Test("welcome back says nothing is lost (Paper AC-1), and restoring names what comes back")
     func returning() {
         let rest = SignInModel(look: .returning, coordinator: ScriptedCoordinator())
         #expect(rest.title == "welcome back.")
@@ -76,7 +76,7 @@ struct SignInModelTests {
         #expect(restoring.line == "bringing back your entries and episodes…")
         #expect(restoring.buttons == .pending)
         let failed = SignInModel(look: .returning, coordinator: ScriptedCoordinator(), phase: .failed)
-        #expect(failed.failure == "that didn't work. your entries are safe; try again.")
+        #expect(failed.failure == "that didn't work. nothing is lost; try again.")
     }
 
     @Test("the splash promises, and the line becomes the wait while signing in")
@@ -120,5 +120,52 @@ struct SignInModelTests {
         }
         #expect(SignInModel.sample(.offline).isOnline == false)
         #expect(ScreenRegistry.screen("PI0")?.states.count == SignInScenario.allCases.count)
+    }
+
+    @Test("while signing in the button is disabled and looks it: Paper's opacity.disabled, not the lighter pending")
+    func pendingLooksDisabled() {
+        let model = SignInModel(look: .splash, coordinator: ScriptedCoordinator(), phase: .signingIn)
+        #expect(model.buttons == .pending)
+        #expect(RSignInButtons.opacity(.pending) == RNumber.opacityDisabled)
+        #expect(RSignInButtons.opacity(.disabled(reason: SignInModel.offlineReason)) == RNumber.opacityDisabled)
+        #expect(RSignInButtons.opacity(.rest) == 1)
+    }
+
+    @Test("the wait and the rest line are both known up front, so the page can hold room for the taller")
+    func lineSlot() {
+        for look in [SignInModel.Look.splash, .returning] {
+            let rest = SignInModel(look: look, coordinator: ScriptedCoordinator())
+            let waiting = SignInModel(look: look, coordinator: ScriptedCoordinator(), phase: .signingIn)
+            #expect(rest.line == rest.restLine)
+            #expect(waiting.line == waiting.waitLine)
+            #expect(rest.restLine == waiting.restLine && rest.waitLine == waiting.waitLine)
+        }
+    }
+
+    @Test("after a sign-in lands, another Apple result never hands on a second time")
+    func handsOnOnce() async {
+        let coordinator = ScriptedCoordinator()
+        let model = SignInModel(look: .returning, coordinator: coordinator)
+        var handed = 0
+        model.onSignedIn = { _, _ in handed += 1 }
+        await model.appleFinished(.failure(Stub()))
+        await model.appleFinished(.failure(Stub()))
+        #expect(handed == 1)
+        #expect(coordinator.completions == 1)
+        #expect(model.buttons == .pending)
+    }
+
+    @Test("the launcher reaches every moment: from rest a tap fails, the next try signs in")
+    func sampleScript() async {
+        let coordinator = SampleSignIn(script: SignInScenario.splash.script, sleep: { _ in })
+        let model = SignInModel(look: .splash, coordinator: coordinator)
+        var handed = 0
+        model.onSignedIn = { _, _ in handed += 1 }
+        await model.appleFinished(.failure(Stub()))
+        #expect(model.phase == .failed)
+        #expect(model.failures == 1)
+        await model.appleFinished(.failure(Stub()))
+        #expect(handed == 1)
+        #expect(SignInScenario.signInFailed.script.count == 1)
     }
 }

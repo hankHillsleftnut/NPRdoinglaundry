@@ -81,26 +81,35 @@ final class SignInModel {
 
     /// The line under the title. It becomes the wait while signing in.
     var line: String {
-        switch (look, phase) {
-        case (.splash, .signingIn): "signing you in…"
-        case (.returning, .signingIn): "bringing back your entries and episodes…"
-        case (.splash, _): Self.splashLine
-        case (.returning, _): "sign in to pick up where you left off."
-        }
+        phase == .signingIn ? waitLine : restLine
     }
 
-    /// The one line above the button after a failure.
-    var failure: String? {
-        guard phase == .failed else { return nil }
-        return look == .splash ? "that didn't work. nothing is lost; try again." : "that didn't work. your entries are safe; try again."
+    /// The line at rest and the wait that replaces it. The page lays out room for the taller of
+    /// the two, so the title never moves when one becomes the other.
+    var restLine: String {
+        look == .splash ? Self.splashLine : "sign in to pick up where you left off."
     }
+
+    var waitLine: String {
+        look == .splash ? "signing you in…" : "bringing back your entries and episodes…"
+    }
+
+    /// The one line above the button after a failure (the same words on both looks: AC-1's
+    /// approved board in Paper and the handoff say "nothing is lost").
+    var failure: String? {
+        phase == .failed ? Self.failureLine : nil
+    }
+
+    static let failureLine = "that didn't work. nothing is lost; try again."
 
     var buttons: RSignInButtons.State {
         if phase == .signingIn {
             return .pending
         }
-        return isOnline ? .rest : .disabled(reason: "connect to sign in")
+        return isOnline ? .rest : .disabled(reason: Self.offlineReason)
     }
+
+    static let offlineReason = "connect to sign in"
 
     /// The splash's promise and line are "an experiment" (the founder's tag): one place to change them.
     static let splashTitle = "everything about you, finally connected."
