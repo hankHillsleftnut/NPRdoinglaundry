@@ -16,7 +16,7 @@ import { startHarness, type Harness } from './support/harness.js';
 import { createV2Router } from '../src/doors/router.js';
 import { supabaseBriefStore } from '../src/briefs/store.js';
 import { supabaseSignAudio, SIGNED_AUDIO_TTL_SECONDS, type SignAudio, type SigningClient } from '../src/briefs/audio.js';
-import { EPISODE_DETAIL_COLUMNS, PODCAST_AUDIO_BUCKET, supabasePodcastStore, type PodcastDbClient, type PodcastStore } from '../src/podcasts/store.js';
+import { EPISODE_DETAIL_COLUMNS, inOwnFolder, PODCAST_AUDIO_BUCKET, supabasePodcastStore, type PodcastDbClient, type PodcastStore } from '../src/podcasts/store.js';
 import { EpisodeByIdOut, legacyLines, type Episode } from '../src/podcasts/episode-map.js';
 import { scriptLines, sentences } from '../src/podcasts/split.js';
 
@@ -165,6 +165,51 @@ test('a path outside the owner\'s own folder is never signed (words only)', asyn
   assert.equal((await episode(p.auth, named)).hasAudio, false);
 });
 
+test('a stored path that tries to leave the caller\'s folder is never signed, however it is written', async () => {
+  const p = await person();
+  const me = p.id;
+  const bad = [
+    `podcasts/${me}/../${OTHER}/x.mp3`,
+    `podcasts/${me}/../../brief-audio/${OTHER}/b.mp3`,
+    `podcasts/${me}/%2e%2e/${OTHER}/x.mp3`,
+    `podcasts/${me}/%2e%2e`,
+    `podcasts/${me}/%252e%252e`,
+    `podcasts/${me}/..`,
+    `podcasts/${me}/.`,
+    `podcasts/${me}/x.mp3#/${me}/y`,
+    `podcasts/${OTHER}/x.mp3#/${me}/y`,
+    `podcasts/${me}/x.mp3?/../${OTHER}`,
+    `podcasts/${me}\\..\\${OTHER}\\x.mp3`,
+    `podcasts//${me}/x.mp3`,
+    `podcasts/${me}//x.mp3`,
+    `podcasts/${me}/`,
+    `podcasts/${me}/sub/x.mp3`,
+    `other/${me}/x.mp3`,
+    `${me}/x.mp3`,
+    `/podcasts/${me}/x.mp3`,
+    `podcasts/${OTHER}/x.mp3`,
+  ];
+  for (const path of bad) {
+    assert.equal(inOwnFolder(path, me), false, path);
+    const id = await insertEpisode(me, { audio: path });
+    signed.length = 0;
+    const e = await episode(p.auth, id);
+    assert.deepEqual(signed, [], path);
+    assert.equal(e.hasAudio, false, path);
+    assert.equal(e.audio, undefined, path);
+  }
+  // An old public URL whose encoded path decodes into a traversal is refused after decoding.
+  for (const tail of [`podcasts/${me}/..%2F..%2F${OTHER}%2Fx.mp3`, `podcasts/${me}/x.mp3%23/${me}/y`, `podcasts/${me}/%252e%252e%2Fx.mp3`]) {
+    const id = await insertEpisode(me, { audio: null, audioUrl: `https://x.supabase.co/storage/v1/object/public/podcast-audio/${tail}` });
+    signed.length = 0;
+    assert.equal((await episode(p.auth, id)).hasAudio, false, tail);
+    assert.deepEqual(signed, [], tail);
+  }
+  // What the brain writes still signs.
+  assert.equal(inOwnFolder(`podcasts/${me}/0b6f1c2e-run.mp3`, me), true);
+  assert.equal(inOwnFolder(`podcasts/${me.toUpperCase()}/run.mp3`, me), true);
+});
+
 test('storage refusing the link reads as words only, never hasAudio without audio', async () => {
   const p = await person();
   const id = await insertEpisode(p.id);
@@ -302,6 +347,10 @@ test('split: abbreviations, short forms and initials stay inside a sentence', ()
   assert.deepEqual(sentences('Small things, e.g. the walk, i.e. the habit. Then sleep.'), ['Small things, e.g. the walk, i.e. the habit.', 'Then sleep.']);
   assert.deepEqual(sentences('Mrs. Lee and J. Smith met at 7 a.m. on site.'), ['Mrs. Lee and J. Smith met at 7 a.m. on site.']);
   assert.deepEqual(sentences('You slept 7.5 hours. Good.'), ['You slept 7.5 hours.', 'Good.']);
+  const started = performance.now();
+  assert.deepEqual(sentences(`${'.'.repeat(50_000)}x`), [`${'.'.repeat(50_000)}x`]);
+  assert.deepEqual(sentences(`wait${'?'.repeat(50_000)} then.`), [`wait${'?'.repeat(50_000)}`, 'then.']);
+  assert.ok(performance.now() - started < 500, 'a long run of terminators is linear');
   assert.deepEqual(sentences('you slept more than i. then monday came.'), ['you slept more than i.', 'then monday came.'], '"i" is a word, not an initial');
 });
 

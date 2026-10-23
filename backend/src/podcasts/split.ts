@@ -17,7 +17,8 @@ const ABBREVIATIONS: ReadonlySet<string> = new Set([
 ]);
 
 /** A sentence end: terminators, then any closing quotes or brackets, then a space. */
-const END = /[.!?…]+["'”’)\]]*(?=\s)/g;
+// The lookbehind starts a match only at a run's first terminator, so a long run is linear, not quadratic.
+const END = /(?<![.!?…])[.!?…]+["'”’)\]]*(?=\s)/g;
 
 function keepsGoing(paragraph: string, stopAt: number): boolean {
   if (paragraph[stopAt] !== '.') return false;

@@ -82,14 +82,25 @@ export function audioPathOf(raw: Record<string, unknown>): string | null {
   try { return decodeURIComponent(path); } catch { return path; }
 }
 
+/** A file name the brain writes (`<run>.mp3`): letters, digits, `_`, `-`, `.`, spaces; never `.`/`..`, `%`, `?`, `#`, `\\` or `/`. */
+const SAFE_FILE = /^[A-Za-z0-9_][A-Za-z0-9_. -]*$/;
+
 /**
- * Defence in depth: the service role can sign any object in the bucket, so a
- * path is signed only when it sits in this person's own folder (the brain
- * writes `podcasts/<userId>/<run>.mp3`, and always has).
+ * Defence in depth: the service role can sign any object in the bucket, and
+ * storage-js puts the path into the URL unescaped, so a path is signed only
+ * when it is exactly `podcasts/<callerId>/<one safe file name>` (what the
+ * brain writes, and always has). Checked on the decoded form: a path that
+ * still decodes to something else (`%2e%2e`, `%252e`) is refused, as are
+ * `..`, `.`, empty or extra segments, `?`, `#`, a backslash and any folder
+ * outside `podcasts/`.
  */
 export function inOwnFolder(path: string, userId: string): boolean {
-  const id = userId.toLowerCase();
-  return path.split('/').slice(0, -1).some((part) => part.toLowerCase() === id);
+  let decoded: string;
+  try { decoded = decodeURIComponent(path); } catch { return false; }
+  if (decoded !== path) return false;
+  const parts = path.split('/');
+  return parts.length === 3 && parts[0] === 'podcasts' && parts[1]!.toLowerCase() === userId.toLowerCase()
+    && parts[2] !== '.' && parts[2] !== '..' && SAFE_FILE.test(parts[2]!);
 }
 
 const day = (v: unknown): string | null => {
