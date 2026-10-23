@@ -32,6 +32,8 @@ extension Platform {
         let invites: Session.InviteCenter
         /// The version floor (PL1.6): whether this build must update.
         let floor: Platform.VersionFloor
+        /// Every way into the app: links, universal links (PL5.2). An invite goes straight to `invites`.
+        let router: Routing.Router
         /// What the app did, for "send a report" (DG.3). No database until
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
@@ -43,6 +45,14 @@ extension Platform {
         /// foreground and background land in the order the scene changed.
         private var diagnosticsWork: Task<Void, Never>?
         private var sessionFollow: Task<Void, Never>?
+        private var stateFollow: Task<Void, Never>?
+
+        /// Where the new session stands, as last seen; nil before the first answer. The new root shows the
+        /// sign-in screen or the app from this, never from the old client.
+        private(set) var sessionState: Session.State?
+        /// The one way a person signs in (PL1.4b): Sign in with Apple on `/v2/auth/apple`. It is the only
+        /// thing that gives `Session.Manager` a credential.
+        let signIn: Session.SignInCoordinator
 
         /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
         /// nil before. The scene-phase and background-task bridges drain it.
@@ -79,7 +89,8 @@ extension Platform {
             floor: Platform.VersionFloor,
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) },
-            unsentSource: Box<Store.Outbox?> = Box(nil)
+            unsentSource: Box<Store.Outbox?> = Box(nil),
+            firstAuthorization: any Session.FirstAuthorizationKeeping = Session.MemoryFirstAuthorization()
         ) {
             self.unsentSource = unsentSource
             self.launch = launch
@@ -90,6 +101,10 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
+            router = Routing.Router(inviteBase: configuration.baseURL, log: log, receiveInvite: { await invites.received(code: $0) })
+            signIn = Session.SignInCoordinator(
+                apple: Session.AppleSignIn(client: client, installer: session, log: log, keeper: firstAuthorization), log: log
+            )
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -139,7 +154,8 @@ extension Platform {
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor,
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) },
-                unsentSource: unsentSource
+                unsentSource: unsentSource,
+                firstAuthorization: store
             )
         }
 
@@ -179,9 +195,20 @@ extension Platform {
             )
         }
 
-        /// Sign in with Apple, wired to this environment's client and session.
-        func appleSignIn() -> Session.AppleSignIn {
-            Session.AppleSignIn(client: client, installer: session, log: log)
+        /// Follows the new session's states into `sessionState`, once. It changes nothing else: no store is
+        /// opened or erased from here.
+        func followSessionState() {
+            followSessionState(session.states())
+        }
+
+        func followSessionState(_ states: AsyncStream<Session.State>) {
+            guard stateFollow == nil else { return }
+            stateFollow = Task { [weak self] in
+                for await state in states {
+                    guard let self else { return }
+                    sessionState = state
+                }
+            }
         }
 
         /// The scene became active: the session finishes a deferred launch
@@ -252,7 +279,9 @@ extension Platform {
 
         @discardableResult
         func sessionWillChange() -> Task<Void, Never> {
-            enqueueDiagnostics { [self] in await closeStore(erasing: true) }
+            // At once, not behind the queue: nothing the last person held may be taken by the next.
+            router.clear()
+            return enqueueDiagnostics { [self] in await closeStore(erasing: true) }
         }
 
         @discardableResult
@@ -265,6 +294,7 @@ extension Platform {
         /// (sign-out, another person signing in); without it the rows stay on the phone for the same person's
         /// next sign-in (the server ended the session on its own).
         func closeStore(erasing: Bool) async {
+            router.clear() // a destination can name one person's entry: it never waits for the next
             let closing = openUserID
             let leftOver = keptUserID
             keptUserID = erasing ? nil : closing ?? keptUserID
