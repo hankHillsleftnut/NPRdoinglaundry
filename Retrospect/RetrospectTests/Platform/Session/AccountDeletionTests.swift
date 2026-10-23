@@ -182,17 +182,14 @@ struct AccountDeletionTests {
         #expect(!String(describing: h.recorder.events).contains("c0de"), "the Apple code is never in a log line")
     }
 
-    @Test(
-        "a dead token after sending is the first request's own lock: deleted, with no refresh",
-        arguments: ["error.session_revoked", "error.unauthenticated"]
-    )
-    func aDeadTokenAfterSendingIsDone(_ fixture: String) async throws {
+    @Test("session_revoked after sending is the first request's own lock: deleted, with no refresh")
+    func aRevokedSessionAfterSendingIsDone() async throws {
         let h = try SessionHarness()
         let env = environment(h)
         try await signedInWithWords(h, env)
-        let dead = try Fixtures.data("00", fixture)
+        let revoked = try Fixtures.data("00", "error.session_revoked")
         h.serve([
-            "/v2/account": { _, _ in (401, dead) },
+            "/v2/account": { _, _ in (401, revoked) },
             "/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer()) },
         ])
 
@@ -203,11 +200,75 @@ struct AccountDeletionTests {
         #expect(try rows() == 0)
     }
 
+    @Test("a 401 after sending is checked with one refresh: refused means the account is locked, so the phone is erased")
+    func aPlain401ThenARefusedRefreshIsDone() async throws {
+        let h = try SessionHarness()
+        let env = environment(h)
+        try await signedInWithWords(h, env)
+        let seen = states(h)
+        let unauthenticated = try Fixtures.data("00", "error.unauthenticated")
+        let revoked = try Fixtures.data("00", "error.session_revoked")
+        h.serve([
+            "/v2/account": { _, _ in (401, unauthenticated) },
+            "/v2/auth/refresh": { _, _ in (401, revoked) },
+        ])
+
+        #expect(await env.deleteAccount(apple: FakeApple.same()) == .deleted)
+
+        #expect(h.requests(to: "/v2/account").count == 1, "the delete is never replayed")
+        #expect(h.requests(to: "/v2/auth/refresh").count == 1)
+        #expect(try rows() == 0)
+        await env.finishAccountDeletion()
+        try await settle { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
+        #expect(!Self.flashedSignInAgain(seen.value), "the refused refresh doesn't end the session under the goodbye")
+    }
+
+    @Test("a 401 that was only an expired token (the phone's clock behind): the refresh works, nothing is erased, the flag goes")
+    func aPlain401ThenAWorkingRefreshKeepsEverything() async throws {
+        let h = try SessionHarness()
+        let env = environment(h)
+        try await signedInWithWords(h, env)
+        let unauthenticated = try Fixtures.data("00", "error.unauthenticated")
+        h.serve([
+            "/v2/account": { _, _ in (401, unauthenticated) },
+            "/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer()) },
+        ])
+
+        #expect(await env.deleteAccount(apple: FakeApple.same()) == .failed(.notNow))
+
+        #expect(h.requests(to: "/v2/account").count == 1)
+        #expect(h.requests(to: "/v2/auth/refresh").count == 1)
+        #expect(try rows() == 1)
+        #expect(env.outbox != nil)
+        #expect(h.keychain.contents["pending_deletion"] == nil)
+        #expect(h.stored()?.accessToken == "a2", "the refreshed session is kept")
+        #expect(try await h.manager.accessToken() == "a2", "the hold is released")
+    }
+
+    @Test(
+        "a 5xx after sending may come after the lock: nothing erased, the flag KEPT for the next launch's question",
+        arguments: [("error.internal", 500), ("error.upstream_unavailable", 503), ("error.upstream_timeout", 504)]
+    )
+    func aServerErrorKeepsTheFlag(_ fixture: String, _ status: Int) async throws {
+        let h = try SessionHarness()
+        let env = environment(h)
+        try await signedInWithWords(h, env)
+        let body = try Fixtures.data("00", fixture)
+        h.serve(["/v2/account": { _, _ in (status, body) }])
+
+        #expect(await env.deleteAccount(apple: FakeApple.same()) == .failed(.noAnswer))
+
+        #expect(h.requests(to: "/v2/account").count == 1, "sent once")
+        #expect(h.keychain.contents["pending_deletion"] != nil)
+        #expect(try rows() == 1)
+        #expect(try await h.manager.accessToken() == "invented.access.token", "the hold is released")
+    }
+
     // MARK: Refused or unanswered
 
     @Test(
         "a refusal shows the error line, erases nothing, clears the flag and leaves the session working; a retry can work",
-        arguments: [("06", "error.apple_confirmation_required", 409), ("00", "error.upstream_unavailable", 503), ("00", "error.invalid_credentials", 401)]
+        arguments: [("06", "error.apple_confirmation_required", 409), ("00", "error.rate_limited", 429), ("00", "error.invalid_credentials", 401)]
     )
     func aRefusalErasesNothing(_ folder: String, _ fixture: String, _ status: Int) async throws {
         let h = try SessionHarness()
@@ -263,12 +324,32 @@ struct AccountDeletionTests {
 
         await env.resumeAccountDeletionIfPending()
 
-        #expect(h.requests(to: "/v2/auth/refresh").isEmpty, "a 401 during the check is never refreshed")
+        #expect(h.requests(to: "/v2/auth/refresh").count == 1, "one refresh tells a locked account from an expired token")
         #expect(try rows() == 0)
         #expect(h.keychain.contents.isEmpty)
         #expect(await h.manager.state == .signedOut(hasSignedInBefore: false, reason: .none))
         try await settle { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
         #expect(!Self.flashedSignInAgain(seen.value))
+    }
+
+    @Test("a launch whose 401 was only an expired token: the refresh works, the flag goes, nothing is erased")
+    func aLaunch401ThenAWorkingRefreshClearsTheFlag() async throws {
+        let h = try SessionHarness()
+        let env = environment(h)
+        try await signedInWithWords(h, env)
+        try await h.store.markDeletionPending()
+        let unauthenticated = try Fixtures.data("00", "error.unauthenticated")
+        h.serve([
+            "/v2/access": { _, _ in (401, unauthenticated) },
+            "/v2/auth/refresh": { _, _ in (200, SessionHarness.refreshAnswer()) },
+        ])
+
+        await env.resumeAccountDeletionIfPending()
+
+        #expect(h.keychain.contents["pending_deletion"] == nil)
+        #expect(try rows() == 1)
+        #expect(h.stored()?.accessToken == "a2")
+        #expect(h.recorder.events.contains(.accountDeletion(.resumeCleared)))
     }
 
     @Test("killed before the server heard: the next launch finds the session working, clears the flag and erases nothing")

@@ -299,6 +299,22 @@ struct ClientTests {
         #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
     }
 
+    @Test("the account door records no diagnostics row, whatever it answers; the next door still does (PL3.7g.min)")
+    func theAccountDoorRecordsNoRow() async throws {
+        defer { StubProtocol.clear(session) }
+        try serve(status: 202, Fixtures.data("06", "account.delete.response"))
+        let client = client()
+
+        _ = try await client.send(Backend.Endpoints.DeleteAccount(appleAuthorizationCode: "c0de.invented.0002"))
+        await client.recordsSettled()
+        #expect(await diagnostics.records.isEmpty, "a report never names the account door, and the row would outlive the account")
+
+        try serve(Fixtures.data("00", "meta"))
+        _ = try await client.send(Backend.Endpoints.Meta())
+        await client.recordsSettled()
+        #expect(await diagnostics.records == [.request(.init(method: .get, route: .meta, status: 200, ms: 0))])
+    }
+
     @Test("a request returns without waiting for the recorder, and its row still lands after", .timeLimit(.minutes(1)))
     func aRequestNeverWaitsOnTheRecorder() async throws {
         defer { StubProtocol.clear(session) }

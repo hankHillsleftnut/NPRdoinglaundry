@@ -389,8 +389,8 @@ extension Session {
             return credentials.accessTokenExpiresAt.timeIntervalSince(serverNow) < Self.refreshAhead
         }
 
-        /// One refresh at a time: every caller awaits the same task.
-        private func refresh() async throws -> Credentials {
+        /// One refresh at a time: every caller awaits the same task. Internal for the deletion's one probe (AccountDeletion.swift).
+        func refresh() async throws -> Credentials {
             if let refreshTask {
                 return try await refreshTask.value
             }
