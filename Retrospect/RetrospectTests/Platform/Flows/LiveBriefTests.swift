@@ -35,6 +35,7 @@ struct LiveBriefTests {
     private let moment = Moment(Date(timeIntervalSince1970: 1_792_569_540))
     private let session = URLSession.stubbed()
     private let clock = TestClock()
+    private let reachability = StreamingReachability()
     private let log = Platform.Log.Recorder()
     private let database: Store.LocalDatabase
     private let data: LiveJournalData
@@ -49,7 +50,7 @@ struct LiveBriefTests {
         self.database = database
         data = LiveJournalData(
             repository: Platform.Repositories.Journal(database: database, client: client, now: { moment.value }, timeZone: { .gmt }),
-            outbox: Store.Outbox(database: database, log: log), reachability: StreamingReachability(),
+            outbox: Store.Outbox(database: database, log: log), reachability: reachability,
             now: { moment.value }, timeZone: { .gmt }, clock: clock
         )
     }
@@ -228,5 +229,203 @@ struct LiveBriefTests {
         data.stop()
         try await Task.sleep(for: .milliseconds(50))
         #expect(clock.pendingSleeps == 0)
+    }
+
+    // MARK: Coming back (P09.live)
+
+    /// What each door answers now, and an optional gate that holds the next entries answer until opened.
+    private final class Stage: @unchecked Sendable {
+        private let lock = NSLock()
+        private var answers: [String: (Int, String, String)] = [
+            "/v2/entries/today": (200, "02", "entries.today.empty"),
+            "/v2/briefs/latest": (200, "02", "brief.latest.v2"),
+            "/v2/guesses": (200, "02", "guesses.silent"),
+        ]
+        private var gate: DispatchSemaphore?
+
+        func answer(_ path: String, _ status: Int, _ folder: String, _ fixture: String) {
+            lock.withLock { answers[path] = (status, folder, fixture) }
+        }
+
+        func hold() {
+            lock.withLock { gate = DispatchSemaphore(value: 0) }
+        }
+
+        func release() {
+            lock.withLock { gate }?.signal()
+        }
+
+        func reply(_ path: String) -> (Int, String, String) {
+            if path == "/v2/entries/today", let gate = lock.withLock({ gate }) {
+                gate.wait()
+            }
+            return lock.withLock { answers[path] ?? (404, "00", "error.internal") }
+        }
+    }
+
+    private func stage() -> Stage {
+        let stage = Stage()
+        StubProtocol.register(on: session) { request in
+            let (status, folder, fixture) = stage.reply(request.url?.path ?? "")
+            return try (HTTPURLResponse.stub(request, status: status), Fixtures.data(folder, fixture))
+        }
+        return stage
+    }
+
+    private func asked(_ path: String) -> Int {
+        StubProtocol.requests(on: session).filter { $0.url?.path == path }.count
+    }
+
+    private var doors: [String] {
+        ["/v2/entries/today", "/v2/briefs/latest", "/v2/guesses"]
+    }
+
+    @Test("a brief still being made after the last look is ready on screen once the app comes back")
+    func aLateBriefArrivesOnReturn() async throws {
+        defer { StubProtocol.clear(session) }
+        let stage = stage()
+        stage.answer("/v2/briefs/latest", 200, "02", "brief.latest.making")
+        await data.load()
+        for (index, step) in [60.0, 120, 180, 300, 300].enumerated() {
+            try await waitUntil { clock.pendingSleeps == 1 }
+            moment.advance(step)
+            clock.advance(by: .seconds(step))
+            try await waitUntil { asked("/v2/briefs/latest") == index + 2 }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(clock.pendingSleeps == 0)
+        if case .making? = data.brief.value {} else {
+            Issue.record("still being made, got \(data.brief)")
+        }
+
+        stage.answer("/v2/briefs/latest", 200, "02", "brief.latest.v2")
+        moment.advance(120)
+        await data.refresh()
+
+        if case .ready? = data.brief.value {} else {
+            Issue.record("expected ready after coming back, got \(data.brief)")
+        }
+    }
+
+    @Test("a refresh that finds the brief still being made starts the wait again")
+    func theWaitRestarts() async throws {
+        defer { StubProtocol.clear(session) }
+        let stage = stage()
+        await data.load()
+        #expect(clock.pendingSleeps == 0)
+        stage.answer("/v2/briefs/latest", 200, "02", "brief.latest.making")
+        moment.advance(61)
+
+        await data.refresh()
+
+        try await waitUntil { clock.pendingSleeps == 1 }
+    }
+
+    @Test("a second return inside a minute asks nothing; a minute later it asks all three doors once")
+    func throttled() async {
+        defer { StubProtocol.clear(session) }
+        _ = stage()
+        await data.load()
+        let before = doors.map(asked)
+
+        moment.advance(30)
+        await data.refresh()
+        #expect(doors.map(asked) == before, "inside the minute nothing is asked")
+
+        moment.advance(31)
+        await data.refresh()
+        #expect(doors.map(asked) == before.map { $0 + 1 })
+
+        moment.advance(10)
+        await data.refresh()
+        #expect(doors.map(asked) == before.map { $0 + 1 }, "the window starts again at each look")
+    }
+
+    @Test("a refresh during a load or another refresh is dropped, not run twice")
+    func neverOverlaps() async throws {
+        defer { StubProtocol.clear(session) }
+        let stage = stage()
+        await data.load()
+        moment.advance(61)
+        stage.hold()
+        let first = Task { await data.refresh() }
+        try await waitUntil { asked("/v2/entries/today") == 2 }
+
+        moment.advance(61)
+        await data.refresh()
+        stage.release()
+        await first.value
+
+        #expect(asked("/v2/entries/today") == 2)
+        #expect(asked("/v2/briefs/latest") == 2)
+    }
+
+    @Test("a failed refresh keeps what is on screen, and offline asks nothing")
+    func failureAndOffline() async throws {
+        defer { StubProtocol.clear(session) }
+        let stage = stage()
+        stage.answer("/v2/entries/today", 200, "02", "entries.today")
+        stage.answer("/v2/guesses", 200, "02", "guesses")
+        await data.load()
+        let shown = data.today.value?.map(\.id)
+        #expect(shown?.count == 3)
+        #expect(data.guesses.count == 1)
+
+        for path in doors {
+            stage.answer(path, 500, "00", "error.internal")
+        }
+        moment.advance(61)
+        await data.refresh()
+
+        #expect(data.today.value?.map(\.id) == shown)
+        #expect(data.guesses.count == 1)
+        if case .ready? = data.brief.value {} else {
+            Issue.record("the brief stays, got \(data.brief)")
+        }
+
+        try await waitUntil { reachability.subscribers == 1 }
+        reachability.send(false)
+        try await waitUntil { !data.isOnline }
+        let before = doors.map(asked)
+        moment.advance(61)
+        await data.refresh()
+        #expect(doors.map(asked) == before)
+    }
+
+    @Test("after stop() a refresh that was already under way writes nothing")
+    func stopThenLateAnswer() async throws {
+        defer { StubProtocol.clear(session) }
+        let stage = stage()
+        await data.load()
+        #expect(data.today.value?.isEmpty == true)
+        stage.answer("/v2/entries/today", 200, "02", "entries.today")
+        moment.advance(61)
+        stage.hold()
+        let late = Task { await data.refresh() }
+        try await waitUntil { asked("/v2/entries/today") == 2 }
+
+        data.stop()
+        stage.release()
+        await late.value
+
+        #expect(data.today.value?.isEmpty == true)
+        #expect(asked("/v2/briefs/latest") == 1, "nothing more is asked once stopped")
+
+        moment.advance(61)
+        await data.refresh()
+        #expect(asked("/v2/entries/today") == 2)
+    }
+
+    @Test("a refresh on a new day does nothing; the page is rebuilt and loads that day")
+    func aNewDayIsNotRefreshed() async {
+        defer { StubProtocol.clear(session) }
+        _ = stage()
+        await data.load()
+        let before = doors.map(asked)
+
+        moment.advance(24 * 3600)
+        await data.refresh()
+
+        #expect(doors.map(asked) == before)
     }
 }

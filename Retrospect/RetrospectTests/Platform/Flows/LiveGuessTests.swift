@@ -154,4 +154,41 @@ struct LiveGuessTests {
         #expect(try outboxRows().first?.status == .dead)
         #expect(live.guesses.first?.status == .offered)
     }
+
+    /// "Now" for a data seam that moves on.
+    private final class Moment: @unchecked Sendable {
+        private let lock = NSLock()
+        private var date = Date(timeIntervalSince1970: 1_792_591_200)
+
+        var value: Date {
+            lock.withLock { date }
+        }
+
+        func advance(_ seconds: TimeInterval) {
+            lock.withLock { date = date.addingTimeInterval(seconds) }
+        }
+    }
+
+    @Test("a guess made after the first load appears when the app comes back, and an answer waiting to be sent still wins")
+    func aNewGuessAppearsOnReturn() async {
+        defer { StubProtocol.clear(session) }
+        let moment = Moment()
+        let later = LiveJournalData(
+            repository: Platform.Repositories.Journal(
+                database: database, client: client, now: { moment.value }, timeZone: { .gmt }
+            ),
+            outbox: Store.Outbox(database: database, log: log), reachability: StreamingReachability(),
+            now: { moment.value }, timeZone: { .gmt }
+        )
+        serve(list: "guesses.silent")
+        await later.load()
+        #expect(later.guesses.isEmpty)
+
+        serve()
+        moment.advance(61)
+        await later.refresh()
+
+        #expect(later.guesses.first?.status == .offered)
+        #expect(StubProtocol.requests(on: session).filter { $0.url?.path == "/v2/guesses" }.count == 2)
+    }
 }

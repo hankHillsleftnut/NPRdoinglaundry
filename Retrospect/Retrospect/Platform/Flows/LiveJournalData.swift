@@ -43,6 +43,11 @@ final class LiveJournalData: Flows.JournalData {
     @ObservationIgnored private var observing: Task<Void, Never>?
     @ObservationIgnored private var watchingReachability: Task<Void, Never>?
     @ObservationIgnored private var day: String?
+    /// Loads and refreshes running now (a refresh never starts over one), when the server was last asked, and
+    /// whether the person's session has ended (after which nothing is written).
+    @ObservationIgnored private var inFlight = 0
+    @ObservationIgnored private var lastFetch: Date?
+    @ObservationIgnored private var isStopped = false
 
     init(
         repository: Platform.Repositories.Journal,
@@ -62,6 +67,7 @@ final class LiveJournalData: Flows.JournalData {
 
     /// Stops watching the rows and the connection. Called before the person's store is erased.
     func stop() {
+        isStopped = true
         observing?.cancel()
         watchingReachability?.cancel()
         briefPoll?.cancel()
@@ -73,6 +79,9 @@ final class LiveJournalData: Flows.JournalData {
     // MARK: Today
 
     func load() async {
+        inFlight += 1
+        lastFetch = now()
+        defer { inFlight -= 1 }
         startWatchingReachability()
         let loadDay = await repository.localDay()
         await startObserving(day: loadDay)
@@ -98,6 +107,45 @@ final class LiveJournalData: Flows.JournalData {
         await loadGuesses()
     }
 
+    // MARK: Coming back (P09.live)
+
+    /// At most one look at the server a minute for today, the brief and the guesses.
+    static let refreshWindow: TimeInterval = 60
+
+    /// The app came back on the same day: ask the server again, quietly. What is on screen stays until an
+    /// answer replaces it; a failed look changes nothing and offline asks nothing. Dropped when a load or
+    /// another refresh is running, when the last look was under a minute ago, after `stop()`, and when the
+    /// day has moved on (the page is rebuilt and loads for the new day).
+    func refresh() async {
+        guard !isStopped, inFlight == 0, isOnline, let current = day else { return }
+        let started = now()
+        if let lastFetch, (0 ..< Self.refreshWindow).contains(started.timeIntervalSince(lastFetch)) {
+            return
+        }
+        inFlight += 1
+        lastFetch = started
+        defer { inFlight -= 1 }
+        guard await repository.localDay() == current else { return }
+        if let fresh = try? await repository.refreshToday(day: current), stillCurrent(current) {
+            server = fresh
+            publish()
+        }
+        guard stillCurrent(current) else { return }
+        if let fresh = try? await repository.refreshBrief(), stillCurrent(current) {
+            latest = fresh
+            publishBrief(day: current)
+        }
+        guard stillCurrent(current) else { return }
+        if let fresh = try? await repository.refreshGuesses(), stillCurrent(current) {
+            offered = fresh
+            await publishGuesses()
+        }
+    }
+
+    private func stillCurrent(_ checked: String) -> Bool {
+        !isStopped && day == checked
+    }
+
     // MARK: Guesses (PL3.1c)
 
     private func loadGuesses() async {
@@ -119,6 +167,7 @@ final class LiveJournalData: Flows.JournalData {
     /// The guesses with answers still waiting to be sent applied: a queued answer's status wins over the server's.
     private func publishGuesses() async {
         let queued = await repository.queuedAnswers()
+        guard !isStopped else { return }
         guesses = (offered ?? []).map { guess in
             queued[guess.id].map { Self.answered(guess, $0 == .yes ? .confirmed : .declined) } ?? guess
         }

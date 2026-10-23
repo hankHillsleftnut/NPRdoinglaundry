@@ -23,12 +23,23 @@ struct LiveJournalRoot: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
-                    today = Self.day()
+                    comeBack()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
                 today = Self.day()
             }
+    }
+
+    /// The app is in front again: a new day builds a new page (which loads); the same day refreshes the
+    /// live data in place (throttled and quiet, in `LiveJournalData.refresh`).
+    private func comeBack() {
+        let now = Self.day()
+        if now == today {
+            Task { await platform.journalData?.refresh() }
+        } else {
+            today = now
+        }
     }
 
     /// The person's local day, `YYYY-MM-DD`: the same day the repository asks the server for.
