@@ -252,7 +252,12 @@ extension Platform.Media {
             release?.cancel()
             if state == .ended {
                 position = 0
-                Task { await engine.seek(to: 0) }
+                let rate = rate
+                Task {
+                    await engine.seek(to: 0)
+                    engine.play(rate: rate)
+                }
+                return
             }
             engine.play(rate: rate)
         }
