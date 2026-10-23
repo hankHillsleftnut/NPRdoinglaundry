@@ -529,7 +529,7 @@ struct OutboxDrainTests {
 
     @Test(
         "a pause ends the drain even with two items for one entity: one send, no loop",
-        arguments: [Backend.Failure.Kind.offline, .unauthenticated, .sessionRevoked]
+        arguments: [Backend.Failure.Kind.offline, .unauthenticated, .sessionRevoked, .updateRequired, .spendLimited(retryAfter: nil)]
     )
     func aPauseWithTwoItemsForOneEntityDoesNotLoop(kind: Backend.Failure.Kind) async throws {
         let outbox = outbox()
@@ -543,6 +543,28 @@ struct OutboxDrainTests {
         #expect(drainedLines.count == 1)
         #expect(try item(first).status == .pending)
         #expect(try item(first).attempts == 0)
+    }
+
+    @Test("a person on an old build (426) or past the day's spend (429) keeps every word: pending, no attempt counted, sent once it passes")
+    func updateRequiredAndSpendLimitedNeverKillAnEntry() async throws {
+        for kind in [Backend.Failure.Kind.updateRequired, .spendLimited(retryAfter: nil)] {
+            let outbox = outbox()
+            let id = UUID()
+            try await outbox.enqueueEntry(draft(id))
+            sender.script(key(id), [.failure(Backend.Failure(kind)), .failure(Backend.Failure(kind))])
+
+            await outbox.drain(reason: .manual)
+            await outbox.drain(reason: .foreground)
+
+            #expect(try item(id).status == .pending, "\(kind): waits")
+            #expect(try item(id).attempts == 0, "\(kind): no attempt counted")
+            #expect(try await outbox.unsentCount() >= 1)
+
+            await outbox.drain(reason: .foreground) // the build was updated: the script has run out, the send succeeds
+            #expect(try item(id).status == .done, "\(kind): sent after the update")
+            try execute("DELETE FROM outbox")
+            try execute("DELETE FROM entries")
+        }
     }
 
     // MARK: Retry timer

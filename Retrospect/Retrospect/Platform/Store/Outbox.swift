@@ -336,10 +336,11 @@ extension Store {
         /// What a failure means for the item and the pass.
         static func outcome(of failure: Backend.Failure) -> Outcome {
             switch failure.kind {
-            case .offline, .unauthenticated, .sessionRevoked: .pause
+            // an old build (426) and a spent day (429) are not the entry's fault: it waits, never dies, and goes after an update
+            case .offline, .unauthenticated, .sessionRevoked, .updateRequired, .spendLimited: .pause
             case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
-            case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch, .updateRequired,
-                 .spendLimited, .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
+            case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch,
+                 .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
             }
         }
 
