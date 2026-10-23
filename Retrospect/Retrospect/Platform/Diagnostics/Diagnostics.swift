@@ -165,12 +165,12 @@ extension Platform.Diagnostics {
             case .meta: .meta
             case .diagnostics: .diagnostics
             case .entries: .entries
-            case .entriesToday, .briefsLatest, .guesses: Self.journal(path)
+            case .entriesToday, .briefsLatest, .guesses, .entryByID: Self.journal(path)
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
             case .guessByID: .guessesById
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: Self.gate(path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: Self.gate(path)
             }
         }
 
@@ -180,6 +180,7 @@ extension Platform.Diagnostics {
             case .entriesToday: .entriesToday
             case .briefsLatest: .briefsLatest
             case .guesses: .guesses
+            case .entryByID: .entriesById
             default: preconditionFailure("not a journal door: \(path.rawValue)")
             }
         }
@@ -193,7 +194,9 @@ extension Platform.Diagnostics {
             case .invitesCheck: .invitesCheck
             case .invitesRedeem: .invitesRedeem
             case .invitesMine: .invitesMine
-            case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .authApple, .authRefresh, .authSignout, .guessByID:
+            // Not a `/v2` route, so a report never names it: the client records nothing for it.
+            case .invitePreview: .invitesCheck
+            case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }
