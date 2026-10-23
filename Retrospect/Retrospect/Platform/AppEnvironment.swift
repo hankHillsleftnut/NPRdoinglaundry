@@ -42,7 +42,7 @@ extension Platform {
         /// Diagnostics work runs one piece after another on this chain, so
         /// foreground and background land in the order the scene changed.
         private var diagnosticsWork: Task<Void, Never>?
-        private var sessionLifecycleBound = false
+        private var sessionFollow: Task<Void, Never>?
 
         /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
         /// nil before. The scene-phase and background-task bridges drain it.
@@ -194,20 +194,58 @@ extension Platform {
             }
         }
 
-        /// Bridge until the new session owns authentication: restore the signed-in
-        /// user's store, and finish store work before the old client changes users.
-        func bindSessionLifecycle(to client: RetrospectAPIClient) async {
-            guard !sessionLifecycleBound else { return }
-            sessionLifecycleBound = true
-            client.sessionWillChange = { [weak self] in
-                await self?.sessionWillChange().value
+        /// Starts following the new session, once, at launch. The per-person stack comes from its states and from
+        /// nothing else: Apple sign-in, a renewal, a session the server ended, an Apple revocation and sign-out
+        /// are the same stream. The old client's callbacks no longer open or close anything.
+        func startSession() {
+            follow(session.states())
+        }
+
+        /// `startSession` on any stream of states (tests feed their own); only the first call counts.
+        ///   signed in  -> the person's store and stack open (a renewal asks again: nothing changes);
+        ///   signed out -> the stack stops, the store STAYS on the phone: whatever the reason, because the stream
+        ///                 cannot tell an Apple revocation from a Log Out. Only `logOut` and a different person erase;
+        ///   locked     -> nothing.
+        func follow(_ states: AsyncStream<Session.State>) {
+            guard sessionFollow == nil else { return }
+            sessionFollow = Task { [weak self] in
+                for await state in states {
+                    guard let self else { return }
+                    switch state {
+                    case let .signedIn(userID, _):
+                        await sessionDidChange(to: userID).value
+                    case .signedOut:
+                        if openUserID != nil {
+                            await closeStoreKeeping().value
+                        }
+                    case .locked:
+                        continue
+                    }
+                }
             }
-            client.sessionDidChange = { [weak self] userID in
-                await self?.sessionDidChange(to: userID).value
+        }
+
+        private func closeStoreKeeping() -> Task<Void, Never> {
+            enqueueDiagnostics { [self] in await closeStore(erasing: false) }
+        }
+
+        enum LogOutResult: Equatable {
+            case signedOut
+            /// Entries are not sent yet and the person has not confirmed: nothing changed.
+            case hasUnsent(Int)
+        }
+
+        /// The person chose Log Out. With entries not yet sent and no confirmation nothing happens; otherwise the
+        /// session ends and the store is erased. The session ends first: if the app dies between, the phone is
+        /// signed out with the store kept, which is the safe direction.
+        func logOut(confirmed: Bool) async -> LogOutResult {
+            let count = await unsentEntryCount()
+            if count > 0, !confirmed {
+                return .hasUnsent(count)
             }
-            if let userID = client.currentUserId {
-                await sessionDidChange(to: userID).value
-            }
+            _ = await session.signOut(force: true)
+            await sessionWillChange().value
+            return .signedOut
         }
 
         @discardableResult
@@ -225,7 +263,9 @@ extension Platform {
         /// (sign-out, another person signing in); without it the rows stay on the phone for the same person's
         /// next sign-in (the server ended the session on its own).
         func closeStore(erasing: Bool) async {
-            keptUserID = erasing ? nil : openUserID ?? keptUserID
+            let closing = openUserID
+            let leftOver = keptUserID
+            keptUserID = erasing ? nil : closing ?? keptUserID
             openUserID = nil
             journalData?.stop()
             journalData = nil
@@ -237,6 +277,14 @@ extension Platform {
             await mediaSource?.erase()
             mediaSource = nil
             await diagnostics.detach(erasingDatabase: erasing)
+            if erasing, closing == nil, let kept = leftOver {
+                await eraseStore(of: kept) // Log Out after the stack already stopped: the kept words go now
+            }
+        }
+
+        private func eraseStore(of userID: String) async {
+            let open = openDatabase
+            _ = await Task.detached { try? open(userID).erase() }.value
         }
 
         /// Opens the person's store and the stack on it. Asking again for the person whose store is open does nothing;
@@ -250,8 +298,7 @@ extension Platform {
             }
             if let kept = keptUserID, kept != userID {
                 // another person on this phone: the last person's unsent words go before anything of the new person's opens
-                let open = openDatabase
-                _ = await Task.detached { try? open(kept).erase() }.value
+                await eraseStore(of: kept)
                 keptUserID = nil
             }
             do {
