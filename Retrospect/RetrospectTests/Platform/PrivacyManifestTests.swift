@@ -18,6 +18,7 @@ struct PrivacyManifestTests {
         "NSPrivacyCollectedDataTypeName", "NSPrivacyCollectedDataTypeEmailAddress", "NSPrivacyCollectedDataTypeUserID",
         "NSPrivacyCollectedDataTypeOtherUserContent", "NSPrivacyCollectedDataTypeCrashData",
         "NSPrivacyCollectedDataTypePerformanceData", "NSPrivacyCollectedDataTypeOtherDiagnosticData",
+        "NSPrivacyCollectedDataTypeProductInteraction",
     ]
 
     private func manifest(in folder: URL) throws -> [String: Any] {
@@ -46,16 +47,31 @@ struct PrivacyManifestTests {
         sources(in: folder).contains { file in needles.contains(where: file.text.contains) }
     }
 
-    /// The real signals for each category. File timestamps are the date keys and `stat`-family calls, not `attributesOfItem` reading `.size`.
-    private static let signals: [(category: String, needles: [String])] = [
-        ("NSPrivacyAccessedAPICategoryUserDefaults", ["UserDefaults"]),
-        ("NSPrivacyAccessedAPICategorySystemBootTime", ["systemUptime", "mach_absolute_time"]),
-        ("NSPrivacyAccessedAPICategoryDiskSpace", ["volumeAvailableCapacity", "attributesOfFileSystem", "NSFileSystemFreeSize", "statfs"]),
+    private func categories(in folder: URL) -> Set<String> {
+        sources(in: folder).reduce(into: Set<String>()) { $0.formUnion(Self.usedCategories(in: $1.text)) }
+    }
+
+    /// The real signals for each category, in the spellings Swift code uses. File timestamps are the date keys, the
+    /// `FileAttributeKey` date subscripts and the `stat` family, not `attributesOfItem` reading `.size` (and not
+    /// `PHAsset.creationDate`, which is Photos metadata).
+    static let signals: [(category: String, needles: [String])] = [
+        ("NSPrivacyAccessedAPICategoryUserDefaults", ["UserDefaults", "@AppStorage"]),
+        ("NSPrivacyAccessedAPICategorySystemBootTime", ["systemUptime", "mach_absolute_time", "mach_continuous_time", "clock_gettime"]),
+        ("NSPrivacyAccessedAPICategoryDiskSpace", [
+            "volumeAvailableCapacity", "volumeTotalCapacity", "attributesOfFileSystem", "NSFileSystemFreeSize", "NSFileSystemSize",
+            "systemFreeSize", "FileAttributeKey.systemSize", "statfs", "statvfs",
+        ]),
         ("NSPrivacyAccessedAPICategoryFileTimestamp", [
             "NSFileCreationDate", "NSFileModificationDate", ".contentModificationDateKey", ".creationDateKey", ".contentAccessDateKey",
-            "fileModificationDate", "getattrlist", "fstat(", "lstat(", " stat(",
+            ".attributeModificationDateKey", "fileModificationDate", "fileCreationDate", "[.modificationDate]", "[.creationDate]",
+            "FileAttributeKey.modificationDate", "FileAttributeKey.creationDate", "getattrlist", "fstat(", "lstat(", " stat(", ".stat(",
         ]),
     ]
+
+    /// The categories one source text calls.
+    static func usedCategories(in text: String) -> Set<String> {
+        Set(signals.filter { signal in signal.needles.contains(where: text.contains) }.map(\.category))
+    }
 
     @Test("the manifests are in the built app: the app's own, and the Screen Time extension's inside its bundle")
     func manifestsAreInTheBuiltApp() {
@@ -113,11 +129,36 @@ struct PrivacyManifestTests {
     @Test("disk space is read only for a report the person sends: the device snapshot is built nowhere else (what makes 7D9E.1 true)")
     func diskSpaceOnlyInReports() {
         let allowed: Set = ["Environment.swift", "AppEnvironment.swift", "ReportBuilder.swift"]
-        let callers = sources(in: Self.appRoot.appendingPathComponent("Platform"))
+        let callers = sources(in: Self.appRoot)
             .filter { $0.text.contains("Sources.device") || $0.text.contains("sources: .device") || $0.text.contains("freeDiskBytes()") }
             .map(\.name)
         #expect(Set(callers).isSubset(of: allowed), "\(callers)")
         let launch = sources(in: Self.appRoot).filter { $0.name == "RetrospectApp.swift" }
         #expect(launch.allSatisfy { !$0.text.contains("freeDiskBytes") && !$0.text.contains("Sources.device") })
+    }
+
+    @Test("each common spelling of a required-reason call is seen, and a file's size or a Photos date is not")
+    func spellingsAreSeen() {
+        let disk = "NSPrivacyAccessedAPICategoryDiskSpace"
+        let time = "NSPrivacyAccessedAPICategoryFileTimestamp"
+        let boot = "NSPrivacyAccessedAPICategorySystemBootTime"
+        #expect(Self.usedCategories(in: "let d = try fm.attributesOfItem(atPath: p)[.modificationDate]").contains(time))
+        #expect(Self.usedCategories(in: "let d = attributes[.creationDate]").contains(time))
+        #expect(Self.usedCategories(in: "values.contentModificationDate; keys: [.contentModificationDateKey]").contains(time))
+        #expect(Self.usedCategories(in: "var s = stat(); stat(path, &s)").contains(time))
+        #expect(Self.usedCategories(in: "let f = attrs[.systemFreeSize]").contains(disk))
+        #expect(Self.usedCategories(in: "keys: [.volumeTotalCapacityKey]").contains(disk))
+        #expect(Self.usedCategories(in: "statvfs(path, &s)").contains(disk))
+        #expect(Self.usedCategories(in: "let t = mach_continuous_time()").contains(boot))
+        #expect(Self.usedCategories(in: "@AppStorage(\"k\") var x = 1").contains("NSPrivacyAccessedAPICategoryUserDefaults"))
+        #expect(Self.usedCategories(in: "let n = try fm.attributesOfItem(atPath: p)[.size] as? Int").isEmpty, "a size is not a timestamp")
+        #expect(Self.usedCategories(in: "guard let created = asset.creationDate else { return }").isEmpty, "PHAsset.creationDate is Photos")
+    }
+
+    @Test("the widgets extension ships without a manifest because its sources call no required-reason API")
+    func widgetsNeedNoManifest() {
+        let widgets = Self.projectRoot.appendingPathComponent("RetrospectWidgets", isDirectory: true)
+        #expect(!sources(in: widgets).isEmpty, "the path is right: there are sources to scan")
+        #expect(categories(in: widgets).isEmpty, "a required-reason call in the widgets needs its own PrivacyInfo.xcprivacy")
     }
 }
