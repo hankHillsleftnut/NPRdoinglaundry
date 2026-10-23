@@ -216,6 +216,7 @@ extension Store {
         func start() {
             guard !started, !stopped else { return }
             started = true
+            try? reviveVersionAndSpendRefusals()
             guard let reachability else {
                 Task { await drain(reason: .launch) }
                 return
@@ -251,11 +252,6 @@ extension Store {
             if !paused, !stopped, !Task.isCancelled {
                 scheduleRetryWake()
             }
-        }
-
-        private struct Tally {
-            var sent = 0
-            var failed = 0
         }
 
         /// One pass over what's due, oldest first.
@@ -300,8 +296,9 @@ extension Store {
             let code = failure.kind.storedCode
             let outcome = Self.outcome(of: failure)
             switch outcome {
-            case .pause:
-                try? markPending(item, at: now())
+            case .pause, .wait:
+                // a wait holds only this item until the server's time (a day's spend); the retry timer wakes it
+                try? markPending(item, at: outcome == .wait ? now().addingTimeInterval(failure.kind.spendWait) : now())
                 log.record(.outbox(.paused(code: code)))
             case .retry:
                 let attempts = item.attempts + 1
@@ -321,20 +318,12 @@ extension Store {
         enum Outcome: Equatable {
             /// Stop the pass; the item goes back to pending, no attempt counted.
             case pause
+            /// This item only waits (no attempt counted) and the pass goes on.
+            case wait
             /// Count an attempt and wait; dead once the attempts run out.
             case retry
             /// Refused for good.
             case dead
-        }
-
-        /// What a failure means for the item and the pass.
-        static func outcome(of failure: Backend.Failure) -> Outcome {
-            switch failure.kind {
-            case .offline, .unauthenticated, .sessionRevoked: .pause
-            case .rateLimited, .upstreamTimeout, .upstreamUnavailable, .internal, .timedOut, .transport: .retry
-            case .invalidRequest, .invalidCredentials, .inviteRequired, .suspended, .notFound, .idempotencyMismatch, .updateRequired,
-                 .spendLimited, .inviteInvalid, .inviteUsed, .inviteExpired, .decoding, .unknown: .dead
-            }
         }
 
         /// How long to wait before attempt `attempt + 1`: full jitter under the
@@ -567,4 +556,10 @@ extension Store.Outbox {
         publish(receipt)
     }
     #endif
+}
+
+/// What one drain pass sent and what it gave up on.
+private struct Tally {
+    var sent = 0
+    var failed = 0
 }
