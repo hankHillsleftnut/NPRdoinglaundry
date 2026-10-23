@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import UIKit
 
 extension Session {
     /// What a sign-in hands the screen: who signed in and where they stand.
@@ -220,6 +221,73 @@ extension Session {
                 return .cancelled
             }
             return .appleFailed(code: nsError.code)
+        }
+    }
+}
+
+extension Session {
+    /// Asks Apple for a fresh one-time code for this app (PL3.7g.min: deleting the account always asks). Behind a
+    /// protocol so tests fake Apple. Throws `SignInError.cancelled` when the person closes the sheet.
+    @MainActor
+    protocol AppleReauthorizing: AnyObject, Sendable {
+        func freshCode() async throws -> AppleCode
+    }
+
+    /// Apple's own sheet, asking for nothing but a code (no name, no email, no nonce: the server only exchanges
+    /// the code, and checks it belongs to this person's Apple account).
+    @MainActor
+    final class SystemAppleReauthorizer: NSObject, AppleReauthorizing, ASAuthorizationControllerDelegate,
+        ASAuthorizationControllerPresentationContextProviding {
+        private var waiting: CheckedContinuation<AppleCode, any Error>?
+        private var controller: ASAuthorizationController?
+
+        func freshCode() async throws -> AppleCode {
+            // one sheet at a time: a second ask while one is up is refused, never a second sheet
+            guard waiting == nil else { throw SignInError.appleFailed(code: ASAuthorizationError.unknown.rawValue) }
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = []
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            self.controller = controller
+            return try await withCheckedThrowingContinuation { continuation in
+                waiting = continuation
+                controller.performRequests()
+            }
+        }
+
+        nonisolated func authorizationController(controller _: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+            let read = Result { try Self.code(from: authorization.credential) }
+            MainActor.assumeIsolated { finish(read) }
+        }
+
+        nonisolated func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: any Error) {
+            let nsError = error as NSError
+            MainActor.assumeIsolated { finish(.failure(AppleSignIn.signInError(for: nsError))) }
+        }
+
+        nonisolated func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
+            MainActor.assumeIsolated {
+                let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                return scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? ASPresentationAnchor()
+            }
+        }
+
+        private func finish(_ result: Result<AppleCode, any Error>) {
+            controller = nil
+            let continuation = waiting
+            waiting = nil
+            continuation?.resume(with: result)
+        }
+
+        /// The code and Apple account out of Apple's credential; unreadable without a code.
+        nonisolated static func code(from credential: any ASAuthorizationCredential) throws -> AppleCode {
+            guard let apple = credential as? ASAuthorizationAppleIDCredential,
+                  let data = apple.authorizationCode, let code = String(data: data, encoding: .utf8), !code.isEmpty
+            else {
+                throw SignInError.unreadableCredential
+            }
+            return AppleCode(code: code, user: apple.user)
         }
     }
 }

@@ -251,6 +251,7 @@ extension Platform {
         /// are the same stream. The old client's callbacks no longer open or close anything.
         func startSession() {
             follow(session.states())
+            Task { await resumeAccountDeletionIfPending() } // a deletion sent before the app died is finished (PL3.7g.min)
         }
 
         /// `startSession` on any stream of states (tests feed their own); only the first call counts.
@@ -346,6 +347,12 @@ extension Platform {
             if erasing, closing == nil, let kept = leftOver {
                 await eraseStore(of: kept) // Log Out after the stack already stopped: the kept words go now
             }
+        }
+
+        /// Deleting the account (PL3.7g.min): the per-person stack stops and is erased, behind the queue like every close.
+        func eraseForDeletion() async {
+            router.clear()
+            await enqueueDiagnostics { [self] in await closeStore(erasing: true) }.value
         }
 
         private func eraseStore(of userID: String) async {

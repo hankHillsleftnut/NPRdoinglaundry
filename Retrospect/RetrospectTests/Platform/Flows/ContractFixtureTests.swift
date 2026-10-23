@@ -124,8 +124,8 @@ struct ContractFixtureTests {
     @Test("every door the app calls is in the diagnostics route list, so a report can name it")
     func pathTemplatesAreDiagnosticRoutes() throws {
         let ids = try JSONDecoder.contract.decode(DiagnosticsIds.self, from: data("00", "diagnostics.ids"))
-        // The signed-out preview is outside `/v2`: a report never names it.
-        for path in Backend.PathTemplate.allCases where path != .invitePreview {
+        // The signed-out preview is outside `/v2` and the account door records nothing: a report never names them.
+        for path in Backend.PathTemplate.allCases where !Backend.unrecordedPaths.contains(path) {
             #expect(ids.routes.contains(path.rawValue), "\(path.rawValue) is missing from fixtures/00/diagnostics.ids.json")
         }
     }
@@ -237,6 +237,22 @@ struct ContractFixtureTests {
         _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.check.request"))
         _ = try JSONDecoder.contract.decode(Backend.InviteCodeBody.self, from: data("01", "invite.redeem.request"))
         #expect(try envelope(Session.Redeemed.self, "01", "invite.redeem.response").invite?.serial == 412)
+    }
+
+    @Test("contract 06's account deletion: the request is exactly the app's body, the 202 decodes, the 409 maps to a refusal")
+    func accountDeletionFixtures() throws {
+        let check = Self.request(Backend.AccountDeleteBody.self, required: ["confirm"], optional: ["appleAuthorizationCode"])
+        try check(data("06", "account.delete.request"))
+        let fixture = try JSONDecoder.contract.decode(Backend.AccountDeleteBody.self, from: data("06", "account.delete.request"))
+        #expect(fixture == Backend.AccountDeleteBody(appleAuthorizationCode: "c0de.fake.0000"), "the app sends the same body")
+
+        let accepted = try envelope(Backend.AccountDeletion.self, "06", "account.delete.response")
+        #expect(accepted.deletion.state == .deleting)
+        #expect(accepted.deletion.id == "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c03")
+
+        let failure = try Backend.Failure(Backend.Coding.decoder.decode(Backend.ErrorBody.self, from: data("06", "error.apple_confirmation_required")))
+        #expect(failure.kind == .unknown(code: "apple_confirmation_required"))
+        #expect(Session.AccountDeletion.refusal(failure.kind) == .appleConfirmationRequired)
     }
 
     @Test("an enum value the app doesn't know decodes as unknown, never failing the response")

@@ -176,7 +176,7 @@ extension Platform.Diagnostics {
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
             case .guessByID: .guessesById
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: Self.gate(path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview, .account: Self.gate(path)
             }
         }
 
@@ -202,6 +202,8 @@ extension Platform.Diagnostics {
             case .invitesMine: .invitesMine
             // Not a `/v2` route, so a report never names it: the client records nothing for it.
             case .invitePreview: .invitesCheck
+            // Not in the backend's closed route list: the client records nothing for it (`Backend.unrecordedPaths`).
+            case .account: .authSignout
             case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }

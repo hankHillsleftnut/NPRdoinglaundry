@@ -66,8 +66,8 @@ struct DiagnosticsRecordTests {
 
     @Test("every door the app calls has its diagnostics route")
     func everyPathTemplateHasARoute() {
-        // The signed-out preview is the one door outside `/v2`: a report never names it.
-        for path in Backend.PathTemplate.allCases where path != .invitePreview {
+        // The signed-out preview (outside `/v2`) and the account door (records nothing): a report never names them.
+        for path in Backend.PathTemplate.allCases where !Backend.unrecordedPaths.contains(path) {
             #expect(Diagnostics.Route(path).rawValue == path.rawValue)
         }
     }

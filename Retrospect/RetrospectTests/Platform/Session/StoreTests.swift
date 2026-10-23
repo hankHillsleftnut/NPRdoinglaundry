@@ -418,3 +418,50 @@ struct MemoryKeychainTests {
         #expect(try keychain.read("a") == nil)
     }
 }
+
+// MARK: Deleting the account (PL3.7g.min)
+
+extension StoreTests {
+    @Test("the pending-deletion flag is kept, read and cleared, and carries no content")
+    func thePendingDeletionFlag() async throws {
+        let store = store()
+        #expect(try await !store.isDeletionPending())
+
+        try await store.markDeletionPending()
+        #expect(try await store.isDeletionPending())
+        #expect(keychain.contents["pending_deletion"] == Data("1".utf8))
+
+        try await store.clearDeletionPending()
+        #expect(try await !store.isDeletionPending())
+    }
+
+    @Test("erasing everything goes deeper than sign-out: signed-in-before, the pending invite and Apple's first authorization go too, the flag last")
+    func eraseEverythingGoesDeeperThanSignOut() async throws {
+        let store = store()
+        try await store.save(credentials)
+        try await store.markSignedInBefore()
+        try await store.setPendingInviteCode("7KQ2")
+        await store.keep(Session.KeptFirstAuthorization(appleUser: "001234.invented", givenName: "sam", familyName: nil, email: nil))
+        try await store.markDeletionPending()
+        await store.markSessionEnded()
+
+        try await store.clearCredentials()
+        #expect(Set(keychain.contents.keys) == ["has_signed_in_before", "pending_invite_code", "pending_first_authorization", "pending_deletion"])
+
+        try await store.eraseEverything()
+        #expect(keychain.contents.isEmpty)
+        #expect(await !store.isSessionEnded)
+    }
+
+    @Test("a failed erase keeps the pending flag, so the next launch tries again")
+    func aFailedEraseKeepsTheFlag() async throws {
+        let store = store()
+        try await store.markSignedInBefore()
+        try await store.markDeletionPending()
+        keychain.failCall(1, with: errSecInteractionNotAllowed)
+
+        await #expect(throws: Session.KeychainError(status: errSecInteractionNotAllowed)) { try await store.eraseEverything() }
+
+        #expect(keychain.contents["pending_deletion"] != nil)
+    }
+}

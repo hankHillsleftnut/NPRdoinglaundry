@@ -27,7 +27,14 @@ extension Backend {
         /// The one public door outside `/v2` (contract 01 §2.1): the ticket's face for a link, signed out.
         case invitePreview = "/public/invites/:code"
         case guessByID = "/v2/guesses/:id"
+        /// Contract 06 §8: `DELETE` deletes the person's account (PL3.7g.min).
+        case account = "/v2/account"
     }
+
+    /// Doors a diagnostics report never names, so the client records no request row for them: the signed-out
+    /// preview (outside `/v2`), and the account door (the backend's route list is closed, and the report would
+    /// outlive the account it describes).
+    static let unrecordedPaths: Set<PathTemplate> = [.invitePreview, .account]
 
     /// The body of a request that sends none.
     struct NoBody: Encodable, Sendable {}

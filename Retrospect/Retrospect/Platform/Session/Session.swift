@@ -78,7 +78,8 @@ extension Session {
         /// Never refresh early a token received less than this ago.
         static let freshFor: TimeInterval = 60
 
-        private let store: Store
+        /// Internal, not private: the account deletion keeps its pending flag here (AccountDeletion.swift).
+        let store: Store
         private let mirror: any LegacyMirroring
         private let log: any Platform.LogSink
         private let now: @Sendable () -> Date
@@ -109,6 +110,8 @@ extension Session {
         private var signingOut = false
         /// False after a mirror write failed: the old client's token is stale.
         private var mirrorInSync = true
+        /// How the tokens are treated while the account is being deleted (PL3.7g.min; set in AccountDeletion.swift).
+        var deletionHold: DeletionHold = .none
 
         init(
             store: Store,
@@ -168,6 +171,8 @@ extension Session {
         /// revoked the credential, save what couldn't be saved, renew what's
         /// about to expire.
         func becameActive() async {
+            // the account is going: nothing renews, nothing asks Apple, nothing signs out by itself
+            guard deletionHold != .held else { return }
             if launchCheck == nil || launchCheck == .deferredUntilUnlock {
                 await ensureStarted()
                 launchCheck = await store.checkInstall(probe: probeUnlock, log: log)
@@ -199,7 +204,7 @@ extension Session {
         /// to the log; the next request surfaces them.
         func refreshIfNeeded() async {
             await ensureStarted()
-            guard let credentials, refreshTask == nil, needsRefresh(credentials) else { return }
+            guard deletionHold != .held, let credentials, refreshTask == nil, needsRefresh(credentials) else { return }
             _ = try? await refresh()
         }
 
@@ -207,7 +212,8 @@ extension Session {
 
         func accessToken() async throws -> String {
             await ensureStarted()
-            guard let credentials else { throw Backend.Failure(.unauthenticated) }
+            // held: the server has the deletion, so nothing more goes out with this person's token
+            guard deletionHold != .held, let credentials else { throw Backend.Failure(.unauthenticated) }
             if signingOut {
                 return credentials.accessToken
             }
@@ -225,7 +231,8 @@ extension Session {
         /// already refreshed: the stored one is returned without another refresh.
         func refreshAfterUnauthorized(failedToken: String) async throws -> String {
             await ensureStarted()
-            guard let credentials, !signingOut else { throw Backend.Failure(.unauthenticated) }
+            // During a deletion a 401 is the account's own lock (QA #187): never answered with a refresh.
+            guard let credentials, !signingOut, deletionHold == .none else { throw Backend.Failure(.unauthenticated) }
             if retiredTokens.contains(failedToken) {
                 throw Backend.Failure(.unauthenticated)
             }
@@ -382,8 +389,8 @@ extension Session {
             return credentials.accessTokenExpiresAt.timeIntervalSince(serverNow) < Self.refreshAhead
         }
 
-        /// One refresh at a time: every caller awaits the same task.
-        private func refresh() async throws -> Credentials {
+        /// One refresh at a time: every caller awaits the same task. Internal for the deletion's one probe (AccountDeletion.swift).
+        func refresh() async throws -> Credentials {
             if let refreshTask {
                 return try await refreshTask.value
             }
@@ -407,6 +414,9 @@ extension Session {
                     return await adopt(answer, replacing: old)
                 } catch let failure as Backend.Failure {
                     switch failure.kind {
+                    case .sessionRevoked where deletionHold != .none, .invalidRequest where deletionHold != .none:
+                        // the deletion's own lock: the deletion ends the session, after its goodbye
+                        throw Backend.Failure(.sessionRevoked, message: failure.message)
                     case .sessionRevoked, .invalidRequest:
                         log.record(.sessionRevoked)
                         await endSession(reason: .revoked, serverNotified: false)
@@ -481,7 +491,7 @@ extension Session {
         }
 
         private func notifyServer(signingOut credentials: Credentials) async -> Bool {
-            guard let client = try? door() else { return false }
+            guard deletionHold == .none, let client = try? door() else { return false }
             signingOut = true
             defer { signingOut = false }
             do {
@@ -499,20 +509,33 @@ extension Session {
             }
         }
 
-        private func endSession(reason: SignedOutReason, serverNotified: Bool) async {
+        /// Ends the session on this phone. `everything` (the account was deleted, PL3.7g.min) also erases
+        /// `hasSignedInBefore`, the pending invite and the kept first authorization; returns whether the Keychain went.
+        @discardableResult
+        private func endSession(reason: SignedOutReason, serverNotified: Bool, everything: Bool = false) async -> Bool {
             if let token = credentials?.accessToken {
                 retire(token)
             }
             credentials = nil
             pendingSave = false
             receivedAt = nil
+            if everything {
+                hasSignedInBefore = false
+            }
             await store.markSessionEnded()
+            var cleared = true
             do {
-                try await store.clearCredentials()
-                await store.clearSessionEnded()
+                if everything {
+                    try await store.eraseEverything()
+                } else {
+                    try await store.clearCredentials()
+                    await store.clearSessionEnded()
+                }
             } catch let error as KeychainError {
+                cleared = false
                 log.record(.keychainWriteFailed(.sessionClear, status: error.status))
             } catch {
+                cleared = false
                 log.record(.keychainWriteFailed(.sessionClear, status: errSecInternalError))
             }
             do {
@@ -525,6 +548,7 @@ extension Session {
             await clearGate()
             log.record(.signedOut(reason: reason, serverNotified: serverNotified))
             publish(.signedOut(hasSignedInBefore: hasSignedInBefore, reason: reason))
+            return cleared
         }
 
         private func door() throws -> Backend.Client {
@@ -552,5 +576,25 @@ extension Session {
         private func remove(_ id: UUID) {
             continuations[id] = nil
         }
+    }
+}
+
+// MARK: - Deleting the account (PL3.7g.min; the rest is in AccountDeletion.swift)
+
+extension Session.Manager {
+    var signedInCredentials: Session.Credentials? {
+        get async {
+            await ensureStarted()
+            return credentials
+        }
+    }
+
+    /// The account is deleted: the session ends with everything, sending nothing (the tokens are dead), and the
+    /// phone reads as never signed in (the splash, never "welcome back"). False when a Keychain item stayed.
+    @discardableResult
+    func endAfterDeletion() async -> Bool {
+        await ensureStarted()
+        defer { deletionHold = .none }
+        return await endSession(reason: .none, serverNotified: false, everything: true)
     }
 }
