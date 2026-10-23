@@ -40,6 +40,7 @@ import { verifyAppleSignIn, type AppleSignIn } from './services/apple-auth.js';
 import { findOrCreateAppleAccount, type UsersClient } from './services/users.js';
 import { supabaseSessionStore, type RpcClient, type SessionStore } from './sessions/store.js';
 import { createAppleTokenKeeper, type AppleTokenDb, type KeepAppleToken } from './services/apple-tokens.js';
+import type { AccountDeletion } from './account/deletion.js';
 
 /**
  * What the app needs from outside, passed in so tests can build it with a
@@ -86,6 +87,12 @@ export interface AppDeps {
    * which is none while APPLE_REVOKE_ENABLED is off. Tests pass one with a fake Apple.
    */
   keepAppleToken?: KeepAppleToken;
+  /**
+   * Account deletion (BE0.7): server.ts builds it over migration 028 and starts
+   * its sweeper; tests pass one on PGlite or fakes. Without it DELETE /v2/account
+   * answers `internal`.
+   */
+  account?: AccountDeletion;
 }
 
 /**
@@ -231,6 +238,7 @@ export function createApp(deps: AppDeps): express.Express {
         });
       }),
     },
+    ...(deps.account ? { account: { deletion: deps.account } } : {}),
   }));
   app.use('/v2', v2ErrorHandler);
 

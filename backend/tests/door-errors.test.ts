@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AgentCallError, DOOR_ERROR_CODES, DOOR_ERRORS, DoorError, errorBody, fromAgentError } from '../src/doors/errors.js';
 
-test('the error codes are exactly contract 00\'s closed list plus the invite codes', () => {
+test('the error codes are exactly contract 00\'s closed list plus the invite codes and contract 06\'s Apple confirmation', () => {
   assert.deepEqual([...DOOR_ERROR_CODES].sort(), [
+    'apple_confirmation_required',
     'idempotency_mismatch', 'internal', 'invalid_credentials', 'invalid_request', 'invite_expired', 'invite_invalid',
     'invite_required', 'invite_used', 'not_found', 'rate_limited', 'session_revoked', 'spend_limited', 'suspended',
     'unauthenticated', 'update_required', 'upstream_timeout', 'upstream_unavailable',
@@ -11,6 +12,7 @@ test('the error codes are exactly contract 00\'s closed list plus the invite cod
   assert.equal(DOOR_ERRORS.update_required.status, 426);
   assert.equal(DOOR_ERRORS.upstream_unavailable.status, 502);
   assert.equal(DOOR_ERRORS.upstream_timeout.status, 504);
+  assert.equal(DOOR_ERRORS.apple_confirmation_required.status, 409);
 });
 
 test('only rate_limited and spend_limited carry retryAfterSeconds', () => {
