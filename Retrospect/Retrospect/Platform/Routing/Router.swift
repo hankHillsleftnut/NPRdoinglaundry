@@ -15,7 +15,8 @@ extension Routing {
         @ObservationIgnored private let inviteBase: URL?
         @ObservationIgnored private let receiveInvite: @MainActor (String) async -> Void
         @ObservationIgnored private let log: any Platform.LogSink
-        @ObservationIgnored private var invites: [Task<Void, Never>] = []
+        /// The newest invite hand-over; each waits for the one before it, so codes arrive in the order the links did.
+        @ObservationIgnored private var lastInvite: Task<Void, Never>?
 
         init(inviteBase: URL?, log: any Platform.LogSink, receiveInvite: @escaping @MainActor (String) async -> Void) {
             self.inviteBase = inviteBase
@@ -40,7 +41,11 @@ extension Routing {
             switch destination {
             case let .invite(code):
                 // Never pending: the code is kept by the invite center (Keychain) for after sign-in.
-                invites.append(Task { await receiveInvite(code) })
+                let previous = lastInvite
+                lastInvite = Task { [receiveInvite] in
+                    await previous?.value
+                    await receiveInvite(code)
+                }
             case _ where destination.isHandledByOldScreens:
                 return
             default:
@@ -61,10 +66,7 @@ extension Routing {
 
         /// Waits for every invite handed over so far. For tests.
         func settled() async {
-            for task in invites {
-                await task.value
-            }
-            invites.removeAll()
+            await lastInvite?.value
         }
     }
 }

@@ -93,9 +93,16 @@ extension Routing {
             return .invite(code: code)
         }
 
+        /// The port as the web sees it: an explicit default (`:443` for https, `:80` for http) is no port.
+        private static func port(of url: URL) -> Int? {
+            let scheme = url.scheme?.lowercased()
+            if let port = url.port { return port == (scheme == "https" ? 443 : scheme == "http" ? 80 : -1) ? nil : port }
+            return nil
+        }
+
         private static func sameOrigin(_ url: URL, _ base: URL) -> Bool {
             guard let host = url.host?.lowercased(), host == base.host?.lowercased() else { return false }
-            return url.scheme?.lowercased() == base.scheme?.lowercased() && url.port == base.port
+            return url.scheme?.lowercased() == base.scheme?.lowercased() && port(of: url) == port(of: base)
         }
     }
 }

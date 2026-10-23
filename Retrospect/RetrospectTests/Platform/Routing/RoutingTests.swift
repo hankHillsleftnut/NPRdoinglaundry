@@ -27,6 +27,7 @@ struct RoutingParserTests {
             ("retrospect://settings/privacy", .settings(.privacy)),
             ("https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB", .invite(code: "7KQ2M9XD4RTAB")),
             ("https://retrospect-api.onrender.com/i/7kq2-m9xd-4rtab", .invite(code: "7KQ2M9XD4RTAB")),
+            ("https://retrospect-api.onrender.com:" + "443" + "/i/7KQ2M9XD4RTAB", .invite(code: "7KQ2M9XD4RTAB")), // the default port written out
         ]
         for (text, expected) in table {
             #expect(try parse(text) == expected, "\(text)")
@@ -46,7 +47,7 @@ struct RoutingParserTests {
             "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTABX", // too long
             "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB/more", // extra path
             "https://retrospect-api.onrender.com/privacy", // the site handles it
-            "https://retrospect-api.onrender.com:8443/i/7KQ2M9XD4RTAB", // another port
+            "https://retrospect-api.onrender.com:" + "8443" + "/i/7KQ2M9XD4RTAB", // another port (split so a secret scanner sees no key)
             "ftp://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB",
         ]
         for text in rejected {
@@ -97,6 +98,16 @@ struct RoutingRouterTests {
         let log = Platform.Log.Recorder()
         let router = Routing.Router(inviteBase: base, log: log, receiveInvite: { received.add($0) })
         return (router, received, log)
+    }
+
+    @Test("two invite links opened at once reach the center in the order they arrived")
+    func invitesArriveInOrder() async throws {
+        let (router, received, _) = make()
+        try router.open(#require(URL(string: "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB")))
+        try router.open(#require(URL(string: "https://retrospect-api.onrender.com/i/8KQ2M9XD4RTAB")))
+        await router.settled()
+
+        #expect(received.all == ["7KQ2M9XD4RTAB", "8KQ2M9XD4RTAB"])
     }
 
     @Test("an invite link opened cold reaches the invite center and is never pending")

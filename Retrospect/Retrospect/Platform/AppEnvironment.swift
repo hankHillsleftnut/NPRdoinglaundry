@@ -200,9 +200,10 @@ extension Platform {
 
         @discardableResult
         func sessionWillChange() -> Task<Void, Never> {
-            enqueueDiagnostics { [self, diagnostics] in
+            // At once, not behind the queue: nothing the last person held may be taken by the next.
+            router.clear()
+            return enqueueDiagnostics { [self, diagnostics] in
                 // Stop everything that reads or writes the person's store before it is erased.
-                router.clear()
                 journalData?.stop()
                 journalData = nil
                 await outbox?.stop()
