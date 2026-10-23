@@ -177,6 +177,25 @@ struct QuestionsModelTests {
         #expect(model.draft == "and my dad.")
     }
 
+    @Test("going back while the last answer is on its way still finishes once (never stuck with nothing to answer)")
+    func backDuringLastSendStillFinishes() async {
+        let data = ScriptedFirstRun(answered: Set(coreKeys.dropLast()))
+        data.holds = true
+        let model = QuestionsModel(data: data)
+        var done = 0
+        model.onDone = { done += 1 }
+        let send = Task { await model.send("my sister.") }
+        for _ in 0 ..< 1000 where !data.isHolding {
+            await Task.yield()
+        }
+        model.back()
+        #expect(model.question?.key == .highLow)
+        data.release()
+        await send.value
+        #expect(data.finishCount == 1)
+        #expect(done == 1)
+    }
+
     @Test("opening with everything answered finishes once, however often the page appears")
     func allAnsweredOnOpen() async {
         let data = ScriptedFirstRun(answered: Set(coreKeys))

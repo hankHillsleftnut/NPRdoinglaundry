@@ -163,12 +163,14 @@ final class QuestionsModel {
     // MARK: - Private
 
     private func advance(from key: Key) async {
-        guard question?.key == key else { return }
-        if let next = Self.firstUnanswered(questions, answered: answered) {
-            move(to: next)
-        } else {
+        // every question answered finishes, even if the person went back while it was on its way
+        guard let next = Self.firstUnanswered(questions, answered: answered) else {
             await finish()
+            return
         }
+        // moved while it was on its way: stay where they went
+        guard question?.key == key else { return }
+        move(to: next)
     }
 
     private func move(to next: Int) {
