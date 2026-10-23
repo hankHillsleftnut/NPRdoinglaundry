@@ -32,6 +32,8 @@ extension Platform {
         let invites: Session.InviteCenter
         /// The version floor (PL1.6): whether this build must update.
         let floor: Platform.VersionFloor
+        /// Every way into the app: links, universal links (PL5.2). An invite goes straight to `invites`.
+        let router: Routing.Router
         /// What the app did, for "send a report" (DG.3). No database until
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
@@ -90,6 +92,7 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
+            router = Routing.Router(inviteBase: configuration.baseURL, log: log, receiveInvite: { await invites.received(code: $0) })
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -252,7 +255,9 @@ extension Platform {
 
         @discardableResult
         func sessionWillChange() -> Task<Void, Never> {
-            enqueueDiagnostics { [self] in await closeStore(erasing: true) }
+            // At once, not behind the queue: nothing the last person held may be taken by the next.
+            router.clear()
+            return enqueueDiagnostics { [self] in await closeStore(erasing: true) }
         }
 
         @discardableResult
@@ -265,6 +270,7 @@ extension Platform {
         /// (sign-out, another person signing in); without it the rows stay on the phone for the same person's
         /// next sign-in (the server ended the session on its own).
         func closeStore(erasing: Bool) async {
+            router.clear() // a destination can name one person's entry: it never waits for the next
             let closing = openUserID
             let leftOver = keptUserID
             keptUserID = erasing ? nil : closing ?? keptUserID
