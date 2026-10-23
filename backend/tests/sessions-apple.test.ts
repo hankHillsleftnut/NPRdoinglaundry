@@ -11,6 +11,11 @@ import { startHarness, type Harness } from './support/harness.js';
 import { supabaseSessionStore, type SessionStore } from '../src/sessions/store.js';
 import { hashNonce } from '../src/sessions/tokens.js';
 import type { AppleSignIn } from '../src/services/apple-auth.js';
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
+import { pgliteQuery } from './support/pglite-query.js';
+import {
+  APPLE_TOKEN_URL, createAppleTokenKeeper, openAppleToken, type AppleFetch, type AppleTokenDb, type KeepAppleToken,
+} from '../src/services/apple-tokens.js';
 
 let db: PGlite;
 let store: SessionStore;
@@ -32,7 +37,7 @@ let nonceSeq = 0;
 const rawNonce = () => `raw-nonce-${String(++nonceSeq).padStart(8, '0')}`;
 const tokenFor = (sub: string, raw: string) => `token:${sub}:${hashNonce(raw)}`;
 
-async function harness(): Promise<{ h: Harness; profiles: Map<string, { email?: string; firstName?: string }> }> {
+async function harness(extra: { keepAppleToken?: KeepAppleToken } = {}): Promise<{ h: Harness; profiles: Map<string, { email?: string; firstName?: string }> }> {
   const bySub = new Map<string, string>();
   const profiles = new Map<string, { email?: string; firstName?: string }>();
   // The account store adds each new person to the harness's user table, so it needs the harness.
@@ -51,6 +56,7 @@ async function harness(): Promise<{ h: Harness; profiles: Map<string, { email?: 
         return { userId: id, isNew: true };
       },
     },
+    ...extra,
   });
   ref.h = h;
   return { h, profiles };
@@ -225,5 +231,151 @@ test('the sign-in log carries no token, nonce or email', async () => {
     assert.equal(line.userId, d.user.id);
   } finally {
     await h.close();
+  }
+});
+
+// ---- BE0.5: Apple's refresh token is kept at sign-in (flag on), behind a fake Apple.
+
+const sealing = randomBytes(32);
+const appleSettings = {
+  clientId: 'com.example.test-app', teamId: 'TEAMTEST01', keyId: 'KIDTEST001',
+  privateKey: generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+  revokeEnabled: true, tokenEncryptionKey: sealing.toString('base64'),
+};
+const idTokenFor = (sub: string) =>
+  [{ alg: 'none' }, { sub }].map((p) => Buffer.from(JSON.stringify(p)).toString('base64url')).join('.') + '.sig';
+
+/** The users table on PGlite (migration 027's columns), written as service_role like production. */
+const usersAsService = (): AppleTokenDb => {
+  const q = pgliteQuery(db);
+  return {
+    from: (table) => ({
+      update: (values) => ({
+        eq: (column, value) => ({
+          select: (cols) => ({ maybeSingle: () => asServiceRole(db, async () => q.from(table).update(values).eq(column, value).select(cols).maybeSingle()) }),
+        }),
+      }),
+    }),
+  };
+};
+
+/** Apple's token endpoint, faked: `reply` decides per call; every call is recorded. */
+function fakeAppleTokens(reply: (fields: Record<string, string>) => { status: number; body?: unknown } | Error) {
+  const calls: Record<string, string>[] = [];
+  const fetch: AppleFetch = async (url, init) => {
+    assert.equal(url, APPLE_TOKEN_URL);
+    const fields = Object.fromEntries(new URLSearchParams(init.body));
+    calls.push(fields);
+    const r = reply(fields);
+    if (r instanceof Error) throw r;
+    return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body };
+  };
+  return { fetch, calls };
+}
+
+async function storedFor(userId: string): Promise<{ ciphertext: string | null; at: string | null }> {
+  const { rows } = await db.query<{ c: string | null; at: Date | null }>(
+    'SELECT apple_refresh_token_ciphertext AS c, apple_refresh_token_at AS at FROM users WHERE id = $1', [userId]);
+  return { ciphertext: rows[0]!.c, at: rows[0]!.at ? rows[0]!.at.toISOString() : null };
+}
+
+const lineFor = (h: Harness) => JSON.parse(h.logLines.filter((l) => l.includes('auth.apple')).at(-1)!) as Record<string, unknown>;
+
+test('with the flag on, sign-in exchanges the code and keeps the refresh token sealed on the user', async () => {
+  const apple = fakeAppleTokens((f) => ({ status: 200, body: { refresh_token: `r.for-${f.code}`, access_token: 'a.x', id_token: idTokenFor('sub-keep') } }));
+  const { h } = await harness({ keepAppleToken: createAppleTokenKeeper({ settings: appleSettings, db: usersAsService(), fetch: apple.fetch, now: () => h.clock.now })! });
+  try {
+    const raw = rawNonce();
+    const res = await signIn(h, { identityToken: tokenFor('sub-keep', raw), authorizationCode: 'code-keep-1', rawNonce: raw });
+    assert.equal(res.status, 200);
+    assert.equal(apple.calls.length, 1);
+    assert.equal(apple.calls[0]!.code, 'code-keep-1');
+    assert.equal(apple.calls[0]!.grant_type, 'authorization_code');
+    const stored = await storedFor(data(res.body).user.id);
+    assert.ok(stored.ciphertext?.startsWith('v1:'));
+    assert.equal(stored.ciphertext!.includes('r.for-code-keep-1'), false, 'never stored in the clear');
+    assert.equal(openAppleToken(stored.ciphertext!, sealing), 'r.for-code-keep-1');
+    assert.equal(stored.at, new Date(h.clock.now).toISOString());
+    assert.equal(lineFor(h).failures, undefined, 'no failure counted');
+  } finally {
+    await h.close();
+  }
+});
+
+test("a failed code exchange doesn't fail sign-in", async () => {
+  const outcomes = [new Error('fetch failed'), { status: 400, body: { error: 'invalid_grant' } }, { status: 500 }, { status: 200, body: { access_token: 'a.only' } }];
+  let i = 0;
+  const apple = fakeAppleTokens(() => outcomes[i++]!);
+  const { h } = await harness({ keepAppleToken: createAppleTokenKeeper({ settings: appleSettings, db: usersAsService(), fetch: apple.fetch, now: () => h.clock.now })! });
+  try {
+    for (let n = 0; n < outcomes.length; n++) {
+      const raw = rawNonce();
+      const res = await signIn(h, { identityToken: tokenFor(`sub-fail-${n}`, raw), authorizationCode: `code-fail-${n}`, rawNonce: raw });
+      assert.equal(res.status, 200, `outcome ${n}`);
+      assert.equal(AuthResponse.safeParse(data(res.body)).success, true);
+      assert.equal((await storedFor(data(res.body).user.id)).ciphertext, null, 'nothing stored');
+      assert.equal(lineFor(h).failures, 1, 'counted, nothing more');
+    }
+    // Even a keeper that throws (a bug) never reaches the person.
+    const { h: h2 } = await harness({ keepAppleToken: () => { throw new Error('boom'); } });
+    try {
+      const raw = rawNonce();
+      const res = await signIn(h2, { identityToken: tokenFor('sub-fail-throw', raw), authorizationCode: 'c', rawNonce: raw });
+      assert.equal(res.status, 200);
+      assert.equal(lineFor(h2).failures, 1);
+    } finally {
+      await h2.close();
+    }
+  } finally {
+    await h.close();
+  }
+});
+
+test('with the flag off nothing calls Apple at sign-in', async () => {
+  // The default app (APPLE_REVOKE_ENABLED unset in tests): no keeper is built.
+  const realFetch = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    urls.push(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+    return realFetch(input, init);
+  }) as typeof fetch;
+  const { h } = await harness();
+  try {
+    const raw = rawNonce();
+    const res = await signIn(h, { identityToken: tokenFor('sub-off', raw), authorizationCode: 'code-off', rawNonce: raw });
+    assert.equal(res.status, 200);
+    assert.equal(urls.some((u) => u.includes('appleid.apple.com')), false);
+    assert.equal((await storedFor(data(res.body).user.id)).ciphertext, null);
+    assert.equal(lineFor(h).failures, undefined);
+  } finally {
+    globalThis.fetch = realFetch;
+    await h.close();
+  }
+});
+
+test('no log line carries the code or a token', async () => {
+  const printed: string[] = [];
+  const saved = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+  for (const k of ['log', 'error', 'warn', 'info'] as const) console[k] = (...a: unknown[]) => { printed.push(a.map(String).join(' ')); };
+  const apple = fakeAppleTokens(() => ({ status: 200, body: { refresh_token: 'r.secret-refresh-value', access_token: 'a.secret-access-value', id_token: idTokenFor('sub-quiet') } }));
+  const refusing = fakeAppleTokens(() => ({ status: 400, body: { error: 'invalid_grant', echo: 'code-secret-2' } }));
+  const { h } = await harness({ keepAppleToken: createAppleTokenKeeper({ settings: appleSettings, db: usersAsService(), fetch: apple.fetch, now: () => h.clock.now })! });
+  const { h: h2 } = await harness({ keepAppleToken: createAppleTokenKeeper({ settings: appleSettings, db: usersAsService(), fetch: refusing.fetch, now: () => h2.clock.now })! });
+  try {
+    const r1 = rawNonce(), r2 = rawNonce();
+    const ok = await signIn(h, { identityToken: tokenFor('sub-quiet', r1), authorizationCode: 'code-secret-1', rawNonce: r1 });
+    const failed = await signIn(h2, { identityToken: tokenFor('sub-quiet-2', r2), authorizationCode: 'code-secret-2', rawNonce: r2 });
+    assert.equal(ok.status, 200);
+    assert.equal(failed.status, 200);
+    const stored = (await storedFor(data(ok.body).user.id)).ciphertext!;
+    const clientSecret = apple.calls[0]!.client_secret!;
+    const everything = [...h.logLines, ...h2.logLines, ...printed, JSON.stringify(ok.body), JSON.stringify(failed.body)].join('\n');
+    for (const secret of ['code-secret-1', 'code-secret-2', 'secret-refresh-value', 'secret-access-value', stored, clientSecret]) {
+      assert.equal(everything.includes(secret), false, 'a code, token, ciphertext or client secret leaked');
+    }
+  } finally {
+    Object.assign(console, saved);
+    await h.close();
+    await h2.close();
   }
 });
