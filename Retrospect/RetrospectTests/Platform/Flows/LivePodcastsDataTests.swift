@@ -219,6 +219,30 @@ struct LivePodcastsDataTests {
         let ending = LivePodcastsData(repository: repository, now: { expiresAt.addingTimeInterval(-30) })
         #expect(await ending.episode(id: heroID) == .failure(.network))
     }
+
+    @Test func aKeptLinkStandsInWhenBothLooksComeBackWordsOnly() async throws {
+        let episodePath = "/v2/episodes/\(heroID)"
+        let library = try Fixtures.data("03", "podcasts.library")
+        try serve(["/v2/podcasts": (200, library), episodePath: (200, Fixtures.data("03", "episode.v2"))])
+        let kept = try await data.episode(id: heroID).get()
+        let expiresAt = try #require(kept.audio?.expiresAt)
+        let later = LivePodcastsData(repository: repository, now: { expiresAt.addingTimeInterval(-600) })
+        _ = await later.library()
+        try serve(["/v2/podcasts": (200, library), episodePath: (200, Self.wordsOnly())])
+        let episode = try await later.episode(id: heroID).get()
+        #expect(requests(to: episodePath) == 3)
+        #expect(episode == kept)
+        #expect(await repository.lastEpisode(id: heroID) == kept)
+    }
+
+    @Test func aRefusalNeverHandsBackTheKeptEpisode() async throws {
+        try serve(["/v2/episodes/\(heroID)": (200, Fixtures.data("03", "episode.v2"))])
+        let kept = try await data.episode(id: heroID).get()
+        let expiresAt = try #require(kept.audio?.expiresAt)
+        let later = LivePodcastsData(repository: repository, now: { expiresAt.addingTimeInterval(-600) })
+        serve([:])
+        #expect(await later.episode(id: heroID) == .failure(.notFound))
+    }
 }
 
 /// A repository whose library answers wait until the test releases them, in any order.

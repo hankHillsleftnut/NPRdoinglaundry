@@ -98,18 +98,32 @@ final class LivePodcastsData: Flows.PodcastsData {
             var episode = try await repository.episode(id: id)
             // A storage blip signs no link and reads as words only (review-192): when the library said the episode has
             // audio, ask once more; if that look fails too, the words-only answer stands.
-            if expectsAudio, episode.audio == nil, !stopped, let again = try? await repository.episode(id: id), again.audio != nil {
-                episode = again
+            // If that blips too, a kept copy whose link still lasts is better than words only.
+            if expectsAudio, episode.audio == nil, !stopped {
+                episode = await withAudio(id: id) ?? episode
             }
             guard !stopped else { return .failure(.signedOut) }
             return .success(episode)
+        } catch is CancellationError {
+            return .failure(stopped ? .signedOut : .unknown)
         } catch {
             guard !stopped else { return .failure(.signedOut) }
-            if let kept = await repository.lastEpisode(id: id), !stopped, linkLasts(kept) {
+            // Only a phone that can't reach the server gets the kept copy; a refusal (gone, not yours) is the answer.
+            let failure = Self.failure(error)
+            if failure.kind == .network, let kept = await repository.lastEpisode(id: id), !stopped, linkLasts(kept) {
                 return .success(kept)
             }
-            return .failure(Self.failure(error))
+            return .failure(failure)
         }
+    }
+
+    /// The episode with a playable link: a second look, else the kept copy while its link lasts; nil when neither has one.
+    private func withAudio(id: String) async -> Podcasts.Episode? {
+        if let again = try? await repository.episode(id: id), again.audio != nil {
+            return again
+        }
+        guard !stopped, let kept = await repository.lastEpisode(id: id), kept.audio != nil, linkLasts(kept) else { return nil }
+        return kept
     }
 
     /// The library's row for `id` (the hero or an item), if the shown library has one.
