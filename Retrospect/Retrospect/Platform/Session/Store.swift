@@ -78,6 +78,8 @@ extension Session {
             case session
             case hasSignedInBefore = "has_signed_in_before"
             case pendingInviteCode = "pending_invite_code"
+            /// The name and email Apple hands over once, kept until a sign-in succeeds (PL1.4b).
+            case pendingFirstAuthorization = "pending_first_authorization"
         }
 
         private let keychain: any KeychainBackend
@@ -153,6 +155,22 @@ extension Session {
             } else {
                 try keychain.delete(Account.pendingInviteCode.rawValue)
             }
+        }
+
+        // MARK: The first authorization Apple sends once
+
+        func kept() -> KeptFirstAuthorization? {
+            guard let text = try? string(.pendingFirstAuthorization), let data = text.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(KeptFirstAuthorization.self, from: data)
+        }
+
+        func keep(_ value: KeptFirstAuthorization) {
+            guard let data = try? JSONEncoder().encode(value), let text = String(data: data, encoding: .utf8) else { return }
+            try? write(text, .pendingFirstAuthorization)
+        }
+
+        func clear() {
+            try? keychain.delete(Account.pendingFirstAuthorization.rawValue)
         }
 
         // MARK: Launch hygiene
@@ -317,3 +335,5 @@ extension Session {
         }
     }
 }
+
+extension Session.Store: Session.FirstAuthorizationKeeping {}

@@ -106,6 +106,16 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-NewApp`: the new root on the new backend (sign in with Apple, then the app). Debug builds only until
+    /// the journal is mounted behind it (APP-ROOT flips the release default).
+    private var usesNewApp: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-NewApp")
+        #else
+        false
+        #endif
+    }
+
     private var isAnimationPreviewMode: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-AnimationPreview")
@@ -186,6 +196,9 @@ struct RetrospectApp: App {
                     #if DEBUG
                     PodcastLayoutDiagnosticsHost()
                     #endif
+                } else if usesNewApp {
+                    // Bridge (PL1.4b): the new session decides what shows; the old onboarding, sign-in gate and home are not on this path.
+                    NewAppRoot()
                 } else {
                 // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
                 if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
@@ -264,6 +277,7 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
+                platform.followSessionState()
                 platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
                 appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }

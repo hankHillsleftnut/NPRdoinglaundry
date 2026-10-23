@@ -18,7 +18,9 @@ extension Store.Outbox {
     }
 
     /// For tests: a retry timer is waiting.
-    var retryWakeArmed: Bool { retryWake != nil }
+    var retryWakeArmed: Bool {
+        retryWake != nil
+    }
 
     func endDrain() {
         isDraining = false
