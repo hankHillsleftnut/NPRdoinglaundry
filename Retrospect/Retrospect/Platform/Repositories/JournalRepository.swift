@@ -27,6 +27,20 @@ extension Platform.Repositories {
             self.timeZone = timeZone
         }
 
+        private var closed = false
+
+        /// The person signed out: nothing a fetch brings back is written from now on, even one that was already
+        /// past its checks. Closing and writing are both this actor's, so they cannot interleave.
+        func close() {
+            closed = true
+        }
+
+        /// Keeps a fetched document, unless the store is closed. Synchronous on purpose: no suspension between the check and the write.
+        private func keep(_ document: Store.CachedDocument) {
+            guard !closed else { return }
+            try? database.writer.write { try document.save($0) }
+        }
+
         /// The person's local day now, the same zone the client reports as `X-Time-Zone`.
         func localDay() -> String {
             Store.Outbox.day(of: now(), in: timeZone())
@@ -52,7 +66,7 @@ extension Platform.Repositories {
             let document = try Store.CachedDocument(
                 key: Self.todayKey(day), body: Backend.Coding.encoder.encode(today.entries), fetchedAt: now(), etag: nil
             )
-            try? await database.writer.write { try document.save($0) }
+            keep(document)
             return today.entries
         }
 
@@ -69,7 +83,7 @@ extension Platform.Repositories {
             let document = try Store.CachedDocument(
                 key: "brief.latest", body: Backend.Coding.encoder.encode(latest), fetchedAt: now(), etag: nil
             )
-            try? await database.writer.write { try document.save($0) }
+            keep(document)
             return latest
         }
 
@@ -87,15 +101,8 @@ extension Platform.Repositories {
             let document = try Store.CachedDocument(
                 key: "guesses", body: Backend.Coding.encoder.encode(guesses), fetchedAt: now(), etag: nil
             )
-            try? await database.writer.write { try document.save($0) }
+            keep(document)
             return guesses
-        }
-
-        /// Sends an answer straight away. The server keeps the first answer and returns the stored status, so a
-        /// repeat is safe; `key` is the id the outbox row would have had.
-        func answerGuess(id: String, verdict: Flows.Journal.GuessVerdict, key: UUID) async throws -> Flows.Journal.Guess.Status {
-            let answered = try await client.send(Backend.Endpoints.AnswerGuess(guessID: id, content: .init(verdict: verdict), key: key))
-            return answered.status
         }
 
         /// Answers still waiting to be sent (queued, or in flight), by guess; the newest of a guess's wins.

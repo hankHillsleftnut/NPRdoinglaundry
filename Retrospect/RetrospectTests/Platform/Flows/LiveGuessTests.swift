@@ -17,6 +17,7 @@ struct LiveGuessTests {
     private let log = Platform.Log.Recorder()
     private let database: Store.LocalDatabase
     private let data: LiveJournalData
+    private let client: Backend.Client
 
     init() throws {
         let database = try Store.LocalDatabase.inMemory()
@@ -25,9 +26,17 @@ struct LiveGuessTests {
             session: session, tokens: Tokens(), reachability: network, clock: TestClock(), log: log
         )
         self.database = database
+        self.client = client
         data = LiveJournalData(
             repository: Platform.Repositories.Journal(database: database, client: client, timeZone: { .gmt }),
             outbox: Store.Outbox(database: database, log: log), reachability: StreamingReachability(), timeZone: { .gmt }
+        )
+    }
+
+    private func makeData(outbox: Store.Outbox) throws -> LiveJournalData {
+        LiveJournalData(
+            repository: Platform.Repositories.Journal(database: database, client: client, timeZone: { .gmt }),
+            outbox: outbox, reachability: StreamingReachability(), timeZone: { .gmt }
         )
     }
 
@@ -70,27 +79,26 @@ struct LiveGuessTests {
         #expect(data.guesses.isEmpty)
     }
 
-    @Test("an answer takes at once, goes to the server once with its verdict and a key, and the outbox is left alone")
-    func answeringOnline() async throws {
+    @Test("an answer takes at once and is queued in the outbox with its verdict; nothing is sent around the outbox")
+    func answeringQueues() async throws {
         defer { StubProtocol.clear(session) }
         serve()
         await data.load()
 
         let outcome = try await data.answer(offered(), verdict: .yes)
 
-        #expect(outcome == .recorded(.confirmed))
+        #expect(outcome == .queued)
         #expect(try offered().status == .confirmed)
-        let posts = answerRequests()
-        #expect(posts.count == 1)
-        #expect(posts.first?.url?.path == "/v2/guesses/\(guessID)")
-        let sent = try JSONSerialization.jsonObject(with: #require(posts.first?.httpBody)) as? NSDictionary
+        #expect(answerRequests().isEmpty, "no direct send with a throwaway key")
+        let rows = try outboxRows()
+        #expect(rows.count == 1)
+        #expect(rows.first?.operation == .guessAnswer && rows.first?.entityID == guessID)
         let expected = try JSONSerialization.jsonObject(with: Fixtures.data("02", "guess.answer.request")) as? NSDictionary
-        #expect(sent == expected)
-        #expect(posts.first?.value(forHTTPHeaderField: "Idempotency-Key") != nil)
-        #expect(try outboxRows().isEmpty)
+        let stored = try JSONSerialization.jsonObject(with: #require(rows.first?.payload)) as? NSDictionary
+        #expect(stored == expected)
     }
 
-    @Test("offline the answer is queued once, shows at once, and survives a refresh that still offers the guess")
+    @Test("offline the answer shows at once and survives a refresh that still offers the guess")
     func answeringOffline() async throws {
         defer { StubProtocol.clear(session) }
         serve()
@@ -101,39 +109,49 @@ struct LiveGuessTests {
         await data.load()
 
         #expect(outcome == .queued)
-        let rows = try outboxRows()
-        #expect(rows.count == 1)
-        #expect(rows.first?.operation == .guessAnswer)
-        #expect(rows.first?.entityID == guessID)
+        #expect(try outboxRows().count == 1)
         #expect(try offered().status == .declined, "the queued answer wins over the server's list")
-        #expect(answerRequests().isEmpty)
     }
 
-    @Test("a guess that isn't there any more is put back, and the outbox gets nothing")
-    func aRefusalReverts() async throws {
+    @Test("a retried answer carries the same idempotency key every time: the id stored with the answer")
+    func theKeyIsStoredWithTheAnswer() async throws {
         defer { StubProtocol.clear(session) }
-        serve(answer: (404, "00", "error.not_found"))
-        await data.load()
+        serve()
+        let sender = ScriptedSender()
+        let outbox = Store.Outbox(database: database, sender: sender, jitter: { $0 }, sleep: { _ in }, log: log)
+        let live = try makeData(outbox: outbox)
+        await live.load()
+        let guess = try #require(live.guesses.first)
 
-        let outcome = try await data.answer(offered(), verdict: .yes)
+        _ = await live.answer(guess, verdict: .yes)
+        let key = try #require(try outboxRows().first?.id)
+        sender.script(key, [.failure(Backend.Failure(.transport)), .failure(Backend.Failure(.transport))])
+        await outbox.drain(reason: .manual)
+        try await database.writer.write { try $0.execute(sql: "UPDATE outbox SET next_attempt_at = '2000-01-01T00:00:00.000Z'") }
+        await outbox.drain(reason: .manual)
+        try await database.writer.write { try $0.execute(sql: "UPDATE outbox SET next_attempt_at = '2000-01-01T00:00:00.000Z'") }
+        await outbox.drain(reason: .manual)
 
-        #expect(outcome == .failed(Flows.Failure(.notFound)))
-        #expect(try offered().status == .offered)
-        #expect(try outboxRows().isEmpty)
+        #expect(sender.sends.map(\.id) == [key, key, key], "three attempts, one key")
     }
 
-    @Test("an expired guess is adopted as expired, and leaves the next time the list is read")
-    func expiredIsAdoptedThenLeaves() async throws {
+    @Test("a refused answer (dead in the outbox) is no longer applied: the guess is offered again")
+    func aRefusedAnswerIsOfferedAgain() async throws {
         defer { StubProtocol.clear(session) }
-        serve(answer: (200, "02", "guess.answer.expired"))
-        await data.load()
+        serve()
+        let sender = ScriptedSender()
+        let outbox = Store.Outbox(database: database, sender: sender, log: log)
+        let live = try makeData(outbox: outbox)
+        await live.load()
+        let guess = try #require(live.guesses.first)
+        _ = await live.answer(guess, verdict: .yes)
+        let key = try #require(try outboxRows().first?.id)
+        sender.script(key, [.failure(Backend.Failure(.notFound))])
 
-        let outcome = try await data.answer(offered(), verdict: .yes)
-        #expect(outcome == .recorded(.expired))
-        #expect(try offered().status == .expired)
+        await outbox.drain(reason: .manual)
+        await live.load()
 
-        serve(list: "guesses.silent")
-        await data.load()
-        #expect(data.guesses.isEmpty)
+        #expect(try outboxRows().first?.status == .dead)
+        #expect(live.guesses.first?.status == .offered)
     }
 }
