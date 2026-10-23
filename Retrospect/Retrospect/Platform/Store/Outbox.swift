@@ -67,6 +67,7 @@ extension Store {
         var started = false
         fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
+        fileprivate var inFlightSend: Task<Store.OutboxSendResult, any Error>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
@@ -148,14 +149,14 @@ extension Store {
             return key
         }
 
-        /// Entries and answers not yet sent: pending, in flight or refused (a
-        /// report isn't the person's words, so it isn't counted). Feeds
-        /// sign-out's "you have unsent entries" (PL1.5).
+        /// Entries not yet sent: pending, in flight or refused. Guess answers and reports aren't
+        /// the person's words, so they aren't counted. Feeds sign-out's "not sent yet" question.
         func unsentCount() throws -> Int {
             try database.writer.read { db in
                 try Store.OutboxRow
                     .filter([OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.status)))
-                    .filter(Column(OutboxRow.CodingKeys.operation) != OutboxOperation.diagnosticsSend.rawValue)
+                    // only the person's own words: a refused guess answer or a report is not an unsent entry
+                    .filter(![OutboxOperation.diagnosticsSend, .guessAnswer].map(\.rawValue).contains(Column(OutboxRow.CodingKeys.operation)))
                     .fetchCount(db)
             }
         }
@@ -220,7 +221,7 @@ extension Store {
         /// one whenever the phone comes back online, and one after every
         /// enqueue. Foreground and the background task call `drain` themselves.
         func start() {
-            guard !started else { return }
+            guard !started, !stopped else { return }
             started = true
             guard let reachability else {
                 Task { await drain(reason: .launch) }
@@ -272,7 +273,7 @@ extension Store {
                 guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
-                    let result = try await sender.send(item)
+                    let result = try await send(item, with: sender)
                     try markDone(item, result: result)
                     tally.sent += 1
                     if item.operation == .diagnosticsSend, let reference = result.reference {
@@ -283,6 +284,11 @@ extension Store {
                     try? markPending(item, at: now())
                     break
                 } catch {
+                    if stopped {
+                        // the person signed out mid-send: nothing is counted, the store is about to be erased
+                        try? markPending(item, at: now())
+                        break
+                    }
                     if settle(error, item: item, tally: &tally) == .pause {
                         paused = true
                         break
@@ -537,14 +543,26 @@ extension Store {
 // MARK: Stopping (PL3.1a)
 
 extension Store.Outbox {
-    /// The person signed out: no trigger starts another drain, and a pass in flight stops at its next item.
-    /// The outbox is not used again; the next person gets a new one on a new store.
-    func stop() {
+    /// The person signed out: no trigger starts another drain, the send in flight is cancelled, and this
+    /// returns only when the drain has ended, so nothing of theirs is sent (or written) after it.
+    func stop() async {
         stopped = true
         reachabilityWatch?.cancel()
         reachabilityWatch = nil
         retryWake?.cancel()
         retryWake = nil
+        inFlightSend?.cancel()
+        while isDraining {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    /// One send as a task of its own, so `stop` can cancel it.
+    fileprivate func send(_ item: Store.OutboxRow, with sender: any Store.OutboxSending) async throws -> Store.OutboxSendResult {
+        let task = Task { try await sender.send(item) }
+        inFlightSend = task
+        defer { inFlightSend = nil }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
 }
 

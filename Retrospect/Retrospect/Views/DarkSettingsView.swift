@@ -16,6 +16,9 @@ struct DarkSettingsView: View {
     @State private var showLogoutConfirmation = false
     @State private var showBiometricUnavailableAlert = false
     @State private var showGoogleError = false
+    // Bridge (PL5.2): sign-out asks first when entries have not been sent yet.
+    @Environment(Platform.AppEnvironment.self) private var platform: Platform.AppEnvironment?
+    @State private var unsentOnSignOut: UnsentSignOut?
     @State private var showHealthError = false
     @State private var healthErrorMessage = ""
     @State private var isConnectingGoogle = false
@@ -157,6 +160,16 @@ struct DarkSettingsView: View {
         } message: {
             Text("You'll need to sign in again to access your data.")
         }
+        .alert(
+            "Not sent yet",
+            isPresented: Binding(get: { unsentOnSignOut != nil }, set: { if !$0 { unsentOnSignOut = nil } }),
+            presenting: unsentOnSignOut
+        ) { pending in
+            Button("Stay signed in", role: .cancel) {}
+            Button("Log out and erase them", role: .destructive) { signOutNow(wipeOnboarding: pending.wipeOnboarding) }
+        } message: { pending in
+            Text("\(pending.count) not sent yet. Logging out erases them from this phone.")
+        }
         .alert("Dev mode is on", isPresented: $showDevWipeConfirmation) {
             Button("Wipe & Log Out", role: .destructive) { fullSignOut(wipeOnboarding: true) }
             Button("Cancel", role: .cancel) {}
@@ -276,6 +289,23 @@ struct DarkSettingsView: View {
     /// alone is not enough: `OnboardingState.restoreFromDisk` reads its own signed-in
     /// flag and would skip the welcome page.
     private func fullSignOut(wipeOnboarding: Bool) {
+        Task {
+            // entries still on the phone are the person's words: ask before erasing them
+            let unsent = await platform?.unsentEntryCount() ?? 0
+            if unsent > 0 {
+                unsentOnSignOut = UnsentSignOut(count: unsent == 1 ? "1 entry is" : "\(unsent) entries are", wipeOnboarding: wipeOnboarding)
+                return
+            }
+            signOutNow(wipeOnboarding: wipeOnboarding)
+        }
+    }
+
+    private struct UnsentSignOut {
+        let count: String
+        let wipeOnboarding: Bool
+    }
+
+    private func signOutNow(wipeOnboarding: Bool) {
         Task {
             await apiClient.signOut()
             if wipeOnboarding {

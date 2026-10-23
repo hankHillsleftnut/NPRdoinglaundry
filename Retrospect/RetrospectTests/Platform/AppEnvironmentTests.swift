@@ -195,6 +195,27 @@ struct AppEnvironmentTests {
         #expect(try events == [Platform.Diagnostics.Recorder.encode(.event(.screenShown(.signIn)))])
     }
 
+    @Test("a real sign-in and sign-out through the session open and erase the stack, with no call from the old client")
+    func theSessionAloneDrivesTheStack() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        environment.followSession()
+
+        try await environment.session.install(Session.Credentials(
+            accessToken: "invented.access", accessTokenExpiresAt: Date().addingTimeInterval(900),
+            refreshToken: "invented-refresh", userID: "user-a", access: .member
+        ))
+        try await settle { environment.outbox != nil }
+        let outbox = try #require(environment.outbox)
+        try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "private words", createdAt: Date())))
+
+        _ = await environment.session.signOut(force: true)
+        try await settle { environment.outbox == nil }
+
+        #expect(try await database.writer.read { try Store.EntryRow.fetchCount($0) } == 0)
+        #expect(environment.journalData == nil)
+    }
+
     @Test("sign-out without force is told about entries not yet sent; with none it signs out")
     func signOutSeesTheOutbox() async throws {
         let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")

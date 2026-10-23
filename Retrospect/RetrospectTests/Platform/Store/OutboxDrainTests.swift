@@ -372,7 +372,7 @@ struct OutboxDrainTests {
         #expect(try rowByID(flaky.uuidString.lowercased()).status == .dead)
         #expect(try rowByID(flaky.uuidString.lowercased()).attempts == Store.Outbox.attemptLimit)
         #expect(try entryCount() == 0)
-        #expect(try await outbox.unsentCount() == 2, "queued answers count as unsent")
+        #expect(try await outbox.unsentCount() == 0, "a refused guess answer is not an unsent entry")
     }
 
     // MARK: Offline and retries

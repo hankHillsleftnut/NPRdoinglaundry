@@ -298,6 +298,11 @@ extension Platform {
             )
         }
 
+        /// Entries not yet sent, for the sign-out question (0 when no store is open).
+        func unsentEntryCount() async -> Int {
+            await Self.unsentCount(in: unsentSource)
+        }
+
         /// What the sign-out check counts as unsent: entries and answers in the outbox that is open.
         /// A store that can't be read counts as one, so a sign-out never silently discards.
         nonisolated static func unsentCount(in source: Box<Store.Outbox?>) async -> Int {
