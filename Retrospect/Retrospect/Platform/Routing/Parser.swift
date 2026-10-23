@@ -96,7 +96,9 @@ extension Routing {
         /// The port as the web sees it: an explicit default (`:443` for https, `:80` for http) is no port.
         private static func port(of url: URL) -> Int? {
             let scheme = url.scheme?.lowercased()
-            if let port = url.port { return port == (scheme == "https" ? 443 : scheme == "http" ? 80 : -1) ? nil : port }
+            if let port = url.port {
+                return port == (scheme == "https" ? 443 : scheme == "http" ? 80 : -1) ? nil : port
+            }
             return nil
         }
 

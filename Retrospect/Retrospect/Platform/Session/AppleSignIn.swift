@@ -42,6 +42,33 @@ extension Session {
         }
     }
 
+    /// The name and email Apple sends ONCE, with the Apple id they belong to, kept (in the Keychain, on this phone) from the
+    /// moment Apple hands them over until a sign-in succeeds, so a failed first call does not lose them for good.
+    struct KeptFirstAuthorization: Codable, Sendable, Equatable {
+        let appleUser: String
+        let givenName: String?
+        let familyName: String?
+        let email: String?
+    }
+
+    protocol FirstAuthorizationKeeping: Sendable {
+        func kept() async -> KeptFirstAuthorization?
+        func keep(_ value: KeptFirstAuthorization) async
+        func clear() async
+    }
+
+    /// For previews and tests: kept in memory only.
+    final class MemoryFirstAuthorization: FirstAuthorizationKeeping, @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: KeptFirstAuthorization?
+
+        init() {}
+
+        func kept() async -> KeptFirstAuthorization? { lock.withLock { value } }
+        func keep(_ value: KeptFirstAuthorization) async { lock.withLock { self.value = value } }
+        func clear() async { lock.withLock { value = nil } }
+    }
+
     /// Where a new session goes once the server has answered: saved whole,
     /// mirrored for the old screens, marked as signed in before. The session
     /// manager (PL1.5) is the app's; until it lands the store itself is.
@@ -62,14 +89,17 @@ extension Session {
         private let installer: any Installing
         private let log: any Platform.LogSink
         private let makeNonce: @Sendable () throws -> Nonce
+        private let keeper: (any FirstAuthorizationKeeping)?
         private var pending: Nonce?
 
         init(
             client: Backend.Client,
             installer: any Installing,
             log: any Platform.LogSink,
+            keeper: (any FirstAuthorizationKeeping)? = nil,
             makeNonce: @escaping @Sendable () throws -> Nonce = { try Nonce.make() }
         ) {
+            self.keeper = keeper
             self.client = client
             self.installer = installer
             self.log = log
@@ -124,13 +154,12 @@ extension Session {
         func signIn(with credential: AppleCredential) async throws -> SignInOutcome {
             guard let nonce = pending else { throw SignInError.notPrepared }
             pending = nil
+            let first = await firstAuthorization(for: credential)
             let body = Backend.AppleSignInBody(
                 identityToken: credential.identityToken,
                 authorizationCode: credential.authorizationCode,
                 rawNonce: nonce.raw,
-                firstAuthorization: credential.isFirstAuthorization
-                    ? .init(givenName: credential.givenName, familyName: credential.familyName, email: credential.email)
-                    : nil
+                firstAuthorization: first.map { .init(givenName: $0.givenName, familyName: $0.familyName, email: $0.email) }
             )
             let response = try await client.send(Backend.Endpoints.AppleSignIn(body))
             try await installer.install(Credentials(
@@ -143,10 +172,25 @@ extension Session {
                 provider: .apple,
                 appleUserID: credential.user
             ))
+            await keeper?.clear()
             log.record(.signedIn(provider: .apple, isNew: response.user.isNew))
             return SignInOutcome(
                 userID: response.user.id, firstName: response.user.firstName, isNew: response.user.isNew, access: response.access.state
             )
+        }
+
+        /// What goes in the body's first-authorization part: what Apple just sent (kept first, in case this call fails),
+        /// else what an earlier failed call kept for this same Apple id.
+        private func firstAuthorization(for credential: AppleCredential) async -> KeptFirstAuthorization? {
+            if credential.isFirstAuthorization {
+                let value = KeptFirstAuthorization(
+                    appleUser: credential.user, givenName: credential.givenName, familyName: credential.familyName, email: credential.email
+                )
+                await keeper?.keep(value)
+                return value
+            }
+            guard let kept = await keeper?.kept(), kept.appleUser == credential.user else { return nil }
+            return kept
         }
 
         /// Reads what the door needs out of Apple's credential. Both tokens must

@@ -23,7 +23,9 @@ struct RealEnginePlaybackTests {
     func wait(_ p: Platform.Media.LivePlayback, _ want: Flows.PlaybackState, secs: Double = 6) async -> Bool {
         let end = Date().addingTimeInterval(secs)
         while Date() < end {
-            if p.state == want { return true }
+            if p.state == want {
+                return true
+            }
             try? await Task.sleep(for: .milliseconds(50))
         }
         return false
@@ -32,7 +34,12 @@ struct RealEnginePlaybackTests {
     @Test("the real engine plays to the end, replay from ended plays again, unload silences")
     func replay() async throws {
         let url = try wav()
-        let p = Platform.Media.LivePlayback(engine: Platform.Media.AVPlayerEngine(), session: Platform.Media.SystemAudioSession(), resolve: { _, _ in url }, log: Platform.Log.Recorder())
+        let p = Platform.Media.LivePlayback(
+            engine: Platform.Media.AVPlayerEngine(),
+            session: Platform.Media.SystemAudioSession(),
+            resolve: { _, _ in url },
+            log: Platform.Log.Recorder()
+        )
         let item = Flows.PlaybackItem(id: "x", kind: .brief, title: "t", parts: [], durationSeconds: 1)
         await p.load(item)
         p.play()
