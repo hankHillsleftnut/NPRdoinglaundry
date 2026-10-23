@@ -184,6 +184,51 @@ struct LiveJournalDataTests {
         #expect(try documentCount() == 0)
     }
 
+    @Test("coming back, a failed refresh keeps the thread on screen, and offline the doors are not called")
+    func aFailedOrOfflineRefreshKeepsThePage() async throws {
+        defer { StubProtocol.clear(session) }
+        final class Moment: @unchecked Sendable {
+            private let lock = NSLock()
+            private var date: Date
+            init(_ date: Date) { self.date = date }
+            var value: Date {
+                lock.withLock { date }
+            }
+
+            func advance(_ seconds: TimeInterval) { lock.withLock { date = date.addingTimeInterval(seconds) } }
+        }
+        let moment = Moment(now)
+        let network = StreamingReachability()
+        let client = Backend.Client(
+            configuration: .resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false),
+            session: session, tokens: Tokens(), reachability: ManualReachability(), clock: TestClock(), log: log
+        )
+        let live = LiveJournalData(
+            repository: Platform.Repositories.Journal(database: database, client: client, now: { moment.value }, timeZone: { .gmt }),
+            outbox: outbox, reachability: network, now: { moment.value }, timeZone: { .gmt }
+        )
+        defer { live.stop() }
+        answerToday()
+        await live.load()
+        #expect(live.today.value?.count == 3)
+        let loaded = StubProtocol.requests(on: session).count
+
+        refuseToday(status: 500, fixture: "error.internal")
+        moment.advance(60)
+        await live.refresh()
+        #expect(live.today.value?.count == 3, "the failure does not replace the loaded thread")
+        let asked = StubProtocol.requests(on: session).count
+        #expect(asked > loaded, "the refresh did ask the doors again")
+
+        network.send(false)
+        try await waitUntil { !live.isOnline }
+        moment.advance(60)
+        await live.refresh()
+
+        #expect(StubProtocol.requests(on: session).count == asked, "offline, nothing is asked")
+        #expect(live.today.value?.count == 3)
+    }
+
     // MARK: Delivery
 
     @Test("the acknowledgement appears only after the entry is sent, stays through a reload, and server entries get none")

@@ -4,6 +4,7 @@
 //  journal the platform built for them on sign-in (nil for the moment between sign-in and the store opening,
 //  when the page shows its empty canvas) and the person's local day, read again whenever the app comes back
 //  or the clock changes, which builds a new page and a new load so yesterday never stays up as "today".
+//  Coming back on the same day refreshes the live journal in place instead (P09.live, `LiveJournalData.refresh`).
 //  The drawer button opens the account page (the one place to sign out) until the drawer (JR-3) is mounted.
 //
 import SwiftUI
@@ -22,8 +23,14 @@ struct LiveJournalRoot: View {
                 LiveAccountPage { account.isShown = false }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
-                    today = Self.day()
+                guard phase == .active else { return }
+                let day = Self.day()
+                if day == today {
+                    // the same day: look at the server again (at most once a minute; the page stays as it is)
+                    let data = platform.journalData
+                    Task { await data?.refresh() }
+                } else {
+                    today = day
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in

@@ -9,7 +9,8 @@
 //  person's day, and looked for again while it's being made. Guesses (PL3.1c) show from the last
 //  list with answers waiting to be sent applied. The drawer (PL3.1d, in the Drawer extension) reads
 //  the server and the phone. "What Retro took" and corrections are PL3.1e; until then they answer
-//  with a failure and never throw.
+//  with a failure and never throw. When the app comes back on the same day (P09.live) the root calls
+//  `refresh()`: the same load, at most once a minute, never alongside another, and never after `stop()`.
 //
 import Foundation
 import Observation
@@ -43,6 +44,12 @@ final class LiveJournalData: Flows.JournalData {
     @ObservationIgnored private var observing: Task<Void, Never>?
     @ObservationIgnored private var watchingReachability: Task<Void, Never>?
     @ObservationIgnored private var day: String?
+    /// Loads (or refreshes) under way; a refresh never starts beside one.
+    @ObservationIgnored private var loadsRunning = 0
+    /// When the last load started; nil until the page has loaded once.
+    @ObservationIgnored private var lastLoad: Date?
+    /// After `stop()` nothing more is fetched or written: the next person's page never gets a late answer.
+    @ObservationIgnored private var stopped = false
 
     init(
         repository: Platform.Repositories.Journal,
@@ -62,6 +69,7 @@ final class LiveJournalData: Flows.JournalData {
 
     /// Stops watching the rows and the connection. Called before the person's store is erased.
     func stop() {
+        stopped = true
         observing?.cancel()
         watchingReachability?.cancel()
         briefPoll?.cancel()
@@ -73,19 +81,36 @@ final class LiveJournalData: Flows.JournalData {
     // MARK: Today
 
     func load() async {
+        guard !stopped else { return }
+        loadsRunning += 1
+        defer { loadsRunning -= 1 }
+        lastLoad = now()
         startWatchingReachability()
         let loadDay = await repository.localDay()
+        guard !stopped else { return }
         await startObserving(day: loadDay)
-        if server == nil, let cached = await repository.cachedToday(day: loadDay) {
+        guard await loadToday(day: loadDay) else { return }
+        await loadBrief(day: loadDay)
+        guard isCurrent(loadDay) else { return }
+        await loadGuesses(day: loadDay)
+    }
+
+    /// Today from the cache, then the server. False when the load should go no further (cancelled, stopped,
+    /// or the day moved on while it waited).
+    private func loadToday(day loadDay: String) async -> Bool {
+        if server == nil, let cached = await repository.cachedToday(day: loadDay), isCurrent(loadDay) {
             server = cached
             publish()
         }
         do {
-            server = try await repository.refreshToday(day: loadDay)
+            let fresh = try await repository.refreshToday(day: loadDay)
+            guard isCurrent(loadDay) else { return false }
+            server = fresh
             publish()
         } catch is CancellationError {
-            return
+            return false
         } catch {
+            guard isCurrent(loadDay) else { return false }
             let failure = (error as? Backend.Failure)?.flowFailure ?? Flows.Failure(.unknown)
             // Cached or phone-only entries are still true; only an empty page shows the failure.
             if server == nil, rows.isEmpty {
@@ -94,31 +119,54 @@ final class LiveJournalData: Flows.JournalData {
                 publish()
             }
         }
-        await loadBrief(day: loadDay)
-        await loadGuesses()
+        return true
+    }
+
+    /// An answer asked for on `loadDay` may still be written: not stopped, and still the same day.
+    private func isCurrent(_ loadDay: String) -> Bool {
+        !stopped && day == loadDay
+    }
+
+    // MARK: Coming back (P09.live)
+
+    /// The shortest time, in seconds, between two looks at the server when the app comes back.
+    static let refreshInterval: TimeInterval = 60
+
+    /// The app came back on the same day: today, the brief and the guesses are fetched again, and what is shown
+    /// stays until a new answer replaces it (no skeleton, no error over a loaded page). Nothing happens before the
+    /// first load, within a minute of the last one, while one is running, offline, or after `stop()`.
+    func refresh() async {
+        guard !stopped, loadsRunning == 0, isOnline, let lastLoad else { return }
+        let since = now().timeIntervalSince(lastLoad)
+        // a clock set back counts as time passed, so the page is never stuck waiting for it to catch up
+        guard since < 0 || since >= Self.refreshInterval else { return }
+        await load()
     }
 
     // MARK: Guesses (PL3.1c)
 
-    private func loadGuesses() async {
-        if offered == nil, let cached = await repository.cachedGuesses() {
+    private func loadGuesses(day loadDay: String) async {
+        if offered == nil, let cached = await repository.cachedGuesses(), isCurrent(loadDay) {
             offered = cached
-            await publishGuesses()
+            await publishGuesses(day: loadDay)
         }
         do {
-            offered = try await repository.refreshGuesses()
-            await publishGuesses()
+            let fresh = try await repository.refreshGuesses()
+            guard isCurrent(loadDay) else { return }
+            offered = fresh
+            await publishGuesses(day: loadDay)
         } catch is CancellationError {
             return
         } catch {
             // A failed look keeps what was kept; guesses have no failed state, they just aren't there.
-            await publishGuesses()
+            await publishGuesses(day: loadDay)
         }
     }
 
     /// The guesses with answers still waiting to be sent applied: a queued answer's status wins over the server's.
-    private func publishGuesses() async {
+    private func publishGuesses(day loadDay: String) async {
         let queued = await repository.queuedAnswers()
+        guard isCurrent(loadDay) else { return }
         guesses = (offered ?? []).map { guess in
             queued[guess.id].map { Self.answered(guess, $0 == .yes ? .confirmed : .declined) } ?? guess
         }
@@ -154,20 +202,24 @@ final class LiveJournalData: Flows.JournalData {
     // MARK: The brief (PL3.1b)
 
     /// When to look again while a brief is being made: at the time it is due, then 2, 5, 10 and 15 minutes
-    /// after. Then it stops until the next load (the app coming to the front).
+    /// after. Then it stops until the next load (the app coming to the front), which starts the same looks
+    /// again from then if the brief is still being made.
     static let pollOffsets: [Duration] = [.zero, .seconds(120), .seconds(300), .seconds(600), .seconds(900)]
 
     private func loadBrief(day: String) async {
-        if latest == nil, let cached = await repository.cachedBrief() {
+        if latest == nil, let cached = await repository.cachedBrief(), isCurrent(day) {
             latest = cached
             publishBrief(day: day)
         }
         do {
-            latest = try await repository.refreshBrief()
+            let fresh = try await repository.refreshBrief()
+            guard isCurrent(day) else { return }
+            latest = fresh
             publishBrief(day: day)
         } catch is CancellationError {
             return
         } catch {
+            guard isCurrent(day) else { return }
             // A kept brief is still true; with nothing kept the card says it couldn't load.
             if latest == nil {
                 brief = .failed((error as? Backend.Failure)?.flowFailure ?? Flows.Failure(.unknown))
@@ -192,10 +244,13 @@ final class LiveJournalData: Flows.JournalData {
 
     private func watchForBrief(readyBy: Date, day: String) {
         guard briefPoll == nil else { return }
+        // Past the whole wait (the app came back late), the same looks start again from now.
+        let lastLook = readyBy.addingTimeInterval(Self.pollOffsets.last?.seconds ?? 0)
+        let start = lastLook < now() ? now() : readyBy
         briefPoll = Task { [weak self] in
             for offset in Self.pollOffsets {
                 guard let self, !Task.isCancelled else { return }
-                let wait = readyBy.addingTimeInterval(offset.seconds).timeIntervalSince(now())
+                let wait = start.addingTimeInterval(offset.seconds).timeIntervalSince(now())
                 guard wait > 0 else { continue }
                 do {
                     try await clock.sleep(for: .seconds(wait))
@@ -203,26 +258,31 @@ final class LiveJournalData: Flows.JournalData {
                     return
                 }
                 if await refreshWhileMaking(day: day) {
-                    return
+                    break
                 }
             }
-            briefPoll = nil
+            // A cancelled wait was ended by whoever cancelled it, and may already have been replaced.
+            if let self, !Task.isCancelled {
+                briefPoll = nil
+            }
         }
     }
 
     /// One look while waiting; true when the wait is over (the brief came, or the server asks us to stop).
     private func refreshWhileMaking(day: String) async -> Bool {
+        let fresh: Backend.Endpoints.BriefLatest.Latest
         do {
-            latest = try await repository.refreshBrief()
+            fresh = try await repository.refreshBrief()
         } catch let failure as Backend.Failure {
             if case .rateLimited = failure.kind {
-                briefPoll = nil
                 return true
             }
             return false
         } catch {
             return true
         }
+        guard isCurrent(day) else { return true }
+        latest = fresh
         publishBrief(day: day)
         if case .making = brief.value {
             return false
@@ -233,6 +293,9 @@ final class LiveJournalData: Flows.JournalData {
     private func startObserving(day newDay: String) async {
         guard day != newDay || observing == nil else { return }
         observing?.cancel()
+        // A wait for the brief belongs to its day; the new day's load starts its own.
+        briefPoll?.cancel()
+        briefPoll = nil
         day = newDay
         server = nil
         rows = []

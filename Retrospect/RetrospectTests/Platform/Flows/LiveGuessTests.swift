@@ -79,6 +79,40 @@ struct LiveGuessTests {
         #expect(data.guesses.isEmpty)
     }
 
+    @Test("a guess made after the first load shows once the app comes back, a minute or more later")
+    func aLaterGuessAppearsOnComingBack() async {
+        defer { StubProtocol.clear(session) }
+        final class Moment: @unchecked Sendable {
+            private let lock = NSLock()
+            private var date = Date(timeIntervalSince1970: 1_792_591_200)
+            var value: Date {
+                lock.withLock { date }
+            }
+
+            func advance(_ seconds: TimeInterval) { lock.withLock { date = date.addingTimeInterval(seconds) } }
+        }
+        let moment = Moment()
+        let live = LiveJournalData(
+            repository: Platform.Repositories.Journal(database: database, client: client, now: { moment.value }, timeZone: { .gmt }),
+            outbox: Store.Outbox(database: database, log: log), reachability: StreamingReachability(),
+            now: { moment.value }, timeZone: { .gmt }
+        )
+        defer { live.stop() }
+        serve(list: "guesses.silent")
+        await live.load()
+        #expect(live.guesses.isEmpty)
+
+        serve()
+        moment.advance(30)
+        await live.refresh()
+        #expect(live.guesses.isEmpty, "inside the minute nothing is asked")
+        moment.advance(30)
+        await live.refresh()
+
+        #expect(live.guesses.first?.id == guessID)
+        #expect(live.guesses.first?.status == .offered)
+    }
+
     @Test("an answer takes at once and is queued in the outbox with its verdict; nothing is sent around the outbox")
     func answeringQueues() async throws {
         defer { StubProtocol.clear(session) }
