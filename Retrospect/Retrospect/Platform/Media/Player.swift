@@ -28,6 +28,8 @@ extension Platform.Media {
         func seek(to seconds: Double) async
         /// Unloads the item and its observers.
         func clear()
+        /// The system rebuilt its audio services: the old player is gone for good; make a new one (nothing loaded).
+        func rebuildPlayer()
     }
 
     enum InterruptionEvent: Equatable, Sendable {
@@ -107,6 +109,7 @@ extension Platform.Media {
         @ObservationIgnored private var watching: [Task<Void, Never>] = []
         @ObservationIgnored private var release: Task<Void, Never>?
         @ObservationIgnored private var recordingObserver: NSObjectProtocol?
+        @ObservationIgnored private let notifications: NotificationCenter
 
         init(
             engine: any Engine,
@@ -121,6 +124,7 @@ extension Platform.Media {
             self.resolve = resolve
             self.log = log
             self.clock = clock
+            self.notifications = notifications
             watch()
             recordingObserver = notifications.addObserver(forName: Platform.Media.recordingStarted, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.pauseForRecording() }
@@ -131,7 +135,7 @@ extension Platform.Media {
             watching.forEach { $0.cancel() }
             release?.cancel()
             if let recordingObserver {
-                NotificationCenter.default.removeObserver(recordingObserver)
+                notifications.removeObserver(recordingObserver)
             }
         }
 
@@ -182,10 +186,13 @@ extension Platform.Media {
         func play() {
             guard let item else { return }
             if loadedURL == nil {
-                // Offline or failed earlier: a tap is a new try.
+                // Offline or failed earlier: a tap is a new try, of this item only. An unload (sign-out) or
+                // another item before or during the try wins: nothing starts.
+                let tapped = generation
                 Task {
+                    guard tapped == generation else { return }
                     await load(item)
-                    if loadedURL != nil {
+                    if loadedURL != nil, generation == tapped + 1 {
                         start()
                     }
                 }
@@ -293,7 +300,7 @@ extension Platform.Media {
                 Task { [weak self] in
                     // a call (or Siri, an alarm) pauses; the end of it never resumes by itself
                     for await event in interruptions where event == .began {
-                        self?.pauseForRecording()
+                        self?.interrupted()
                     }
                 },
                 Task { [weak self] in
@@ -327,6 +334,7 @@ extension Platform.Media {
             case .failed:
                 log.record(.playbackTrouble(.itemFailed))
                 state = .failed(Flows.Failure(.network))
+                holdSession()
             }
         }
 
@@ -340,10 +348,22 @@ extension Platform.Media {
             case .playing:
                 state = .playing
             default:
+                // The engine stopped by itself (headphones out, a call whose own event comes later):
+                // paused, and the session goes back if it stays that way.
                 if state == .playing || state == .buffering {
                     state = .paused
+                    holdSession()
                 }
             }
+        }
+
+        /// A call (or Siri, an alarm) took the audio: paused, and iOS has already taken the session,
+        /// so the next tap activates it again. Whatever the engine said first.
+        private func interrupted() {
+            pauseForRecording()
+            release?.cancel()
+            release = nil
+            sessionActive = false
         }
 
         /// The system rebuilt its audio services: the item goes back where it was, paused.
@@ -351,11 +371,13 @@ extension Platform.Media {
             guard let item, loadedURL != nil else { return }
             let at = position
             sessionActive = false
+            engine.rebuildPlayer()
+            let before = generation
             await load(item)
-            if loadedURL != nil {
-                position = at
-                await engine.seek(to: at)
-            }
+            // Another item (or an unload) landed during the load: it is not this item's position to restore.
+            guard loadedURL != nil, generation == before + 1 else { return }
+            position = at
+            await engine.seek(to: at)
         }
 
         /// The last part that starts at or before `seconds` (parts are in order).

@@ -13,6 +13,7 @@ private final class FakeEngine: Platform.Media.Engine {
     private(set) var clears = 0
     private(set) var seeks: [Double] = []
     private(set) var rates: [Double] = []
+    private(set) var rebuilds = 0
 
     init() {
         (events, feed) = AsyncStream.makeStream(of: Platform.Media.EngineEvent.self, bufferingPolicy: .unbounded)
@@ -24,6 +25,7 @@ private final class FakeEngine: Platform.Media.Engine {
     func setRate(_ rate: Double) { rates.append(rate) }
     func seek(to seconds: Double) async { seeks.append(seconds) }
     func clear() { clears += 1 }
+    func rebuildPlayer() { rebuilds += 1 }
 }
 
 @MainActor
@@ -345,10 +347,154 @@ struct LivePlaybackTests {
         session.reset.yield()
         await settle { engine.loaded.count == 2 && engine.seeks.contains(42) }
 
+        #expect(engine.rebuilds == 1, "the old player died with the services: a new one")
         #expect(engine.loaded.count == 2)
         #expect(engine.seeks.last == 42)
         #expect(p.state == .paused)
         #expect(p.position == 42)
+    }
+
+    // MARK: Calls, self-pauses and retries (QA, PR 161 threads)
+
+    @Test("after a call the next tap takes the session again: iOS gave it away when the call began", arguments: [false, true])
+    func aCallGivesTheSessionAway(engineFirst: Bool) async {
+        let p = player()
+        await playing(p)
+        if engineFirst {
+            // AVPlayer usually reports its own pause before the interruption arrives
+            engine.feed.yield(.paused)
+            await settle { p.state == .paused }
+        }
+
+        session.interrupt.yield(.began)
+        await settle { p.state == .paused && clock.pendingSleeps == 0 }
+        p.play()
+
+        #expect(session.activations == 2, "activated again after the call, not played into a dead session")
+        #expect(session.deactivations == 0, "nothing to give back: iOS took it")
+    }
+
+    @Test("the engine pausing by itself (headphones out) still gives the session back after five minutes")
+    func aSelfPauseReleasesTheSession() async {
+        let p = player()
+        await playing(p)
+
+        engine.feed.yield(.paused)
+        session.route.yield()
+        await settle { p.state == .paused && clock.pendingSleeps == 1 }
+        clock.advance(by: .seconds(300))
+        await settle { session.deactivations == 1 }
+
+        #expect(session.deactivations == 1)
+    }
+
+    @Test("a failed item gives the session back after five minutes, like a pause")
+    func aFailedItemReleasesTheSession() async {
+        let p = player()
+        await playing(p)
+
+        engine.feed.yield(.failed)
+        await settle { clock.pendingSleeps == 1 }
+        clock.advance(by: .seconds(300))
+        await settle { session.deactivations == 1 }
+
+        #expect(session.deactivations == 1)
+    }
+
+    @Test("a retry tap followed by sign-out (unload) never loads or plays the last person's brief")
+    func aRetryAfterUnloadPlaysNothing() async {
+        let online = Flag()
+        let p = player(resolve: { [file] _, _ in
+            if online.value {
+                return file
+            }
+            throw Platform.Media.Source.Failure.offline
+        })
+        await p.load(item())
+        #expect(p.state == .offline)
+        online.value = true
+
+        p.play()
+        p.unload()
+        await settle()
+
+        #expect(engine.loaded.isEmpty)
+        #expect(engine.playedAt.isEmpty)
+        #expect(p.item == nil && p.state == .idle)
+    }
+
+    @Test("a retry tap never starts another item that was loaded while it was trying")
+    func aRetryNeverStartsAnotherItem() async {
+        let online = Flag()
+        let gate = LoadGate()
+        let other = URL(fileURLWithPath: "/tmp/other.mp3")
+        let p = player(resolve: { [file] item, _ in
+            if item.id == "other" {
+                return other
+            }
+            guard online.value else { throw Platform.Media.Source.Failure.offline }
+            await gate.wait()
+            return file
+        })
+        await p.load(item())
+        online.value = true
+        p.play()
+        await settle { p.state == .buffering }
+        await p.load(item(id: "other"))
+        gate.open()
+        await settle()
+
+        #expect(p.item?.id == "other" && p.state == .paused)
+        #expect(engine.playedAt.isEmpty, "the person tapped play on the first item, not this one")
+    }
+
+    @Test("a reset whose reload is overtaken by another item leaves that item at its own start")
+    func aResetOvertakenKeepsTheNewItemsPosition() async {
+        let armed = Flag()
+        let gate = LoadGate()
+        let other = URL(fileURLWithPath: "/tmp/other.mp3")
+        let p = player(resolve: { [file] item, _ in
+            if item.id == "other" {
+                return other
+            }
+            if armed.value {
+                await gate.wait()
+            }
+            return file
+        })
+        await playing(p)
+        engine.feed.yield(.time(42))
+        await settle { p.position == 42 }
+        armed.value = true
+
+        session.reset.yield()
+        await settle { engine.rebuilds == 1 && p.state == .buffering }
+        await p.load(item(id: "other"))
+        gate.open()
+        await settle()
+
+        #expect(p.item?.id == "other")
+        #expect(p.position == 0)
+        #expect(!engine.seeks.contains(42), "the old position never reached the new item")
+    }
+
+    @Test("with no network and only another day's brief on the phone, the player says offline, not failed")
+    func audioFileOfflineIsOffline() async throws {
+        struct Tokens: Backend.TokenProviding {
+            func accessToken() async throws -> String { "token" }
+            func refreshAfterUnauthorized(failedToken _: String) async throws -> String { "token" }
+        }
+        let database = try Store.LocalDatabase.inMemory()
+        let client = Backend.Client(
+            configuration: .resolve(.local, info: ["CFBundleShortVersionString": "1.0", "CFBundleVersion": "42"], isRelease: false),
+            session: URLSession.stubbed(), tokens: Tokens(), reachability: ManualReachability(online: false), clock: TestClock(), log: log
+        )
+        let repository = Platform.Repositories.Journal(database: database, client: client)
+        let source = Platform.Media.Source(isOnline: { false }, refetch: { try await repository.refreshBrief().brief })
+
+        await #expect(throws: Platform.Media.Source.Failure.offline) {
+            _ = try await Platform.AppEnvironment.audioFile(for: item(), rate: 1, repository: repository, source: source)
+        }
     }
 
     @Test("events from before anything was loaded change nothing")

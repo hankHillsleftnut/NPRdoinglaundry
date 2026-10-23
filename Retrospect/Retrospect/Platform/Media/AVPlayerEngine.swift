@@ -8,26 +8,43 @@ extension Platform.Media {
     final class AVPlayerEngine: Engine {
         let events: AsyncStream<EngineEvent>
         private let continuation: AsyncStream<EngineEvent>.Continuation
-        private let player = AVPlayer()
+        private var player: AVPlayer
+        /// The player's own timeControlStatus observation; the item's live in `itemObservations`.
+        private var playerObservation: NSKeyValueObservation?
         private var timeObserver: Any?
         private var itemObservations: [NSKeyValueObservation] = []
         private var endObserver: NSObjectProtocol?
 
         init() {
             (events, continuation) = AsyncStream.makeStream(of: EngineEvent.self, bufferingPolicy: .unbounded)
-            player.automaticallyWaitsToMinimizeStalling = true
-            let continuation = continuation
-            itemObservations = [
-                player.observe(\.timeControlStatus, options: [.new]) { player, _ in
-                    let status = player.timeControlStatus
-                    continuation.yield(Self.event(for: status))
-                },
-            ]
+            player = AVPlayer()
+            observePlayer()
         }
 
         isolated deinit {
             removeItemObservers()
+            playerObservation?.invalidate()
             continuation.finish()
+        }
+
+        /// After a media-services reset the old `AVPlayer` is dead (Apple: dispose of and recreate every
+        /// audio object): its observers go with it and a fresh one, with nothing loaded, takes its place.
+        func rebuildPlayer() {
+            removeItemObservers()
+            playerObservation?.invalidate()
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+            player = AVPlayer()
+            observePlayer()
+        }
+
+        private func observePlayer() {
+            player.automaticallyWaitsToMinimizeStalling = true
+            let continuation = continuation
+            playerObservation = player.observe(\.timeControlStatus, options: [.new]) { player, _ in
+                let status = player.timeControlStatus
+                continuation.yield(Self.event(for: status))
+            }
         }
 
         func replaceItem(with url: URL) {
@@ -95,10 +112,8 @@ extension Platform.Media {
                 NotificationCenter.default.removeObserver(endObserver)
                 self.endObserver = nil
             }
-            // keep the player's own timeControlStatus observation (the first); drop the item's
-            if itemObservations.count > 1 {
-                itemObservations.removeSubrange(1...)
-            }
+            itemObservations.forEach { $0.invalidate() }
+            itemObservations = []
         }
 
         nonisolated static func event(for status: AVPlayer.TimeControlStatus) -> EngineEvent {
@@ -117,8 +132,10 @@ extension Platform.Media {
         let routeLosses: AsyncStream<Void>
         let mediaServicesResets: AsyncStream<Void>
         private var tokens: [NSObjectProtocol] = []
+        private let center: NotificationCenter
 
         init(center: NotificationCenter = .default) {
+            self.center = center
             let (interruptions, interruptionFeed) = AsyncStream.makeStream(of: InterruptionEvent.self, bufferingPolicy: .unbounded)
             let (routeLosses, routeFeed) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .unbounded)
             let (resets, resetFeed) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .unbounded)
@@ -144,7 +161,7 @@ extension Platform.Media {
         }
 
         isolated deinit {
-            tokens.forEach { NotificationCenter.default.removeObserver($0) }
+            tokens.forEach { center.removeObserver($0) }
         }
 
         func prepare() throws {

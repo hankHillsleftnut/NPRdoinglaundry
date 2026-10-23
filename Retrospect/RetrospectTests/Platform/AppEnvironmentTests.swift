@@ -114,11 +114,13 @@ struct AppEnvironmentTests {
         let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
         await environment.sessionDidChange(to: "user-a").value
         let player = try #require(environment.playback)
+        await player.load(Flows.PlaybackItem(id: "b1", kind: .brief, title: "today's brief", parts: [], durationSeconds: 60))
+        #expect(player.item?.id == "b1", "the person's brief is the player's item (its fetch fails here; it stays the item)")
 
         await environment.sessionWillChange().value
 
         #expect(environment.playback == nil)
-        #expect(player.state == .idle, "the old person's audio is stopped")
+        #expect(player.item == nil && player.state == .idle, "the old person's audio is unloaded, not just dropped")
     }
 
     @Test("signing in builds the journal stack on that person's store; signing out stops it and erases it, and the next person starts empty")

@@ -257,7 +257,16 @@ extension Platform {
             guard item.kind == .brief else { throw Platform.Media.Source.Failure.unavailable }
             var brief = await repository.cachedBrief()?.brief
             if brief?.id != item.id {
-                brief = try? await repository.refreshBrief().brief
+                do {
+                    brief = try await repository.refreshBrief().brief
+                } catch let failure as Backend.Failure where failure.kind == .offline {
+                    // no connection and not the brief on the phone: say offline (a tap later retries), not "can't play"
+                    throw Platform.Media.Source.Failure.offline
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    brief = nil
+                }
             }
             guard let brief, brief.id == item.id else { throw Platform.Media.Source.Failure.unavailable }
             return try await source.playableFile(for: brief, rate: rate)
