@@ -51,7 +51,10 @@ struct SignInRealSeamTests {
 
         let done = await coordinator.complete(.failure(SheetClosed()))
 
-        guard case let .signedIn(outcome) = done else { return Issue.record("expected signed in, got \(done)") }
+        guard case let .signedIn(outcome) = done else {
+            Issue.record("expected signed in, got \(done)")
+            return
+        }
         #expect(outcome.userID == "00000000-0000-4000-8000-000000000001")
         #expect(await h.manager.state == .signedIn(userID: outcome.userID, access: .member))
         #expect(try await h.manager.accessToken() == "invented.access.token")
@@ -60,7 +63,8 @@ struct SignInRealSeamTests {
         #expect(request.value(forHTTPHeaderField: "Authorization") == nil, "a public door: no token")
         let body = try #require(h.bodies(to: "/v2/auth/apple").first)
         #expect(body["rawNonce"] as? String == raw)
-        #expect(Set(body.keys) == ["identityToken", "authorizationCode", "rawNonce", "fullName"])
+        #expect(Set(body.keys) == ["identityToken", "authorizationCode", "rawNonce", "fullName", "email"], "exactly the contract's keys")
+        #expect(body["identityToken"] as? String == "invented.identity.token" && body["authorizationCode"] as? String == "invented-code")
         #expect(h.requests(to: "/auth/signin").isEmpty && h.requests(to: "/v2/auth/apple").count == 1)
     }
 
