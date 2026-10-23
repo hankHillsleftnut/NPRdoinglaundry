@@ -64,6 +64,9 @@ extension Store {
         private var retryWake: Task<Void, Never>?
         private var isDraining = false
         private var needsAnotherPass = false
+        /// A trigger (back online, a write, foreground) came while a pass ran.
+        /// Unlike `needsAnotherPass` it survives a pause: the pause's own trigger may be the one that came.
+        private var triggeredDuringPass = false
         var started = false
         fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
@@ -241,6 +244,7 @@ extension Store {
             guard sender != nil, !stopped else { return }
             if isDraining {
                 needsAnotherPass = true
+                triggeredDuringPass = true
                 return
             }
             isDraining = true
@@ -248,8 +252,11 @@ extension Store {
             var paused = false
             repeat {
                 needsAnotherPass = false
+                triggeredDuringPass = false
                 paused = await pass()
-            } while needsAnotherPass && !paused && !stopped && !Task.isCancelled
+                // A pause ends the drain, unless a trigger came while the pass ran: then the
+                // pause's own trigger (back online) may already have come and gone. One more pass.
+            } while (paused ? triggeredDuringPass : needsAnotherPass) && !stopped && !Task.isCancelled
             // A pause (offline, signed out) is ended by its own trigger:
             // reachability, sign-in, foreground. Otherwise wake for the next retry.
             if !paused, !Task.isCancelled {
