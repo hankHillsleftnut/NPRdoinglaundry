@@ -42,7 +42,6 @@ extension Platform {
         /// Diagnostics work runs one piece after another on this chain, so
         /// foreground and background land in the order the scene changed.
         private var diagnosticsWork: Task<Void, Never>?
-        private var sessionLifecycleBound = false
 
         /// The outbox, once the person's store is open (sign-in, PL1.5 / PL2.3);
         /// nil before. The scene-phase and background-task bridges drain it.
@@ -59,6 +58,13 @@ extension Platform {
         private(set) var journalData: LiveJournalData?
         /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
         private(set) var mediaSource: Platform.Media.Source?
+        /// Where the new session stands, as `follow` last saw it; nil before the first answer. The app root
+        /// shows the sign-in screen, the journal or a blank page from this, never from the old client.
+        private(set) var sessionState: Session.State?
+        /// The one way a person signs in (PL1.4b): the sign-in screen calls this and nothing else.
+        let signIn: Session.SignInCoordinator
+        /// True when the signed-in person's store could not be opened; the root offers "try again".
+        private(set) var storeOpenFailed = false
         /// "Send a report" for the signed-in person (DG.6); built on their outbox, dropped with it.
         private(set) var reportSender: Platform.Diagnostics.LiveReportSender?
         /// The access state the session last reported, for the report's account line.
@@ -91,6 +97,7 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
+            signIn = Session.SignInCoordinator(apple: Session.AppleSignIn(client: client, installer: session, log: log), log: log)
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -180,11 +187,6 @@ extension Platform {
             )
         }
 
-        /// Sign in with Apple, wired to this environment's client and session.
-        func appleSignIn() -> Session.AppleSignIn {
-            Session.AppleSignIn(client: client, installer: session, log: log)
-        }
-
         /// The scene became active: the session finishes a deferred launch
         /// check, reads, checks Apple, saves what it couldn't, and renews.
         func becameActive() {
@@ -194,23 +196,6 @@ extension Platform {
             Task {
                 await session.becameActive()
                 await invites.retryIfWaiting()
-            }
-        }
-
-        /// Bridge until the new session owns authentication: restore the signed-in
-        /// user's store, and finish store work before the old client changes users.
-        func bindSessionLifecycle(to client: RetrospectAPIClient) async {
-            guard !sessionLifecycleBound else { return }
-            sessionLifecycleBound = true
-            followSession()
-            client.sessionWillChange = { [weak self] in
-                await self?.sessionWillChange().value
-            }
-            client.sessionDidChange = { [weak self] userID in
-                await self?.sessionDidChange(to: userID).value
-            }
-            if let userID = client.currentUserId {
-                await sessionDidChange(to: userID).value
             }
         }
 
@@ -247,6 +232,7 @@ extension Platform {
             if openUserID != nil {
                 await closeStore()
             }
+            storeOpenFailed = false
             do {
                 let open = openDatabase
                 let database = try await Task.detached { try open(userID) }.value
@@ -255,7 +241,21 @@ extension Platform {
                 openUserID = userID
             } catch {
                 log.record(.diagnosticsWriteFailed)
+                storeOpenFailed = true
             }
+        }
+
+        /// "Try again" after the store could not be opened: asks for the signed-in person's store again.
+        func retryOpeningStore() {
+            guard case let .signedIn(userID, _)? = sessionState else { return }
+            sessionDidChange(to: userID)
+        }
+
+        /// Starts following the new session, once, at launch. The stack, the sign-in screen and the journal
+        /// all come from its states: Apple sign-in, a renewal, a session the server ended, an Apple
+        /// revocation and sign-out are all the same stream.
+        func startSession() {
+            followSession()
         }
 
         /// The new session decides who the stack belongs to, whoever signed in (PL5.2). A session that
@@ -272,6 +272,7 @@ extension Platform {
             sessionFollow = Task { [weak self] in
                 for await state in states {
                     guard let self else { return }
+                    sessionState = state
                     switch state {
                     case let .signedIn(userID, access):
                         accountAccess = access

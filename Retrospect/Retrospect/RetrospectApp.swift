@@ -196,6 +196,10 @@ struct RetrospectApp: App {
                     #if DEBUG
                     PodcastLayoutDiagnosticsHost()
                     #endif
+                } else if !usesOldHome {
+                    // Bridge (PL5.2 / PL1.4b): the new app. Sign in with Apple on the new backend, then the journal on
+                    // live data; the old onboarding, sign-in gate and home below are not on this path.
+                    NewAppRoot()
                 } else {
                 // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
                 if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
@@ -251,15 +255,9 @@ struct RetrospectApp: App {
                     DarkSplashScreen(isAuthenticated: $isAuthenticated)
                     .transition(.opacity)
                 } else {
-                    if usesOldHome {
-                        // Use new dark UI by default
-                        DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
-                            .transition(.opacity)
-                    } else {
-                        // Bridge (PL5.2): the signed-in person lands in the new journal, on their own data.
-                        LiveJournalRoot()
-                            .transition(.opacity)
-                    }
+                    // Use new dark UI by default
+                    DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
+                        .transition(.opacity)
                 }
                 
                 if showGoogleAuth && isGoogleConfigured && hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {
@@ -280,7 +278,7 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
-                await platform.bindSessionLifecycle(to: apiClient)
+                platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
                 appDelegate.backgroundDrain.outbox = { await MainActor.run { platform.outbox } }
             }

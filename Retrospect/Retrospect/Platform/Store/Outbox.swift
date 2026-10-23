@@ -543,13 +543,12 @@ extension Store {
 // MARK: Stopping (PL3.1a)
 
 extension Store.Outbox {
-    /// The person signed out: no trigger starts another drain, the send in flight is cancelled, and this
-    /// returns only when the drain has ended, so nothing of theirs is sent (or written) after it.
+    /// The person signed out: no new drain starts, the send in flight is cancelled, and this returns
+    /// when the drain has ended, so nothing of theirs is sent or written after it.
     func stop() async {
         stopped = true
-        reachabilityWatch?.cancel()
+        for task in [reachabilityWatch, retryWake] { task?.cancel() }
         reachabilityWatch = nil
-        retryWake?.cancel()
         retryWake = nil
         inFlightSend?.cancel()
         while isDraining {
