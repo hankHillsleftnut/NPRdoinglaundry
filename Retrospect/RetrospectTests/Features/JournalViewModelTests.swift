@@ -193,6 +193,27 @@ struct JournalViewModelTests {
         #expect(model.draft == "  \n ")
     }
 
+    @Test("a send that saved nothing gives the words back and is announced; the next good send clears it")
+    func failedSendRestoresTheDraft() async {
+        let data = ScriptedJournalData(entries: [])
+        let model = JournalViewModel(data: data, today: SampleJournalContent.today)
+        await model.load()
+        data.sendOutcome = .failed(Flows.Failure(.unknown))
+        model.draft = "my words"
+
+        await model.send("my words")
+
+        #expect(model.draft == "my words")
+        #expect(model.sendFailure != nil)
+        #expect(model.sendFailures == 1)
+        #expect(data.sent.isEmpty)
+
+        data.sendOutcome = nil
+        await model.send("my words")
+        #expect(model.sendFailure == nil)
+        #expect(model.draft.isEmpty)
+    }
+
     // MARK: - A guess answer
 
     @Test("an answer that fails is kept for the page's error haptic and announcement; recorded and queued are not failures")
@@ -334,6 +355,7 @@ final class ScriptedJournalData: Flows.JournalData {
     private(set) var brief: Flows.Loadable<Journal.BriefSlot> = .loaded(.off)
     private(set) var guesses: [Journal.Guess] = []
     private(set) var isOnline = true
+    @ObservationIgnored var sendOutcome: Journal.WriteOutcome?
     @ObservationIgnored var outcome: Journal.GuessOutcome = .recorded(.confirmed)
     @ObservationIgnored private(set) var loads = 0
     @ObservationIgnored private(set) var sent: [String] = []
@@ -353,13 +375,17 @@ final class ScriptedJournalData: Flows.JournalData {
         loads += 1
     }
 
-    func send(text: String) async {
+    func send(text: String) async -> Journal.WriteOutcome {
+        if let sendOutcome {
+            return sendOutcome
+        }
         sent.append(text)
         lastID = "00000000-0000-4000-8000-\(String(format: "%012d", sent.count + 7000))"
         today = .loaded((today.value ?? []) + [Journal.Entry(
             local: lastID, kind: .typed, text: text, createdAt: Date(timeIntervalSince1970: 1_792_570_000),
             day: SampleJournalContent.today, delivery: .waiting
         )])
+        return .queued
     }
 
     func sendVoice(_: Journal.VoiceNote) async {}

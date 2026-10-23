@@ -211,6 +211,7 @@ extension Platform.Log {
             case .meta: logger.info("request /v2/meta: status \(status), \(ms) ms")
             case .diagnostics: logger.info("request /v2/diagnostics: status \(status), \(ms) ms")
             case .entries: logger.info("request /v2/entries: status \(status), \(ms) ms")
+            case .entriesToday: logger.info("request /v2/entries/today: status \(status), \(ms) ms")
             case .authApple: logger.info("request /v2/auth/apple: status \(status), \(ms) ms")
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
@@ -235,6 +236,7 @@ extension Platform.Log {
             case .meta: logger.error("unknown error code from /v2/meta")
             case .diagnostics: logger.error("unknown error code from /v2/diagnostics")
             case .entries: logger.error("unknown error code from /v2/entries")
+            case .entriesToday: logger.error("unknown error code from /v2/entries/today")
             case .authApple: logger.error("unknown error code from /v2/auth/apple")
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
@@ -313,6 +315,7 @@ extension Platform.Log {
             case .meta: logger.info("401 on /v2/meta: refreshed and replayed once")
             case .diagnostics: logger.info("401 on /v2/diagnostics: refreshed and replayed once")
             case .entries: logger.info("401 on /v2/entries: refreshed and replayed once")
+            case .entriesToday: logger.info("401 on /v2/entries/today: refreshed and replayed once")
             case .authApple: logger.info("401 on /v2/auth/apple: refreshed and replayed once")
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
@@ -328,7 +331,7 @@ extension Platform.Log {
             case .invitesCheck: logger.info("401 on /v2/invites/check: refreshed and replayed once")
             case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
-            case .meta, .diagnostics, .entries, .authApple, .authRefresh, .authSignout, .guessByID: break
+            case .meta, .diagnostics, .entries, .entriesToday, .authApple, .authRefresh, .authSignout, .guessByID: break
             }
         }
 

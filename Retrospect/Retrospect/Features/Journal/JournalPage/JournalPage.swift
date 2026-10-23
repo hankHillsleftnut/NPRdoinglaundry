@@ -81,6 +81,9 @@ struct JournalPage: View {
             model.answerFailure.map { $0.message ?? JournalViewModel.answerFailureLine },
             attempt: model.answerFailures
         )
+        // a send that saved nothing: the words are back in the box; the same haptic and announcement
+        .rErrorHaptic(isFailing: model.sendFailure != nil)
+        .rErrorAnnouncement(model.sendFailure.map { _ in JournalViewModel.sendFailureLine }, attempt: model.sendFailures)
         // M08: an entry this session sent turning sent, whenever it happens
         .onChange(of: model.deliveries) { model.noteDeliveries() }
         .task { await model.loadIfNeeded() }
