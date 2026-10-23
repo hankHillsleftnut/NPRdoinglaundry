@@ -24,7 +24,7 @@ struct SignInGateView: View {
             Spacer()
             VStack(spacing: RDimension.space3) {
                 SignInWithAppleButton(.continue, onRequest: { coordinator.prepare($0) }, onCompletion: { coordinator.finish($0) })
-                    .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+                    .signInWithAppleButtonStyle(scheme == .dark ? .white : .black) // literal-ok: Apple's own button styles
                     .frame(height: RDimension.sizeControlLarge)
                     .disabled(coordinator.phase == .signingIn)
                     .accessibilityIdentifier("signin.apple")

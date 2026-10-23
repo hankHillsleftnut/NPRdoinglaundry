@@ -33,6 +33,8 @@ extension Session {
             /// The person dismissed Apple's sheet: nothing changed, nothing to show.
             case cancelled
             case failed(Flows.Failure)
+            /// A sign-in was already running; this call did nothing. Show nothing: the first attempt may still succeed.
+            case alreadyRunning
         }
 
         private(set) var phase: Phase = .idle
@@ -50,6 +52,10 @@ extension Session {
         /// The button's `onRequest`: asks for the name and email and binds a new nonce.
         func prepare(_ request: ASAuthorizationAppleIDRequest) {
             guard phase != .signingIn else { return }
+            // a new tap starts clean: the last failure's words go as the sheet opens
+            if case .failed = phase {
+                phase = .idle
+            }
             apple.prepare(request)
         }
 
@@ -59,11 +65,11 @@ extension Session {
         }
 
         /// The sign-in itself, awaitable (a screen with its own phase, and tests). A second call while one is
-        /// running does nothing and reports a plain failure it does not show. Always ends in a terminal phase,
+        /// running does nothing and returns `.alreadyRunning` (a screen shows nothing for it). Always ends in a terminal phase,
         /// even when the calling task is cancelled.
         @discardableResult
         func complete(_ result: Result<ASAuthorization, any Error>) async -> Completion {
-            guard phase != .signingIn else { return .failed(Flows.Failure(.unknown)) }
+            guard phase != .signingIn else { return .alreadyRunning }
             phase = .signingIn
             outcome = nil
             do {

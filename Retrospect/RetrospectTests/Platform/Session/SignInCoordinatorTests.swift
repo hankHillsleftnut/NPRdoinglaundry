@@ -16,11 +16,16 @@ struct SignInCoordinatorTests {
         private(set) var completes = 0
         private var waiting: CheckedContinuation<Void, Never>?
         var holds = false
+        /// Waits until the calling task is cancelled, as a real server call would.
+        var hangsUntilCancelled = false
 
         func prepare(_: ASAuthorizationAppleIDRequest) { prepares += 1 }
 
         func complete(_: Result<ASAuthorization, any Error>) async throws -> Session.SignInOutcome {
             completes += 1
+            if hangsUntilCancelled {
+                try await Task.sleep(for: .seconds(3600))
+            }
             if holds {
                 await withCheckedContinuation { waiting = $0 }
             }
@@ -165,15 +170,50 @@ struct SignInCoordinatorTests {
         await settle { c.phase == .idle }
     }
 
-    @Test("a caller that is cancelled mid-sign-in still ends in a terminal phase, never stuck on signingIn")
+    @Test("a caller cancelled while the server is being asked ends quietly in idle, never stuck on signingIn and never a false failure")
     func cancellationEndsTheSignIn() async {
         let apple = SlowApple()
-        apple.answer = .failure(CancellationError())
+        apple.hangsUntilCancelled = true
         let c = coordinator(apple)
 
         let task = Task { await c.complete(.failure(AppleBroke())) }
+        await settle { c.phase == .signingIn }
+        #expect(c.phase == .signingIn)
         task.cancel()
-        _ = await task.value
+        let done = await task.value
+
+        #expect(c.phase == .idle)
+        #expect(done == .cancelled)
+    }
+
+    @Test("a second tap while the first is running does nothing and reports alreadyRunning, so a screen shows no false failure")
+    func secondTapIsNotAFailure() async {
+        let apple = SlowApple()
+        apple.holds = true
+        let c = coordinator(apple)
+        let first = Task { await c.complete(.failure(AppleBroke())) }
+        await settle { c.phase == .signingIn }
+
+        let second = await c.complete(.failure(AppleBroke()))
+
+        #expect(second == .alreadyRunning)
+        #expect(c.phase == .signingIn, "the first attempt carries on")
+        apple.release()
+        let done = await first.value
+        if case .signedIn = done {} else {
+            Issue.record("the first attempt still succeeds")
+        }
+    }
+
+    @Test("a failure's words go as soon as the next tap starts, not when its result arrives")
+    func aNewTapClearsTheOldFailure() async {
+        let apple = SlowApple()
+        apple.answer = .failure(Backend.Failure(.offline))
+        let c = coordinator(apple)
+        await c.complete(.failure(AppleBroke()))
+        #expect(c.phase == .failed(Flows.Failure(.network)))
+
+        c.prepare(ASAuthorizationAppleIDProvider().createRequest())
 
         #expect(c.phase == .idle)
     }

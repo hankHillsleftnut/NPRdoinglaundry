@@ -37,7 +37,7 @@ struct SignInRealSeamTests {
 
     private func make(_ h: SessionHarness) -> Session.SignInCoordinator {
         let raw = raw
-        let apple = Session.AppleSignIn(client: h.client, installer: h.manager, log: h.recorder) { Session.Nonce(raw: raw) }
+        let apple = Session.AppleSignIn(client: h.client, installer: h.manager, log: h.recorder, keeper: h.store) { Session.Nonce(raw: raw) }
         return Session.SignInCoordinator(apple: Adapter(apple: apple, credential: credential), log: h.recorder)
     }
 
@@ -129,12 +129,58 @@ struct SignInRealSeamTests {
         #expect(h.mirror().isEmpty)
     }
 
+    @Test("the name and email Apple sends once survive a failed first call and go out with the retry")
+    func firstAuthorizationSurvivesAFailure() async throws {
+        let h = try SessionHarness(stored: nil)
+        let good = try Fixtures.data("00", "auth.response")
+        let down = try Fixtures.data("00", "error.internal")
+        h.serve(["/v2/auth/apple": { count, _ in count == 0 ? (500, down) : (200, good) }])
+        let raw = raw
+        let apple = Session.AppleSignIn(client: h.client, installer: h.manager, log: h.recorder, keeper: h.store) { Session.Nonce(raw: raw) }
+        let first = Session.AppleCredential(
+            user: "001234.invented", identityToken: "t1", authorizationCode: "c1", givenName: "sam", familyName: "ng", email: "sam@invented.test"
+        )
+        let retry = Session.AppleCredential(
+            user: "001234.invented", identityToken: "t2", authorizationCode: "c2", givenName: nil, familyName: nil, email: nil
+        )
+
+        apple.prepare(ASAuthorizationAppleIDProvider().createRequest())
+        await #expect(throws: (any Error).self) { try await apple.signIn(with: first) }
+        #expect(await h.store.kept()?.givenName == "sam", "kept on this phone after the failure")
+
+        apple.prepare(ASAuthorizationAppleIDProvider().createRequest())
+        _ = try await apple.signIn(with: retry)
+
+        let bodies = h.bodies(to: "/v2/auth/apple")
+        let name = bodies.last?["fullName"] as? [String: Any]
+        #expect(name?["givenName"] as? String == "sam" && bodies.last?["email"] as? String == "sam@invented.test", "the retry still carries them")
+        #expect(await h.store.kept() == nil, "cleared once a call succeeds")
+    }
+
+    @Test("what was kept for one Apple id is not sent for another")
+    func keptDataIsPerAppleID() async throws {
+        let h = try SessionHarness(stored: nil)
+        await h.store.keep(Session.KeptFirstAuthorization(appleUser: "someone.else", givenName: "kim", familyName: nil, email: nil))
+        let good = try Fixtures.data("00", "auth.response")
+        h.serve(["/v2/auth/apple": { _, _ in (200, good) }])
+        let raw = raw
+        let apple = Session.AppleSignIn(client: h.client, installer: h.manager, log: h.recorder, keeper: h.store) { Session.Nonce(raw: raw) }
+        apple.prepare(ASAuthorizationAppleIDProvider().createRequest())
+
+        _ = try await apple.signIn(with: Session.AppleCredential(
+            user: "001234.invented", identityToken: "t", authorizationCode: "c", givenName: nil, familyName: nil, email: nil
+        ))
+
+        let body = try #require(h.bodies(to: "/v2/auth/apple").first)
+        #expect(body["fullName"] == nil || body["fullName"] is NSNull)
+    }
+
     @Test(
         "the new root shows the sign-in screen when signed out, 'please sign in again' after the server ended it, nothing while locked or unread, the app when signed in"
     )
     func rootScreens() {
         #expect(NewAppRoot.screen(for: nil) == .blank)
-        #expect(NewAppRoot.screen(for: .locked) == .blank)
+        #expect(NewAppRoot.screen(for: .locked) == .locked, "a locked phone says so in words")
         #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: false, reason: .none)) == .signIn(endedByServer: false))
         #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: true, reason: .signedOut)) == .signIn(endedByServer: false))
         #expect(NewAppRoot.screen(for: .signedOut(hasSignedInBefore: true, reason: .revoked)) == .signIn(endedByServer: true))

@@ -10,8 +10,10 @@ import SwiftUI
 struct NewAppRoot: View {
     /// What the root shows for a session state.
     enum Screen: Equatable {
-        /// Still being read, or the phone is locked: nothing to show yet.
+        /// Still being read: nothing to show yet.
         case blank
+        /// The phone hasn't been unlocked since it started, so the session can't be read yet.
+        case locked
         /// Nobody is signed in; `endedByServer` says "please sign in again".
         case signIn(endedByServer: Bool)
         case app
@@ -21,7 +23,8 @@ struct NewAppRoot: View {
         switch state {
         case .signedIn: .app
         case let .signedOut(_, reason): .signIn(endedByServer: reason == .revoked)
-        case .locked, nil: .blank
+        case .locked: .locked
+        case nil: .blank
         }
     }
 
@@ -35,6 +38,15 @@ struct NewAppRoot: View {
                 RColor.backgroundCanvas.ignoresSafeArea().accessibilityIdentifier("newapp.signedin")
             case let .signIn(endedByServer):
                 SignInGateView(endedByServer: endedByServer)
+            case .locked:
+                Text("unlock your phone to open retrospect.")
+                    .rText(.bodyReading)
+                    .foregroundStyle(RColor.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, RDimension.spaceScreenMargin)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(RColor.backgroundCanvas.ignoresSafeArea())
+                    .accessibilityIdentifier("newapp.locked")
             case .blank:
                 RColor.backgroundCanvas.ignoresSafeArea()
             }

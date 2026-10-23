@@ -77,7 +77,8 @@ extension Platform {
             invites: Session.InviteCenter,
             floor: Platform.VersionFloor,
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
-            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) }
+            openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) },
+            firstAuthorization: any Session.FirstAuthorizationKeeping = Session.MemoryFirstAuthorization()
         ) {
             self.launch = launch
             self.configuration = configuration
@@ -87,7 +88,9 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
-            signIn = Session.SignInCoordinator(apple: Session.AppleSignIn(client: client, installer: session, log: log), log: log)
+            signIn = Session.SignInCoordinator(
+                apple: Session.AppleSignIn(client: client, installer: session, log: log, keeper: firstAuthorization), log: log
+            )
             self.backgroundTasks = backgroundTasks
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
@@ -134,7 +137,8 @@ extension Platform {
             return AppEnvironment(
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor,
-                openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
+                openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) },
+                firstAuthorization: store
             )
         }
 
