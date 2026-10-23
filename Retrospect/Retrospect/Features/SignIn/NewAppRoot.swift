@@ -4,7 +4,8 @@
 //  shows comes from the new session's state and nothing else: a blank page while it is still being read, the
 //  sign-in screen (PI0) when nobody is signed in, the invite gate (PI1/PI2) for a person who is not let in
 //  yet or who has a code waiting, a plain "paused" page, and the journal (JR-1) on their live data for a
-//  person who is. If the signed-in person's store can't be opened it says so and offers a retry.
+//  person who is. If the signed-in person's store can't be opened it says so and offers a retry. Over all
+//  of those, once the server says this build is too old, the force-update page (PX) takes the whole screen.
 //
 //  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
 //  with `-OldHome`.
@@ -26,14 +27,28 @@ struct NewAppRoot: View {
         /// The person's store could not be opened.
         case storeFailed
         case journal
+        /// PX: this build is too old for the server. Wins over every other page; nothing is signed out or erased.
+        case updateRequired
     }
 
     /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
     /// phone waits on a blank canvas rather than flash sign-in before the gate). `gateHeld` is true from the
     /// moment the gate is up until the person presses "begin": the tear makes them a member before that, and
-    /// the page must not be swapped for the journal under their finger.
+    /// the page must not be swapped for the journal under their finger. `updateRequired` (the version floor says this
+    /// build is too old) wins over every session state: whatever the session, the build can't talk to the server.
     static func screen(
-        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true,
+        updateRequired: Bool = false
+    ) -> Screen {
+        if updateRequired {
+            return .updateRequired
+        }
+        return sessionScreen(for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen)
+    }
+
+    /// The page the session alone would land on.
+    private static func sessionScreen(
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?
     ) -> Screen {
         guard let state else { return .blank }
         if case .locked = state {
@@ -85,10 +100,14 @@ struct NewAppRoot: View {
     var body: some View {
         let screen = Self.screen(
             for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
+            updateRequired: platform.updateRequired
         )
         Group {
             switch screen {
+            case .updateRequired:
+                // swapping the journal out also takes its account cover with it: nothing is left above PX
+                ForceUpdateHost()
             case let .signIn(returning, endedByServer):
                 // the splash or welcome back; the session's new state moves the app on, the page needs no hand-off
                 SignInHost(returning: returning || endedByServer)
@@ -116,6 +135,12 @@ struct NewAppRoot: View {
             }
         }
         .animation(RMotion.snappy, value: screen)
+        .onChange(of: screen) { _, now in
+            // VoiceOver: PX replaces a live page, so focus moves to it rather than staying on what was there
+            if now == .updateRequired {
+                AccessibilityNotification.ScreenChanged().post()
+            }
+        }
         .task { await platform.pendingInvite.refresh() }
         .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
         // the waiting code is read again whenever something that can change it happens
@@ -145,5 +170,14 @@ struct NewAppRoot: View {
             youreInSeen = true
             gateHeld = false
         }
+    }
+}
+
+/// PX at the root: the page and its one button, which opens the App Store through the system opener.
+private struct ForceUpdateHost: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        ForceUpdateScreen(model: ForceUpdateModel(open: { openURL($0) }))
     }
 }
