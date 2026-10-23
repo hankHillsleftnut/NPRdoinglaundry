@@ -602,6 +602,30 @@ struct OutboxDrainTests {
         #expect(sender.sends.first?.payload == sender.sends.last?.payload, "same bytes on the retry")
     }
 
+    @Test("QA2 (with #165): stop during a spend wait cancels its timer; nothing is sent after stop, the row stays pending")
+    func stopDuringASpendWait() async throws {
+        let waits = Waits()
+        let outbox = outbox(sleep: waits.sleep)
+        let answer = try await outbox.enqueueGuessAnswer(guessID: "guess-1", verdict: .yes).uuidString.lowercased()
+        sender.script(answer, [.failure(Backend.Failure(.spendLimited(retryAfter: .seconds(86400))))])
+        await outbox.start()
+        for _ in 0 ..< 500 where waits.values.isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(await outbox.retryWakeArmed)
+
+        await outbox.stop()
+        #expect(await !outbox.retryWakeArmed)
+        now.advance(seconds: 86400)
+        waits.gate.open()
+        await outbox.drain(reason: .foreground)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(sender.sends.count == 1, "no request after stop")
+        #expect(try rowByID(answer).status == .pending)
+        #expect(try rowByID(answer).attempts == 0)
+    }
+
     // MARK: Retry timer
 
     @Test("a failed send wakes the drainer when its backoff ends, with no other trigger")
