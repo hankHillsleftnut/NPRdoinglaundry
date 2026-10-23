@@ -26,7 +26,12 @@ final class InviteStageController {
     @ObservationIgnored private let start = ContinuousClock.now
     @ObservationIgnored private let rumble = TicketRumble()
     @ObservationIgnored private var dragging = false
+    /// The finger wandered off the line: the drag has ended as a release and stays ended until the finger lifts.
+    @ObservationIgnored private var released = false
     @ObservationIgnored private var holding: Task<Void, Never>?
+    /// A hold completed and the finger is still down: no new hold until it lifts (a fast offline
+    /// failure would otherwise start, and commit, another one under the same finger).
+    @ObservationIgnored private var holdSpent = false
     /// A still for proof (the launcher holds mid-print or mid-tear): nothing moves it on.
     @ObservationIgnored private let frozen: Bool
     @ObservationIgnored private let sleep: @Sendable (Duration) async -> Void
@@ -92,7 +97,7 @@ final class InviteStageController {
             rumble.start()
             withAnimation(RMotion.standard(RNumber.motionDurationFast), completionCriteria: .logicallyComplete) {
                 printProgress = 1
-            } completion: { [weak self] in self?.landed() }
+            } completion: { [weak self] in self?.printLanded() }
             return
         }
         slotPrinting = true
@@ -102,11 +107,14 @@ final class InviteStageController {
             rumble.start()
             withAnimation(Self.printCurve, completionCriteria: .logicallyComplete) {
                 printProgress = 1
-            } completion: { [weak self] in self?.landed() }
+            } completion: { [weak self] in self?.printLanded() }
         }
     }
 
-    private func landed() {
+    /// The print's animation finished. After `finishPrintNow()` it already landed, silently: no
+    /// settle tick and no second `skipPrint()`.
+    func printLanded() {
+        guard slotPrinting else { return }
         rumble.stop()
         slotPrinting = false
         landings += 1
@@ -126,7 +134,7 @@ final class InviteStageController {
 
     /// A finger on the handle: `x` along the ticket, `dy` off the line.
     func dragChanged(x: CGFloat, dy: CGFloat, width: CGFloat) {
-        guard model.phase == .ready else { return }
+        guard model.phase == .ready, !released else { return }
         if !dragging {
             dragging = true
             held = true
@@ -134,8 +142,9 @@ final class InviteStageController {
             model.tearTouchedDown()
         }
         guard TearMath.isTearing(dy: dy) else {
-            // more than 44pt off the line: the drag ends as a release
+            // more than 44pt off the line: the drag ends as a release, and stays ended until the finger lifts
             dragEnded(x: x, velocity: 0, width: width)
+            released = true
             return
         }
         let math = TearMath(width: width)
@@ -150,6 +159,7 @@ final class InviteStageController {
     }
 
     func dragEnded(x: CGFloat, velocity: CGFloat, width: CGFloat) {
+        released = false // the lift (or the wander's own release, which sets it again just after)
         guard dragging else { return }
         dragging = false
         held = false
@@ -164,6 +174,7 @@ final class InviteStageController {
 
     /// The system took the gesture (a call, the app backgrounding): whole again.
     func dragCancelled() {
+        released = false
         guard dragging else { return }
         dragging = false
         held = false
@@ -177,13 +188,21 @@ final class InviteStageController {
     }
 
     func springBack() {
-        withAnimation(RMotion.snappy) { tearProgress = 0 }
+        withAnimation(RMotion.snappy) {
+            tearProgress = 0
+            holdProgress = 0 // a failed hold's fill empties too, so the next hold is seen filling
+        }
         ticker.reset()
+    }
+
+    /// Whether "tear ticket" is offered to VoiceOver and Switch Control.
+    var canTear: Bool {
+        model.phase == .ready
     }
 
     /// "tear ticket" (VoiceOver, Switch Control): the whole sequence without a drag.
     func tearByAction() async {
-        guard model.phase == .ready else { return }
+        guard canTear else { return }
         model.tearTouchedDown()
         withAnimation(RMotion.snappy) { tearProgress = 1 }
         await model.commitTear()
@@ -192,7 +211,7 @@ final class InviteStageController {
     // MARK: Reduce Motion: press and hold
 
     func holdBegan() {
-        guard model.phase == .ready, holding == nil else { return }
+        guard model.phase == .ready, holding == nil, !holdSpent else { return }
         held = true
         ticks += 1
         model.tearTouchedDown()
@@ -212,11 +231,15 @@ final class InviteStageController {
     }
 
     func holdReleased(completed: Bool) {
+        if !completed {
+            holdSpent = false // the finger lifted (or the scene left): the next touch may hold again
+        }
         guard holding != nil else { return }
         holding?.cancel()
         holding = nil
         held = false
         if completed {
+            holdSpent = true
             tearProgress = 1
             Task { await model.commitTear() }
         } else {

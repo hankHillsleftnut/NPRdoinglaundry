@@ -29,6 +29,8 @@ struct InviteScreen: View {
     /// Paper T1 `2I01-0`, on the 874-tall artboard: the words block starts 200 down, is 300 tall with its
     /// contents bottom-aligned 32 above the slot; the same shares of the screen on any height.
     private static let promiseTopShare: CGFloat = 200.0 / 874.0 // literal-ok: Paper T1 `2I01-0`
+    /// The ticket's own coordinate space, declared on the stage and read by the tear drag.
+    static let ticketSpace = "ticket"
     private static let promiseBlockShare: CGFloat = 300.0 / 874.0 // literal-ok: Paper T1 `2IGY-0`
 
     init(model: InviteModel, sampleTaps: Bool = false, printStill: CGFloat? = nil, tear: CGFloat = 0) {
@@ -247,8 +249,16 @@ struct InviteScreen: View {
         .overlay(alignment: .topLeading) { holdFill(geometry) }
         .overlay(alignment: .topLeading) { handleLayer(geometry) }
         .overlay(alignment: .topLeading) { codeField(geometry) }
+        // the tear drag reads its finger here: x from the left notch, y from the ticket's top (an
+        // undeclared name falls back to global coordinates, which put every drag 44pt+ off the line)
+        .coordinateSpace(.named(Self.ticketSpace))
         .rShake(trigger: model.wrongCodes)
-        .accessibilityAction(named: "tear ticket") { Task { await stage.tearByAction() } }
+        .accessibilityActions {
+            // only offered when it can work: outside .ready the action would do nothing, silently
+            if stage.canTear {
+                Button("tear ticket") { Task { await stage.tearByAction() } }
+            }
+        }
         .frame(width: geometry.width)
     }
 
@@ -489,7 +499,7 @@ extension InviteScreen {
     }
 
     private func tearDrag(_ geometry: TicketGeometry) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("ticket"))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.ticketSpace))
             .onChanged { value in
                 stage.dragChanged(x: value.location.x, dy: value.location.y - geometry.perforationY, width: geometry.width)
             }
