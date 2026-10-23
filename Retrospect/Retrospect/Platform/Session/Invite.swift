@@ -81,6 +81,9 @@ extension Session {
     final class InviteCenter {
         private(set) var access: AccessState = .unknown
         private(set) var ticket: Ticket = .none
+        /// The face of a link's code, looked up before sign-in ("priya kept a place for you"). Nil when the code
+        /// isn't live, there was no connection, or the person is signed in. Never kept beyond the screen's life.
+        private(set) var previewFace: TicketFace?
 
         private let store: Store
         private let client: Backend.Client
@@ -142,8 +145,21 @@ extension Session {
             }
             log.record(.inviteReceived)
             if case .signedIn = await session.state {
+                previewFace = nil
                 await afterSignIn()
+            } else {
+                previewFace = await preview(code: code)
             }
+        }
+
+        /// `GET /public/invites/:code`: the ticket's face for a live code; nil for anything else, an error or no
+        /// connection (a preview is a courtesy: nothing is shown, nothing is said).
+        func preview(code raw: String) async -> TicketFace? {
+            guard let code = InviteCode.normalise(raw),
+                  let answer = try? await client.send(Backend.Endpoints.InvitePreview(code: code)),
+                  answer.live
+            else { return nil }
+            return answer.face
         }
 
         /// Typed on the invite screen: checked, and kept as the pending code

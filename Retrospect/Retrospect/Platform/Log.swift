@@ -216,7 +216,7 @@ extension Platform.Log {
             case .authRefresh: logger.info("request /v2/auth/refresh: status \(status), \(ms) ms")
             case .authSignout: logger.info("request /v2/auth/signout: status \(status), \(ms) ms")
             case .guessByID: logger.info("request /v2/guesses/:id: status \(status), \(ms) ms")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(sentInvite: path, status: status, ms: ms)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(sentInvite: path, status: status, ms: ms)
             }
         }
 
@@ -257,6 +257,7 @@ extension Platform.Log {
             case .invitesCheck: logger.info("request /v2/invites/check: status \(status), \(ms) ms")
             case .invitesRedeem: logger.info("request /v2/invites/redeem: status \(status), \(ms) ms")
             case .invitesMine: logger.info("request /v2/invites/mine: status \(status), \(ms) ms")
+            case .invitePreview: logger.info("request /public/invites/:code: status \(status), \(ms) ms")
             default: break
             }
         }
@@ -271,7 +272,7 @@ extension Platform.Log {
             case .authRefresh: logger.error("unknown error code from /v2/auth/refresh")
             case .authSignout: logger.error("unknown error code from /v2/auth/signout")
             case .guessByID: logger.error("unknown error code from /v2/guesses/:id")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(unknownCodeFromInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(unknownCodeFromInvite: path)
             }
         }
 
@@ -282,6 +283,7 @@ extension Platform.Log {
             case .invitesCheck: logger.error("unknown error code from /v2/invites/check")
             case .invitesRedeem: logger.error("unknown error code from /v2/invites/redeem")
             case .invitesMine: logger.error("unknown error code from /v2/invites/mine")
+            case .invitePreview: logger.error("unknown error code from /public/invites/:code")
             default: break
             }
         }
@@ -350,7 +352,7 @@ extension Platform.Log {
             case .authRefresh: logger.info("401 on /v2/auth/refresh: refreshed and replayed once")
             case .authSignout: logger.info("401 on /v2/auth/signout: refreshed and replayed once")
             case .guessByID: logger.info("401 on /v2/guesses/:id: refreshed and replayed once")
-            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: record(replayedInvite: path)
+            case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine, .invitePreview: record(replayedInvite: path)
             }
         }
 
@@ -361,6 +363,7 @@ extension Platform.Log {
             case .invitesCheck: logger.info("401 on /v2/invites/check: refreshed and replayed once")
             case .invitesRedeem: logger.info("401 on /v2/invites/redeem: refreshed and replayed once")
             case .invitesMine: logger.info("401 on /v2/invites/mine: refreshed and replayed once")
+            case .invitePreview: logger.info("401 on /public/invites/:code: refreshed and replayed once")
             case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .entryByID, .authApple, .authRefresh, .authSignout, .guessByID: break
             }
         }
