@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -18,6 +18,7 @@ extension Backend {
 
 function app(files) {
   const root = mkdtempSync(join(tmpdir(), 'nbo-'));
+  for (const folder of ['Platform', 'Features', 'DesignSystemV2']) mkdirSync(join(root, folder), { recursive: true });
   const all = { 'Platform/Backend/Endpoint.swift': ENDPOINT, ...files };
   for (const [path, text] of Object.entries(all)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -71,4 +72,27 @@ test('comments are removed but a URL in a string is kept', () => {
 
 test('the real tree is clean', () => {
   assert.deepEqual(scan('Retrospect/Retrospect'), []);
+});
+
+test('a configured, injected or split-line URLSession outside Backend fails, not only URLSession.shared', () => {
+  assert.equal(scan(app({ 'Platform/Store/A.swift': 'let s = URLSession(configuration: .default)\n' })).length, 1);
+  assert.equal(scan(app({ 'Features/A.swift': 'func load(using session: URLSession) {}\n' })).length, 1);
+  assert.equal(scan(app({ 'Platform/Store/A.swift': 'let s = URLSession\n    .shared\n' })).length, 1);
+});
+
+test('a missing folder fails loudly instead of reporting a partial scan clean', () => {
+  const root = app({ 'Features/A.swift': 'let x = 1\n', 'Platform/Session/S.swift': 'let y = 1\n', 'DesignSystemV2/B.swift': 'let z = 1\n' });
+  assert.deepEqual(scan(root), []);
+  rmSync(join(root, 'Features'), { recursive: true });
+  assert.throws(() => scan(root), /missing/);
+});
+
+test('a dangling symlink fails loudly instead of being skipped', () => {
+  const root = app({ 'Features/A.swift': 'let x = 1\n', 'DesignSystemV2/B.swift': 'let z = 1\n' });
+  symlinkSync(join(root, 'nowhere.swift'), join(root, 'Platform/Dangling.swift'));
+  assert.throws(() => scan(root));
+});
+
+test('there is no exemption for AppEnvironment: the old client there fails', () => {
+  assert.equal(scan(app({ 'Platform/AppEnvironment.swift': 'func bind(to client: RetrospectAPIClient) {}\n' })).length, 1);
 });

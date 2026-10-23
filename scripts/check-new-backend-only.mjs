@@ -3,24 +3,24 @@
 // Backend.Client -> a /v2 door in Backend.PathTemplate -> the new Session token. This fails when code under
 // Platform/ (except Bridges.swift), Features/ or DesignSystemV2/:
 //   1. mentions RetrospectAPIClient (the old client) outside a comment;
-//   2. builds a URLRequest or uses URLSession.shared to reach a server (only Platform/Backend/ may, and
+//   2. builds a URLRequest or uses any URLSession (shared, configured or injected) to reach a server (only Platform/Backend/ may, and
 //      Platform/Media/MediaSource.swift for the signed audio link, which is not the backend);
 //   3. writes a string literal that looks like a backend path ("/v2/...", "/api/...", "/auth/...",
 //      "/public/...") that is not one of Backend.PathTemplate's values (the route lists in
 //      Backend/Endpoint.swift and Diagnostics/Diagnostics.swift are where paths are written).
 // Usage: node scripts/check-new-backend-only.mjs [appRoot]   (default Retrospect/Retrospect)
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FOLDERS = ['Platform', 'Features', 'DesignSystemV2'];
-// TEMPORARY: AppEnvironment.bindSessionLifecycle(to: RetrospectAPIClient) goes in PR 159 (the session
-// drives the stack, no old-client callbacks). Remove the second entry when 159 has merged.
-const OLD_CLIENT_OK = new Set(['Platform/Bridges.swift', 'Platform/AppEnvironment.swift']);
+const OLD_CLIENT_OK = new Set(['Platform/Bridges.swift']);
 const NETWORK_OK = (rel) => rel.startsWith('Platform/Backend/') || rel === 'Platform/Media/MediaSource.swift';
 const PATHS_WRITTEN_HERE = new Set(['Platform/Backend/Endpoint.swift', 'Platform/Diagnostics/Diagnostics.swift']);
 const PATH_LITERAL = /"(\/(?:v2|api|auth|public)(?:\/[^"\s]*)?)"/g;
 
+/** Every .swift file under dir. A guard must fail loudly: a missing folder, an unreadable entry or a dangling
+ * symlink throws (nothing is skipped), so a partial scan can never report "clean". */
 function swiftFiles(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
@@ -58,12 +58,8 @@ export function scan(appRoot) {
   const problems = [];
   for (const folder of FOLDERS) {
     const dir = join(appRoot, folder);
-    let files = [];
-    try {
-      files = swiftFiles(dir);
-    } catch {
-      continue;
-    }
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`New backend only: ${dir} is missing, so the scan would be partial`);
+    const files = swiftFiles(dir);
     for (const file of files) {
       const rel = relative(appRoot, file).split(sep).join('/');
       const lines = withoutComments(readFileSync(file, 'utf8')).split('\n');
@@ -72,8 +68,8 @@ export function scan(appRoot) {
         if (line.includes('RetrospectAPIClient') && !OLD_CLIENT_OK.has(rel)) {
           problems.push(`${where}: uses RetrospectAPIClient (the old client); only Platform/Bridges.swift may`);
         }
-        if (!NETWORK_OK(rel) && (/\bURLRequest\s*\(/.test(line) || line.includes('URLSession.shared'))) {
-          problems.push(`${where}: talks to a server outside Backend.Client (URLRequest / URLSession.shared)`);
+        if (!NETWORK_OK(rel) && /\b(URLRequest|URLSession)\b/.test(line)) {
+          problems.push(`${where}: talks to a server outside Backend.Client (URLRequest / URLSession)`);
         }
         if (!PATHS_WRITTEN_HERE.has(rel)) {
           for (const match of line.matchAll(PATH_LITERAL)) {
