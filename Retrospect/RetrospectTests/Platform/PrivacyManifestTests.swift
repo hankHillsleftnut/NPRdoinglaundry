@@ -81,6 +81,58 @@ struct PrivacyManifestTests {
         #expect(Bundle(url: report)?.url(forResource: "PrivacyInfo", withExtension: "xcprivacy") != nil, "the extension bundles its own")
     }
 
+    /// What Apple's upload check reads: the symbol and selector names the shipped binaries link, each null-terminated in the
+    /// string tables. `creationDate`/`modificationDate` selectors are PHAsset/EKEvent properties (old Photos/Calendar sync), not
+    /// file APIs, so they are not signals; the file-timestamp signals are the C calls and the Foundation keys.
+    private static let binarySignals: [(category: String, symbols: [String])] = [
+        ("NSPrivacyAccessedAPICategoryUserDefaults", ["_OBJC_CLASS_$_NSUserDefaults"]),
+        ("NSPrivacyAccessedAPICategorySystemBootTime", ["systemUptime", "_mach_absolute_time"]),
+        ("NSPrivacyAccessedAPICategoryDiskSpace", [
+            "_NSURLVolumeAvailableCapacityKey", "_NSURLVolumeAvailableCapacityForImportantUsageKey",
+            "_NSURLVolumeAvailableCapacityForOpportunisticUsageKey", "_NSURLVolumeTotalCapacityKey", "_NSFileSystemFreeSize",
+            "_NSFileSystemSize", "_statfs", "_statvfs", "_fstatfs", "_fstatvfs",
+        ]),
+        ("NSPrivacyAccessedAPICategoryFileTimestamp", [
+            "_NSFileCreationDate", "_NSFileModificationDate", "_NSURLContentModificationDateKey", "_NSURLCreationDateKey",
+            "_NSURLContentAccessDateKey", "fileModificationDate", "_stat", "_fstat", "_lstat", "_fstatat", "_getattrlist",
+            "_getattrlistbulk", "_fgetattrlist", "_getattrlistat",
+        ]),
+        ("NSPrivacyAccessedAPICategoryActiveKeyboards", ["activeInputModes"]),
+    ]
+
+    /// The Mach-O files in a bundle that hold its code: the executable and, in a debug build, its `.debug.dylib`.
+    private func binaries(of bundle: URL) throws -> [Data] {
+        let executable = try #require(Bundle(url: bundle)?.executableURL)
+        let debug = executable.deletingLastPathComponent().appendingPathComponent(executable.lastPathComponent + ".debug.dylib")
+        return try [executable, debug].filter { FileManager.default.fileExists(atPath: $0.path) }.map { try Data(contentsOf: $0) }
+    }
+
+    @Test("what each built binary really links is declared, and nothing is declared that it does not link (app, extension, widgets)")
+    func declarationsMatchTheBinary() throws {
+        let app = Bundle.main.bundleURL
+        let widgets = app.appendingPathComponent("PlugIns/RetrospectWidgetsExtension.appex")
+        let bundles: [(URL, URL?, String)] = [
+            (app, Self.appRoot, "app"), (app.appendingPathComponent("Extensions/ScreenTimeReport.appex"), Self.reportRoot, "ScreenTimeReport"),
+            (widgets, nil, "RetrospectWidgets"),
+        ]
+        for (bundle, source, name) in bundles {
+            let images = try binaries(of: bundle)
+            #expect(!images.isEmpty, "\(name): no binary found")
+            let reasons = try source.map { try declared(in: $0) } ?? [:]
+            for signal in Self.binarySignals {
+                let linked = signal.symbols.filter { symbol in
+                    let needle = Data([0] + Array(symbol.utf8) + [0])
+                    return images.contains { $0.range(of: needle) != nil }
+                }
+                if linked.isEmpty {
+                    #expect(reasons[signal.category] == nil, "\(name): \(signal.category) is declared but the binary links none of it")
+                } else {
+                    #expect(reasons[signal.category]?.isEmpty == false, "\(name): links \(linked) but does not declare \(signal.category)")
+                }
+            }
+        }
+    }
+
     @Test("the app and the extension do not track and name no tracking domains")
     func noTracking() throws {
         for folder in [Self.appRoot, Self.reportRoot] {
