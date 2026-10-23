@@ -73,17 +73,30 @@ extension Session {
         case nothingToRedeem
     }
 
+    /// What the invite screens read to know whether a code is waiting (PI1's
+    /// root: signed out with a code shows the ticket's page). `InviteCenter`
+    /// implements it; screens fake it.
+    @MainActor
+    protocol InvitePending: AnyObject {
+        /// True while a code waits in the pending slot: from a link, or typed
+        /// and usable, until the tear spends it or the server drops it. The slot
+        /// belongs to the phone, not the person, so a sign-out keeps it.
+        var hasPendingCode: Bool { get }
+    }
+
     /// The invite, from a link or a typed code to the tear (PL1.7, amended by
     /// PL1.7d): the code is checked after sign-in and spent only at the tear.
     /// The code lives in the store's pending slot until the tear succeeds and
     /// is never logged; the face is kept only for the screen.
     @MainActor @Observable
-    final class InviteCenter {
+    final class InviteCenter: InvitePending {
         private(set) var access: AccessState = .unknown
         private(set) var ticket: Ticket = .none
         /// The face of a link's code, looked up before sign-in ("priya kept a place for you"). Nil when the code
         /// isn't live, there was no connection, or the person is signed in. Never kept beyond the screen's life.
         private(set) var previewFace: TicketFace?
+        /// The pending slot's mirror (`InvitePending`): changed only by `setPending` and `readPending`.
+        private(set) var hasPendingCode = false
 
         private let store: Store
         private let client: Backend.Client
@@ -94,6 +107,9 @@ extension Session {
         private var tearing: Task<TearOutcome, Never>?
         private var checking: Task<Void, Never>?
         private var watching: Task<Void, Never>?
+        /// Counts writes to the slot, so a read that started before a write
+        /// can't put back the value the write replaced.
+        private var slotWrites = 0
 
         init(store: Store, client: Backend.Client, session: Manager, log: any Platform.LogSink, makeKey: @escaping @Sendable () -> UUID = UUID.init) {
             self.store = store
@@ -108,6 +124,8 @@ extension Session {
             guard watching == nil else { return }
             let session = session
             watching = Task { [weak self] in
+                // A code kept by an earlier launch (a link opened, the app killed) counts.
+                _ = try? await self?.readPending()
                 for await state in session.states() {
                     guard let self else { return }
                     apply(state)
@@ -125,6 +143,7 @@ extension Session {
         /// The session's current state, read once (tests, and before `start`).
         func sync() async {
             await apply(session.state)
+            _ = try? await readPending()
         }
 
         // MARK: A code arrives
@@ -138,11 +157,7 @@ extension Session {
                 return
             }
             await noteCode(code)
-            do {
-                try await store.setPendingInviteCode(code)
-            } catch {
-                log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
-            }
+            await setPending(code)
             log.record(.inviteReceived)
             if case .signedIn = await session.state {
                 previewFace = nil
@@ -172,11 +187,7 @@ extension Session {
             let outcome = await check(code)
             if case .printing = outcome {
                 await noteCode(code)
-                do {
-                    try await store.setPendingInviteCode(code)
-                } catch {
-                    log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
-                }
+                await setPending(code)
             }
             ticket = outcome
         }
@@ -261,7 +272,7 @@ extension Session {
             while true {
                 let pending: String?
                 do {
-                    pending = try await store.pendingInviteCode()
+                    pending = try await readPending()
                 } catch {
                     log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
                     return
@@ -281,7 +292,7 @@ extension Session {
                 // A newer code arrived while this one was being checked: the answer is
                 // about a code nobody holds any more. It must neither show nor clear
                 // anything; the newer code is checked instead.
-                if let latest = try? await store.pendingInviteCode(), latest != pending {
+                if let latest = try? await readPending(), latest != pending {
                     continue
                 }
                 ticket = outcome
@@ -340,7 +351,7 @@ extension Session {
         private func redeemPending() async -> TearOutcome {
             let pending: String?
             do {
-                pending = try await store.pendingInviteCode()
+                pending = try await readPending()
             } catch {
                 log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
                 return .failed
@@ -406,18 +417,38 @@ extension Session {
         /// A different code is a different tear: the key made for the old one must
         /// not travel with the new one (the server would answer a mismatch).
         private func noteCode(_ code: String) async {
-            let previous = try? await store.pendingInviteCode()
+            let previous = try? await readPending()
             if previous != code {
                 tearKey = nil
             }
         }
 
         private func clearPending() async {
+            await setPending(nil)
+        }
+
+        /// The one write to the pending slot. `hasPendingCode` follows only a
+        /// write that landed: a failed one leaves the slot, and the flag, as they were.
+        private func setPending(_ code: String?) async {
+            slotWrites += 1
             do {
-                try await store.setPendingInviteCode(nil)
+                try await store.setPendingInviteCode(code)
+                hasPendingCode = code != nil
             } catch {
                 log.record(.keychainWriteFailed(.pendingInvite, status: Self.status(of: error)))
             }
+        }
+
+        /// Reads the pending slot and mirrors it in `hasPendingCode`, unless a
+        /// write landed while the read was waiting (the write's value stands).
+        /// A failed read changes nothing.
+        private func readPending() async throws -> String? {
+            let writes = slotWrites
+            let code = try await store.pendingInviteCode()
+            if writes == slotWrites {
+                hasPendingCode = code != nil
+            }
+            return code
         }
 
         private static func status(of error: any Error) -> OSStatus {

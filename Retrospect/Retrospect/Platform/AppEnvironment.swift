@@ -53,6 +53,8 @@ extension Platform {
         private(set) var journalData: LiveJournalData?
         /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
         private(set) var mediaSource: Platform.Media.Source?
+        /// The person's small flags ("you're in" seen, INVITE-FLAGS); built and dropped with the stack.
+        private(set) var personFlags: Store.PersonFlags?
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -199,6 +201,8 @@ extension Platform {
         func sessionWillChange() -> Task<Void, Never> {
             enqueueDiagnostics { [self, diagnostics] in
                 // Stop everything that reads or writes the person's store before it is erased.
+                await personFlags?.close()
+                personFlags = nil
                 journalData?.stop()
                 journalData = nil
                 await outbox?.stop()
@@ -229,6 +233,7 @@ extension Platform {
                 database: database, sender: Store.ClientSender(client: client), reachability: reachability, log: log
             )
             self.outbox = outbox
+            personFlags = Store.PersonFlags(database: database)
             let repository = Platform.Repositories.Journal(database: database, client: client)
             journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
             let reachability = reachability
