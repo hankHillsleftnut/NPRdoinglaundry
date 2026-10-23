@@ -7,14 +7,6 @@
 //
 import SwiftUI
 
-extension RTextStyle {
-    /// The purpose page's title: ink at 30, card weight, title tracking, tight leading.
-    static let forceUpdateTitle = RTextStyle(
-        family: .inky(axis: -10), size: RDimension.fontSize3xl, weight: .regular,
-        tracking: RNumber.fontTrackingTitle, leading: 1.1, relativeTo: .largeTitle
-    )
-}
-
 struct ForceUpdateScreen: View {
     let model: ForceUpdateModel
     @Environment(\.rCompactHeight) private var compact
@@ -26,28 +18,13 @@ struct ForceUpdateScreen: View {
     var body: some View {
         ZStack {
             RColor.backgroundCanvas.ignoresSafeArea()
-            ScrollView {
-                VStack(spacing: compact ? RDimension.space5 : RDimension.space6) {
-                    RMark()
-                    VStack(spacing: RDimension.space2) {
-                        Text(ForceUpdateModel.title)
-                            .rText(.forceUpdateTitle)
-                            .foregroundStyle(RColor.textPrimary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityAddTraits(.isHeader)
-                        Text(ForceUpdateModel.line)
-                            .rText(.body)
-                            .foregroundStyle(RColor.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            GeometryReader { proxy in
+                ScrollView {
+                    page
+                        .frame(maxWidth: .infinity, minHeight: proxy.size.height) // min, so tall text at AX sizes scrolls
                 }
-                .padding(.horizontal, margin)
-                .frame(maxWidth: .infinity)
-                .containerRelativeFrame(.vertical, alignment: .center)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .safeAreaInset(edge: .bottom, spacing: RDimension.space0) {
             if model.canUpdate {
@@ -60,11 +37,35 @@ struct ForceUpdateScreen: View {
         }
         .accessibilityIdentifier("screen.PX")
     }
+
+    private var page: some View {
+        VStack(spacing: compact ? RDimension.space5 : RDimension.space6) {
+            RMark()
+            // title and line as Paper's purpose page (privacy `1F7Y-0`): ink title, 12 apart
+            VStack(spacing: RDimension.space3) {
+                Text(ForceUpdateModel.title)
+                    .rText(.inkTitle)
+                    .foregroundStyle(RColor.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(ForceUpdateModel.line)
+                    .rText(.body)
+                    .foregroundStyle(RColor.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, margin)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
 extension View {
     /// The force-update cover at the top of the app root: over everything, not dismissible, the content
-    /// behind it unreachable. Fades in on 140 ms; no gesture or escape closes it.
+    /// behind it unreachable. Fades in on 140 ms; no gesture or escape closes it. Limit: a sheet or alert
+    /// already presented from `content` lives in its own presentation layer and stays above this cover;
+    /// the app root should dismiss those (or host the cover in its own window) when the flag flips (wiring PR).
     func rForceUpdateCover(isRequired: Bool, model: ForceUpdateModel) -> some View {
         modifier(ForceUpdateCover(isRequired: isRequired, model: model))
     }
@@ -79,11 +80,23 @@ private struct ForceUpdateCover: ViewModifier {
             content
                 .accessibilityHidden(isRequired)
                 .allowsHitTesting(!isRequired)
+                .onChange(of: isRequired, initial: true) { _, required in
+                    // Hit testing off does not end editing: put the keyboard away and take focus from any field behind.
+                    if required {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
             if isRequired {
                 ForceUpdateScreen(model: model)
                     .transition(.opacity.animation(RMotion.standard(RNumber.motionDurationFast)))
                     .accessibilityAddTraits(.isModal)
                     .zIndex(RNumber.layerToast + 1)
+            }
+        }
+        // VoiceOver: the cover replaces the screen, so focus moves to it instead of staying on what's behind.
+        .onChange(of: isRequired) { _, now in
+            if now {
+                AccessibilityNotification.ScreenChanged().post()
             }
         }
     }

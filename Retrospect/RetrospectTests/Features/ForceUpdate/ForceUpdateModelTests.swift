@@ -12,6 +12,10 @@ struct ForceUpdateModelTests {
         #expect(AppStoreLink.url(id: "") == nil)
         #expect(AppStoreLink.url(id: "id123") == nil)
         #expect(AppStoreLink.url(id: "12 3") == nil)
+        // digits that aren't ASCII never reach the link
+        #expect(AppStoreLink.url(id: "\u{0661}\u{0662}\u{0663}") == nil)
+        #expect(AppStoreLink.url(id: "12\u{00BD}") == nil)
+        #expect(AppStoreLink.url(id: "\u{FF11}\u{FF12}") == nil)
     }
 
     @Test("update opens the store page once per press")
@@ -21,7 +25,8 @@ struct ForceUpdateModelTests {
         #expect(model.canUpdate)
         model.update()
         #expect(opened == ["itms-apps://apps.apple.com/app/id99"])
-        #expect(model.presses == 1)
+        model.update()
+        #expect(opened.count == 2)
     }
 
     @Test("with no store id the button is hidden and pressing does nothing")
@@ -31,7 +36,6 @@ struct ForceUpdateModelTests {
         #expect(!model.canUpdate)
         model.update()
         #expect(opened == 0)
-        #expect(model.presses == 0)
     }
 
     @Test("the words say nothing saved is lost, and never the server's text")
@@ -42,6 +46,6 @@ struct ForceUpdateModelTests {
 
     @Test("the launcher lists the three states")
     func launcher() {
-        #expect(ScreenRegistry.screen("PX")?.states == ["rest", "offline", "noStoreLink"])
+        #expect(ScreenRegistry.screen("PX")?.states == ["rest", "offline", "noStoreLink", "cover"])
     }
 }

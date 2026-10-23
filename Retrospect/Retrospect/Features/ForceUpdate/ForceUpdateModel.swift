@@ -11,17 +11,23 @@ import Observation
 enum AppStoreLink {
     static let infoKey = "AppStoreID"
 
-    /// `itms-apps://apps.apple.com/app/id<id>`; nil for an empty or non-numeric id (never a guess).
+    /// `itms-apps://apps.apple.com/app/id<id>`; nil for an empty id or anything but ASCII digits (never a
+    /// guess: `Character.isNumber` would also let "½" or Arabic-Indic digits into the link).
     static func url(id: String?) -> URL? {
         guard let trimmed = id?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty,
-              trimmed.allSatisfy(\.isNumber)
+              trimmed.allSatisfy({ $0.isASCII && $0.isWholeNumber })
         else { return nil }
         return URL(string: "itms-apps://apps.apple.com/app/id\(trimmed)")
     }
 
     /// The id the build was configured with, if any.
     static func configuredID(in bundle: Bundle = .main) -> String? {
-        bundle.object(forInfoDictionaryKey: infoKey) as? String
+        // A plist key typed as a Number (easy in Xcode's editor) is as good as a String.
+        switch bundle.object(forInfoDictionaryKey: infoKey) {
+        case let string as String: string
+        case let number as NSNumber: number.stringValue
+        default: nil
+        }
     }
 }
 
@@ -30,8 +36,6 @@ final class ForceUpdateModel {
     /// The store link, or nil while the founder hasn't supplied the id.
     let storeURL: URL?
     @ObservationIgnored private let open: (URL) -> Void
-    /// Counts the presses, for the haptic.
-    private(set) var presses = 0
 
     init(storeURL: URL? = AppStoreLink.url(id: AppStoreLink.configuredID()), open: @escaping (URL) -> Void) {
         self.storeURL = storeURL
@@ -45,8 +49,7 @@ final class ForceUpdateModel {
 
     func update() {
         guard let storeURL else { return }
-        presses += 1
-        open(storeURL)
+        open(storeURL) // the press haptic is RButton's own (primary variant)
     }
 
     // MARK: Words (strings in one place: the page is a purpose page, the words are the founder's)
