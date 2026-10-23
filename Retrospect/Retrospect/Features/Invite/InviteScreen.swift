@@ -6,8 +6,8 @@
 //  refusal offers the waitlist. Layout from Paper round 2 (T1, T-alt; board `2HXA-0`), 24 margins, 20
 //  on SE. The page owns nothing but looks: `InviteModel` owns what is true.
 //
-//  A usable code (`ready`) is where PI2 takes over: the print, the tear and "you're in" (M14). Until
-//  that PR lands this page shows the accepted ticket whole and still.
+//  PI2 (M14) lives on the same page: a usable code prints out of the slot, the person tears it along the
+//  perforation, the stub drops clear and it reads "you're in". One ticket instance throughout.
 //
 import AuthenticationServices
 import SwiftUI
@@ -17,17 +17,25 @@ struct InviteScreen: View {
     /// The sample launcher plays the sign-in on a tap (Apple's sheet can't run on invented data).
     var sampleTaps = false
 
+    @State private var stage: InviteStageController
     @State private var caretOn = true
     @State private var toast: RToastItem?
     @FocusState private var typing: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.rCompactHeight) private var compact
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Paper T1 `2I01-0`, on the 874-tall artboard: the words block starts 200 down, is 300 tall with its
     /// contents bottom-aligned 32 above the slot; the same shares of the screen on any height.
     private static let promiseTopShare: CGFloat = 200.0 / 874.0 // literal-ok: Paper T1 `2I01-0`
     private static let promiseBlockShare: CGFloat = 300.0 / 874.0 // literal-ok: Paper T1 `2IGY-0`
+
+    init(model: InviteModel, sampleTaps: Bool = false, printStill: CGFloat? = nil, tear: CGFloat = 0) {
+        self.model = model
+        self.sampleTaps = sampleTaps
+        _stage = State(initialValue: InviteStageController(model: model, printStill: printStill, tear: tear))
+    }
 
     private var margin: CGFloat {
         compact ? RDimension.space5 : RDimension.spaceScreenMargin
@@ -63,9 +71,14 @@ struct InviteScreen: View {
         .animation(RMotion.standard(RNumber.motionDurationSlow), value: model.phase)
         .animation(RMotion.standard(RNumber.motionDurationBase), value: model.notice)
         .animation(RMotion.standard(RNumber.motionDurationBase), value: model.waitlist)
+        .sensoryFeedback(RHaptic.select, trigger: stage.ticks)
+        .sensoryFeedback(RHaptic.select, trigger: stage.landings)
+        .sensoryFeedback(TicketFeedback.rip, trigger: model.rips)
+        .sensoryFeedback(RHaptic.reveal, trigger: model.reveals)
         .sensoryFeedback(RHaptic.warning, trigger: model.warnings)
         .sensoryFeedback(RHaptic.confirm, trigger: model.confirms)
         .onChange(of: model.phase, initial: true) { old, new in
+            stage.phaseChanged(reduceMotion: reduceMotion)
             if new == .alreadyIn {
                 toast = RToastItem(message: InviteModel.alreadyInToast, symbol: "checkmark")
                 model.onFinish()
@@ -76,11 +89,24 @@ struct InviteScreen: View {
                 typing = false
             }
             if new == .ready, old == .typed {
-                announce("code accepted.")
+                announce("code accepted. swipe along the line to tear, or use the tear action.")
+            }
+            if new == .youreIn, old == .torn || old == .sealing {
+                announce("it's yours. you're in.")
             }
             // a link's refused or waiting check speaks on arrival (a tear's refusal speaks through `warnings`)
             if old != .sealing, new != old, model.isRefusedOrWaiting, let words = model.spokenFailure {
                 announce(words)
+            }
+        }
+        .onChange(of: scenePhase) { _, now in
+            if now != .active {
+                stage.dragCancelled()
+                stage.holdReleased(completed: false)
+            }
+            if now == .active {
+                stage.finishPrintNow()
+                Task { await model.retry() }
             }
         }
         // every failure is said as well as felt, each time (a second wrong code in a row too)
@@ -193,12 +219,16 @@ struct InviteScreen: View {
                 .padding(.top, compact ? RDimension.space8 : RDimension.space10 + RDimension.space2)
             captionBlock
                 .padding(.top, RDimension.space6)
+            if model.phase == .youreIn || model.phase == .torn {
+                youreInWords
+            }
         }
         .frame(maxWidth: .infinity)
     }
 
     private func ticketStage(width: CGFloat) -> some View {
         let geometry = geometry(page: width)
+        let fallen = model.phase == .torn || model.phase == .youreIn
         return TicketStage(
             geometry: geometry,
             face: model.face,
@@ -207,11 +237,48 @@ struct InviteScreen: View {
             label: model.stubLabel,
             typed: model.phase == .typed,
             caretOn: caretOn,
+            tearProgress: stage.holdProgress > 0 && reduceMotion ? 0 : stage.tearProgress,
+            stub: fallen ? .fallen : .joined,
+            printProgress: stage.printProgress,
             reduceMotion: reduceMotion
         )
+        .animation(RMotion.settle, value: fallen)
+        .overlay(alignment: .bottom) { slotOverlay(geometry) }
+        .overlay(alignment: .topLeading) { holdFill(geometry) }
+        .overlay(alignment: .topLeading) { handleLayer(geometry) }
         .overlay(alignment: .topLeading) { codeField(geometry) }
         .rShake(trigger: model.wrongCodes)
+        .accessibilityAction(named: "tear ticket") { Task { await stage.tearByAction() } }
         .frame(width: geometry.width)
+    }
+
+    /// The slot at the ticket's lip while it prints, with the bend where the paper curls in.
+    private func slotOverlay(_ geometry: TicketGeometry) -> some View {
+        let showing = stage.slotPrinting && stage.printProgress < 1
+        return ZStack(alignment: .bottom) {
+            RPrinterBend()
+                .frame(width: geometry.width)
+                .offset(y: -RDimension.space2)
+                .opacity(showing && stage.printProgress < 0.9 ? 1 : 0) // literal-ok: the band leaves as the print nears its end
+            RPrinterSlot(ticketWidth: geometry.width, state: .printing)
+                .offset(y: RPrinterSlot.mouth - RDimension.space2)
+        }
+        .opacity(showing ? 1 : 0)
+        .animation(RMotion.exit(RNumber.motionDurationBase), value: showing)
+        .allowsHitTesting(false)
+    }
+
+    /// The handle on the left notch, riding the tear point. Its gesture lives here, outside the tilt.
+    @ViewBuilder private func handleLayer(_ geometry: TicketGeometry) -> some View {
+        let available = model.phase == .ready || model.phase == .sealing
+        RTicketHandle(held: stage.held)
+            .offset(x: stage.tearProgress * geometry.width - RDimension.sizeTouchTarget / 2, y: geometry.perforationY - RDimension.sizeTouchTarget / 2)
+            .gesture(reduceMotion ? nil : tearDrag(geometry))
+            .simultaneousGesture(reduceMotion ? holdGesture : nil)
+            .opacity(available ? 1 : 0)
+            .allowsHitTesting(model.phase == .ready)
+            .accessibilityHidden(true)
+            .animation(RMotion.standard(RNumber.motionDurationBase), value: available)
     }
 
     /// The hidden field the tiles read from: any tap on the stub focuses it, never selecting text.
@@ -283,6 +350,27 @@ struct InviteScreen: View {
             .id(text)
     }
 
+    private var youreInWords: some View {
+        VStack(spacing: RDimension.space2) {
+            if model.phase == .youreIn {
+                Text(model.youreInTitle)
+                    .rText(.inviteTitle)
+                    .foregroundStyle(RColor.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                    .rAppear()
+                Text(model.youreInLine)
+                    .rText(.body)
+                    .foregroundStyle(RColor.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .rAppear(index: 1)
+            }
+        }
+        .padding(.top, RDimension.space8)
+        .padding(.bottom, RDimension.space6)
+    }
+
     // MARK: Suspended
 
     private func pausedColumn(page: GeometryProxy) -> some View {
@@ -348,8 +436,13 @@ struct InviteScreen: View {
     }
 
     @ViewBuilder private var ticketBottom: some View {
-        // the footer gives way to the keyboard: above it, it would sit on the caption
-        if let footer = model.footer, !typing {
+        if model.phase == .youreIn, model.beginVisible {
+            RButton(title: "begin") { model.begin() }
+                .padding(.horizontal, margin)
+                .padding(.bottom, RDimension.space4)
+                .transition(.blurReplace)
+                .accessibilityIdentifier("invite.begin")
+        } else if let footer = model.footer, !typing { // the footer gives way to the keyboard: above it, it would sit on the caption
             Text(footer)
                 .rText(.label)
                 .foregroundStyle(RColor.textLabel)
@@ -373,3 +466,42 @@ struct InviteScreen: View {
 
 /// Stands in for Apple's result when the launcher plays the sign-in on sample data.
 struct SampleSignInTap: Error {}
+
+enum TicketFeedback {
+    /// The rip: a rigid impact on the frame the stub lets go (FR0.1's `haptic.rip`).
+    static let rip: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.8) // literal-ok: FR0.1 token, not yet generated
+}
+
+/// The tear and hold gestures, kept out of the struct body.
+extension InviteScreen {
+    /// Reduce Motion: the 0.6 s hold fills along the tear line from the left, so the wait is seen
+    /// (it empties again when the finger lifts early).
+    @ViewBuilder private func holdFill(_ geometry: TicketGeometry) -> some View {
+        if reduceMotion {
+            RShape.pill
+                .fill(RColor.glowPrimaryGradientBottom)
+                .frame(width: geometry.width * stage.holdProgress, height: RDimension.sizeBorderRing)
+                .offset(y: geometry.perforationY - RDimension.sizeBorderRing / 2)
+                .opacity(stage.holdProgress > 0 ? 1 : 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func tearDrag(_ geometry: TicketGeometry) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("ticket"))
+            .onChanged { value in
+                stage.dragChanged(x: value.location.x, dy: value.location.y - geometry.perforationY, width: geometry.width)
+            }
+            .onEnded { value in
+                stage.dragEnded(x: value.location.x, velocity: value.velocity.width, width: geometry.width)
+            }
+    }
+
+    /// Reduce Motion: a touch starts the 0.6 s hold (the controller completes it itself); lifting early empties it.
+    private var holdGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in stage.holdBegan() }
+            .onEnded { _ in stage.holdReleased(completed: false) }
+    }
+}
