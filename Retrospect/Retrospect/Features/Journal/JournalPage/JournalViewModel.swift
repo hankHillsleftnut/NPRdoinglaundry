@@ -73,10 +73,14 @@ final class JournalViewModel {
     /// announces it once per failure (a queued answer, offline, is not a failure).
     private(set) var answerFailure: Flows.Failure?
     private(set) var answerFailures = 0
+    /// The last send that saved nothing (the words are back in the draft), until one works.
+    private(set) var sendFailure: Flows.Failure?
+    private(set) var sendFailures = 0
     /// Today has finished loading once for this model; coming back to the page doesn't reload.
     @ObservationIgnored private var hasLoaded = false
 
     /// What the guess card says when a failed answer has no message of its own.
+    static let sendFailureLine = "couldn't save that. your words are still in the box."
     static let answerFailureLine = "couldn't send your answer. try again."
 
     init(data: any Flows.JournalData, today: String) {
@@ -152,7 +156,16 @@ final class JournalViewModel {
         guard !words.isEmpty else { return }
         draft = ""
         let before = Set((data.today.value ?? []).map(\.id))
-        await data.send(text: words)
+        if case let .failed(failure) = await data.send(text: words) {
+            // nothing was saved: the words go back in the composer and the person is told
+            if draft.isEmpty {
+                draft = text
+            }
+            sendFailure = failure
+            sendFailures += 1
+            return
+        }
+        sendFailure = nil
         watching.formUnion((data.today.value ?? []).map(\.id).filter { !before.contains($0) })
         noteDeliveries()
     }

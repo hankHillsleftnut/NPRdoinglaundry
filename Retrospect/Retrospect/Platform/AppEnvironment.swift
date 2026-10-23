@@ -48,6 +48,12 @@ extension Platform {
         /// nil before. The scene-phase and background-task bridges drain it.
         var outbox: Store.Outbox?
 
+        /// The signed-in person's journal data (PL3.1a); nil while signed out. Set with the store
+        /// and dropped before it is erased, so the next person never sees the last one's entries.
+        private(set) var journalData: LiveJournalData?
+        /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
+        private(set) var mediaSource: Platform.Media.Source?
+
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
             floor.updateRequired
@@ -191,21 +197,46 @@ extension Platform {
 
         @discardableResult
         func sessionWillChange() -> Task<Void, Never> {
-            enqueueDiagnostics { [diagnostics] in
+            enqueueDiagnostics { [self, diagnostics] in
+                // Stop everything that reads or writes the person's store before it is erased.
+                journalData?.stop()
+                journalData = nil
+                await outbox?.stop()
+                outbox = nil
+                await mediaSource?.erase()
+                mediaSource = nil
                 await diagnostics.detach(erasingDatabase: true)
             }
         }
 
         @discardableResult
         func sessionDidChange(to userID: String) -> Task<Void, Never> {
-            enqueueDiagnostics { [diagnostics, openDatabase, log] in
+            enqueueDiagnostics { [self, diagnostics, openDatabase, log] in
                 do {
                     let database = try await Task.detached { try openDatabase(userID) }.value
                     await diagnostics.attach(database)
+                    openJournal(on: database)
                 } catch {
                     log.record(.diagnosticsWriteFailed)
                 }
             }
+        }
+
+        /// The per-person stack on their store: the outbox (started, so what was left unsent goes out)
+        /// and the journal's live data on it.
+        private func openJournal(on database: Store.LocalDatabase) {
+            let outbox = Store.Outbox(
+                database: database, sender: Store.ClientSender(client: client), reachability: reachability, log: log
+            )
+            self.outbox = outbox
+            let repository = Platform.Repositories.Journal(database: database, client: client)
+            journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
+            let reachability = reachability
+            mediaSource = Platform.Media.Source(
+                isOnline: { await reachability.isOnline },
+                refetch: { try await repository.refreshBrief().brief }
+            )
+            Task { await outbox.start() }
         }
 
         /// Once, when the app's first scene is up: records the launch and

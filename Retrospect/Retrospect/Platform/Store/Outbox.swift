@@ -65,6 +65,7 @@ extension Store {
         private var isDraining = false
         private var needsAnotherPass = false
         var started = false
+        fileprivate var stopped = false
         private var reachabilityWatch: Task<Void, Never>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
 
@@ -237,7 +238,7 @@ extension Store {
         /// a call during a drain adds one more pass at its end, never a second
         /// drainer. Returns when the drain is over (or was cancelled).
         func drain(reason _: DrainReason) async {
-            guard sender != nil else { return }
+            guard sender != nil, !stopped else { return }
             if isDraining {
                 needsAnotherPass = true
                 return
@@ -248,7 +249,7 @@ extension Store {
             repeat {
                 needsAnotherPass = false
                 paused = await pass()
-            } while needsAnotherPass && !paused && !Task.isCancelled
+            } while needsAnotherPass && !paused && !stopped && !Task.isCancelled
             // A pause (offline, signed out) is ended by its own trigger:
             // reachability, sign-in, foreground. Otherwise wake for the next retry.
             if !paused, !Task.isCancelled {
@@ -267,7 +268,7 @@ extension Store {
             guard let sender, (try? resetCrashedSends()) != nil, let due = try? dueItems() else { return false }
             var paused = false
             var tally = Tally()
-            for queued in due where !Task.isCancelled {
+            for queued in due where !Task.isCancelled && !stopped {
                 guard let item = try? markInFlight(queued) else { continue }
                 let startedAt = now()
                 do {
@@ -533,12 +534,26 @@ extension Store {
     }
 }
 
+// MARK: Stopping (PL3.1a)
+
+extension Store.Outbox {
+    /// The person signed out: no trigger starts another drain, and a pass in flight stops at its next item.
+    /// The outbox is not used again; the next person gets a new one on a new store.
+    func stop() {
+        stopped = true
+        reachabilityWatch?.cancel()
+        reachabilityWatch = nil
+        retryWake?.cancel()
+        retryWake = nil
+    }
+}
+
 extension Store.Outbox {
     /// One sleeping task, for the earliest pending item that isn't due yet.
     private func scheduleRetryWake() {
         retryWake?.cancel()
         retryWake = nil
-        guard started, let next = try? earliestPendingAt() else { return }
+        guard started, !stopped, let next = try? earliestPendingAt() else { return }
         let wait = max(0, next.timeIntervalSince(now()))
         let sleep = sleep
         retryWake = Task { [weak self] in
@@ -558,4 +573,11 @@ extension Store.Outbox {
                 .min()
         }
     }
+
+    #if DEBUG
+    /// Delivers a receipt to the listeners, as the drainer does after a send. For tests.
+    func publishForTests(_ receipt: ReportReceipt) {
+        publish(receipt)
+    }
+    #endif
 }
