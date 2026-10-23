@@ -5,7 +5,7 @@
 //  guesses, online) into the thread's items and the brief card's state, and owns what the page
 //  itself decides: the composer's draft, the collapse from the scroll, which entry this session
 //  watched go from sending to sent (the M08 land: the `confirm` haptic and the one VoiceOver
-//  announcement), the player sheet and the drawer. Every mapping is a pure function, so the
+//  announcement), the brief's play through the one player (C26.1), the text sheet and the drawer. Every mapping is a pure function, so the
 //  scenarios can be tested without a view. It never reaches the network: the seam does.
 //
 import Foundation
@@ -59,7 +59,14 @@ final class JournalViewModel {
     var collapsed = false
     /// How far the thread sits above its bottom, in 8pt steps, for the top edge's blur band.
     var scrollSteps = 0
+    /// The text sheet (P10's placeholder): the card's body, and the play when there is no sound to play.
     var playerShown = false
+    /// The one player (`\.playback`, PLP.1a), built for the signed-in person and dropped on sign-out; nil on
+    /// the sample page, whose play opens the text sheet. Held weakly: once the person signs out the page
+    /// keeps no player of theirs.
+    @ObservationIgnored weak var playback: (any Flows.Playback)?
+    /// From a tap on the play until the player answers it: the card turns the starting ring.
+    private(set) var starting: Starting?
     /// The entry this session watched go from sending to sent: the acknowledgement is announced
     /// once and the `confirm` haptic fires once, for it; a thread loaded already sent never does.
     private(set) var landed: String?
@@ -128,7 +135,16 @@ final class JournalViewModel {
     }
 
     var briefCard: BriefCard? {
-        Self.briefCard(data.brief, today: today, online: data.isOnline)
+        guard let card = Self.briefCard(data.brief, today: today, online: data.isOnline) else { return nil }
+        guard card.state == .rest else { return card }
+        let state = Self.playState(starting: starting != nil, player: player?.state)
+        return BriefCard(date: card.date, length: card.length, headline: card.headline, subline: card.subline, state: state)
+    }
+
+    /// What the player is doing with today's brief: nil when it holds nothing, or something else.
+    var player: Player? {
+        guard let brief, let playback, let item = playback.item, item.id == brief.id else { return nil }
+        return Player(id: item.id, state: playback.state)
     }
 
     /// Today's brief, for the player sheet (P10 replaces this with the brief player).
@@ -238,8 +254,90 @@ final class JournalViewModel {
         }
     }
 
-    func play() {
+    /// The lit play: today's brief through the one player. The first tap loads it and starts it (the ring
+    /// turns until it plays); a tap while it plays pauses it, another resumes it. With no player (the
+    /// sample) or no audio, or when the player can't get the sound (offline, failed), the text sheet opens.
+    func play() async {
+        guard let brief, let audio = brief.audio, let playback else {
+            playerShown = true
+            return
+        }
+        if starting != nil {
+            // a second tap while it starts: the person changed their mind
+            starting = nil
+            playback.pause()
+            return
+        }
+        if toggle(playback, briefID: brief.id) {
+            return
+        }
+        starting = .loading
+        await playback.load(Self.item(for: brief, audio: audio))
+        // a tap during the load stopped it, or another person's sign-out unloaded the player
+        guard starting == .loading else { return }
+        if player?.state == .paused {
+            starting = .asked
+            playback.play()
+        }
+        notePlayback()
+    }
+
+    /// The card's body: the text sheet (P10 replaces it with the brief player).
+    func open() {
         playerShown = true
+    }
+
+    /// Pauses or resumes the brief the player already holds; false when there is nothing of it to play
+    /// (another item, nothing loaded, or a load that ended offline or failed), which loads it again.
+    private func toggle(_ playback: any Flows.Playback, briefID: String) -> Bool {
+        guard playback.item?.id == briefID else { return false }
+        switch playback.state {
+        case .playing, .buffering:
+            playback.pause()
+            return true
+        case .paused, .ended:
+            playback.play()
+            return true
+        case .idle, .failed, .offline:
+            return false
+        }
+    }
+
+    /// The page calls this when the player's state changes: the ring stops once the player plays, stops by
+    /// itself (a call, the headphones out) or gives up; giving up opens the text sheet instead. Nothing here
+    /// ever starts the sound again: only the person's tap does (the player's rule).
+    func notePlayback() {
+        guard let start = starting else { return }
+        guard let player else {
+            // the brief left the player (another item, or the sign-out unload)
+            starting = nil
+            return
+        }
+        starting = Self.next(start, after: player.state)
+        if starting == nil, Self.gaveUp(player.state) {
+            playerShown = true
+        }
+    }
+
+    /// The player couldn't get the sound: offline and not on the phone, or it failed.
+    static func gaveUp(_ state: Flows.PlaybackState) -> Bool {
+        switch state {
+        case .failed, .offline: true
+        case .idle, .buffering, .playing, .paused, .ended: false
+        }
+    }
+
+    /// Where a start goes when the player says `state`.
+    static func next(_ start: Starting, after state: Flows.PlaybackState) -> Starting? {
+        switch state {
+        case .idle, .playing, .ended, .failed, .offline:
+            nil
+        case .buffering:
+            start == .asked ? .answered : start
+        case .paused:
+            // paused after it had begun: it stopped by itself. Paused before: the load's own rest.
+            start == .answered ? nil : start
+        }
     }
 
     /// Copies your words, text only; nothing is logged.
@@ -273,6 +371,45 @@ final class JournalViewModel {
     var openDrawer: () -> Void = {}
 
     // MARK: - The mappings (pure)
+
+    /// How far a tap on the play has got: the brief is loading; loaded and asked to play; the player
+    /// has begun (it buffered).
+    enum Starting: Equatable {
+        case loading
+        case asked
+        case answered
+    }
+
+    /// The player's hold on today's brief, for the page to watch.
+    struct Player: Equatable {
+        let id: String
+        let state: Flows.PlaybackState
+    }
+
+    /// The ready card's play, from the tap and the player's state for this brief: the ring while it
+    /// buffers, and from the tap until the player answers; at rest otherwise. Never the ring once the
+    /// player plays, gives up or holds nothing.
+    static func playState(starting: Bool, player: Flows.PlaybackState?) -> RBriefCard.State {
+        switch player {
+        case .buffering:
+            .starting
+        case .paused, nil:
+            starting ? .starting : .rest
+        case .idle, .playing, .ended, .failed, .offline:
+            .rest
+        }
+    }
+
+    /// Today's brief as the player's item: its parts in spoken order with where each starts (a part with
+    /// no start yet starts where the one before it did), and the audio's length.
+    static func item(for brief: Journal.Brief, audio: Journal.Brief.Audio) -> Flows.PlaybackItem {
+        var start = 0.0
+        let parts = brief.parts.enumerated().map { index, part in
+            start = part.startSeconds ?? start
+            return Flows.PlaybackItem.Part(id: index, title: nil, text: part.text, startSeconds: start)
+        }
+        return Flows.PlaybackItem(id: brief.id, kind: .brief, title: "today's brief", parts: parts, durationSeconds: audio.durationSeconds)
+    }
 
     /// A send waiting for its row.
     private struct Awaited {

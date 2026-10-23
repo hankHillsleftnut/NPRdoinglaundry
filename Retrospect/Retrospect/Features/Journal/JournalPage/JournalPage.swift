@@ -11,8 +11,9 @@
 //  blurred under the bar and the bottom under the composer (UI0.1). Loading shows the thread's
 //  skeleton after 400ms (C39.1); a failed load shows the error with try again (C39.3) and the
 //  composer still works. Margins 24 (20 on SE). The sheet host sits at the page
-//  root; the brief's play opens the player sheet (P10 fills it). Data comes only through
-//  `Flows.JournalData` (`\.journalData`), sample or live.
+//  root; the brief's play plays it through the one player (`\.playback`, C26.1), and the card's
+//  body (or a play with no sound to play) opens the text sheet (P10 fills it). Data comes only
+//  through `Flows.JournalData` (`\.journalData`), sample or live.
 //
 import SwiftUI
 
@@ -26,12 +27,14 @@ struct JournalPageContainer: View {
     /// would lose spoken words (decision 4, no dead controls).
     var voice = false
     @Environment(\.journalData) private var data
+    /// The person's player (nil on the sample page: the play opens the text sheet).
+    @Environment(\.playback) private var playback
 
     var body: some View {
         if let data {
-            // a new data source or a new day builds a new page and model
+            // a new data source, a new player or a new day builds a new page and model
             JournalPage(model: model(for: data))
-                .id(PageIdentity(data: ObjectIdentifier(data), today: today))
+                .id(PageIdentity(data: ObjectIdentifier(data), player: playback.map { ObjectIdentifier($0) }, today: today))
         } else {
             // outside the app (a preview without the seam): nothing to show yet
             RColor.backgroundCanvas.ignoresSafeArea()
@@ -44,12 +47,14 @@ extension JournalPageContainer {
         let model = JournalViewModel(data: data, today: today)
         model.openDrawer = openDrawer
         model.voice = voice
+        model.playback = playback
         return model
     }
 }
 
 private struct PageIdentity: Hashable {
     let data: ObjectIdentifier
+    let player: ObjectIdentifier?
     let today: String
 }
 
@@ -79,9 +84,11 @@ struct JournalPage: View {
             }
             .background(RColor.backgroundCanvas)
             .rMenuHost()
-        }
-        .rSheet(isPresented: $model.playerShown, detent: .full) {
-            playerSheet
+            // inside the host: its request travels up by preference, so a sheet asked for outside
+            // the host is never seen (the text sheet never opened before C26.1)
+            .rSheet(isPresented: $model.playerShown, detent: .full) {
+                playerSheet
+            }
         }
         .animation(RMotion.snappy, value: model.isOnline)
         .rOfflineAnnouncement(.page, isOffline: !model.isOnline)
@@ -101,6 +108,8 @@ struct JournalPage: View {
         .rErrorAnnouncement(model.sendFailure.map { _ in JournalViewModel.sendFailureLine }, attempt: model.sendFailures)
         // M08: an entry this session sent turning sent, whenever it happens
         .onChange(of: model.deliveries) { model.noteDeliveries() }
+        // C26.1: the starting ring ends when the player answers the tap
+        .onChange(of: model.player) { model.notePlayback() }
         .task { await model.loadIfNeeded() }
         .accessibilityIdentifier("screen.JR-1")
     }
@@ -117,8 +126,8 @@ struct JournalPage: View {
                 subline: card.subline,
                 state: card.state,
                 collapsed: model.collapsed,
-                play: model.play,
-                open: model.play,
+                play: { Task { await model.play() } },
+                open: model.open,
                 retry: { Task { await model.load() } }
             )
             .padding(.horizontal, margin)

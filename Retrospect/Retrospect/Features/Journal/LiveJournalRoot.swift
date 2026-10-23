@@ -19,6 +19,8 @@ struct LiveJournalRoot: View {
         @Bindable var account = account
         JournalPageContainer(today: today, openDrawer: { [account] in account.isShown = true })
             .environment(\.journalData, platform.journalData)
+            // the person's player (C26.1): built with their journal, unloaded and dropped on sign-out
+            .environment(\.playback, platform.playback)
             .fullScreenCover(isPresented: $account.isShown) {
                 LiveAccountPage { account.isShown = false }
             }
