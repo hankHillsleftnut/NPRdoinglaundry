@@ -100,11 +100,27 @@ struct RoutingRouterTests {
         return (router, received, log)
     }
 
-    @Test("two invite links opened at once reach the center in the order they arrived")
+    @Test("two invite links opened at once reach the center in the order they arrived, even when the first is slow")
     func invitesArriveInOrder() async throws {
-        let (router, received, _) = make()
+        let received = Received()
+        let slow = Gate()
+        // The first hand-over is held (as a Keychain write or a preview request would hold it).
+        let router = Routing.Router(inviteBase: base, log: Platform.Log.Recorder(), receiveInvite: { code in
+            if code == "7KQ2M9XD4RTAB" {
+                try? await slow.wait()
+            }
+            received.add(code)
+        })
         try router.open(#require(URL(string: "https://retrospect-api.onrender.com/i/7KQ2M9XD4RTAB")))
         try router.open(#require(URL(string: "https://retrospect-api.onrender.com/i/8KQ2M9XD4RTAB")))
+        while slow.waiting == 0 {
+            await Task.yield()
+        }
+        for _ in 0 ..< 100 {
+            await Task.yield()
+        }
+        #expect(received.all.isEmpty, "the second link waits for the first")
+        slow.open()
         await router.settled()
 
         #expect(received.all == ["7KQ2M9XD4RTAB", "8KQ2M9XD4RTAB"])
@@ -179,7 +195,9 @@ struct RoutingRouterTests {
         try environment.router.open(#require(URL(string: "retrospect://entry/\(entryID)")))
         #expect(environment.router.pending == .entry(id: entryID))
 
-        await environment.sessionWillChange().value
+        let change = environment.sessionWillChange()
+        #expect(environment.router.pending == nil, "cleared when sign-out starts, not after the queue behind it")
+        await change.value
 
         #expect(environment.router.pending == nil, "the last person's entry id never waits for the next")
     }
