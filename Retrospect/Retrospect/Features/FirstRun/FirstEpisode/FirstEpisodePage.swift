@@ -16,6 +16,7 @@ struct FirstEpisodePage: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.scenePhase) private var scenePhase
     @State private var overflows = false
 
     /// 20 on the smallest phones (craft 8.4), 24 elsewhere.
@@ -52,6 +53,15 @@ struct FirstEpisodePage: View {
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.gentle, value: model.isPlayerLoaded)
         .onAppear { model.appear() }
         .onDisappear { model.leave() }
+        // the app going away is leaving too (onDisappear doesn't fire on backgrounding): no audio
+        // without a control on screen, no asking in the background; back on screen, asking resumes
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background: model.leave()
+            case .active: model.appear()
+            default: break
+            }
+        }
         .accessibilityIdentifier("screen.ON-11")
     }
 
