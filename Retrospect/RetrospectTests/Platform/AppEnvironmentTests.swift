@@ -268,7 +268,11 @@ struct AppEnvironmentTests {
         #expect(second.updateRequired == false)
     }
 
-    // MARK: Request rows through the environment's wiring (DG.4.live)
+    // MARK: Request rows (DG.4.live)
+
+    // The first two tests prove the wiring (they fail without it). The last two are regression guards: a stubbed
+    // client writes into the environment's recorder (the one the first two prove is the client's), not the
+    // environment's own client, which no test can point at a stub without a session seam the new-backend guard forbids.
 
     @Test("live(): the client records into the environment's own recorder, the one sign-in attaches and sign-out detaches")
     func liveClientSharesTheEnvironmentsRecorder() {
@@ -291,7 +295,7 @@ struct AppEnvironmentTests {
         #expect(Self.recorder(of: environment.client) !== Platform.AppEnvironment.preview().diagnostics, "each environment has its own")
     }
 
-    @Test("request rows wait in memory before sign-in and land in that person's store; after Log Out none reach the next person")
+    @Test("guard (stubbed client): request rows wait before sign-in, land in that person's store, never reach the next person")
     func requestRowsFollowThePerson() async throws {
         let first = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
         let second = try Store.LocalDatabase.inMemory(ownerUserID: "user-b")
@@ -315,7 +319,7 @@ struct AppEnvironmentTests {
         #expect(try await Self.networkCount(in: first) == 0)
     }
 
-    @Test("in the environment's recorder a request row holds only method, route, status, code and time: never the URL, a body, a token or the server's message")
+    @Test("guard (stubbed client): a request row holds only method, route, status, code and time; no URL, body, token or message")
     func requestRowsInTheEnvironmentHoldNoContent() async throws {
         let environment = Platform.AppEnvironment.preview()
         let refusal = Data(#"{"success":false,"error":{"code":"invalid_request","message":"private words from the server"}}"#.utf8)
