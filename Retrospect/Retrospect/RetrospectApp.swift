@@ -97,6 +97,16 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-NewApp`: the root on the new session alone (PL1.4b): Sign in with Apple on `/v2/auth/apple`, never
+    /// the old client's sign-in. Debug only until APP-ROOT mounts the journal and makes it the release root.
+    private var isNewAppMode: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-NewApp")
+        #else
+        false
+        #endif
+    }
+
     /// Design lab (M14): the DesignSystemV2 gallery, motion lab and component catalogue.
     private var isDesignLabMode: Bool {
         #if DEBUG
@@ -168,6 +178,8 @@ struct RetrospectApp: App {
                     #if DEBUG
                     ScreenLauncher()
                     #endif
+                } else if isNewAppMode {
+                    NewAppRoot()
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
                     FirstPodcastFinaleDebugHost()

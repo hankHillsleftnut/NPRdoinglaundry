@@ -36,6 +36,8 @@ extension Platform {
         /// the store opens after sign-in (`attach`); until then it keeps the
         /// newest records in memory.
         let diagnostics: Platform.Diagnostics.Recorder
+        /// Sign in with Apple on the new backend (PL1.4b): the only thing that hands `session` a credential.
+        let signIn: Session.SignInCoordinator
         private let crashReporter: Platform.Diagnostics.CrashReporter
         private let backgroundTasks: Platform.BackgroundTasks
         private let openDatabase: @Sendable (String) throws -> Store.LocalDatabase
@@ -53,6 +55,13 @@ extension Platform {
         private(set) var journalData: LiveJournalData?
         /// Where the player gets a brief's audio file (PL3.1b); erased with the store.
         private(set) var mediaSource: Platform.Media.Source?
+
+        /// The new session's state as the root shows it (PL1.4b): nil until the first value, then every
+        /// change `session.states()` publishes, whatever its cause (sign-in, a server-ended session, Apple
+        /// revoking access, sign-out, a locked phone). Only recorded: nothing here opens, closes or erases the
+        /// person's store (SESSION-OUTBOX-FIXES owns that, and keeps unsent entries when the server ends a session).
+        private(set) var sessionState: Session.State?
+        @ObservationIgnored private var sessionFollower: Task<Void, Never>?
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -83,6 +92,7 @@ extension Platform {
             self.openDatabase = openDatabase
             diagnostics = Platform.Diagnostics.Recorder(log: log)
             crashReporter = Platform.Diagnostics.CrashReporter(sink: diagnostics)
+            signIn = Session.SignInCoordinator(apple: Session.AppleSignIn(client: client, installer: session, log: log))
         }
 
         /// The app's environment, set by this launch's options (always live
@@ -122,11 +132,13 @@ extension Platform {
             Bridges.legacySignedOut = { _ = await session.signOut(force: true) }
             let invites = Session.InviteCenter(store: store, client: client, session: session, log: log)
             invites.start()
-            return AppEnvironment(
+            let environment = AppEnvironment(
                 launch: launch, configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor,
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) }
             )
+            environment.followSession()
+            return environment
         }
 
         /// For previews and tests: no network, no disk, no Keychain; logs are
@@ -162,9 +174,21 @@ extension Platform {
             )
         }
 
-        /// Sign in with Apple, wired to this environment's client and session.
-        func appleSignIn() -> Session.AppleSignIn {
-            Session.AppleSignIn(client: client, installer: session, log: log)
+        /// Starts recording `session.states()` into `sessionState`, once. `live()` calls it; tests and
+        /// previews call it when they want the root to follow their session.
+        func followSession() {
+            guard sessionFollower == nil else { return }
+            let states = session.states()
+            sessionFollower = Task { [weak self] in
+                await self?.follow(states)
+            }
+        }
+
+        /// Every state the stream publishes, in order, until it ends.
+        func follow(_ states: AsyncStream<Session.State>) async {
+            for await state in states {
+                sessionState = state
+            }
         }
 
         /// The scene became active: the session finishes a deferred launch
