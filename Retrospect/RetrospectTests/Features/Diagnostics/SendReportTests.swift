@@ -87,6 +87,16 @@ struct SendReportTests {
         #expect(sender.notes.count == 1)
     }
 
+    @Test("the note box stops at the door's limit in UTF-16 units, never inside an emoji")
+    func theNoteBoxCountsAsTheDoorDoes() {
+        let model = SendReportModel(sender: SampleReportSender(scenario: .online)) { _ in }
+
+        model.note = String(repeating: "😀", count: 600)
+
+        #expect(model.note.utf16.count == SendReportModel.maxNoteCharacters)
+        #expect(model.note == String(repeating: "😀", count: 500))
+    }
+
     @Test("offline the report is still saved, and the model says it waits")
     func offlineIsSaved() async {
         let sender = SampleReportSender(scenario: .offline)

@@ -23,12 +23,22 @@ struct LiveReportSenderTests {
         recorder = Diagnostics.Recorder(database: database, now: { now }, clock: TestClock(), log: log)
     }
 
+    /// How many times the sender asked for the device and the account (the free-disk read lives there).
+    private let contextReads = Counter()
+
+    @MainActor
+    final class Counter {
+        var value = 0
+    }
+
     private func sender() -> Diagnostics.LiveReportSender {
         let now = now
+        let reads = contextReads
         return Diagnostics.LiveReportSender(
             recorder: recorder, outbox: outbox, reachability: reachability,
-            context: {
-                Diagnostics.ReportContext(
+            context: { _ in
+                reads.value += 1
+                return Diagnostics.ReportContext(
                     environment: Diagnostics.Environment(sources: .init(
                         info: nil, osVersion: OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0), machine: "arm64",
                         locale: Locale(identifier: "en_US"), timeZone: .gmt, contentSize: .large, reduceMotion: false, voiceOver: false,
@@ -55,7 +65,7 @@ struct LiveReportSenderTests {
 
         let included = await sender().included()
 
-        #expect(included.events == 2)
+        #expect(included.events == 3, "the two recorded, and the sheet opening")
         #expect(included.requests == 1)
         #expect(included.problems == 2)
         #expect(included.unsent == 0)
@@ -79,7 +89,7 @@ struct LiveReportSenderTests {
         #expect(row.operation == .diagnosticsSend)
         let stored = try Backend.Coding.decoder.decode(Diagnostics.Report.self, from: row.payload)
         #expect(stored.note == "the brief stalled")
-        #expect(stored.events.count == 1)
+        #expect(stored.events.count == 2, "the launch, and the send button")
     }
 
     @Test("offline, the same send is saved and says it will go later")
@@ -106,5 +116,56 @@ struct LiveReportSenderTests {
         await outbox.publishForTests(.init(reportID: "r1", reference: "r-7KQ2"))
 
         #expect(await receipts.next() == Flows.ReportReceipt(reportID: "r1", reference: "r-7KQ2"))
+    }
+
+    @Test("the counts never read the phone; only a send does, once")
+    func theCountsNeverReadThePhone() async {
+        let sender = sender()
+
+        _ = await sender.included()
+        _ = await sender.included()
+        #expect(contextReads.value == 0, "the device (and its free disk) is read for a send only")
+
+        _ = await sender.send(note: nil)
+        #expect(contextReads.value == 1)
+    }
+
+    @Test("the report's last events say where it came from: the sheet opened, then send on settings")
+    func theReportNamesItsOrigin() async throws {
+        await recorder.record(.event(.appLaunch))
+        let sender = sender()
+
+        _ = await sender.included()
+        _ = await sender.send(note: nil)
+
+        let stored = try Backend.Coding.decoder.decode(Diagnostics.Report.self, from: #require(try rows().first).payload)
+        #expect(stored.events.map(\.body) == [.appLaunch, .sheetOpened(.sendReport), .controlTapped(.reportSend, on: .settings)])
+    }
+
+    @Test("two sends queue two rows, one each")
+    func eachSendIsOneRow() async throws {
+        let sender = sender()
+
+        _ = await sender.send(note: "one")
+        _ = await sender.send(note: "two")
+
+        #expect(try rows().count == 2)
+        #expect(try rows().allSatisfy { $0.operation == .diagnosticsSend })
+    }
+
+    @Test("after the outbox stopped (sign-out, the session ended), a send fails and writes and records nothing")
+    func aSendAfterTheStackClosedWritesNothing() async throws {
+        await recorder.record(.event(.appLaunch))
+        let sender = sender()
+        await outbox.stop()
+
+        let counts = await sender.included()
+        let outcome = await sender.send(note: "too late")
+
+        #expect(counts == .empty)
+        #expect(outcome == .failed(Flows.Failure(.unknown)))
+        #expect(try rows().isEmpty)
+        #expect(try await recorder.rows(in: .events).count == 1, "no sheet or tap event waits for the next person")
+        #expect(contextReads.value == 0)
     }
 }

@@ -2,7 +2,8 @@
 //  AccountScreens+Launcher.swift
 //  P33 in the launcher (T02): `-Screen AC-2 -State nothingWaiting|unsent|sending|stuck|offlineUnsent|
 //  updateRequired|done` opens the sheet's state over the account page; `-Screen account -State rest|unsent|
-//  offline` is the page, from which the whole flow runs on a tap (sign out -> sheet -> send -> close).
+//  offline` is the page, from which the whole flow runs on a tap (sign out -> sheet -> send -> close), and
+//  "send a report" opens the report sheet on a sample sender (DG.6.mount).
 //
 #if DEBUG
 import SwiftUI
@@ -27,9 +28,11 @@ enum AccountPageScenario: String, CaseIterable {
     case rest, unsent, offline
 }
 
-/// The account page on a sample flow; tapping "sign out" runs the whole flow with live timing.
+/// The account page on a sample flow; tapping "sign out" runs the whole flow with live timing. "send a
+/// report" opens the sheet on a sample sender (offline in the offline state), which sends nothing anywhere.
 struct AccountLaunch: View {
     @State private var flow: SampleSignOutFlow
+    @State private var reportSender: SampleReportSender
 
     init(scenario: AccountPageScenario = .rest) {
         let flow = switch scenario {
@@ -38,10 +41,12 @@ struct AccountLaunch: View {
         case .offline: SampleSignOutFlow(unsent: 2, script: .offline)
         }
         _flow = State(initialValue: flow)
+        _reportSender = State(initialValue: SampleReportSender(scenario: scenario == .offline ? .offline : .online))
     }
 
     var body: some View {
         AccountPage(flow: flow) {}
+            .environment(\.reportSender, reportSender)
     }
 }
 

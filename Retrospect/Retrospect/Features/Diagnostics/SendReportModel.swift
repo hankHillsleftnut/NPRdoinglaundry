@@ -18,15 +18,16 @@ final class SendReportModel {
         case queued(online: Bool)
     }
 
-    /// The door's limit on the note (`Report.maxNoteCharacters`).
+    /// The door's limit on the note, in UTF-16 units as the door counts (`Report.maxNoteCharacters`).
     static let maxNoteCharacters = Platform.Diagnostics.Report.maxNoteCharacters
 
     private(set) var included: Flows.ReportIncluded?
     private(set) var phase: Phase = .editing
     var note = "" {
         didSet {
-            if note.count > Self.maxNoteCharacters {
-                note = String(note.prefix(Self.maxNoteCharacters))
+            let capped = Platform.Diagnostics.Report.capped(note, utf16: Self.maxNoteCharacters)
+            if capped != note {
+                note = capped
             }
         }
     }
