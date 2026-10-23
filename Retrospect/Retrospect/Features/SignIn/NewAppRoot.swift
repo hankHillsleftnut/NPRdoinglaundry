@@ -55,6 +55,24 @@ struct NewAppRoot: View {
         new == .updateRequired && old != .updateRequired
     }
 
+    /// The update page just replaced another page: the brief player is stopped (PX has no player, so a brief
+    /// left playing could never be stopped) and the answer says whether VoiceOver hears a new screen. Only the
+    /// audio stops: the store, the outbox and the session stay as they are (decision 3).
+    static func updatePageArrived(from old: Screen, to new: Screen, stopAudio: () -> Void) -> Bool {
+        guard announcesUpdatePage(from: old, to: new) else { return false }
+        stopAudio()
+        return true
+    }
+
+    /// What the body routes on, read off the app's environment, so the version floor can't be left out of the call.
+    static func screen(on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?) -> Screen {
+        screen(
+            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
+            updateRequired: platform.updateRequired
+        )
+    }
+
     /// The page for the session alone (the version floor is down).
     private static func sessionScreen(
         for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?
@@ -108,11 +126,7 @@ struct NewAppRoot: View {
     @State private var youreInSeen: Bool?
 
     var body: some View {
-        let screen = Self.screen(
-            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
-            updateRequired: platform.updateRequired
-        )
+        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen)
         Group {
             switch screen {
             case .updateRequired:
@@ -146,7 +160,7 @@ struct NewAppRoot: View {
         }
         .animation(RMotion.snappy, value: screen)
         .onChange(of: screen) { old, new in
-            if Self.announcesUpdatePage(from: old, to: new) {
+            if Self.updatePageArrived(from: old, to: new, stopAudio: { platform.playback?.unload() }) {
                 AccessibilityNotification.ScreenChanged().post()
             }
         }

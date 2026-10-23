@@ -101,4 +101,24 @@ struct ForceUpdateRootTests {
         shown.update()
         #expect(opened.map(\.absoluteString) == ["itms-apps://apps.apple.com/app/id123"])
     }
+
+    @Test("the root reads the version floor off the app's environment: when the floor flips, the update page shows")
+    func rootFollowsTheFloor() {
+        let platform = Platform.AppEnvironment.preview()
+        #expect(NewAppRoot.screen(on: platform, gateHeld: false, youreInSeen: true) != .updateRequired)
+        platform.floor.serverRequiresUpdate() // what the client does on any 426, and meta on a floor above this build
+        #expect(NewAppRoot.screen(on: platform, gateHeld: false, youreInSeen: true) == .updateRequired)
+        #expect(NewAppRoot.screen(on: platform, gateHeld: true, youreInSeen: nil) == .updateRequired)
+    }
+
+    @Test("a brief left playing stops when the update page arrives, once; ordinary moves leave the player alone")
+    func audioStopsOnArrival() {
+        var stops = 0
+        #expect(NewAppRoot.updatePageArrived(from: .journal, to: .updateRequired) { stops += 1 })
+        #expect(stops == 1)
+        #expect(!NewAppRoot.updatePageArrived(from: .updateRequired, to: .updateRequired) { stops += 1 })
+        #expect(!NewAppRoot.updatePageArrived(from: .journal, to: .storeFailed) { stops += 1 })
+        #expect(!NewAppRoot.updatePageArrived(from: .blank, to: .journal) { stops += 1 })
+        #expect(stops == 1)
+    }
 }
