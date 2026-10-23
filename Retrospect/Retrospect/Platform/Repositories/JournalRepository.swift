@@ -73,6 +73,49 @@ extension Platform.Repositories {
             return latest
         }
 
+        /// What the last fetch of the guesses left in the store; nil when nothing was kept.
+        func cachedGuesses() -> [Flows.Journal.Guess]? {
+            guard let document = try? database.writer.read({ try Store.CachedDocument.fetchOne($0, key: "guesses") }) else { return nil }
+            return try? Backend.Coding.decoder.decode([Flows.Journal.Guess].self, from: document.body)
+        }
+
+        /// The guesses on offer, kept for next time. While the server isn't speaking the list is empty and so is the kept one.
+        func refreshGuesses() async throws -> [Flows.Journal.Guess] {
+            let listed = try await client.send(Backend.Endpoints.GuessesList())
+            guard !Task.isCancelled else { throw CancellationError() }
+            let guesses = listed.speaking ? listed.guesses : []
+            let document = try Store.CachedDocument(
+                key: "guesses", body: Backend.Coding.encoder.encode(guesses), fetchedAt: now(), etag: nil
+            )
+            try? await database.writer.write { try document.save($0) }
+            return guesses
+        }
+
+        /// Sends an answer straight away. The server keeps the first answer and returns the stored status, so a
+        /// repeat is safe; `key` is the id the outbox row would have had.
+        func answerGuess(id: String, verdict: Flows.Journal.GuessVerdict, key: UUID) async throws -> Flows.Journal.Guess.Status {
+            let answered = try await client.send(Backend.Endpoints.AnswerGuess(guessID: id, content: .init(verdict: verdict), key: key))
+            return answered.status
+        }
+
+        /// Answers still waiting to be sent (queued, or in flight), by guess; the newest of a guess's wins.
+        func queuedAnswers() -> [String: Flows.Journal.GuessVerdict] {
+            let rows = (try? database.writer.read { db in
+                try Store.OutboxRow.fetchAll(
+                    db,
+                    sql: "SELECT * FROM outbox WHERE operation = ? AND status IN (?, ?) ORDER BY created_at, rowid",
+                    arguments: [Store.OutboxOperation.guessAnswer.rawValue, Store.OutboxStatus.pending.rawValue, Store.OutboxStatus.inFlight.rawValue]
+                )
+            }) ?? []
+            var answers: [String: Flows.Journal.GuessVerdict] = [:]
+            for row in rows {
+                if let body = try? Backend.Coding.decoder.decode(Backend.Endpoints.AnswerGuess.Body.self, from: row.payload) {
+                    answers[row.entityID] = body.verdict
+                }
+            }
+            return answers
+        }
+
         /// The entries written in this app for `day`, now and after every change, oldest first.
         nonisolated func rows(day: String) -> AsyncStream<[Store.EntryRow]> {
             let observation = ValueObservation.tracking { db in

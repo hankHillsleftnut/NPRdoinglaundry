@@ -165,13 +165,22 @@ extension Platform.Diagnostics {
             case .meta: .meta
             case .diagnostics: .diagnostics
             case .entries: .entries
-            case .entriesToday: .entriesToday
-            case .briefsLatest: .briefsLatest
+            case .entriesToday, .briefsLatest, .guesses: Self.journal(path)
             case .authApple: .authApple
             case .authRefresh: .authRefresh
             case .authSignout: .authSignout
             case .guessByID: .guessesById
             case .access, .waitlist, .invitesCheck, .invitesRedeem, .invitesMine: Self.gate(path)
+            }
+        }
+
+        /// The journal's doors, kept apart so each switch stays small.
+        private static func journal(_ path: Backend.PathTemplate) -> Route {
+            switch path {
+            case .entriesToday: .entriesToday
+            case .briefsLatest: .briefsLatest
+            case .guesses: .guesses
+            default: preconditionFailure("not a journal door: \(path.rawValue)")
             }
         }
 
@@ -184,7 +193,7 @@ extension Platform.Diagnostics {
             case .invitesCheck: .invitesCheck
             case .invitesRedeem: .invitesRedeem
             case .invitesMine: .invitesMine
-            case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .authApple, .authRefresh, .authSignout, .guessByID:
+            case .meta, .diagnostics, .entries, .entriesToday, .briefsLatest, .guesses, .authApple, .authRefresh, .authSignout, .guessByID:
                 preconditionFailure("not a gate door: \(path.rawValue)")
             }
         }

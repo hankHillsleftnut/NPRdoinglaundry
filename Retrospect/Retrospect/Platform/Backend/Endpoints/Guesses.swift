@@ -44,3 +44,24 @@ extension Backend.Endpoints {
         }
     }
 }
+
+extension Backend.Endpoints {
+    /// `GET /v2/guesses` (contract 02 §4): the guesses on offer. `speaking` is the founder's dial: while it's
+    /// off, the list is empty and the app shows none.
+    struct GuessesList: Backend.Endpoint {
+        struct Listed: Decodable, Sendable {
+            let guesses: [Flows.Journal.Guess]
+            let speaking: Bool
+        }
+
+        typealias Response = Listed
+
+        var method: Backend.Method {
+            .get
+        }
+
+        var path: Backend.PathTemplate {
+            .guesses
+        }
+    }
+}

@@ -6,8 +6,9 @@
 //  (the rows written here, plus the last list the server gave) and refreshed from the server;
 //  delivery comes only from watching the rows, so a bubble's state is whatever the drainer
 //  wrote, never the seam's guess. The brief (PL3.1b) is worked out from the last answer at the
-//  person's day, and looked for again while it's being made. Guesses, the drawer and "what Retro
-//  took" are PL3.1c to e; until then they answer as "nothing yet" and never throw.
+//  person's day, and looked for again while it's being made. Guesses (PL3.1c) show from the last list with answers waiting to be sent applied. The drawer and
+//  "what
+//  Retro took" are PL3.1d and e; until then they answer as "nothing yet" and never throw.
 //
 import Foundation
 import Observation
@@ -33,6 +34,8 @@ final class LiveJournalData: Flows.JournalData {
     @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var latest: Backend.Endpoints.BriefLatest.Latest?
     @ObservationIgnored private var briefPoll: Task<Void, Never>?
+    /// The guesses as the server last gave them, before the person's own taps and queued answers.
+    @ObservationIgnored private var offered: [Journal.Guess]?
     @ObservationIgnored private var server: [Journal.Entry]?
     @ObservationIgnored private var rows: [Store.EntryRow] = []
     @ObservationIgnored private var acknowledgements: [String: String] = [:]
@@ -91,6 +94,80 @@ final class LiveJournalData: Flows.JournalData {
             }
         }
         await loadBrief(day: loadDay)
+        await loadGuesses()
+    }
+
+    // MARK: Guesses (PL3.1c)
+
+    private func loadGuesses() async {
+        if offered == nil, let cached = await repository.cachedGuesses() {
+            offered = cached
+            await publishGuesses()
+        }
+        do {
+            offered = try await repository.refreshGuesses()
+            await publishGuesses()
+        } catch is CancellationError {
+            return
+        } catch {
+            // A failed look keeps what was kept; guesses have no failed state, they just aren't there.
+            await publishGuesses()
+        }
+    }
+
+    /// The guesses with answers still waiting to be sent applied: a queued answer's status wins over the server's.
+    private func publishGuesses() async {
+        let queued = await repository.queuedAnswers()
+        guesses = (offered ?? []).map { guess in
+            queued[guess.id].map { Self.answered(guess, $0 == .yes ? .confirmed : .declined) } ?? guess
+        }
+    }
+
+    private static func answered(_ guess: Journal.Guess, _ status: Journal.Guess.Status) -> Journal.Guess {
+        Journal.Guess(
+            id: guess.id, question: guess.question, framework: guess.framework, rationale: guess.rationale,
+            status: status, restsOn: guess.restsOn
+        )
+    }
+
+    private func setStatus(_ id: String, _ status: Journal.Guess.Status) {
+        guesses = guesses.map { $0.id == id ? Self.answered($0, status) : $0 }
+        offered = offered?.map { $0.id == id ? Self.answered($0, status) : $0 }
+    }
+
+    /// The answer takes at once on screen, then goes to the server in one round trip. A phone-side or server-side
+    /// trouble that may pass queues it for the outbox (sent once, later); a refusal puts the guess back.
+    func answer(_ guess: Journal.Guess, verdict: Journal.GuessVerdict) async -> Journal.GuessOutcome {
+        let before = guess.status
+        setStatus(guess.id, verdict == .yes ? .confirmed : .declined)
+        do {
+            let status = try await repository.answerGuess(id: guess.id, verdict: verdict, key: UUID())
+            setStatus(guess.id, status)
+            return .recorded(status)
+        } catch let failure as Backend.Failure {
+            guard Self.worthQueueing(failure) else {
+                setStatus(guess.id, before)
+                return .failed(failure.flowFailure)
+            }
+        } catch {
+            setStatus(guess.id, before)
+            return .failed(Flows.Failure(.unknown))
+        }
+        do {
+            _ = try await outbox.enqueueGuessAnswer(guessID: guess.id, verdict: verdict)
+            return .queued
+        } catch {
+            setStatus(guess.id, before)
+            return .failed(Flows.Failure(.unknown))
+        }
+    }
+
+    /// Trouble that may pass: no connection, a timeout, a server that's down or busy.
+    private static func worthQueueing(_ failure: Backend.Failure) -> Bool {
+        switch failure.kind {
+        case .offline, .timedOut, .transport, .upstreamTimeout, .upstreamUnavailable, .internal, .rateLimited: true
+        default: false
+        }
     }
 
     // MARK: The brief (PL3.1b)
@@ -292,11 +369,7 @@ final class LiveJournalData: Flows.JournalData {
         acknowledgements[clientEntryId]
     }
 
-    // MARK: Not yet (PL3.1c to e)
-
-    func answer(_: Journal.Guess, verdict _: Journal.GuessVerdict) async -> Journal.GuessOutcome {
-        .failed(Flows.Failure(.unknown))
-    }
+    // MARK: Not yet (PL3.1d, e)
 
     func entries(cursor _: String?, query _: String?) async -> Result<Flows.Page<Journal.Entry>, Flows.Failure> {
         .failure(Flows.Failure(.unknown))
