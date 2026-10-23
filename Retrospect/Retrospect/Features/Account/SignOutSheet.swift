@@ -95,7 +95,8 @@ struct SignOutSheet: View {
     /// Under the stuck count: what signing out now would cost, or what to do.
     static func stuckLine(remaining: Int, reason: SignOutState.StuckReason) -> String {
         switch reason {
-        case .updateRequired: remaining == 1 ? "update retrospect and it'll go." : "update retrospect and they'll go."
+        case .updateRequired:
+            remaining == 1 ? "update retrospect and it'll go; signing out now loses it." : "update retrospect and they'll go; signing out now loses them."
         case .offline, .failed: remaining == 1 ? "if you sign out now, it's lost from this phone." : "if you sign out now, they're lost from this phone."
         }
     }
@@ -183,8 +184,14 @@ struct SignOutSheet: View {
                 }
                 cancelButton("cancel", enabled: true)
             case .sending, .signingOut:
-                // Nothing to send: the secondary "sign out" the person pressed stays that button, not a lit one.
-                RButton(title: sentFirst ? "send, then sign out" : "sign out", variant: sentFirst ? .primary : .secondary, status: .pending) {}
+                // Sending is always the send button; in .signingOut the secondary "sign out" the person
+                // pressed (nothing to send) stays that button, not a lit one.
+                let sends: Bool = if case .sending = flow.state {
+                    true
+                } else {
+                    sentFirst
+                }
+                RButton(title: sends ? "send, then sign out" : "sign out", variant: sends ? .primary : .secondary, status: .pending) {}
                     .accessibilityIdentifier("signout.confirm")
                 cancelButton("cancel", enabled: false)
             case let .stuck(remaining, _):

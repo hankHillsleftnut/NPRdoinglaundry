@@ -137,8 +137,9 @@ struct SignOutFlowTests {
         #expect(SignOutSheet.unsentLine(2) == "they go first, so nothing is lost.")
         #expect(SignOutSheet.stuckLine(remaining: 1, reason: .offline) == "if you sign out now, it's lost from this phone.")
         #expect(SignOutSheet.stuckLine(remaining: 2, reason: .failed) == "if you sign out now, they're lost from this phone.")
-        #expect(SignOutSheet.stuckLine(remaining: 1, reason: .updateRequired) == "update retrospect and it'll go.")
-        #expect(SignOutSheet.stuckLine(remaining: 3, reason: .updateRequired) == "update retrospect and they'll go.")
+        #expect(SignOutSheet.stuckLine(remaining: 1, reason: .updateRequired) == "update retrospect and it'll go; signing out now loses it.")
+        #expect(SignOutSheet
+            .stuckLine(remaining: 3, reason: .updateRequired) == "update retrospect and they'll go; signing out now loses them.")
     }
 
     @Test("sign out anyway is read with what it erases, by count")
