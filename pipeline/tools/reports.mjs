@@ -12,7 +12,8 @@
 // copied out of a report is a closed-list id, a code, a number or a timestamp, and is checked against a
 // strict pattern first, so even a surprise field cannot carry words into a file an agent reads.
 // No dependencies; Node 20+.
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,11 +21,16 @@ const REFERENCE = /^r-[0-9A-HJKMNP-TV-Z]{4}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SAFE = /^[A-Za-z0-9_./:-]{1,64}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+const ISO_ANY = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 const STATE_OPEN = '<!-- reports-state';
 const STATE_CLOSE = '-->';
 const MAX_BREADCRUMBS = 50;
 const MAX_HINT_STEPS = 8;
-const DEFAULT_OUT = fileURLToPath(new URL('../reports/', import.meta.url));
+const LIST_CAP = 500;
+/** Cluster files describe people's activity, so by default they live outside this public repo. */
+export const defaultOut = (env = process.env) => env.RETRO_REPORTS_DIR || join(homedir(), 'Projects', 'retrospect-handover', 'pipeline', 'reports');
+/** Compares instants, not strings: `+00:00`, fractional seconds and `Z` all work. NaN when unparseable. */
+const instant = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) ? Date.parse(v) : NaN);
 
 /** A closed-list id, or "?" if it is anything else (never copy free text). */
 export const safe = (v) => (typeof v === 'string' && SAFE.test(v) ? v : '?');
@@ -160,25 +166,36 @@ function loadState(text) {
   }
 }
 
-/** Merges digests into the cluster files in outDir. Re-running never duplicates a reference. */
-export async function writeClusters(digests, outDir) {
+/**
+ * Merges digests into the cluster files in outDir. Re-running never duplicates a reference.
+ * `stillListed` (a Set of ids, or null): entries whose id is not in it are dropped, so a report the viewer
+ * has purged or deleted with its account leaves the files too; a file left empty is removed.
+ */
+export async function writeClusters(digests, outDir, stillListed = null) {
   await mkdir(outDir, { recursive: true });
-  const byKey = new Map();
-  for (const d of digests) byKey.set(d.key, [...(byKey.get(d.key) ?? []), d]);
-  let added = 0;
-  for (const [key, fresh] of byKey) {
-    const file = join(outDir, fileNameFor(key));
-    let existing = [];
-    try { existing = loadState(await readFile(file, 'utf8')); } catch { /* first time */ }
-    const merged = new Map(existing.map((e) => [e.id, e]));
-    for (const d of fresh) { if (!merged.has(d.id)) added += 1; merged.set(d.id, d); }
-    await writeFile(file, renderCluster(key, [...merged.values()]));
+  const byId = new Map();
+  for (const name of await readdir(outDir)) {
+    if (!name.endsWith('.md') || name === 'README.md') continue;
+    for (const e of loadState(await readFile(join(outDir, name), 'utf8'))) byId.set(e.id, e);
   }
-  return { clusters: byKey.size, added };
+  let added = 0;
+  for (const d of digests) { if (!byId.has(d.id)) added += 1; byId.set(d.id, d); }
+  let dropped = 0;
+  if (stillListed) {
+    for (const id of [...byId.keys()]) if (!stillListed.has(id)) { byId.delete(id); dropped += 1; }
+  }
+  const byKey = new Map();
+  for (const e of byId.values()) byKey.set(e.key, [...(byKey.get(e.key) ?? []), e]);
+  const wanted = new Set([...byKey.keys()].map(fileNameFor));
+  for (const name of await readdir(outDir)) {
+    if (name.endsWith('.md') && name !== 'README.md' && !wanted.has(name)) await rm(join(outDir, name));
+  }
+  for (const [key, entries] of byKey) await writeFile(join(outDir, fileNameFor(key)), renderCluster(key, entries));
+  return { clusters: byKey.size, added, dropped };
 }
 
 function parseArgs(argv) {
-  const args = { since: null, fixtures: [], out: DEFAULT_OUT };
+  const args = { since: null, fixtures: [], out: null };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--since') args.since = argv[++i];
@@ -198,34 +215,51 @@ async function readLive(env, since, fetchImpl) {
   const get = async (path) => {
     let res;
     try { res = await fetchImpl(`${root}${path}`, { method: 'GET', headers: { 'x-admin-secret': secret } }); } catch { throw new Error('the viewer could not be reached'); }
+    if (res.status === 404) return null;
     if (!res.ok) throw new Error(`the viewer answered ${num(res.status)}`);
     return res.json();
   };
-  const list = await get('/admin/diagnostics?limit=500');
-  const rows = arr(list?.data).filter((r) => REFERENCE.test(String(r?.reference)) && (!since || String(r?.createdAt) >= since));
+  const list = await get(`/admin/diagnostics?limit=${LIST_CAP}`);
+  if (!list) throw new Error('the viewer answered 404');
+  const all = arr(list.data).filter((r) => REFERENCE.test(String(r?.reference)));
+  const sinceMs = since ? instant(since) : -Infinity;
   const out = [];
-  for (const row of rows) out.push(digest(await get(`/admin/diagnostics/${row.reference}/download`), row.reference));
-  return out;
+  let skipped = 0;
+  for (const row of all) {
+    if (!(instant(String(row.createdAt)) >= sinceMs)) continue;
+    const raw = await get(`/admin/diagnostics/${row.reference}/download`);
+    if (raw) out.push(digest(raw, row.reference)); else skipped += 1;
+  }
+  return { digests: out, listed: new Set(all.map((r) => r.reference)), complete: arr(list.data).length < LIST_CAP, skipped };
 }
 
 export async function main({ argv, env, fetchImpl = globalThis.fetch, log = console.log, fail = console.error }) {
   try {
     const args = parseArgs(argv);
-    if (args.since !== null && !ISO.test(args.since)) throw new Error('--since must be an ISO time ending in Z, like 2026-10-22T00:00:00Z');
+    if (args.since !== null && !(ISO_ANY.test(args.since) && Number.isFinite(instant(args.since)))) throw new Error('--since must be an ISO time like 2026-10-22T00:00:00Z');
+    const out = args.out || defaultOut(env);
     let digests;
+    let stillListed = null;
+    let skipped = 0;
+    let note = '';
     if (args.fixtures.length) {
       digests = [];
       for (const f of args.fixtures) {
         const raw = JSON.parse(await readFile(f, 'utf8'));
         const d = digest(raw, raw?.reportId);
-        if (!args.since || d.createdAt >= args.since) digests.push(d);
+        if (!args.since || instant(d.createdAt) >= instant(args.since)) digests.push(d);
       }
     } else {
       if (!args.since) throw new Error('give --since <iso> (or --fixture <file>)');
-      digests = await readLive(env, args.since, fetchImpl);
+      const live = await readLive(env, args.since, fetchImpl);
+      digests = live.digests;
+      skipped = live.skipped;
+      // Only trust "not listed" as "purged" when the list was not cut off at the cap.
+      stillListed = live.complete ? live.listed : null;
+      if (!live.complete) note = `; the list hit its ${LIST_CAP}-report cap, so older reports may be missing and nothing was dropped`;
     }
-    const { clusters, added } = await writeClusters(digests, args.out);
-    log(`read ${digests.length} reports, ${added} new, ${clusters} clusters written`);
+    const { clusters, added, dropped } = await writeClusters(digests, out, stillListed);
+    log(`read ${digests.length} reports, ${added} new, ${skipped} gone before download, ${dropped} no longer listed and removed, ${clusters} clusters written${note}`);
     return 0;
   } catch (err) {
     fail(`reports: ${err instanceof Error && !(err instanceof SyntaxError) ? err.message : 'could not read the input'}`);

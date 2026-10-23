@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { digest, main, reproductionHint } from './reports.mjs';
+import { defaultOut, digest, main, reproductionHint } from './reports.mjs';
 
 const MARKER = 'ZZ-MARKER-NOTE-7731';
 const fx = (name) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
@@ -126,7 +127,7 @@ test('live: only two GET calls, secret and address stay out of output, filter by
     if (url === `${BASE}/admin/diagnostics?limit=500`) {
       return body({ success: true, data: [
         { reference: 'r-7KQ2', createdAt: '2026-10-22T09:30:00.000Z' },
-        { reference: 'r-OLD1', createdAt: '2026-09-01T09:30:00.000Z' },
+        { reference: 'r-2ABC', createdAt: '2026-09-01T09:30:00.000Z' },
         { reference: 'not-a-reference', createdAt: '2026-10-22T09:30:00.000Z' },
       ] });
     }
@@ -142,7 +143,7 @@ test('live: only two GET calls, secret and address stay out of output, filter by
   assert.ok(calls.every((c) => c.secret === SECRET));
   const text = await readFile(join(out, 'server--journal--1.0-42-.md'), 'utf8');
   assert.match(text, /r-7KQ2/);
-  assert.ok(!text.includes('r-OLD1'));
+  assert.ok(!text.includes('r-2ABC'));
   for (const s of [r.stdout, r.stderr, text]) assert.ok(!s.includes(SECRET) && !s.includes('fake-api.test') && !s.includes(MARKER));
 });
 
@@ -164,4 +165,71 @@ test('live: refuses to run without the environment or without --since', async ()
   assert.match(noEnv.stderr, /RETRO_API_BASE and ADMIN_SECRET/);
   const noSince = await run([], { RETRO_API_BASE: 'https://x.test', ADMIN_SECRET: 's' }, async () => { throw new Error('must not be called'); });
   assert.equal(noSince.code, 1);
+});
+
+const REPO = fileURLToPath(new URL('../../', import.meta.url));
+const listFake = (rows, bodies) => async (url) => {
+  const ok = (data) => ({ ok: true, status: 200, json: async () => data });
+  if (url.includes('?limit=')) return ok({ data: rows });
+  const ref = url.split('/')[5];
+  return ref in bodies ? ok(bodies[ref]) : { ok: false, status: 404, json: async () => ({}) };
+};
+const LIVE_ENV = { RETRO_API_BASE: 'https://fake-api.test', ADMIN_SECRET: 'fake-secret-for-test-only' };
+
+test('the default output folder is outside the repo, and a file written in the repo path is gitignored', () => {
+  const dir = defaultOut({});
+  assert.ok(!dir.startsWith(REPO), dir);
+  assert.equal(defaultOut({ RETRO_REPORTS_DIR: '/somewhere/else' }), '/somewhere/else');
+  const ignored = (p) => spawnSync('git', ['check-ignore', '-q', p], { cwd: REPO }).status === 0;
+  assert.ok(ignored('pipeline/reports/server--journal--1.0-42-.md'));
+  assert.ok(!ignored('pipeline/reports/README.md'));
+});
+
+test('one report gone (404) is skipped and counted; the rest are still written', async () => {
+  const out = await tmp();
+  const full = JSON.parse(await readFile(FULL, 'utf8'));
+  const rows = [{ reference: 'r-7KQ2', createdAt: '2026-10-22T09:30:00Z' }, { reference: 'r-2ABC', createdAt: '2026-10-22T09:31:00Z' }];
+  const r = await run(['--since', '2026-10-01T00:00:00Z', '--out', out], LIVE_ENV, listFake(rows, { 'r-7KQ2': full }));
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /1 gone before download/);
+  assert.deepEqual(await readdir(out), ['server--journal--1.0-42-.md']);
+});
+
+test('--since compares instants: offsets, fractions and equality', async () => {
+  const full = JSON.parse(await readFile(FULL, 'utf8'));
+  const rows = [
+    { reference: 'r-7KQ2', createdAt: '2026-10-22T09:30:00.123456+00:00' }, // after the cutoff by a fraction
+    { reference: 'r-2ABC', createdAt: '2026-10-22T09:30:00.000Z' },        // equal to the cutoff
+    { reference: 'r-3DEF', createdAt: '2026-10-22T09:29:59.999+00:00' },    // just before
+    { reference: 'r-4GHJ', createdAt: '2026-10-22T11:30:00+02:00' },        // same instant as the cutoff, other offset
+  ];
+  const bodies = { 'r-7KQ2': full, 'r-2ABC': full, 'r-3DEF': full, 'r-4GHJ': full };
+  const fetched = [];
+  const spy = async (url) => { fetched.push(url.split('/')[5]); return listFake(rows, bodies)(url); };
+  const out = await tmp();
+  await run(['--since', '2026-10-22T09:30:00Z', '--out', out], LIVE_ENV, spy);
+  assert.deepEqual(fetched.filter(Boolean).filter((x) => x.startsWith('r-')).sort(), ['r-2ABC', 'r-4GHJ', 'r-7KQ2']);
+  const off = await run(['--since', '2026-10-22T11:30:00+02:00', '--out', await tmp()], LIVE_ENV, listFake(rows, bodies));
+  assert.equal(off.code, 0);
+  const bad = await run(['--since', '2026-13-45T99:00:00Z', '--out', out], LIVE_ENV, listFake(rows, bodies));
+  assert.equal(bad.code, 1);
+});
+
+test('a report the viewer no longer lists is dropped on re-run, and an emptied file is deleted', async () => {
+  const out = await tmp();
+  const full = JSON.parse(await readFile(FULL, 'utf8'));
+  const other = { ...full, failures: [{ t: '2026-10-22T09:22:10.000Z', code: 'offline', screen: 'journal' }] };
+  const rows = [{ reference: 'r-7KQ2', createdAt: '2026-10-22T09:30:00Z' }, { reference: 'r-2ABC', createdAt: '2026-10-22T09:31:00Z' }];
+  await run(['--since', '2026-10-01T00:00:00Z', '--out', out], LIVE_ENV, listFake(rows, { 'r-7KQ2': full, 'r-2ABC': other }));
+  assert.equal((await readdir(out)).length, 2);
+  const r = await run(['--since', '2026-10-01T00:00:00Z', '--out', out], LIVE_ENV, listFake(rows.slice(0, 1), { 'r-7KQ2': full }));
+  assert.match(r.stdout, /1 no longer listed and removed/);
+  const files = await everyFile(out);
+  assert.deepEqual(files.map(([n]) => n), ['server--journal--1.0-42-.md']);
+  assert.ok(!files[0][1].includes('r-2ABC'));
+  // a full page (500 rows) is not trusted as "complete": nothing is dropped
+  const many = Array.from({ length: 500 }, (_, i) => ({ reference: `r-${String(1000 + i).padStart(4, '0').replace(/[ILOU]/g, '0')}`, createdAt: '2020-01-01T00:00:00Z' }));
+  const capped = await run(['--since', '2026-10-01T00:00:00Z', '--out', out], LIVE_ENV, listFake(many, {}));
+  assert.match(capped.stdout, /500-report cap/);
+  assert.equal((await readdir(out)).length, 1);
 });

@@ -74,3 +74,7 @@ iOSInjectionProject/
 # Temporary files
 *.tmp
 *.temp
+
+# Report cluster files (DG.7.reader): one person's activity trail each; never commit
+pipeline/reports/*
+!pipeline/reports/README.md

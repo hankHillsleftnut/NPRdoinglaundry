@@ -9,6 +9,10 @@ RETRO_API_BASE=<api address> ADMIN_SECRET=<secret> node pipeline/tools/reports.m
 node pipeline/tools/reports.mjs --fixture pipeline/tools/fixtures/diagnostics.request.json   # offline, no secrets
 ```
 
+**Where the files go.** Cluster files describe a person's activity, so by default they are written OUTSIDE this repo, to `$RETRO_REPORTS_DIR` or else `~/Projects/retrospect-handover/pipeline/reports` (override with `--out <dir>`). `.gitignore` also ignores everything in `pipeline/reports/` except this README, as a second guard. Never commit or paste a cluster file.
+
+**Retention.** On each live run, a report the viewer no longer lists (purged at expiry, or deleted with the account) is removed from the cluster files, and a file left empty is deleted. If a run sees the full 500-report page, the script says so and removes nothing. A report that disappears between the list and its download is skipped and counted, not fatal.
+
 The address and secret come from the environment only; they are never printed or written. The script is read only: it makes `GET /admin/diagnostics` and `GET /admin/diagnostics/<reference>/download`, nothing else, and never deletes or changes a report. The list is one page (up to 500 reports); use `--since` to keep a run small.
 
 ## The cluster key
