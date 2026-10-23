@@ -67,7 +67,7 @@ extension Platform.Media {
                 throw Failure.unavailable
             }
             // an empty download is never kept as the brief's audio
-            guard Self.isUsable(temporary) else {
+            guard Self.isUsable(temporary), !erased else {
                 try? FileManager.default.removeItem(at: temporary)
                 throw Failure.unavailable
             }
@@ -97,8 +97,11 @@ extension Platform.Media {
             return size > 0
         }
 
-        /// Sign-out: every file goes.
+        private var erased = false
+
+        /// Sign-out: every file goes, and nothing is stored after it (a download still running lands nowhere).
         func erase() {
+            erased = true
             try? FileManager.default.removeItem(at: directory)
         }
 

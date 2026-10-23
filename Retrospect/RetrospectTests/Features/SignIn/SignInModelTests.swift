@@ -106,7 +106,9 @@ struct SignInModelTests {
         coordinator.delay = .milliseconds(100)
         let model = SignInModel(look: .splash, coordinator: coordinator)
         let first = Task { await model.appleFinished(.failure(Stub())) }
-        try? await Task.sleep(for: .milliseconds(20))
+        while model.phase != .signingIn {
+            await Task.yield()
+        } // wait for the state, not the clock
         await model.appleFinished(.failure(Stub()))
         await first.value
         #expect(coordinator.completions == 1)

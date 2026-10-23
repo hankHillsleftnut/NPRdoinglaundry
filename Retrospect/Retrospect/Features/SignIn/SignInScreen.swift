@@ -152,12 +152,14 @@ struct SignInScreen: View {
             RSignInButtons(state: model.buttons, onRequest: model.prepare) { result in
                 Task { await model.appleFinished(result) }
             }
+            #if DEBUG // SampleTap lives in the DEBUG-only launcher
             .overlay {
                 if sampleTaps, model.buttons == .rest {
                     Color.clear.contentShape(Rectangle())
                         .onTapGesture { Task { await model.appleFinished(.failure(SampleTap())) } }
                 }
             }
+            #endif
             .accessibilityIdentifier("signin.apple")
             Text(SignInModel.legal)
                 .rText(.label)
