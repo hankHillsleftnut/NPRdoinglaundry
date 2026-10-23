@@ -19,17 +19,27 @@ import SwiftUI
 struct JournalPageContainer: View {
     /// The person's local day, `YYYY-MM-DD`.
     let today: String
+    /// The drawer button's action (JR-3 is not mounted yet: the app root points it at the account page).
+    var openDrawer: () -> Void = {}
     @Environment(\.journalData) private var data
 
     var body: some View {
         if let data {
             // a new data source or a new day builds a new page and model
-            JournalPage(model: JournalViewModel(data: data, today: today))
+            JournalPage(model: model(for: data))
                 .id(PageIdentity(data: ObjectIdentifier(data), today: today))
         } else {
             // outside the app (a preview without the seam): nothing to show yet
             RColor.backgroundCanvas.ignoresSafeArea()
         }
+    }
+}
+
+extension JournalPageContainer {
+    private func model(for data: any Flows.JournalData) -> JournalViewModel {
+        let model = JournalViewModel(data: data, today: today)
+        model.openDrawer = openDrawer
+        return model
     }
 }
 

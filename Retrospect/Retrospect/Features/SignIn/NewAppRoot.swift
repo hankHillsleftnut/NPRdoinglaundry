@@ -1,9 +1,13 @@
 //
 //  NewAppRoot.swift
-//  PL1.4b / PL5.2: the app's root on the new backend. What shows comes from the new session's state
-//  and nothing else: a blank page while it is still being read (or the phone is locked), the sign-in
-//  screen when nobody is signed in, the app when someone is (a plain canvas until APP-ROOT mounts the
-//  journal behind it).
+//  PL1.4b / PL5.2 / APP-ROOT: the app's root on the new backend, and in a release build the only root. What
+//  shows comes from the new session's state and nothing else: a blank page while it is still being read, the
+//  sign-in screen (PI0) when nobody is signed in, the invite gate (PI1/PI2) for a person who is not let in
+//  yet or who has a code waiting, a plain "paused" page, and the journal (JR-1) on their live data for a
+//  person who is. If the signed-in person's store can't be opened it says so and offers a retry.
+//
+//  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
+//  with `-OldHome`.
 //
 import SwiftUI
 
@@ -14,30 +18,73 @@ struct NewAppRoot: View {
         case blank
         /// The session could not be read: the phone has not been unlocked since it started, or the Keychain refused. It is read again on the next active scene.
         case locked
-        /// Nobody is signed in; `endedByServer` says "please sign in again".
-        case signIn(endedByServer: Bool)
-        case app
+        /// PI0. `returning` is "welcome back"; `endedByServer` says the session ended on its own.
+        case signIn(returning: Bool, endedByServer: Bool)
+        /// PI1 and PI2: the promise, the ticket, the tear and "you're in" (up to the person's "begin").
+        case inviteGate
+        case paused
+        /// The person's store could not be opened.
+        case storeFailed
+        case journal
     }
 
-    static func screen(for state: Session.State?) -> Screen {
-        switch state {
-        case .signedIn: .app
-        case let .signedOut(_, reason): .signIn(endedByServer: reason == .revoked)
-        case .locked: .locked
-        case nil: .blank
+    /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
+    /// phone waits on a blank canvas rather than flash sign-in before the gate). `gateHeld` is true from the
+    /// moment the gate is up until the person presses "begin": the tear makes them a member before that, and
+    /// the page must not be swapped for the journal under their finger.
+    static func screen(for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool) -> Screen {
+        guard let state else { return .blank }
+        if case .locked = state {
+            return .locked
+        }
+        if case .signedOut = state, pendingCode == nil {
+            return .blank
+        }
+        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld) {
+        case .blank:
+            return .blank
+        case let .signIn(returning):
+            if case let .signedOut(_, reason) = state {
+                return .signIn(returning: returning, endedByServer: reason == .revoked)
+            }
+            return .signIn(returning: returning, endedByServer: false)
+        case .inviteGate, .youreIn:
+            return .inviteGate
+        case .paused:
+            return .paused
+        case .journal:
+            return storeOpenFailed ? .storeFailed : .journal
         }
     }
 
+    /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
+    static func isDefault(arguments: [String], debug: Bool) -> Bool {
+        !(debug && arguments.contains("-OldHome"))
+    }
+
     @Environment(Platform.AppEnvironment.self) private var platform
+    @State private var gateHeld = false
 
     var body: some View {
+        let screen = Self.screen(
+            for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed
+        )
         Group {
-            switch Self.screen(for: platform.sessionState) {
-            case .app:
-                // the app behind the sign-in is mounted by APP-ROOT; until then a plain canvas
-                RColor.backgroundCanvas.ignoresSafeArea().accessibilityIdentifier("newapp.signedin")
-            case let .signIn(endedByServer):
-                SignInGateView(endedByServer: endedByServer)
+            switch screen {
+            case let .signIn(returning, endedByServer):
+                // the splash or welcome back; the session's new state moves the app on, the page needs no hand-off
+                SignInHost(returning: returning || endedByServer)
+            case .inviteGate:
+                InviteGateHost { gateHeld = false }
+                    .onAppear { gateHeld = true }
+            case .paused:
+                PausedView()
+            case .storeFailed:
+                StoreFailedView { platform.retryOpeningStore() }
+            case .journal:
+                LiveJournalRoot()
+                    .accessibilityIdentifier("newapp.signedin")
             case .locked:
                 Text("retrospect can't read your sign-in yet. unlock your phone and open it again.")
                     .rText(.bodyReading)
@@ -51,6 +98,16 @@ struct NewAppRoot: View {
                 RColor.backgroundCanvas.ignoresSafeArea()
             }
         }
-        .animation(RMotion.snappy, value: platform.sessionState)
+        .animation(RMotion.snappy, value: screen)
+        .task { await platform.pendingInvite.refresh() }
+        // the waiting code is read again whenever something that can change it happens
+        .onChange(of: platform.sessionState) { _, state in
+            if case .signedOut? = state {
+                gateHeld = false // a person who left mid-tear leaves nothing held for the next
+            }
+            Task { await platform.pendingInvite.refresh() }
+        }
+        .onChange(of: platform.invites.ticket) { Task { await platform.pendingInvite.refresh() } }
+        .onChange(of: platform.invites.previewFace) { Task { await platform.pendingInvite.refresh() } }
     }
 }

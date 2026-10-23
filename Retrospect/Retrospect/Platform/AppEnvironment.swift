@@ -30,6 +30,8 @@ extension Platform {
         let reachability: any Backend.Reachability
         /// The invite: a pending code, its check after sign-in, the tear (PL1.7).
         let invites: Session.InviteCenter
+        /// Whether a code waits for after sign-in (APP-ROOT): the root shows the invite gate for it.
+        let pendingInvite: Platform.PendingInvite
         /// The version floor (PL1.6): whether this build must update.
         let floor: Platform.VersionFloor
         /// Every way into the app: links, universal links (PL5.2). An invite goes straight to `invites`.
@@ -50,6 +52,8 @@ extension Platform {
         /// Where the new session stands, as last seen; nil before the first answer. The new root shows the
         /// sign-in screen or the app from this, never from the old client.
         private(set) var sessionState: Session.State?
+        /// True when the signed-in person's store could not be opened; the root offers "try again" (`retryOpeningStore`).
+        private(set) var storeOpenFailed = false
         /// The one way a person signs in (PL1.4b): Sign in with Apple on `/v2/auth/apple`. It is the only
         /// thing that gives `Session.Manager` a credential.
         let signIn: Session.SignInCoordinator
@@ -90,7 +94,8 @@ extension Platform {
             backgroundTasks: Platform.BackgroundTasks = .uiKit,
             openDatabase: @escaping @Sendable (String) throws -> Store.LocalDatabase = { try Store.LocalDatabase.inMemory(ownerUserID: $0) },
             unsentSource: Box<Store.Outbox?> = Box(nil),
-            firstAuthorization: any Session.FirstAuthorizationKeeping = Session.MemoryFirstAuthorization()
+            firstAuthorization: any Session.FirstAuthorizationKeeping = Session.MemoryFirstAuthorization(),
+            pendingInviteCode: @escaping @Sendable () async -> String? = { nil }
         ) {
             self.unsentSource = unsentSource
             self.launch = launch
@@ -101,7 +106,12 @@ extension Platform {
             self.reachability = reachability
             self.invites = invites
             self.floor = floor
-            router = Routing.Router(inviteBase: configuration.baseURL, log: log, receiveInvite: { await invites.received(code: $0) })
+            let pendingInvite = Platform.PendingInvite(read: pendingInviteCode)
+            self.pendingInvite = pendingInvite
+            router = Routing.Router(inviteBase: configuration.baseURL, log: log, receiveInvite: {
+                await invites.received(code: $0)
+                await pendingInvite.refresh() // a link that arrives signed out moves the root to the gate
+            })
             signIn = Session.SignInCoordinator(
                 apple: Session.AppleSignIn(client: client, installer: session, log: log, keeper: firstAuthorization), log: log
             )
@@ -155,7 +165,8 @@ extension Platform {
                 invites: invites, floor: floor,
                 openDatabase: { try Store.LocalDatabase.onDisk(ownerUserID: $0) },
                 unsentSource: unsentSource,
-                firstAuthorization: store
+                firstAuthorization: store,
+                pendingInviteCode: { try? await store.pendingInviteCode() }
             )
         }
 
@@ -191,7 +202,8 @@ extension Platform {
             return AppEnvironment(
                 configuration: configuration, log: log, session: session, client: client, reachability: reachability,
                 invites: invites, floor: floor, backgroundTasks: backgroundTasks, openDatabase: openDatabase,
-                unsentSource: unsentSource
+                unsentSource: unsentSource,
+                pendingInviteCode: { try? await store.pendingInviteCode() }
             )
         }
 
@@ -244,6 +256,7 @@ extension Platform {
                     case let .signedIn(userID, _):
                         await sessionDidChange(to: userID).value
                     case .signedOut:
+                        storeOpenFailed = false
                         if openUserID != nil {
                             await closeStoreKeeping().value
                         }
@@ -295,6 +308,7 @@ extension Platform {
         /// next sign-in (the server ended the session on its own).
         func closeStore(erasing: Bool) async {
             router.clear() // a destination can name one person's entry: it never waits for the next
+            storeOpenFailed = false
             let closing = openUserID
             let leftOver = keptUserID
             keptUserID = erasing ? nil : closing ?? keptUserID
@@ -335,6 +349,7 @@ extension Platform {
                 await eraseStore(of: kept)
                 keptUserID = nil
             }
+            storeOpenFailed = false
             do {
                 let open = openDatabase
                 let database = try await Task.detached { try open(userID) }.value
@@ -344,7 +359,15 @@ extension Platform {
                 keptUserID = nil
             } catch {
                 log.record(.diagnosticsWriteFailed)
+                storeOpenFailed = true
             }
+        }
+
+        /// "Try again" after the store could not be opened: asks for the signed-in person's store again.
+        @discardableResult
+        func retryOpeningStore() -> Task<Void, Never>? {
+            guard case let .signedIn(userID, _)? = sessionState else { return nil }
+            return sessionDidChange(to: userID)
         }
 
         /// Entries not yet sent, for the sign-out question (0 when no store is open).

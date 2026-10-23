@@ -150,6 +150,14 @@ final class InviteModel {
         await receive(source.ticketAfterSignIn(), access: .waitlisted, typed: false)
     }
 
+    /// The page is mounted for someone who is already signed in (a relaunch, or a person let through the door
+    /// without a code): the pending code, if any, is checked now, exactly as after a sign-in. Only a page that
+    /// opened at the typed ticket does this; one that came through the promise has checked already.
+    func startSignedIn(access: Session.AccessState) async {
+        guard phase == .typed, access != .suspended else { return }
+        await receive(source.ticketAfterSignIn(), access: access, typed: false)
+    }
+
     // MARK: Connection
 
     /// Follows the phone's connection. When it returns, a waiting check runs again, and a typed code
