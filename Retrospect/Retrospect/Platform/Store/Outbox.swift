@@ -225,6 +225,7 @@ extension Store {
         func start() {
             guard !started else { return }
             started = true
+            try? reviveVersionAndSpendRefusals()
             guard let reachability else {
                 Task { await drain(reason: .launch) }
                 return
@@ -262,11 +263,6 @@ extension Store {
             if !paused, !Task.isCancelled {
                 scheduleRetryWake()
             }
-        }
-
-        private struct Tally {
-            var sent = 0
-            var failed = 0
         }
 
         /// One pass over what's due, oldest first.
@@ -592,4 +588,10 @@ extension Store.Outbox {
         publish(receipt)
     }
     #endif
+}
+
+/// What one drain pass sent and what it gave up on.
+private struct Tally {
+    var sent = 0
+    var failed = 0
 }

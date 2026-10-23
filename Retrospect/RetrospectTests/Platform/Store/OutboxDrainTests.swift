@@ -602,6 +602,26 @@ struct OutboxDrainTests {
         #expect(sender.sends.first?.payload == sender.sends.last?.payload, "same bytes on the retry")
     }
 
+    @Test("rows an earlier build killed for update_required or spend_limited are revived at start, with their entries; other refusals stay dead")
+    func oldRefusalsAreRevived() async throws {
+        let outbox = outbox()
+        let (old, spend, real) = (UUID(), UUID(), UUID())
+        for id in [old, spend, real] {
+            try await outbox.enqueueEntry(draft(id))
+        }
+        try execute("UPDATE outbox SET status = 'dead', attempts = 1, last_error_code = 'update_required' WHERE id = ?", [key(old)])
+        try execute("UPDATE outbox SET status = 'dead', attempts = 1, last_error_code = 'spend_limited' WHERE id = ?", [key(spend)])
+        try execute("UPDATE outbox SET status = 'dead', attempts = 1, last_error_code = 'invalid_request' WHERE id = ?", [key(real)])
+        try execute("UPDATE entries SET sync_state = 'failed'")
+
+        await outbox.start()
+        await outbox.drain(reason: .manual)
+
+        #expect(try item(old).status == .done && item(spend).status == .done)
+        #expect(try item(real).status == .dead, "a real refusal is not revived")
+        #expect(try entry(real).syncState == .failed)
+    }
+
     // MARK: Retry timer
 
     @Test("a failed send wakes the drainer when its backoff ends, with no other trigger")
