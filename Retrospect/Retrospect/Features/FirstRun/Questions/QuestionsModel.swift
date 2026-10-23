@@ -4,7 +4,8 @@
 //  question at a time, in the seam's order, starting at the first one not answered (resume);
 //  a send hands the words to the seam and moves to the next unanswered question; a failure
 //  keeps the words in the composer with the offline line and stays put; back goes to the
-//  previous question with its answer kept; once every question is answered it finishes the
+//  previous question with its answer kept and back in the composer (sent unchanged, it moves on
+//  without resending); once every question is answered it finishes the
 //  seam exactly once and tells the host. It never reaches the network and never logs.
 //
 import Foundation
@@ -42,8 +43,12 @@ final class QuestionsModel {
     /// ON-4a's offline frame (05b): the words are kept, nothing is lost.
     static let offlineLine = "you're offline. your answer is kept; we'll pick up here."
 
-    init(data: any Flows.FirstRun) {
+    /// This page's part of the first run's progress bar (the host may pass its own).
+    let flowRange: ClosedRange<Double>
+
+    init(data: any Flows.FirstRun, flowRange: ClosedRange<Double> = QuestionsModel.flowProgress) {
         self.data = data
+        self.flowRange = flowRange
         questions = Self.asked(data.questions)
         index = Self.firstUnanswered(questions, answered: data.answeredKeys) ?? max(questions.count - 1, 0)
     }
@@ -61,11 +66,16 @@ final class QuestionsModel {
         questions.firstIndex { !answered.contains($0.key) }
     }
 
-    /// How far the progress bar is filled on question `index` of `count` (one step per
-    /// question, the one on screen counted, so the first already shows a sliver).
-    static func progress(index: Int, count: Int) -> Double {
-        guard count > 0 else { return 0 }
-        return Double(min(index + 1, count)) / Double(count)
+    /// The questions' share of the whole first run's bar (Paper p-J-0: 14% on the first question,
+    /// about 41% on the last; privacy, connect and getting ready fill the rest). Never a step count.
+    static let flowProgress: ClosedRange<Double> = 0.14 ... 0.41
+
+    /// How far the whole-flow bar is filled on question `index` of `count`: the range's start on
+    /// the first question, its end on the last, even steps between.
+    static func progress(index: Int, count: Int, in range: ClosedRange<Double> = flowProgress) -> Double {
+        guard count > 1 else { return range.lowerBound }
+        let step = Double(min(max(index, 0), count - 1)) / Double(count - 1)
+        return range.lowerBound + (range.upperBound - range.lowerBound) * step
     }
 
     /// The composer after a send that wasn't kept: the failed words, then anything typed since.
@@ -92,12 +102,18 @@ final class QuestionsModel {
     }
 
     var progress: Double {
-        Self.progress(index: index, count: questions.count)
+        Self.progress(index: index, count: questions.count, in: flowRange)
     }
 
     /// "step 3 of 8", for VoiceOver.
     var stepLabel: String {
         "step \(min(index + 1, questions.count)) of \(questions.count)"
+    }
+
+    /// What VoiceOver hears when another question replaces the one on screen (the send button
+    /// vanishes with the words, so focus has nowhere to land): where you are, then the question.
+    var announcement: String? {
+        question.map { "\(stepLabel). \($0.text)" }
     }
 
     /// The offline line, while the question on screen holds words that weren't kept.
@@ -124,13 +140,22 @@ final class QuestionsModel {
     func send(_ text: String) async {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let key = question?.key, !words.isEmpty, !isSending, !isFinished else {
-            // nothing typed is ever dropped: the composer cleared itself before calling
+            // nothing typed is ever dropped: the composer clears itself as it hands the words
+            // over, and this runs in a later Task, so the refused words go back in front of it
             if !text.isEmpty {
                 draft = Self.restored(failed: text, typed: draft)
             }
             return
         }
         draft = ""
+        if answers[key] == words {
+            // went back to look and sent the kept answer unchanged: move on, nothing to resend
+            if failedKey == key {
+                failedKey = nil
+            }
+            await advance(from: key)
+            return
+        }
         isSending = true
         let outcome = await data.answer(key, text: words, given: .typed)
         isSending = false
@@ -178,7 +203,8 @@ final class QuestionsModel {
             drafts[key] = draft.isEmpty ? nil : draft
         }
         index = next
-        draft = question.flatMap { drafts[$0.key] } ?? ""
+        // unsent words first; otherwise this session's kept answer, so back is never a dead end
+        draft = question.flatMap { drafts[$0.key] ?? answers[$0.key] } ?? ""
     }
 
     private func finish() async {

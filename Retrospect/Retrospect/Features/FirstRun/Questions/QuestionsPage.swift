@@ -30,6 +30,8 @@ extension RTextStyle {
 /// question is answered and the seam has been told.
 struct QuestionsPageContainer: View {
     let data: any Flows.FirstRun
+    /// The questions' part of the first run's progress bar.
+    var flowRange: ClosedRange<Double> = QuestionsModel.flowProgress
     var onDone: () -> Void = {}
 
     var body: some View {
@@ -38,7 +40,7 @@ struct QuestionsPageContainer: View {
     }
 
     private func model() -> QuestionsModel {
-        let model = QuestionsModel(data: data)
+        let model = QuestionsModel(data: data, flowRange: flowRange)
         model.onDone = onDone
         return model
     }
@@ -85,6 +87,12 @@ struct QuestionsPage: View {
         // a send that wasn't kept: the error haptic and the offline line read out, once each
         .rErrorHaptic(isFailing: model.offline)
         .rErrorAnnouncement(model.offline ? QuestionsModel.offlineLine : nil, attempt: model.failures)
+        // a new question replaced the last: VoiceOver hears it (not on open; the screen reads itself)
+        .onChange(of: model.question?.key) {
+            if let announcement = model.announcement {
+                AccessibilityNotification.Announcement(announcement).post()
+            }
+        }
         .task { await model.appear() }
         .accessibilityIdentifier("screen.ON-3")
     }
@@ -112,7 +120,8 @@ struct QuestionsPage: View {
     /// The quiet back chevron; nothing on the right.
     private var topBar: some View {
         HStack(spacing: RDimension.space0) {
-            RIconButton(symbol: "chevron.left", label: "back") {
+            // Paper c:top-bar/onboarding: the chevron in a 32 wash circle inside a 44 hit area
+            RIconButton(symbol: "chevron.left", label: "back", role: .inField) {
                 withAnimation(motion) {
                     model.back()
                 }
@@ -123,8 +132,8 @@ struct QuestionsPage: View {
             .accessibilityIdentifier("questions.back")
             Spacer(minLength: RDimension.space0)
         }
-        // the 44 hit area's visible 36 sits on the margin, as Paper's 32 wash does
-        .padding(.horizontal, margin - (RDimension.sizeControlDefault - RDimension.sizeControlIcon) / 2)
+        // the 44 hit area is centred on its 32 circle; the circle's edge sits on the margin, as in Paper
+        .padding(.horizontal, margin - (RDimension.sizeControlDefault - RDimension.sizeControlSmall) / 2)
         .frame(minHeight: RDimension.sizeNavBar)
         .padding(.top, RDimension.space4)
     }

@@ -40,14 +40,17 @@ struct QuestionsModelTests {
         #expect(model.draft.isEmpty)
     }
 
-    @Test("progress fills one step per question and reads 'step n of 8'")
+    @Test("the bar is the whole first run's: 14% on the first question to 41% on the last; VoiceOver reads 'step n of 8'")
     func progress() async {
-        let model = QuestionsModel(data: ScriptedFirstRun())
+        let model = QuestionsModel(data: ScriptedFirstRun(answered: Set(coreKeys.dropFirst().dropLast())))
         #expect(model.stepLabel == "step 1 of 8")
-        #expect(model.progress == 1.0 / 8)
+        #expect(abs(model.progress - 0.14) < 0.0001)
         await model.send("sam.")
-        #expect(model.stepLabel == "step 2 of 8")
-        #expect(model.progress == 2.0 / 8)
+        #expect(model.stepLabel == "step 8 of 8")
+        #expect(abs(model.progress - 0.41) < 0.0001)
+        // even steps between, and a host can hand the page its own part of the bar
+        #expect(abs(QuestionsModel.progress(index: 1, count: 8) - (0.14 + 0.27 / 7)) < 0.0001)
+        #expect(QuestionsModel(data: ScriptedFirstRun(), flowRange: 0.2 ... 0.6).progress == 0.2)
     }
 
     // MARK: Back
@@ -76,13 +79,44 @@ struct QuestionsModelTests {
         #expect(data.calls == [.namePlace, .yearFromNow, .namePlace])
     }
 
+    @Test("back puts the kept answer in the composer; sent unchanged, it moves on without resending")
+    func backPrefillsAndMovesOnUnchanged() async {
+        let data = ScriptedFirstRun()
+        let model = QuestionsModel(data: data)
+        await model.send("sam, in london.")
+        await model.send("a quieter life.")
+
+        model.back()
+        #expect(model.question?.key == .yearFromNow)
+        #expect(model.draft == "a quieter life.")
+        await model.send(model.draft)
+        #expect(model.question?.key == .careMost)
+        #expect(model.draft.isEmpty)
+        #expect(data.calls == [.namePlace, .yearFromNow])
+
+        // two back: the unchanged first answer goes straight on to the first unanswered question
+        model.back()
+        model.back()
+        #expect(model.draft == "sam, in london.")
+        await model.send(" sam, in london.\n")
+        #expect(model.question?.key == .careMost)
+        #expect(data.calls == [.namePlace, .yearFromNow])
+    }
+
+    @Test("VoiceOver hears where you are and the new question when it replaces the last")
+    func announcement() async {
+        let model = QuestionsModel(data: ScriptedFirstRun())
+        await model.send("sam.")
+        #expect(model.announcement == "step 2 of 8. \(Flows.FirstRunQuestion.core[1].text)")
+    }
+
     @Test("words typed but not sent stay with their question when going back and forth")
     func draftsStayWithTheirQuestion() async {
         let model = QuestionsModel(data: ScriptedFirstRun())
         await model.send("sam.")
         model.draft = "half a thought"
         model.back()
-        #expect(model.draft.isEmpty)
+        #expect(model.draft == "sam.")
         model.draft = "sam, really"
         await model.send(model.draft)
         #expect(model.question?.key == .yearFromNow)
