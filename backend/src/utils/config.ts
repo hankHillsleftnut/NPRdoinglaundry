@@ -67,6 +67,12 @@ export const config = {
     teamId: optionalEnv('APPLE_TEAM_ID', ''),
     keyId: optionalEnv('APPLE_KEY_ID', ''),
     privateKey: optionalEnv('APPLE_PRIVATE_KEY', ''),
+    // BE0.5: keep Apple's refresh token at sign-in so account deletion can
+    // revoke it. Off by default: with it off nothing calls Apple. On, the
+    // server refuses to start without the key above and TOKEN_ENCRYPTION_KEY
+    // (32 bytes, base64), which seals the stored token. Founder sets both.
+    revokeEnabled: optionalEnv('APPLE_REVOKE_ENABLED', 'false') === 'true',
+    tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY || null,
   },
 
   // Invites (BE0.12). INVITE_CODE_KEY seals unused codes so "your invites" can
