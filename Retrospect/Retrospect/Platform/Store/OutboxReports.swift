@@ -80,6 +80,30 @@ extension Store.Outbox {
 }
 
 extension Store.Outbox {
+    /// Entries not yet sent: pending, in flight or refused. Guess answers and reports aren't
+    /// the person's words, so they aren't counted. Feeds sign-out's "not sent yet" question.
+    func unsentCount() throws -> Int {
+        try database.writer.read { db in
+            try Store.OutboxRow
+                .filter([Store.OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.status)))
+                // only the person's own words: a refused guess answer or a report is not an unsent entry
+                .filter(![Store.OutboxOperation.diagnosticsSend, .guessAnswer].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.operation)))
+                .fetchCount(db)
+        }
+    }
+
+    /// Rows the drainer still has to send, of every kind (entries, guess answers, reports): pending or in flight.
+    /// A refused row (dead) is not waiting for the network. Feeds the background drain, not the sign-out question.
+    func waitingToSendCount() throws -> Int {
+        try database.writer.read { db in
+            try Store.OutboxRow
+                .filter([Store.OutboxStatus.pending, .inFlight].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.status)))
+                .fetchCount(db)
+        }
+    }
+}
+
+extension Store.Outbox {
     /// Rows an earlier build gave up on for `update_required` or `spend_limited` (it killed what only needed to wait) go back in
     /// the queue, with their entries, once at start: the words were kept and now they are sent.
     func reviveVersionAndSpendRefusals() throws {

@@ -94,6 +94,9 @@ extension Session {
         /// The first read, so every caller that arrives during it waits for it.
         private var starting: Task<Void, Never>?
         private var credentials: Credentials?
+        /// Access tokens of people who have since signed out or been replaced by someone else. A 401 on a request
+        /// made with one of these is never answered with the current person's token (the request is theirs, not theirs to replay).
+        private var retiredTokens: [String] = []
         private var hasSignedInBefore = false
         private var current: State = .locked
         private var continuations: [UUID: AsyncStream<State>.Continuation] = [:]
@@ -223,6 +226,9 @@ extension Session {
         func refreshAfterUnauthorized(failedToken: String) async throws -> String {
             await ensureStarted()
             guard let credentials, !signingOut else { throw Backend.Failure(.unauthenticated) }
+            if retiredTokens.contains(failedToken) {
+                throw Backend.Failure(.unauthenticated)
+            }
             if credentials.accessToken != failedToken {
                 return credentials.accessToken
             }
@@ -238,6 +244,9 @@ extension Session {
             await ensureStarted()
             if let old = self.credentials {
                 _ = await notifyServer(signingOut: old)
+                if old.userID != credentials.userID {
+                    retire(old.accessToken)
+                }
             }
             try await store.save(credentials)
             adopt(credentials)
@@ -483,7 +492,17 @@ extension Session {
             }
         }
 
+        private func retire(_ token: String) {
+            retiredTokens.append(token)
+            if retiredTokens.count > 8 {
+                retiredTokens.removeFirst()
+            }
+        }
+
         private func endSession(reason: SignedOutReason, serverNotified: Bool) async {
+            if let token = credentials?.accessToken {
+                retire(token)
+            }
             credentials = nil
             pendingSave = false
             receivedAt = nil
