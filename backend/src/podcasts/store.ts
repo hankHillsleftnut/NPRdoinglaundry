@@ -59,13 +59,38 @@ export interface PodcastStore {
 /** The same supabase-js slice the brief store uses (tests answer it from PGlite). */
 export type PodcastDbClient = BriefDbClient;
 
-export const EPISODE_COLUMNS = 'id,title,generation_type,episode_number,duration_seconds,created_at,covers_period_start,covers_period_end,audio_path';
+export const EPISODE_COLUMNS = 'id,title,generation_type,episode_number,duration_seconds,created_at,covers_period_start,covers_period_end,audio_path,audio_url';
 
 /** The player's columns: the library's plus the script and description (never the outline or the embedding). */
 export const EPISODE_DETAIL_COLUMNS = `${EPISODE_COLUMNS},description,script`;
 
 /** The brain's private episode audio bucket (BEA.7). */
 export const PODCAST_AUDIO_BUCKET = 'podcast-audio';
+
+/**
+ * Where the row's audio lives, as the brain reads it (agent `audioPathOf`):
+ * `audio_path`, else the path inside the old public `audio_url` (rows written
+ * before migration 154's code, or missed by its backfill).
+ */
+export function audioPathOf(raw: Record<string, unknown>): string | null {
+  if (typeof raw.audio_path === 'string' && raw.audio_path.length > 0) return raw.audio_path;
+  if (typeof raw.audio_url !== 'string') return null;
+  const m = /\/storage\/v1\/object\/public\/podcast-audio\/(.+)$/.exec(raw.audio_url);
+  if (!m) return null;
+  const path = m[1]!.split('?')[0]!;
+  if (!path) return null;
+  try { return decodeURIComponent(path); } catch { return path; }
+}
+
+/**
+ * Defence in depth: the service role can sign any object in the bucket, so a
+ * path is signed only when it sits in this person's own folder (the brain
+ * writes `podcasts/<userId>/<run>.mp3`, and always has).
+ */
+export function inOwnFolder(path: string, userId: string): boolean {
+  const id = userId.toLowerCase();
+  return path.split('/').slice(0, -1).some((part) => part.toLowerCase() === id);
+}
 
 const day = (v: unknown): string | null => {
   if (v === null || v === undefined) return null;
@@ -84,7 +109,7 @@ function toRow(raw: Record<string, unknown>): EpisodeRow {
     createdKey: createdKey(raw.created_at),
     coversFrom: day(raw.covers_period_start),
     coversTo: day(raw.covers_period_end),
-    hasAudio: typeof raw.audio_path === 'string' && raw.audio_path.length > 0,
+    hasAudio: audioPathOf(raw) !== null,
   };
 }
 
@@ -122,7 +147,11 @@ export function supabasePodcastStore(db: PodcastDbClient, opts: { signAudio?: Si
       if (!r.data) return null;
       const raw = r.data as Record<string, unknown>;
       const row = toDetail(raw);
-      const path = typeof raw.audio_path === 'string' && raw.audio_path.length > 0 ? raw.audio_path : null;
+      const path = audioPathOf(raw);
+      if (path && !inOwnFolder(path, userId)) {
+        console.warn('[podcasts] audio link not signed (path outside the owner folder)');
+        return { row, audio: null };
+      }
       return { row, audio: path ? await sign(path, nowMs) : null };
     },
   };

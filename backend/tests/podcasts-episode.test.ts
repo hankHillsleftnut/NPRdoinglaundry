@@ -43,14 +43,14 @@ const signAudio: SignAudio = (path, nowMs) => {
 const selects: string[] = [];
 let podcasts: PodcastStore;
 
-type Ep = { id?: string; title?: string; status?: string; script?: string; description?: string | null; audio?: string | null; type?: string; seconds?: number | null };
+type Ep = { id?: string; title?: string; status?: string; script?: string; description?: string | null; audio?: string | null; audioUrl?: string | null; type?: string; seconds?: number | null };
 async function insertEpisode(userId: string, e: Ep = {}): Promise<string> {
   const { rows } = await db.query<{ id: string }>(
-    `INSERT INTO podcast_episodes (id, user_id, title, description, script, outline, generation_type, status, episode_number, duration_seconds, created_at, covers_period_start, covers_period_end, audio_path)
-     VALUES (COALESCE($1::uuid, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, 3, $9, '2027-01-14T16:00:02.114Z', '2027-01-01T00:00:00Z', '2027-01-14T00:00:00Z', $10) RETURNING id`,
+    `INSERT INTO podcast_episodes (id, user_id, title, description, script, outline, generation_type, status, episode_number, duration_seconds, created_at, covers_period_start, covers_period_end, audio_path, audio_url)
+     VALUES (COALESCE($1::uuid, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, 3, $9, '2027-01-14T16:00:02.114Z', '2027-01-01T00:00:00Z', '2027-01-14T00:00:00Z', $10, $11) RETURNING id`,
     [e.id ?? null, userId, e.title ?? 'the slow week', e.description === undefined ? 'a week about slowing down.' : e.description,
       e.script ?? SCRIPT, JSON.stringify({ plan: SECRET }), e.type ?? 'weekly', e.status ?? 'ready',
-      e.seconds === undefined ? 240 : e.seconds, e.audio === undefined ? 'u/episode.mp3' : e.audio],
+      e.seconds === undefined ? 240 : e.seconds, e.audio === undefined ? `podcasts/${userId}/episode.mp3` : e.audio, e.audioUrl ?? null],
   );
   return rows[0]!.id;
 }
@@ -79,7 +79,7 @@ const userEpisode = (): Episode => ({
   lines: SCRIPT_LINES.map((text, index) => ({ index, text, chapterIndex: -1, register: 'craft' as const })),
   claims: [],
   audio: {
-    url: `https://storage.test/podcast-audio/u/episode.mp3?token=t`,
+    url: `https://storage.test/podcast-audio/podcasts/${USER}/episode.mp3?token=t`,
     expiresAt: new Date(NOW + 3600 * 1000).toISOString(), durationSeconds: 240, mimeType: 'audio/mpeg',
   },
 });
@@ -112,7 +112,7 @@ async function episode(auth: Record<string, string>, id: string): Promise<Episod
 
 test('own episode with audio: lines from the script, legacy fields, a link signed for the stored path', async () => {
   const p = await person();
-  const id = await insertEpisode(p.id, { audio: 'p/one.mp3' });
+  const id = await insertEpisode(p.id, { audio: `podcasts/${p.id}/one.mp3` });
   signed.length = 0;
   const e = await episode(p.auth, id);
   assert.deepEqual(e.lines.map((l) => l.text), SCRIPT_LINES);
@@ -122,7 +122,7 @@ test('own episode with audio: lines from the script, legacy fields, a link signe
   assert.equal(e.hasAudio, true);
   assert.equal(e.audio?.mimeType, 'audio/mpeg');
   assert.equal(e.audio?.durationSeconds, 240);
-  assert.deepEqual(signed, ['p/one.mp3'], 'the row\'s own path, signed once');
+  assert.deepEqual(signed, [`podcasts/${p.id}/one.mp3`], 'the row\'s own path, signed once');
   assert.equal(e.description, undefined, 'a description only when there are no lines');
 });
 
@@ -136,6 +136,33 @@ test('own episode without audio: no audio key, hasAudio false, nothing signed', 
   assert.equal('audio' in raw, false);
   assert.equal(raw.hasAudio, false);
   assert.deepEqual(signed, []);
+});
+
+test('a row without audio_path signs the path inside its old public audio_url, as the brain does', async () => {
+  const p = await person();
+  const id = await insertEpisode(p.id, { audio: null, audioUrl: `https://x.supabase.co/storage/v1/object/public/podcast-audio/podcasts/${p.id}/old%20one.mp3?t=1` });
+  signed.length = 0;
+  const e = await episode(p.auth, id);
+  assert.deepEqual(signed, [`podcasts/${p.id}/old one.mp3`]);
+  assert.equal(e.hasAudio, true);
+  // A URL that is not this bucket's public URL is no audio.
+  const other = await insertEpisode(p.id, { audio: null, audioUrl: 'https://elsewhere.test/a.mp3' });
+  signed.length = 0;
+  assert.equal((await episode(p.auth, other)).hasAudio, false);
+  assert.deepEqual(signed, []);
+});
+
+test('a path outside the owner\'s own folder is never signed (words only)', async () => {
+  const p = await person();
+  const id = await insertEpisode(p.id, { audio: `podcasts/${OTHER}/theirs.mp3` });
+  signed.length = 0;
+  const e = await episode(p.auth, id);
+  assert.deepEqual(signed, []);
+  assert.equal(e.hasAudio, false);
+  assert.equal(e.audio, undefined);
+  // The id as a file name is not the folder.
+  const named = await insertEpisode(p.id, { audio: `podcasts/${OTHER}/${p.id}` });
+  assert.equal((await episode(p.auth, named)).hasAudio, false);
 });
 
 test('storage refusing the link reads as words only, never hasAudio without audio', async () => {
@@ -162,7 +189,7 @@ test('an empty script gives no lines and the description in their place', async 
 
 test('another person\'s id answers exactly what a missing id answers: not_found, nothing signed', async () => {
   const p = await person();
-  const theirs = await insertEpisode(OTHER, { audio: 'other/secret.mp3' });
+  const theirs = await insertEpisode(OTHER);
   signed.length = 0;
   const other = await get(p.auth, theirs);
   const missing = await get(p.auth, '00000000-0000-4000-8000-0000000004ff');
@@ -208,7 +235,7 @@ test('the select string is closed: never the embedding or the outline', async ()
 
 test('the log line: door, user, status, ms, line count; never a word, a title or the path', async () => {
   const p = await person();
-  const id = await insertEpisode(p.id, { title: `title ${SECRET}`, audio: `path-${SECRET}.mp3`, type: 'milestone' });
+  const id = await insertEpisode(p.id, { title: `title ${SECRET}`, audio: `podcasts/${p.id}/path-${SECRET}.mp3`, type: 'milestone' });
   const before = h.logLines.length;
   await episode(p.auth, id);
   await get(p.auth, OTHER_EPISODE);
@@ -246,10 +273,10 @@ test('the default signer signs in podcast-audio for one hour, with the store\'s 
     }),
   };
   const p = await person();
-  const id = await insertEpisode(p.id, { audio: 'p/default.mp3' });
+  const id = await insertEpisode(p.id, { audio: `podcasts/${p.id}/default.mp3` });
   const store = supabasePodcastStore(Object.assign(pgliteQuery(db), { storage }));
   const found = await store.episode!(p.id, id, NOW);
-  assert.deepEqual(calls, [{ bucket: 'podcast-audio', path: 'p/default.mp3', ttl: 3600 }]);
+  assert.deepEqual(calls, [{ bucket: 'podcast-audio', path: `podcasts/${p.id}/default.mp3`, ttl: 3600 }]);
   assert.equal(found?.audio?.expiresAt, new Date(NOW + 3600 * 1000).toISOString(), 'expires one hour after the response');
   // And not anyone else's, through the store directly.
   assert.equal(await store.episode!(p.id, OTHER_EPISODE, NOW), null);
@@ -275,6 +302,7 @@ test('split: abbreviations, short forms and initials stay inside a sentence', ()
   assert.deepEqual(sentences('Small things, e.g. the walk, i.e. the habit. Then sleep.'), ['Small things, e.g. the walk, i.e. the habit.', 'Then sleep.']);
   assert.deepEqual(sentences('Mrs. Lee and J. Smith met at 7 a.m. on site.'), ['Mrs. Lee and J. Smith met at 7 a.m. on site.']);
   assert.deepEqual(sentences('You slept 7.5 hours. Good.'), ['You slept 7.5 hours.', 'Good.']);
+  assert.deepEqual(sentences('you slept more than i. then monday came.'), ['you slept more than i.', 'then monday came.'], '"i" is a word, not an initial');
 });
 
 test('split: closing quotes and brackets stay with their sentence; ellipses end one', () => {

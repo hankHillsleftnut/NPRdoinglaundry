@@ -25,7 +25,7 @@ function keepsGoing(paragraph: string, stopAt: number): boolean {
   const start = paragraph.lastIndexOf(' ', stopAt - 1) + 1;
   const word = paragraph.slice(start, stopAt).replace(/^["'“‘(\[]+/, '').toLowerCase();
   if (ABBREVIATIONS.has(word)) return true;
-  if (/^\p{L}$/u.test(word)) return true; // an initial: "j. smith"
+  if (/^\p{L}$/u.test(word) && word !== 'i' && word !== 'a') return true; // an initial: "j. smith" (never the words "i" or "a")
   return /^(\p{L}\.)+\p{L}$/u.test(word); // "e.g", "i.e", "a.m", "u.s"
 }
 
