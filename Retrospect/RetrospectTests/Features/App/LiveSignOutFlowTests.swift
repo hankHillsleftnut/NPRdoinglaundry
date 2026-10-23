@@ -7,7 +7,7 @@ import Testing
 struct LiveSignOutFlowTests {
     private final class World {
         var unsent: Int
-        var waiting: Int
+        var waiting: Int?
         var online = true
         var tooOld = false
         var sendsPerDrain = 1
@@ -28,8 +28,8 @@ struct LiveSignOutFlowTests {
             drain: {
                 world.drains += 1
                 guard world.online, !world.tooOld else { return }
-                let sent = min(world.sendsPerDrain, world.waiting)
-                world.waiting -= sent
+                let sent = min(world.sendsPerDrain, world.waiting ?? 0)
+                world.waiting = world.waiting.map { $0 - sent }
                 world.unsent -= sent
             },
             isOnline: { world.online },
@@ -179,5 +179,24 @@ struct LiveSignOutFlowTests {
         }
         #expect(flow.state == .stuck(remaining: 1, reason: .failed))
         #expect(world.logOuts == [false])
+    }
+
+    @Test("an unreadable count is not 'nothing waiting': it keeps trying, then says stuck, never offers a quiet erase")
+    func unreadableCountKeepsTrying() async {
+        let world = World(unsent: 2, waiting: nil)
+        world.online = true
+        world.sendsPerDrain = 0
+        let flow = flow(world)
+        flow.begin()
+        await settle(flow) {
+            if case .stuck = $0 {
+                true
+            } else {
+                false
+            }
+        }
+        #expect(flow.state == .stuck(remaining: 2, reason: .failed))
+        #expect(world.drains == LiveSignOutFlow.attempts, "it tried every time instead of giving up on the first read error")
+        #expect(world.logOuts.isEmpty)
     }
 }

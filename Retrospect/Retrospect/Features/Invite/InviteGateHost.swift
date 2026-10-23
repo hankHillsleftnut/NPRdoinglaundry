@@ -20,6 +20,12 @@ struct InviteGateHost: View {
                 InviteScreen(model: model)
                     .task { await model.watch(platform.reachability.changes()) }
                     .onChange(of: platform.invites.previewFace) { _, face in model.setPreview(face) }
+                    // access changes after the page is up (a renewal, a person let in): the page hears it
+                    .task(id: access) {
+                        if let access {
+                            await model.startSignedIn(access: access)
+                        }
+                    }
             } else {
                 RColor.backgroundCanvas.ignoresSafeArea()
             }
@@ -29,9 +35,14 @@ struct InviteGateHost: View {
             let made = Self.makeModel(platform: platform)
             made.onFinish = finished
             model = made
-            if case let .signedIn(_, access)? = platform.sessionState {
-                await made.startSignedIn(access: access)
-            }
+        }
+    }
+
+    private var access: Session.AccessState? {
+        if case let .signedIn(_, access)? = platform.sessionState {
+            access
+        } else {
+            nil
         }
     }
 

@@ -137,7 +137,8 @@ struct NewAppRoot: View {
     /// "begin": remembered for this person on this phone, then the gate lets go.
     private func begin() {
         Task {
-            await platform.markYoureInSeen()
+            // not remembered (no store open): the gate stays and "begin" can be pressed again, never dropped
+            guard await platform.markYoureInSeen() else { return }
             youreInSeen = true
             gateHeld = false
         }

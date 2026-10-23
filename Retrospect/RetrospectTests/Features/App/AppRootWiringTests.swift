@@ -74,4 +74,38 @@ struct AppRootWiringTests {
         await model.startSignedIn(access: .suspended)
         #expect(model.phase == .typed)
     }
+
+    @Test("access that changes after the page is up reaches the model: an approved person gets the moment, not the typed ticket")
+    func accessChangeReachesTheModel() async {
+        let source = ScriptedInviteSource()
+        source.afterSignIn = .none
+        let model = InviteModel(phase: .typed, source: source, signIn: source)
+        await model.startSignedIn(access: .waitlisted)
+        #expect(model.phase == .typed)
+        await model.startSignedIn(access: .approved)
+        #expect(model.phase == .youreIn)
+    }
+
+    @Test("a retry keeps the failure up until the store opens, and clears it only then")
+    func retryKeepsFailureUntilOpen() async throws {
+        let allowed = Platform.Box(false)
+        let env = Platform.AppEnvironment.preview(openDatabase: {
+            guard allowed.value else { throw CocoaError(.fileWriteUnknown) }
+            return try Store.LocalDatabase.inMemory(ownerUserID: $0)
+        })
+        try await env.session.install(Session.Credentials(
+            accessToken: "invented.access", accessTokenExpiresAt: Date().addingTimeInterval(900),
+            refreshToken: "invented-refresh", userID: "user-b", access: .member
+        ))
+        env.followSessionState()
+        env.startSession()
+        for _ in 0 ..< 500 where !env.storeOpenFailed {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        await env.retryOpeningStore()?.value
+        #expect(env.storeOpenFailed, "a failed retry does not flicker the flag off")
+        allowed.value = true
+        await env.retryOpeningStore()?.value
+        #expect(!env.storeOpenFailed)
+    }
 }

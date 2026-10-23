@@ -16,7 +16,8 @@ final class LiveSignOutFlow: SignOutFlowing {
         /// Entries not sent yet (pending, in flight or refused).
         var unsent: @MainActor () async -> Int
         /// Entries the outbox can still send (pending or in flight); refused ones are not waiting for anything.
-        var waiting: @MainActor () async -> Int
+        /// Nil when the count can't be read: that counts as still waiting, never as nothing.
+        var waiting: @MainActor () async -> Int?
         /// Asks the outbox to send what is due and returns when that pass is over.
         var drain: @MainActor () async -> Void
         var isOnline: @MainActor () async -> Bool
@@ -45,13 +46,18 @@ final class LiveSignOutFlow: SignOutFlowing {
     static func make(platform: Platform.AppEnvironment) async -> LiveSignOutFlow {
         let ports = Ports(
             unsent: { await platform.unsentEntryCount() },
-            waiting: { await (try? platform.outbox?.waitingToSendCount()) ?? 0 },
+            waiting: { await Self.waitingCount(platform) },
             drain: { await platform.outbox?.drain(reason: .manual) },
             isOnline: { await platform.reachability.isOnline },
             updateRequired: { platform.updateRequired },
             logOut: { await platform.logOut(confirmed: $0) }
         )
         return await LiveSignOutFlow(ports: ports, unsent: ports.unsent())
+    }
+
+    private static func waitingCount(_ platform: Platform.AppEnvironment) async -> Int? {
+        guard let outbox = platform.outbox else { return 0 }
+        return try? await outbox.waitingToSendCount()
     }
 
     private var isEnding: Bool {

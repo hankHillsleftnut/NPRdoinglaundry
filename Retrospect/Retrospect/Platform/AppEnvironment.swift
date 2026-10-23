@@ -353,7 +353,8 @@ extension Platform {
                 await eraseStore(of: kept)
                 keptUserID = nil
             }
-            storeOpenFailed = false
+            // The failure flag stays up while a retry runs (the root keeps its retry page, not the journal on nil data);
+            // only a store that opened clears it.
             do {
                 let open = openDatabase
                 let database = try await Task.detached { try open(userID) }.value
@@ -361,6 +362,7 @@ extension Platform {
                 openJournal(on: database)
                 openUserID = userID
                 keptUserID = nil
+                storeOpenFailed = false
             } catch {
                 log.record(.diagnosticsWriteFailed)
                 storeOpenFailed = true
