@@ -136,38 +136,18 @@ final class LiveJournalData: Flows.JournalData {
         offered = offered?.map { $0.id == id ? Self.answered($0, status) : $0 }
     }
 
-    /// The answer takes at once on screen, then goes to the server in one round trip. A phone-side or server-side
-    /// trouble that may pass queues it for the outbox (sent once, later); a refusal puts the guess back.
+    /// The answer takes at once on screen and goes into the outbox (PL3.1c): one row whose id is the
+    /// idempotency key, so every attempt, whenever the phone gets to it, carries the same key and the server
+    /// keeps the first answer. A refusal comes back later as a dead row: the guess is offered again.
     func answer(_ guess: Journal.Guess, verdict: Journal.GuessVerdict) async -> Journal.GuessOutcome {
         let before = guess.status
         setStatus(guess.id, verdict == .yes ? .confirmed : .declined)
-        do {
-            let status = try await repository.answerGuess(id: guess.id, verdict: verdict, key: UUID())
-            setStatus(guess.id, status)
-            return .recorded(status)
-        } catch let failure as Backend.Failure {
-            guard Self.worthQueueing(failure) else {
-                setStatus(guess.id, before)
-                return .failed(failure.flowFailure)
-            }
-        } catch {
-            setStatus(guess.id, before)
-            return .failed(Flows.Failure(.unknown))
-        }
         do {
             _ = try await outbox.enqueueGuessAnswer(guessID: guess.id, verdict: verdict)
             return .queued
         } catch {
             setStatus(guess.id, before)
             return .failed(Flows.Failure(.unknown))
-        }
-    }
-
-    /// Trouble that may pass: no connection, a timeout, a server that's down or busy.
-    private static func worthQueueing(_ failure: Backend.Failure) -> Bool {
-        switch failure.kind {
-        case .offline, .timedOut, .transport, .upstreamTimeout, .upstreamUnavailable, .internal, .rateLimited: true
-        default: false
         }
     }
 
