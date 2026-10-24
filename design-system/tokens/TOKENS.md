@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**591 tokens** · 515 semantic · 276 marked *to set*
+**596 tokens** · 520 semantic · 276 marked *to set*
 
 ## palette
 
@@ -194,6 +194,11 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.voice.glowLift` | Listening glow, the pale sky lifting right (sky.200 at 60%; offset 72 −6, blur 30, spread −14). | rgba(179,225,255,0.60) | rgba(136,179,207,0.60) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
 | `color.voice.glowUnder` | Listening glow, the sky shadow under the right side (sky.500 at 38%; offset 18 20, blur 36, spread −18). | rgba(47,168,240,0.38) | rgba(2,141,209,0.38) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
 | `color.voice.glowTop` | Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16). | rgba(255,200,92,0.26) | rgba(208,156,46,0.26) | Paper c:voice-composer/listening (everything · latest, JR-1; dark file 2NNF), founder c-tmcs3y 20 Oct |
+| `color.orb.washCentre` | A purpose page's orb, the radial wash at its centre (sky.300 at 40%, Paper ON-5 1F82-0). | rgba(127,205,255,0.40) | rgba(136,179,207,0.60) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow lift night value, FOUNDER to confirm |
+| `color.orb.washEdge` | A purpose page's orb, the wash as it fades at 62% of the way out (sky.200 at 14%, Paper ON-5 1F82-0). | rgba(179,225,255,0.14) | rgba(136,179,207,0.14) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow lift night value, FOUNDER to confirm |
+| `color.orb.glow` | A purpose page's orb, the wide light around the wash (sky.400 at 32%; 0 0 70 −10, Paper ON-5 1F82-0). | rgba(67,183,255,0.32) | rgba(35,154,222,0.32) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow pool night value, FOUNDER to confirm |
+| `color.orb.ringEdge` | A purpose page's orb, the 0.5 inner edge of its ring (sky.300 at 60%, Paper ON-5 1F83-0). | rgba(127,205,255,0.60) | rgba(80,164,236,0.30) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: glow.primary.ring's night value, FOUNDER to confirm |
+| `color.orb.ringShadow` | A purpose page's orb, the light its ring casts below it (sky.500 at 40%; 0 14 34 −10, Paper ON-5 1F83-0). | rgba(47,168,240,0.40) | rgba(2,141,209,0.38) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow under night value, FOUNDER to confirm |
 | `color.player.progress` | How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.) | {palette.sky.700} | {palette.sky.300} | to set: app need |
 | `color.player.buffered` | How much has loaded ahead. | {color.surface.trackFill} | {color.surface.trackFill} | to set: app need |
 | `color.player.chapterMark` | A chapter tick on the progress bar. | {palette.paper.0} | {palette.night.900} | to set: app need |

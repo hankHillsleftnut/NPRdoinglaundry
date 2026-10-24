@@ -150,6 +150,51 @@ struct PrivacyModelTests {
         #expect(!model.hasLeft)
     }
 
+    @Test("a reading that ends after the page went off screen moves nothing; back on screen it reads again")
+    func lateEndOffScreenMovesNothing() async {
+        let model = make()
+        let run = await start(model)
+        // the voice hands back read() on stop() before SwiftUI cancels the run (the m4 race)
+        model.pageLeft()
+        await run.value
+        model.readAloudFinished()
+        #expect(exits.advances == 0)
+        #expect(model.phase == .offScreen)
+        // the page returns: Retro reads again, and that reading's end moves on, once
+        let again = await start(model)
+        #expect(model.phase == .reading)
+        reading.finish()
+        await again.value
+        #expect(exits.advances == 1)
+        #expect(model.phase == .left)
+    }
+
+    @Test("one phase: reading → finished (held) → left, the holds beside it")
+    func phaseWalk() {
+        let model = make()
+        #expect(model.phase == .reading)
+        #expect(model.holds.isEmpty)
+        model.voiceOver(running: true)
+        model.openPolicy()
+        #expect(model.holds == [.assistiveTech, .policy])
+        model.readAloudFinished()
+        #expect(model.phase == .finished)
+        // the policy is open over a finished page: not yet the VoiceOver wait
+        #expect(!model.isWaitingForVoiceOver)
+        model.policyClosed()
+        #expect(model.holds == [.assistiveTech])
+        #expect(model.isWaitingForVoiceOver)
+        model.voiceOver(running: false)
+        #expect(model.phase == .left)
+        #expect(model.hasLeft)
+        #expect(exits.advances == 1)
+        // left is terminal: nothing reopens or fires
+        model.openPolicy()
+        model.back()
+        #expect(!model.isPolicyOpen)
+        #expect(exits.backs == 0)
+    }
+
     @Test("a reading cut short from outside (a call, Siri) still moves the page on: never stuck")
     func interruptedReadingAdvances() async {
         let model = make()

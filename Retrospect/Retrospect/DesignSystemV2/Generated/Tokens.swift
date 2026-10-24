@@ -218,6 +218,16 @@ public enum RColor {
     public static let voiceGlowUnder = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.38), UIColor(red: 0.0078, green: 0.5529, blue: 0.8196, alpha: 0.38))
     /// Listening glow, the faint amber warmth top left (amber.200 at 26%; offset −10 −12, blur 26, spread −16).
     public static let voiceGlowTop = dynamic(UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 0.26), UIColor(red: 0.8157, green: 0.6118, blue: 0.1804, alpha: 0.26))
+    /// A purpose page's orb, the radial wash at its centre (sky.300 at 40%, Paper ON-5 1F82-0).
+    public static let orbWashCentre = dynamic(UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.4), UIColor(red: 0.5333, green: 0.702, blue: 0.8118, alpha: 0.6))
+    /// A purpose page's orb, the wash as it fades at 62% of the way out (sky.200 at 14%, Paper ON-5 1F82-0).
+    public static let orbWashEdge = dynamic(UIColor(red: 0.702, green: 0.8824, blue: 1, alpha: 0.14), UIColor(red: 0.5333, green: 0.702, blue: 0.8118, alpha: 0.14))
+    /// A purpose page's orb, the wide light around the wash (sky.400 at 32%; 0 0 70 −10, Paper ON-5 1F82-0).
+    public static let orbGlow = dynamic(UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 0.32), UIColor(red: 0.1373, green: 0.6039, blue: 0.8706, alpha: 0.32))
+    /// A purpose page's orb, the 0.5 inner edge of its ring (sky.300 at 60%, Paper ON-5 1F83-0).
+    public static let orbRingEdge = dynamic(UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.6), UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.3))
+    /// A purpose page's orb, the light its ring casts below it (sky.500 at 40%; 0 14 34 −10, Paper ON-5 1F83-0).
+    public static let orbRingShadow = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.4), UIColor(red: 0.0078, green: 0.5529, blue: 0.8196, alpha: 0.38))
     /// How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.)
     public static let playerProgress = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// How much has loaded ahead.

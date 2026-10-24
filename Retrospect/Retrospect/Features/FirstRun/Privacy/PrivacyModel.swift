@@ -46,19 +46,50 @@ final class PrivacyModel {
     static let policyURL: URL? = nil
     #endif
 
+    /// Where the page is in its one life. `left` is terminal: a host that shows ON-5 again builds a
+    /// fresh model (FR.root), or back, the taps and the reading all do nothing.
+    enum Phase: Equatable {
+        /// On screen, Retro reading.
+        case reading
+        /// The page went off screen while Retro was reading: a late end of that reading moves
+        /// nothing. The page reads again when it returns.
+        case offScreen
+        /// Retro reached the end; the page moves on as soon as nothing holds it.
+        case finished
+        /// Moved on or backed out: nothing else fires.
+        case left
+    }
+
+    /// What keeps a finished page from moving on by itself.
+    struct Holds: OptionSet {
+        let rawValue: Int
+        /// The privacy policy sheet is open: never pull the page from under someone reading it.
+        static let policy = Holds(rawValue: 1 << 0)
+        /// VoiceOver or Switch Control is on: they move on themselves ("move on", the magic tap).
+        static let assistiveTech = Holds(rawValue: 1 << 1)
+    }
+
+    private(set) var phase: Phase = .reading
+    private(set) var holds: Holds = []
+
     /// The privacy policy sheet is open.
-    private(set) var isPolicyOpen = false
+    var isPolicyOpen: Bool {
+        holds.contains(.policy)
+    }
+
     /// The page has been left, one way or the other: nothing else fires.
-    private(set) var hasLeft = false
-    /// Retro finished reading, but the page is held for a VoiceOver user to move on themselves.
-    private(set) var isWaitingForVoiceOver = false
+    var hasLeft: Bool {
+        phase == .left
+    }
+
+    /// Retro finished reading, and the page waits for a VoiceOver user to move on themselves.
+    var isWaitingForVoiceOver: Bool {
+        phase == .finished && holds == .assistiveTech
+    }
 
     @ObservationIgnored private let readAloud: any PrivacyReadAloud
     @ObservationIgnored private let onAdvance: () -> Void
     @ObservationIgnored private let onBack: () -> Void
-    /// Retro reached the end of the page.
-    @ObservationIgnored private var finishedReading = false
-    @ObservationIgnored private var voiceOverRunning = false
 
     init(
         readAloud: any PrivacyReadAloud,
@@ -77,15 +108,28 @@ final class PrivacyModel {
     /// sit there with nothing to press. A run cancelled with the page ends quietly; `pageLeft()`
     /// stops the voice, on the main actor and in order, so it can't cut off a newer reading.
     func run() async {
-        guard !hasLeft, !finishedReading else { return }
+        switch phase {
+        case .reading:
+            break
+        case .offScreen:
+            // back on screen: read the page again
+            phase = .reading
+        case .finished, .left:
+            return
+        }
         _ = await readAloud.read()
-        // every stop the model makes itself sets `hasLeft` first, so only an outside end gets here
+        // every stop the model makes itself leaves `.reading` first, so only an outside end moves on
         guard !Task.isCancelled else { return }
         readAloudFinished()
     }
 
-    /// The page went off screen: no voice without the page. It reads again if the page returns.
+    /// The page went off screen: no voice without the page, and a reading that ends after this
+    /// (a voice whose `stop()` hands back its `read()` before the run is cancelled) moves nothing.
+    /// It reads again if the page returns.
     func pageLeft() {
+        if phase == .reading {
+            phase = .offScreen
+        }
         readAloud.stop()
     }
 
@@ -101,59 +145,55 @@ final class PrivacyModel {
 
     /// The back chevron: the host returns to the last question.
     func back() {
-        guard !hasLeft else { return }
-        hasLeft = true
+        guard phase != .left else { return }
+        phase = .left
         readAloud.stop()
         onBack()
     }
 
-    /// The reading reached its end.
+    /// The reading reached its end. Only the reading on screen counts: one that ends after the
+    /// page went off screen, or after it was left, moves nothing.
     func readAloudFinished() {
-        guard !hasLeft else { return }
-        finishedReading = true
+        guard phase == .reading else { return }
+        phase = .finished
         advanceIfFree()
     }
 
     /// VoiceOver or Switch Control turned on or off (the page reports it on arrival and on every
     /// change): both move slowly through a page, so both hold it.
     func voiceOver(running: Bool) {
-        voiceOverRunning = running
-        if !running {
-            isWaitingForVoiceOver = false
+        if running {
+            holds.insert(.assistiveTech)
+        } else {
+            holds.remove(.assistiveTech)
         }
         advanceIfFree()
     }
 
     /// "read the privacy policy".
     func openPolicy() {
-        guard !hasLeft, Self.policyURL != nil else { return }
-        isPolicyOpen = true
+        guard phase != .left, Self.policyURL != nil else { return }
+        holds.insert(.policy)
     }
 
     /// The policy sheet closed (done, or swiped away).
     func policyClosed() {
-        guard isPolicyOpen else { return }
-        isPolicyOpen = false
+        guard holds.contains(.policy) else { return }
+        holds.remove(.policy)
         advanceIfFree()
     }
 
     // MARK: Private
 
-    /// Moves on once the reading is over, unless the policy is open (never pull the page from under
-    /// someone reading it) or VoiceOver is on (it may still be reading the page out).
+    /// Moves on once the reading is over and nothing holds the page.
     private func advanceIfFree() {
-        guard finishedReading, !hasLeft, !isPolicyOpen else { return }
-        guard !voiceOverRunning else {
-            isWaitingForVoiceOver = true
-            return
-        }
+        guard phase == .finished, holds.isEmpty else { return }
         advance()
     }
 
     private func advance() {
-        guard !hasLeft else { return }
-        hasLeft = true
-        isWaitingForVoiceOver = false
+        guard phase != .left else { return }
+        phase = .left
         readAloud.stop()
         onAdvance()
     }

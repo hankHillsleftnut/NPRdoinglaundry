@@ -149,7 +149,8 @@ struct PrivacyPage: View {
             .frame(maxWidth: RDimension.layoutReadingWidth)
         }
         .padding(.horizontal, margin)
-        .padding(.vertical, compactHeight ? RDimension.space6 : RDimension.space8)
+        // Paper 1F7X-0 pads below only, so the column sits a little above the middle
+        .padding(.bottom, compactHeight ? RDimension.space6 : RDimension.space8)
     }
 
     private var policyLink: some View {
@@ -170,20 +171,22 @@ struct PrivacyPage: View {
     // MARK: - The composer
 
     /// Retro speaking (Paper 1F7K-0). A tap on the bar ("double-tap to cut in" for VoiceOver) moves
-    /// on, like a tap anywhere; so does its mic-off corner, which asks to switch to typing (there is
-    /// nothing to type on this page).
+    /// on, like a tap anywhere; so does its mic-off corner (there is nothing to type on this page),
+    /// so VoiceOver calls the corner "move on".
     private var bottom: some View {
         RVoiceComposer(
             mode: composerMode,
             text: .constant(""),
-            onInterrupt: { model.tapAnywhere() }
+            onInterrupt: { model.tapAnywhere() },
+            speakingCornerLabel: PrivacyModel.moveOnAction
         )
         // the inset proposes the full height; the bar keeps its own
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityAction(named: PrivacyModel.moveOnAction) { model.moveOn() }
         .accessibilityIdentifier("privacy.composer")
         .padding(.horizontal, margin)
-        .padding(.vertical, RDimension.space2)
+        // Paper 1F7J-0: nothing above the bar; below it, the questions' 8 over the home indicator
+        .padding(.bottom, RDimension.space2)
     }
 
     private var composerMode: Binding<RVoiceComposer.Mode> {
@@ -233,14 +236,14 @@ struct PrivacyOrb: View {
         .accessibilityHidden(true)
     }
 
-    /// Sky 300 at 40% easing to sky 200 at 14% by 62% of the farthest corner (Paper's radial),
-    /// over a wide sky 400 glow (0 0 70 −10).
+    /// Paper's radial (farthest corner): orb.washCentre easing to orb.washEdge by 62%, then
+    /// nothing, over the wide orb.glow (0 0 70 −10).
     private var outerWash: some View {
         Circle()
             .fill(RadialGradient(
                 stops: [
-                    .init(color: RColor.voiceGlowLift, location: 0),
-                    .init(color: RColor.voiceGlowLift.opacity(0.23), location: 0.62), // literal-ok: Paper stop (14% of sky 200 from the 60% token)
+                    .init(color: RColor.orbWashCentre, location: 0),
+                    .init(color: RColor.orbWashEdge, location: 0.62), // literal-ok: Paper stop position
                     .init(color: .clear, location: 1),
                 ],
                 center: .center,
@@ -251,7 +254,7 @@ struct PrivacyOrb: View {
             .background {
                 OutsideGlow(
                     diameter: Self.outer,
-                    color: RColor.voiceGlowPool.opacity(0.71), // literal-ok: Paper sky 400 at 32% from the 45% token
+                    color: RColor.orbGlow,
                     blur: 35, // literal-ok: Paper blur 70
                     spread: -10, // literal-ok: Paper spread
                     y: 0
@@ -259,28 +262,18 @@ struct PrivacyOrb: View {
             }
     }
 
-    /// The ring: a 1pt inner top highlight, a 0.5 sky edge, a sky shadow cast below it (0 14 34 −10).
+    /// The ring (Paper 1F83-0): inset 0 1 0 depth.stroke.innerTop, inset 0.5 orb.ringEdge, and
+    /// orb.ringShadow cast below it (0 14 34 −10).
     private var ring: some View {
-        let shape = Circle()
-        return shape
-            .strokeBorder(RColor.glowPrimaryRing, lineWidth: RDimension.sizeBorderHairline)
-            .overlay(alignment: .top) {
-                // Paper's inset 0 1 0: a crescent of light at the top that fades out down the sides
-                shape.strokeBorder(RColor.depthStrokeInnerTop, lineWidth: RDimension.sizeBorderDefault)
-                    .mask {
-                        LinearGradient(
-                            // a mask reads only alpha: any opaque token
-                            colors: [RColor.inkDefault, .clear],
-                            startPoint: .top,
-                            endPoint: UnitPoint(x: 0.5, y: 0.35) // literal-ok: fade by a third of the way down
-                        )
-                    }
+        InsetShadow(diameter: Self.ring, color: RColor.depthStrokeInnerTop, blur: 0, y: RDimension.sizeBorderDefault)
+            .overlay {
+                Circle().strokeBorder(RColor.orbRingEdge, lineWidth: RDimension.sizeBorderHairline)
             }
             .frame(width: Self.ring, height: Self.ring)
             .background {
                 OutsideGlow(
                     diameter: Self.ring,
-                    color: RColor.voiceGlowUnder,
+                    color: RColor.orbRingShadow,
                     blur: 17, // literal-ok: Paper blur 34
                     spread: -10, // literal-ok: Paper spread
                     y: 14 // literal-ok: Paper offset
@@ -288,21 +281,71 @@ struct PrivacyOrb: View {
             }
     }
 
-    /// The one lit object on the page: the primary glow stack, an extra soft halo, and the lock.
+    /// The one lit object on the page (Paper 1F84-0), its box-shadows one for one: the primary
+    /// gradient; inset rim 0 1.5 0, edge 0 −1 1.5, bloom 0 0 14; an outer 1 ring; halos 0 0 26 −2
+    /// and 0 12 28 −8. Then Paper's own lock, keyhole and all (1F85-0, 30 on the 24 grid).
     private var disc: some View {
-        Color.clear
-            .rLit()
-            .frame(width: Self.disc, height: Self.disc)
-            .shadow(color: RColor.glowPrimaryHalo, radius: 13) // literal-ok: Paper halo 0 0 26 −2
+        Circle()
+            .fill(LinearGradient(
+                colors: [RColor.glowPrimaryGradientTop, RColor.glowPrimaryGradientBottom],
+                startPoint: .top,
+                endPoint: .bottom
+            ))
+            .overlay { InsetShadow(diameter: Self.disc, color: RColor.glowPrimaryBloomLit, blur: 7, y: 0) } // literal-ok: Paper blur 14
+            .overlay { InsetShadow(diameter: Self.disc, color: RColor.glowPrimaryEdge, blur: 0.75, y: -1) } // literal-ok: Paper 0 −1 1.5
+            .overlay { InsetShadow(diameter: Self.disc, color: RColor.glowPrimaryRim, blur: 0, y: 1.5) } // literal-ok: Paper 0 1.5 0
             .overlay {
-                RSymbol(
-                    name: "lock",
-                    size: .large,
-                    tint: RColor.glowPrimaryForeground,
-                    weight: .medium,
-                    glyphScale: 1 // literal-ok: Paper's 30 lock is a 24 glyph drawn full size
-                )
+                Circle()
+                    .inset(by: -RDimension.sizeBorderDefault / 2)
+                    .stroke(RColor.glowPrimaryRing, lineWidth: RDimension.sizeBorderDefault)
             }
+            .frame(width: Self.disc, height: Self.disc)
+            .background {
+                ZStack {
+                    OutsideGlow(diameter: Self.disc, color: RColor.glowPrimaryHalo, blur: 13, spread: -2, y: 0) // literal-ok: Paper 0 0 26 −2
+                    OutsideGlow(diameter: Self.disc, color: RColor.glowPrimaryHalo, blur: 14, spread: -8, y: 12) // literal-ok: Paper 0 12 28 −8
+                }
+            }
+            .overlay {
+                Image("privacy-lock")
+                    .renderingMode(.template)
+                    .resizable()
+                    .foregroundStyle(RColor.glowPrimaryForeground)
+                    .frame(width: Self.lock, height: Self.lock)
+            }
+    }
+
+    private static let lock: CGFloat = 30 // literal-ok: Paper 1F85-0
+}
+
+/// A CSS inset box-shadow on a circle: everything outside a copy of the circle moved by `y`,
+/// blurred, and seen only inside the circle (a crescent for an offset, a soft inner bloom for none).
+private struct InsetShadow: View {
+    let diameter: CGFloat
+    let color: Color
+    let blur: CGFloat
+    let y: CGFloat
+
+    var body: some View {
+        // the shadow comes from outside the circle: room for the blur and the offset
+        let canvas = diameter + 4 * blur + 2 * abs(y) + 2 // literal-ok: geometry
+        Rectangle()
+            .fill(color)
+            .frame(width: canvas, height: canvas)
+            .mask {
+                Rectangle()
+                    .overlay {
+                        Circle()
+                            .frame(width: diameter, height: diameter)
+                            .offset(y: y)
+                            .blendMode(.destinationOut)
+                    }
+                    .compositingGroup()
+            }
+            .blur(radius: blur)
+            .frame(width: diameter, height: diameter)
+            .clipShape(Circle())
+            .allowsHitTesting(false)
     }
 }
 

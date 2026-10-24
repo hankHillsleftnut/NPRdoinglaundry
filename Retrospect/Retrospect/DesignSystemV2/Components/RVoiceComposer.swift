@@ -50,6 +50,9 @@ struct RVoiceComposer: View {
     var onSend: (String) -> Void = { _ in }
     /// Speaking: a tap anywhere on the bar.
     var onInterrupt: () -> Void = {}
+    /// What VoiceOver calls the corner while Retro speaks. Nobody is listening then, so never
+    /// "stop listening"; a host whose corner does something else names it (ON-5: "move on").
+    var speakingCornerLabel = RVoiceComposer.typeInstead
 
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
@@ -241,10 +244,25 @@ struct RVoiceComposer: View {
     }
 
     private var cornerLabel: String {
+        Self.cornerLabel(isSend: isSend, mode: mode, speaking: speakingCornerLabel)
+    }
+
+    /// The corner while Retro speaks switches to typing, by default.
+    static let typeInstead = "type instead"
+
+    /// The corner's VoiceOver name: what a tap on it does in this state.
+    static func cornerLabel(isSend: Bool, mode: Mode, speaking: String) -> String {
         if isSend {
             return "send"
         }
-        return mode == .muted ? "talk instead" : "stop listening, type instead"
+        switch mode {
+        case .muted:
+            return "talk instead"
+        case .speaking:
+            return speaking
+        case .listening, .thinking:
+            return "stop listening, type instead"
+        }
     }
 
     private func cornerAction() {
