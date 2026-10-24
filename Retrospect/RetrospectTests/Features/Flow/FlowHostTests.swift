@@ -72,12 +72,32 @@ struct FlowHostTests {
 
         await model.invite.commitTear()
         #expect(model.invite.phase == .youreIn)
-        model.inviteMoved(to: model.invite.phase) // the host's onChange
+        // the model follows the page's phase itself (no view in this test)
+        await settle { model.step == .youreIn }
         #expect(model.step == .youreIn)
 
         model.invite.begin()
         #expect(model.step == .questions)
         #expect(store.saved?.step == .questions)
+    }
+
+    /// Lets the main actor run queued work until `done` holds (bounded, never a sleep).
+    private func settle(_ done: () -> Bool) async {
+        for _ in 0 ..< 200 where !done() {
+            await Task.yield()
+        }
+    }
+
+    @Test("the tear hands off with no view: the phase change alone moves the flow to 'you're in'")
+    func tearHandOffWiredInTheModel() async {
+        let model = flow(MemoryFlowStore(), start: .inviteGate)
+        model.invite.setCode("BATR4DX9M2QK7")
+        await model.invite.submitTyped()
+        await settle { model.step != .inviteGate }
+        #expect(model.step == .inviteGate) // printed and ready: not torn yet
+        await model.invite.commitTear()
+        await settle { model.step == .youreIn }
+        #expect(model.step == .youreIn)
     }
 
     @Test("the gate hands on only once the stub has come away")

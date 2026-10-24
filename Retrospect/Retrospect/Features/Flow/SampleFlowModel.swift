@@ -54,6 +54,21 @@ final class SampleFlowModel {
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
+        followInvite()
+    }
+
+    /// The tear hand-off, wired here (not in a view) like sign-in and "begin": every change of the invite
+    /// page's phase reaches `inviteMoved`, read after the change lands.
+    private func followInvite() {
+        withObservationTracking {
+            _ = invite.phase
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                inviteMoved(to: invite.phase)
+                followInvite()
+            }
+        }
     }
 
     // MARK: - Moves

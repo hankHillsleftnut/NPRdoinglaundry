@@ -28,7 +28,6 @@ struct SampleFlowHost: View {
                 SignInScreen(model: flow.signIn, sampleTaps: true)
             case .inviteGate, .youreIn:
                 InviteScreen(model: flow.invite, sampleTaps: true)
-                    .onChange(of: flow.invite.phase) { _, phase in flow.inviteMoved(to: phase) }
             case .questions:
                 QuestionsPageContainer(
                     data: flow.firstRun,
