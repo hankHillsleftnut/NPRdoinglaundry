@@ -97,6 +97,15 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-Flow sample` (FLOW.host): the first run from the splash on sample data, no backend (debug only).
+    private var isSampleFlowMode: Bool {
+        #if DEBUG
+        FlowLaunch.current.isRequested
+        #else
+        false
+        #endif
+    }
+
     /// Design lab (M14): the DesignSystemV2 gallery, motion lab and component catalogue.
     private var isDesignLabMode: Bool {
         #if DEBUG
@@ -192,6 +201,10 @@ struct RetrospectApp: App {
                 } else if isLauncherMode {
                     #if DEBUG
                     ScreenLauncher()
+                    #endif
+                } else if isSampleFlowMode {
+                    #if DEBUG
+                    SampleFlowHost()
                     #endif
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
@@ -292,8 +305,8 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
-                // the launcher and the design lab run on sample data and never touch the live Keychain
-                guard !isLauncherMode, !isDesignLabMode else { return }
+                // the launcher, the design lab and the sample flow run on sample data and never touch the live Keychain
+                guard !isLauncherMode, !isDesignLabMode, !isSampleFlowMode else { return }
                 platform.followSessionState()
                 platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
@@ -433,7 +446,9 @@ struct RetrospectApp: App {
                 // Delayed refresh gives the hidden DeviceActivityReport time to trigger
                 // the extension and write fresh data to the App Group.
                 if newPhase == .active {
-                    platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
+                    if !isSampleFlowMode { // the sample flow reaches no backend: no version check, no session read
+                        platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
+                    }
                     ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
                     IntegrationsSyncService.shared.syncIfNeeded()

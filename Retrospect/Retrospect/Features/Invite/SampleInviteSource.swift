@@ -13,6 +13,9 @@ final class SampleInviteSource: InviteSource, SignInCoordinating {
         var afterSignIn: Session.Ticket = .printing(SampleInvite.face)
         var tear: Session.TearOutcome? = .yours(SampleInvite.youreIn)
         var typedNeverFinishes = false
+        /// The sample flow (FLOW.host): any whole code prints the ticket, so code entry can be walked
+        /// without knowing the fixture's code. Off everywhere else.
+        var acceptsAnyCode = false
     }
 
     private let script: Script
@@ -40,7 +43,8 @@ final class SampleInviteSource: InviteSource, SignInCoordinating {
         if script.typedNeverFinishes {
             await Self.forever()
         }
-        return Session.InviteCode.normalise(code) == SampleInvite.code ? .printing(SampleInvite.face) : .refused(nil, .invalid)
+        let usable = script.acceptsAnyCode || Session.InviteCode.normalise(code) == SampleInvite.code
+        return usable ? .printing(SampleInvite.face) : .refused(nil, .invalid)
     }
 
     func beginTear() {
