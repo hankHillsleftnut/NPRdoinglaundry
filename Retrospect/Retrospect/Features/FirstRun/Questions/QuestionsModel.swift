@@ -46,11 +46,17 @@ final class QuestionsModel {
     /// This page's part of the first run's progress bar (the host may pass its own).
     let flowRange: ClosedRange<Double>
 
-    init(data: any Flows.FirstRun, flowRange: ClosedRange<Double> = QuestionsModel.flowProgress) {
+    /// Called after each answer the seam kept, so a host can keep the words (the sample flow, FLOW.host).
+    @ObservationIgnored var onAnswered: (Key, String) -> Void = { _, _ in }
+
+    /// `kept`: words sent for these questions before this page opened (a host resuming after a relaunch):
+    /// they count as answered, and going back shows them, exactly as this session's answers do.
+    init(data: any Flows.FirstRun, flowRange: ClosedRange<Double> = QuestionsModel.flowProgress, kept: [Key: String] = [:]) {
         self.data = data
         self.flowRange = flowRange
         questions = Self.asked(data.questions)
-        index = Self.firstUnanswered(questions, answered: data.answeredKeys) ?? max(questions.count - 1, 0)
+        answers = kept
+        index = Self.firstUnanswered(questions, answered: data.answeredKeys.union(kept.keys)) ?? max(questions.count - 1, 0)
     }
 
     // MARK: - Pure rules
@@ -162,6 +168,7 @@ final class QuestionsModel {
         switch outcome {
         case .saved:
             answers[key] = words
+            onAnswered(key, words)
             drafts[key] = nil
             if failedKey == key {
                 failedKey = nil
