@@ -129,14 +129,21 @@ final class SampleFlowModel {
         // already torn on an earlier launch: shown still, not replayed
         let sample = SampleInvite.youreIn
         let stub = Session.YoureIn(invitedBy: sample.invitedBy, serial: sample.serial, redeemedOn: sample.redeemedOn, animate: false)
-        return InviteModel(
+        let model = InviteModel(
             phase: torn ? .youreIn : .typed,
             source: source,
             signIn: source,
+            face: torn ? SampleInvite.face : nil,
             firstName: SampleInvite.firstName,
             youreIn: torn ? stub : nil,
             sleep: sleep
         )
+        if torn {
+            // the kept ticket comes back whole, as `-Screen PI2 -State youreIn` draws it: who it's from, its
+            // number and the code on the stub (the sample's; the words typed before the relaunch aren't kept)
+            model.applySample(InviteSetup(phase: .youreIn))
+        }
+        return model
     }
 }
 #endif

@@ -135,6 +135,10 @@ struct FlowHostTests {
         let model = flow(store)
         #expect(model.invite.phase == .youreIn)
         #expect(model.invite.youreIn?.animate == false)
+        // the ticket comes back whole: who it's from and its number on the face, the code on the stub
+        #expect(model.invite.face == SampleInvite.face)
+        #expect(model.invite.printedCode == SampleInvite.code)
+        #expect(model.invite.beginVisible)
         model.invite.begin()
         #expect(model.step == .questions)
     }
