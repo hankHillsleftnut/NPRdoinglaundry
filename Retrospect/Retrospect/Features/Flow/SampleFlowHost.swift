@@ -40,6 +40,8 @@ struct SampleFlowHost: View {
         }
         // the same move between pages as the live root's
         .animation(RMotion.snappy, value: flow.step)
+        // the kept model only: a model SwiftUI built and dropped never writes
+        .onAppear { flow.started() }
     }
 }
 

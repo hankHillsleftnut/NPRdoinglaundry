@@ -30,6 +30,7 @@ final class SampleFlowModel {
 
     @ObservationIgnored private let store: any SampleFlowStore
     @ObservationIgnored private let table: [FlowEdge]
+    @ObservationIgnored private var hasStarted = false
 
     /// `start` begins at that step with nothing kept (`-FlowStart`); nil resumes what the store holds.
     init(
@@ -39,9 +40,7 @@ final class SampleFlowModel {
         sleep: @escaping Sleep = { try? await Task.sleep(for: $0) },
         clock: any Clock<Duration> = ContinuousClock()
     ) {
-        if start != nil {
-            store.clear()
-        }
+        // reads only: SwiftUI may build (and drop) this model more than once, so nothing is written here
         let saved = start.map { SampleFlowSaved(step: $0) } ?? store.load() ?? SampleFlowSaved()
         self.store = store
         self.table = table
@@ -55,10 +54,17 @@ final class SampleFlowModel {
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
-        save()
     }
 
     // MARK: - Moves
+
+    /// The host is on screen with this model: the starting point is saved once (a `-FlowStart` start
+    /// replaces what was kept). Later calls do nothing.
+    func started() {
+        guard !hasStarted else { return }
+        hasStarted = true
+        save()
+    }
 
     /// A screen handed off: move where the table says, or stay (no edge: the flow ends here).
     func send(_ event: FlowEvent) {

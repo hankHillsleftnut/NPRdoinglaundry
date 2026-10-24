@@ -18,8 +18,26 @@ struct FlowHostTests {
         }
     }
 
+    /// The model as the host keeps it: built, then started once on screen.
     private func flow(_ store: MemoryFlowStore, start: FlowStep? = nil) -> SampleFlowModel {
-        SampleFlowModel(store: store, start: start, sleep: noWait, clock: FlowImmediateClock())
+        let model = SampleFlowModel(store: store, start: start, sleep: noWait, clock: FlowImmediateClock())
+        model.started()
+        return model
+    }
+
+    @Test("a model SwiftUI builds and drops writes nothing; the kept one saves its start once")
+    func onlyTheKeptModelWrites() {
+        let kept = SampleFlowSaved(step: .questions, answers: ["name.place": "sam."])
+        let store = MemoryFlowStore(kept)
+        _ = SampleFlowModel(store: store, start: .splash, sleep: noWait, clock: FlowImmediateClock())
+        #expect(store.saved == kept)
+        #expect(store.saves == 0)
+
+        let model = SampleFlowModel(store: store, start: .splash, sleep: noWait, clock: FlowImmediateClock())
+        model.started()
+        model.started()
+        #expect(store.saves == 1)
+        #expect(store.saved == SampleFlowSaved(step: .splash))
     }
 
     // MARK: Sign-in

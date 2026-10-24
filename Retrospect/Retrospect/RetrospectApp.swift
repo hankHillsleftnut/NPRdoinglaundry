@@ -426,6 +426,8 @@ struct RetrospectApp: App {
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 // Bridge (DG.4): foreground and background land in the diagnostics rings.
                 platform.scenePhaseChanged(to: newPhase)
+                // the sample flow reaches no backend: no drain, no version check, no session read, no syncs
+                guard !isSampleFlowMode else { return }
                 // Bridge (PL2.2b): unsent entries go when the app comes back, and while it sleeps.
                 if newPhase == .active {
                     Task { await platform.outbox?.drain(reason: .foreground) }
@@ -446,9 +448,7 @@ struct RetrospectApp: App {
                 // Delayed refresh gives the hidden DeviceActivityReport time to trigger
                 // the extension and write fresh data to the App Group.
                 if newPhase == .active {
-                    if !isSampleFlowMode { // the sample flow reaches no backend: no version check, no session read
-                        platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
-                    }
+                    platform.becameActive() // Bridge (PL1.5): the session's deferred launch check, read, Apple check and refresh.
                     ScreenTimeService.shared.checkAuthorizationStatus()
                     ScreenTimeService.shared.refreshData()
                     IntegrationsSyncService.shared.syncIfNeeded()
@@ -460,9 +460,10 @@ struct RetrospectApp: App {
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                 // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
-                if let url = activity.webpageURL { platform.router.open(url) }
+                if !isSampleFlowMode, let url = activity.webpageURL { platform.router.open(url) }
             }
             .onOpenURL { url in
+                guard !isSampleFlowMode else { return } // the sample flow opens no address and syncs nothing
                 // Bridge (PL5.2): the router reads every address first (an invite link goes to the invite
                 // center); the branches below still act for the old screens, unchanged.
                 platform.router.open(url)
