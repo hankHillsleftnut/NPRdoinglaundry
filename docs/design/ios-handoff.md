@@ -183,3 +183,14 @@ One board, ST-1 to ST-9 at 17 Pro, built only from the approved parts. Settings 
 - Use the app's existing asset `retrospect-loading-mark` (Assets.xcassets) as the glyph. Paper holds a simplified copy of the path for drawing only.
 - Master on 02 · components ("c · the mark"): glyph in `icon.mark` (dark `night.400`) on the cream `surface.secondaryAction` disc; sizes 38 (paywall, welcome), 22 (player header), 16 (widget), with the glyph about 53% of the disc width.
 - In SwiftUI: `Image("retrospect-loading-mark").renderingMode(.template).foregroundStyle(RColor.iconMark)` inside the disc.
+
+## Shadows: the box-shadow look (SH.composer, 26 Oct)
+- **Status:** built as a second look beside today's. Voice composer (`RVoiceComposer(look: .paper)`) and raised pill (`RPill(look: .paper)`). Today's look stays the default on every screen until the founder picks. 👀
+- **Why:** the "Shadow stacks" gotcha in section 4 maps each layer to `.shadow`, but `.shadow` has no spread. Paper's `0 12 28 −12` became `0 12 28 0`, so the shadow climbed about 16pt above the bar and made a lip over the white top line.
+- **Build:** draw any Paper stack with `rBoxShadows(RElevation.boxShadow…, radius:)` (RDepth.swift). Outer layers are pulled in by the spread, blurred by blur/2, and drawn outside the shape only. Inset layers are drawn inside: `inset 0 1 0` is the crescent top light, `inset 0 0 0 1` the inner ring. A 0.5 hairline sits fully outside.
+- **Tokens:**
+  - `depth.boxShadow.composer.rest/.listening`, `depth.boxShadow.pill.raised.rest/.pressed`, `depth.boxShadow.stroke.innerTop/inner/outer`.
+  - `depth.glow.listening`, `depth.pill.raised.rest/.pressed`.
+  - Each token names its Paper node. Values and the audit are in `design-system/principles/surfaces.md`, "Drawing shadows exactly".
+- **Anatomy and sizes (unchanged):** composer 354×56 on a 402 screen, radius 28, `background.raised`; pill 32 tall in a 44 hit area, radius control, `surface.secondaryAction`.
+- **Lab:** `-DesignLab -DesignLabPage composer`. Stages: `-ComposerStage current|paper|pill-current|pill-paper`.
