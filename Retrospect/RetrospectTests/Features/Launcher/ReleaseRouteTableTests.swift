@@ -104,12 +104,8 @@ struct ReleaseRouteTableTests {
     func darkFoldersAreFenced() throws {
         let app = Self.appRoot
         #expect(FileManager.default.fileExists(atPath: app.appendingPathComponent("RetrospectApp.swift").path), "source tree not found at \(app.path)")
-        var dark: Set<String> = []
-        for folder in Self.darkFolders {
-            for file in Self.swiftFiles(in: app.appendingPathComponent(folder, isDirectory: true)) {
-                dark.formUnion(Self.declaredTypes(in: file.text))
-            }
-        }
+        let darkFiles = Self.darkFolders.flatMap { Self.swiftFiles(in: app.appendingPathComponent($0, isDirectory: true)) }
+        let dark = Self.darkNames(in: darkFiles.map(\.text))
         let outside = Self.swiftFiles(in: app).filter { file in
             !Self.darkFolders.contains { file.path.hasPrefix($0 + "/") }
                 && !Self.allowedToNameDark.contains { file.path.hasPrefix($0) }
@@ -120,22 +116,45 @@ struct ReleaseRouteTableTests {
         var mounts: [String] = []
         for file in outside {
             let named = Self.names(in: file.text, from: dark)
-            mounts += named.map { "\(file.path) names \($0)" }
+            mounts += named.sorted().map { "\(file.path) names \($0)" }
         }
         #expect(mounts.isEmpty, "a dark V2 screen is reachable outside the launcher/lab (wiring PR only):\n\(mounts.joined(separator: "\n"))")
     }
 
-    @Test("the fence itself works: a mount is caught, a comment or a private helper is not")
+    @Test("the fence itself works: mounts and back doors are caught; comments, strings and private helpers are not")
     func fenceWorks() {
         let darkFile = """
         struct PodcastsPage: View {}
         private struct Helper {}
         enum PodcastsModel {}
+        @available(iOS 18, *) struct GatedPage {}
+        open class OpenPage {}
+        package struct PackagePage {}
+        indirect enum TreePage {}
+        func makePodcastsTab() -> some View { PodcastsPage() }
+        private func privateHelper() {}
+        extension JournalScreen {
+            var podcastsRow: some View { PodcastsPage() }
+            private var hiddenRow: Int { 1 }
+            func nested() { let local = 1 }
+        }
+        extension PodcastsPage {
+            var body: some View { EmptyView() }
+        }
         """
-        let dark = Self.declaredTypes(in: darkFile)
-        #expect(dark == ["PodcastsPage", "PodcastsModel"])
+        let types = Self.declaredTypes(in: darkFile)
+        #expect(types == ["PodcastsPage", "PodcastsModel", "GatedPage", "OpenPage", "PackagePage", "TreePage"])
+        let dark = Self.darkNames(in: [darkFile])
+        // the back doors: a top-level function, and a member added to a type declared outside the fence
+        #expect(dark.isSuperset(of: ["makePodcastsTab", "podcastsRow"]))
+        // private helpers, locals and members of the dark types themselves stay out
+        #expect(!dark.contains("privateHelper") && !dark.contains("hiddenRow") && !dark.contains("local") && !dark.contains("body"))
         #expect(Self.names(in: "case .podcasts: PodcastsPage()", from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: "screen.podcastsRow", from: dark) == ["podcastsRow"])
         #expect(Self.names(in: "// later: PodcastsPage\nlet x = 1 /* PodcastsModel */", from: dark).isEmpty)
+        #expect(Self.names(in: "let s = \"PodcastsPage\"", from: dark).isEmpty)
+        // a "//" inside a string is not a comment: the mount after it is still seen
+        #expect(Self.names(in: "let url = \"https://example.com\"; PodcastsPage()", from: dark) == ["PodcastsPage"])
         #expect(Self.names(in: "struct PodcastsPageTitle {}", from: dark).isEmpty)
     }
 
@@ -158,38 +177,97 @@ struct ReleaseRouteTableTests {
         return found
     }
 
+    /// Declaration modifiers and attributes (with or without arguments) before a declaration keyword.
+    private static let modifiers =
+        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
+
     /// The non-private type names a file declares.
     static func declaredTypes(in text: String) -> Set<String> {
-        let pattern = #"(?m)^\s*((?:@\w+\s+)*(?:public |internal |final |private |fileprivate |nonisolated )*)(?:struct|class|enum|actor|protocol|typealias)\s+([A-Z]\w*)"#
+        let pattern = #"(?m)^\s*"# + modifiers + #"(?:struct|class|enum|actor|protocol|typealias)\s+([A-Z]\w*)"#
+        return matches(of: pattern, in: stripped(text))
+    }
+
+    /// Everything a dark folder adds that the app could reach: its non-private types, its top-level
+    /// functions and values, and the members it adds to types declared outside the fence (the back door
+    /// of `extension JournalScreen { var podcastsRow … }`). Members of its own types stay out (their
+    /// type is already fenced, and names like `body` would match everywhere).
+    static func darkNames(in texts: [String]) -> Set<String> {
+        let code = texts.map(stripped)
+        let types = code.reduce(into: Set<String>()) { $0.formUnion(declaredTypes(in: $1)) }
+        let member = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"(?:func|var|let)\s+(\w+)"#)
+        let opener = try? NSRegularExpression(pattern: #"^\s*(?:@\w+\s+)*(?:public |internal |package )?extension\s+([A-Z]\w*)"#)
+        var names = types
+        for text in code {
+            var depth = 0
+            var outsideExtension = false
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
+                let range = NSRange(line.startIndex..., in: line)
+                if depth == 0, let open = opener?.firstMatch(in: line, range: range), let name = Range(open.range(at: 1), in: line) {
+                    outsideExtension = !types.contains(String(line[name]))
+                } else if depth == 0 || (depth == 1 && outsideExtension),
+                          let decl = member?.firstMatch(in: line, range: range),
+                          let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
+                          !line[mods].contains("private") {
+                    names.insert(String(line[name]))
+                }
+                depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
+                if depth == 0 {
+                    outsideExtension = false
+                }
+            }
+        }
+        return names
+    }
+
+    private static func matches(of pattern: String, in text: String) -> Set<String> {
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let range = NSRange(text.startIndex..., in: text)
         var names: Set<String> = []
-        for match in regex.matches(in: text, range: range) {
-            guard let modifiers = Range(match.range(at: 1), in: text), let name = Range(match.range(at: 2), in: text) else { continue }
-            if text[modifiers].contains("private") { continue }
+        for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+            guard let mods = Range(match.range(at: 1), in: text), let name = Range(match.range(at: 2), in: text) else { continue }
+            if text[mods].contains("private") { continue }
             names.insert(String(text[name]))
         }
         return names
     }
 
-    /// Which of `names` the code (comments stripped) uses as a whole identifier.
+    /// The code with comments and string literals blanked out (a `//` inside a string is not a comment),
+    /// keeping the line breaks so line-based scans still line up.
+    static func stripped(_ text: String) -> String {
+        enum Mode { case code, line, block, string }
+        var mode = Mode.code
+        var out = ""
+        var chars = Array(text)
+        chars.append(" ")
+        var index = 0
+        while index < chars.count - 1 {
+            let char = chars[index], next = chars[index + 1]
+            switch mode {
+            case .code:
+                if char == "/", next == "/" { mode = .line; index += 1 } else if char == "/", next == "*" { mode = .block; index += 1 } else if char == "\"" { mode = .string } else { out.append(char) }
+            case .line:
+                if char == "\n" { mode = .code; out.append(char) }
+            case .block:
+                if char == "*", next == "/" { mode = .code; index += 1 } else if char == "\n" { out.append(char) }
+            case .string:
+                if char == "\\" { index += 1 } else if char == "\"" { mode = .code; out.append(" ") } else if char == "\n" { out.append(char) }
+            }
+            index += 1
+        }
+        return out
+    }
+
+    /// Which of `names` the code (comments and strings blanked) uses as a whole identifier.
     static func names(in text: String, from names: Set<String>) -> Set<String> {
         guard !names.isEmpty else { return [] }
-        let code = text
-            .replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: " ", options: .regularExpression)
-            .replacingOccurrences(of: #"//[^\n]*"#, with: " ", options: .regularExpression)
         var identifiers: Set<String> = []
         var current = ""
-        for character in code {
+        for character in stripped(text) + " " {
             if character.isLetter || character.isNumber || character == "_" {
                 current.append(character)
             } else if !current.isEmpty {
                 identifiers.insert(current)
                 current = ""
             }
-        }
-        if !current.isEmpty {
-            identifiers.insert(current)
         }
         return names.intersection(identifiers)
     }

@@ -5,20 +5,20 @@ V2 (every Paper screen other than the core 12, splash → first home) merges to 
 ## The guard: `ReleaseRouteTableTests`
 `Retrospect/RetrospectTests/Features/Launcher/ReleaseRouteTableTests.swift` runs in hosted CI with every PR.
 
-1. **Pinned route tables.** Every case of the release root (`NewAppRoot.Screen`), the launch table (`FirstRunRoute`) and the sample flow (`FlowStep`) maps to a route in `approvedRoot` / `approvedLaunch` / `approvedFlow`. The switches are exhaustive, so a new release-root or launch case doesn't compile until it is named there. `approvedFlow` already lists all core-12 steps, so the core lane adds its steps without touching the test; any other step fails.
-2. **Fenced folders.** V2 screens live in the dark folders: `Features/Shell`, `Features/Entries` (JR-3, JR-4), `Features/Podcasts` (PC-1, PC-3), `Features/You`, `Features/Settings`, `Features/Goals`, `Features/Outside`. No Swift file outside them names a type declared inside them (comments and `private` helpers are ignored), except the launcher (`Features/Launcher/**`, where each group registers its screens in `Registry/<Group>Screens+Launcher.swift`) and the lab (`DesignSystemV2/RLabPages*`). So a tab, drawer row, sheet, deep link or flow step can't open a V2 screen.
+1. **Pinned route tables.** Every case of the release root (`NewAppRoot.Screen`) and the launch table (`FirstRunRoute`) maps to a route in `approvedRoot` / `approvedLaunch`, through exhaustive switches: a new case doesn't compile until it is named there. Every `FlowStep` and every `FlowEdge.table` destination must be a member of `approvedFlow`, which already lists all core-12 steps, so the core lane adds its steps without touching the test; any other step or destination fails.
+2. **Fenced folders.** V2 screens live in the dark folders: `Features/Shell`, `Features/Entries` (JR-3, JR-4), `Features/Podcasts` (PC-1, PC-3), `Features/You`, `Features/Settings`, `Features/Goals`, `Features/Outside`. No Swift file outside them names anything they add: their non-private types, their top-level functions and values, or members they add to types declared outside the fence (`extension JournalScreen { var podcastsRow … }`). Comments, string literals and `private` helpers are ignored. The exceptions are the launcher (`Features/Launcher/**`, where each group registers its screens in `Registry/<Group>Screens+Launcher.swift`) and the lab (`DesignSystemV2/RLabPages*`). So a tab, drawer row, sheet, deep link or flow step can't open a V2 screen.
 
 Shared components a V2 screen needs are built once in `DesignSystemV2/Components` (lane 0). They are not fenced: core screens may use them.
 
 ## What a V2 PR may not do
 - Add a case to `NewAppRoot.Screen`, `FirstRunRoute` or `FlowStep` for a V2 screen.
 - Name a dark-folder type from any app file outside the dark folders, the launcher or the lab.
-- Edit `ReleaseRouteTableTests.swift`. The checker fails a V2 PR that touches it.
+- Edit `ReleaseRouteTableTests.swift`. Nothing in CI enforces this yet (no CODEOWNERS rule or workflow check): the reviewer (the Opus checker) sends back any non-wiring PR that touches it.
 
 ## The wiring PR (founder-approved, one per group)
 1. The founder says go for a group (it is quoted in the PR body, with the date).
 2. The PR mounts the group: tab bar entry, drawer row, routes, flow edges, whatever the group needs.
 3. In `ReleaseRouteTableTests.swift` it (a) removes the group's folder from `darkFolders`; (b) adds the group's release routes to `approvedRoot` / `approvedLaunch` (and the switch cases), or flow steps to `approvedFlow`; (c) changes nothing else.
-4. The PR body lists the route-table diff in a section called "Route table", so the checker can compare it with the founder's go.
+4. The PR body lists the route-table diff in a section called "Route table", so the reviewer can compare it with the founder's go.
 
-A PR that edits the table without a quoted go is sent back.
+A reviewer sends back a PR that edits the table without a quoted go. (A CODEOWNERS rule plus branch protection, or a CI step that fails when this file changes and the body has no "Route table" section, would make this automatic; it's an integrator decision.)
