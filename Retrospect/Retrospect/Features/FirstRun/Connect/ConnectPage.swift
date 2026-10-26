@@ -100,6 +100,8 @@ struct ConnectPage: View {
                 .rText(.inkTitle)
                 .foregroundStyle(RColor.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+                // Paper 21C6-0 text-wrap: balance (one line on the 17 Pro; two even lines on SE)
+                .rBalancedLines()
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("connect.title")
                 .rAppear(index: 0)

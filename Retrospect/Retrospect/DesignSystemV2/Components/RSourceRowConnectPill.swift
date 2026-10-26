@@ -1,10 +1,10 @@
 //
 //  RSourceRowConnectPill.swift
 //  CN.connect: the source row's "+ connect" pill (Paper 21B9-0), kept in one place on purpose.
-//  Founder, 26 Oct: Paper's pill is a flat soft cream pill with a very subtle outer shadow; today's
-//  raised pill has a light inner lip. The Paper-exact pill and its shadow tokens come from SH.composer
-//  (the old raised pill is kept as it is); when they land, the one line in `body` changes to that
-//  pill. Until then this is today's raised pill, with no shadow values of its own.
+//  Founder, 26 Oct: Paper's pill is a flat soft cream pill with a very subtle outer shadow, not the
+//  raised pill's light inner lip. It draws SH.composer's Paper look (#202: c:pill/raised rest D9Z-0,
+//  pressed DA6-0, from the depth.boxShadow.pill.raised tokens); the old raised look stays as it is
+//  everywhere else. No shadow values of its own.
 //
 import SwiftUI
 
@@ -14,8 +14,7 @@ struct RSourceRowConnectPill: View {
     let action: () -> Void
 
     var body: some View {
-        // SWAP: the Paper-exact pill (SH.composer) goes here, in this one line
-        RPill(title: "connect", symbol: "plus", style: .raised, action: action)
+        RPill(title: "connect", symbol: "plus", style: .raised, look: .paper, action: action)
             .accessibilityLabel("connect \(source)")
     }
 }
