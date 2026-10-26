@@ -27,8 +27,9 @@ struct RSettingsRow: View {
         case nav
         /// value + › opens its picker.
         case value(String)
-        /// value + ↕ opens a quick pick in place (decision 04; Paper DNO-0 "talk ↕", gate A card 3).
-        case pick(String)
+        /// value + ↕: a quick pick between a few values, chosen in place from the row's own menu
+        /// (decision 04; Paper DNO-0 "talk ↕", gate A card 3). VoiceOver hears a pop-up button.
+        case pick(String, options: [String], select: (String) -> Void)
         /// ↗ leaves the app (only for links out).
         case external
         /// an ink tick in a 20 slot; titles in a choice group align either way.
@@ -52,51 +53,80 @@ struct RSettingsRow: View {
     var action: () -> Void = {}
 
     var body: some View {
-        Button {
-            if case let .toggle(isOn) = trailing {
-                isOn.wrappedValue.toggle()
+        control
+            .buttonStyle(RListRowStyle())
+            .disabled(disabled)
+            // a switch ticks on every change; in a choice group only the newly chosen row ticks,
+            // so one choice is one haptic, not one per row that changed
+            .sensoryFeedback(RHaptic.select, trigger: selectionState) { _, new in
+                !disabled && (isToggle || new == true)
             }
-            action()
-        } label: {
-            HStack(spacing: RDimension.space3) {
-                if let symbol {
-                    RIconWell(
-                        symbol: symbol,
-                        tint: danger ? RColor.statusDangerText : RColor.iconDefault,
-                        fill: danger ? RColor.statusDangerSubtle : RColor.surfaceWash
-                    )
-                    .accessibilityHidden(true)
-                }
-                VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
-                    Text(title)
-                        .rText(.rowTitle)
-                        .foregroundStyle(titleColor)
-                    if let subline {
-                        Text(subline)
-                            .rText(.textMd)
-                            .foregroundStyle(sublineColor)
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(accessibilityValue)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAddTraits(isToggle ? .isToggle : [])
+    }
+
+    /// A quick pick is the row's own menu (so the menu opens in place and VoiceOver announces a pop-up
+    /// button); every other row is a button.
+    @ViewBuilder private var control: some View {
+        if case let .pick(value, options, select) = trailing {
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        select(option)
+                    } label: {
+                        if option == value {
+                            Label(option, systemImage: "checkmark")
+                        } else {
+                            Text(option)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
-                trailingView
+            } label: {
+                rowLabel
             }
-            .padding(.vertical, RDimension.space4)
-            .padding(.horizontal, RDimension.spaceScreenMargin)
-            .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
-            .contentShape(Rectangle())
+            .menuStyle(.button)
+        } else {
+            Button {
+                if case let .toggle(isOn) = trailing {
+                    isOn.wrappedValue.toggle()
+                }
+                action()
+            } label: {
+                rowLabel
+            }
         }
-        .buttonStyle(RListRowStyle())
-        .disabled(disabled)
-        // a switch ticks on every change; in a choice group only the newly chosen row ticks,
-        // so one choice is one haptic, not one per row that changed
-        .sensoryFeedback(RHaptic.select, trigger: selectionState) { _, new in
-            !disabled && (isToggle || new == true)
+    }
+
+    private var rowLabel: some View {
+        HStack(spacing: RDimension.space3) {
+            if let symbol {
+                RIconWell(
+                    symbol: symbol,
+                    tint: danger ? RColor.statusDangerText : RColor.iconDefault,
+                    fill: danger ? RColor.statusDangerSubtle : RColor.surfaceWash
+                )
+                .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
+                Text(title)
+                    .rText(.rowTitle)
+                    .foregroundStyle(titleColor)
+                if let subline {
+                    Text(subline)
+                        .rText(.textMd)
+                        .foregroundStyle(sublineColor)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .multilineTextAlignment(.leading)
+            trailingView
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(accessibilityValue)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityAddTraits(isToggle ? .isToggle : [])
+        .padding(.vertical, RDimension.space4)
+        .padding(.horizontal, RDimension.spaceScreenMargin)
+        .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder private var trailingView: some View {
@@ -111,7 +141,7 @@ struct RSettingsRow: View {
                     .accessibilityHidden(true)
                 chevron
             }
-        case let .pick(value):
+        case let .pick(value, _, _):
             HStack(spacing: RDimension.space1) {
                 Text(value)
                     .rText(.textMd)
@@ -186,7 +216,7 @@ struct RSettingsRow: View {
 
     private var accessibilityValue: String {
         switch trailing {
-        case let .value(value), let .pick(value): value
+        case let .value(value), let .pick(value, _, _): value
         case let .toggle(isOn): isOn.wrappedValue ? "on" : "off"
         default: ""
         }
@@ -247,10 +277,13 @@ struct RSettingsRowGallery: View {
                 }
                 // quick picks (decision 04): value + ↕, chosen in place (ST-1 DNJ-0 "talk or read · talk")
                 RSettingsGroup(inset: .afterIcon) {
-                    RSettingsRow(title: "talk or read", symbol: "waveform", trailing: .pick(mode)) {
-                        mode = mode == "talk" ? "read" : "talk"
-                    }
-                    RSettingsRow(title: "daily brief", symbol: "sun.max", trailing: .pick("8:30 · on"), disabled: true)
+                    RSettingsRow(title: "talk or read", symbol: "waveform", trailing: .pick(mode, options: ["talk", "read"]) { mode = $0 })
+                    RSettingsRow(
+                        title: "reading speed",
+                        symbol: "speedometer",
+                        trailing: .pick("1x", options: ["0.8x", "1x", "1.2x"]) { _ in },
+                        disabled: true
+                    )
                 }
                 RSettingsGroup(inset: .afterIcon) {
                     RSettingsRow(title: "calendar", subline: "so your brief knows what today holds", symbol: "calendar")
