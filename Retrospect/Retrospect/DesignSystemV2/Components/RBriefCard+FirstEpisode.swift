@@ -8,6 +8,9 @@
 //  18pt glow.primary.bloom), then "your first episode" over its plain line, and a 2pt accent line
 //  along the bottom edge, 16 in from each side, filled to the share made. Not a button: there is
 //  nothing to play yet. Reduce Motion: the line steps without travelling.
+//  The well's colours are tokens (color.firstEpisode.base / light / shade, the same in dark, as
+//  artwork). Each radial fades its colour to transparent; CSS mixes that premultiplied, so OKLab and
+//  sRGB give the same ramp (checked against Paper's export: mean error 3.5/255).
 //
 import SwiftUI
 
@@ -21,20 +24,6 @@ extension RTextStyle {
         leading: RTextStyle.body.leading,
         relativeTo: .subheadline
     )
-}
-
-/// The first episode's artwork colours (Paper 26MR-0). Palette values with no semantic token (an
-/// artwork's colours stay the same in dark, like every RArtwork recipe); FR0.1 moves them to tokens
-/// with the ticket's (docs/team/polish-list.md).
-enum RFirstEpisodePalette {
-    private static func hex(_ value: UInt32) -> Color {
-        // palette.* hex values from design-system/tokens/tokens.json
-        Color(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255) // literal-ok: palette hex
-    }
-
-    static let sky500 = hex(0x2FA8F0)
-    static let sky800 = hex(0x165E8C)
-    static let amber300 = hex(0xF2B84B)
 }
 
 struct RFirstEpisodeMakingCard: View {
@@ -88,13 +77,17 @@ struct RFirstEpisodeMakingCard: View {
         .padding(.leading, RDimension.space3)
         .padding(.trailing, RDimension.space4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Paper clips the card (overflow: clip): the well's bloom stays inside
+        .clipShape(shape)
+        .rRaised(RDimension.radiusCard)
+        // the line goes on after the depth: CSS paints inset strokes under children, so Paper's 2pt
+        // line covers the card's 1pt inner edge; masked to the card so its ends stay in the corners
         .overlay(alignment: .bottom) {
             progressLine
                 .padding(.horizontal, RDimension.space4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .mask(shape)
         }
-        // Paper clips the card (overflow: clip): the line's ends stay inside the corners
-        .clipShape(shape)
-        .rRaised(RDimension.radiusCard)
         // Increase Contrast: a 1pt control edge so the card holds without its shadow (as the brief card)
         .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
         .accessibilityElement(children: .ignore)
@@ -134,12 +127,12 @@ struct RFirstEpisodeWell: View {
     var body: some View {
         let shape = RShape.rect(RDimension.radiusPanel)
         ZStack {
-            shape.fill(RFirstEpisodePalette.sky500)
+            shape.fill(RColor.firstEpisodeBase)
             // radial-gradient(circle farthest-corner at 85% 10%, amber.300 0%, transparent 55%)
             shape.fill(RadialGradient(
                 stops: [
-                    .init(color: RFirstEpisodePalette.amber300, location: 0),
-                    .init(color: RFirstEpisodePalette.amber300.opacity(0), location: 1),
+                    .init(color: RColor.firstEpisodeLight, location: 0),
+                    .init(color: RColor.firstEpisodeLight.opacity(0), location: 1),
                 ],
                 center: UnitPoint(x: 0.85, y: 0.1), // literal-ok: Paper gradient centre
                 startRadius: 0,
@@ -148,8 +141,8 @@ struct RFirstEpisodeWell: View {
             // radial-gradient(circle farthest-corner at 0% 100%, sky.800 0%, transparent 80%)
             shape.fill(RadialGradient(
                 stops: [
-                    .init(color: RFirstEpisodePalette.sky800, location: 0),
-                    .init(color: RFirstEpisodePalette.sky800.opacity(0), location: 1),
+                    .init(color: RColor.firstEpisodeShade, location: 0),
+                    .init(color: RColor.firstEpisodeShade.opacity(0), location: 1),
                 ],
                 center: .bottomLeading,
                 startRadius: 0,
