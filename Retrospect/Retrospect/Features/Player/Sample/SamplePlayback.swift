@@ -33,6 +33,16 @@ extension Flows {
         case long
         /// Two parts, 0:45: under a minute, so one capsule and a 15 second forward skip.
         case shortUnderMinute
+        /// ON-11, the first episode's tease (Paper 26NO-0): 10 seconds in one part (founder Q5 = B),
+        /// playing from the start.
+        case tease
+        /// The tease playing at 0:04, on the line Paper lights, held still until something is tapped:
+        /// the frame compared with Paper.
+        case teaseStill
+        /// The tease paused at 0:04.
+        case teasePaused
+        /// The tease played to the end.
+        case teaseEnded
     }
 }
 
@@ -88,7 +98,17 @@ final class SamplePlayback: Flows.Playback {
             position = 48
             state = .playing
             run()
-        case .briefPlayed:
+        case .tease:
+            state = .playing
+            run()
+        case .teaseStill:
+            // playing, as drawn, with no ticker: nothing moves until it's paused and played again
+            position = Self.teaseLitLine
+            state = .playing
+        case .teasePaused:
+            position = Self.teaseLitLine
+            state = .paused
+        case .briefPlayed, .teaseEnded:
             position = item.durationSeconds ?? 0
             state = .ended
         case .buffering:
@@ -235,8 +255,25 @@ final class SamplePlayback: Flows.Playback {
             brief(id: "sample-short", parts: Array(threeParts.prefix(2)).enumerated().map { index, part in
                 Flows.PlaybackItem.Part(id: index, title: part.title, text: part.text, startSeconds: Double(index) * 25)
             }, duration: 45)
+        case .tease, .teaseStill, .teasePaused, .teaseEnded:
+            tease
         }
     }
+
+    /// ON-11's episode: "the week you started", 10 seconds in one untitled part (founder Q5 = B, 26 Oct:
+    /// one capsule, "00:00 / −00:10", no chapter name). Its words are all five of Paper's lines.
+    static let tease = Flows.PlaybackItem(
+        id: SampleTranscript.teaseID,
+        kind: .episode,
+        title: "the week you started",
+        parts: [
+            .init(id: 0, title: nil, text: SampleTranscript.tease.lines.map(\.text).joined(separator: " "), startSeconds: 0),
+        ],
+        durationSeconds: 10
+    )
+
+    /// Where the tease reads the line Paper lights (the third, 26PC-0).
+    static let teaseLitLine: Double = 4
 
     private static func brief(id: String, parts: [Flows.PlaybackItem.Part], duration: Double) -> Flows.PlaybackItem {
         Flows.PlaybackItem(id: id, kind: .brief, title: "today's brief", parts: parts, durationSeconds: duration)

@@ -604,6 +604,14 @@ public enum RDimension {
     public static let sizePlayerSkipIcon: CGFloat = 28
     /// The play / pause glyph inside the raised well.
     public static let sizePlayerPlayIcon: CGFloat = 22
+    /// The player sheet's header buttons (share, collapse): the visible wash circle; the hit area stays 44.
+    public static let sizePlayerHeaderButton: CGFloat = 34
+    /// The mark disc at the start of the player sheet's header.
+    public static let sizePlayerHeaderMark: CGFloat = 22
+    /// The width of the mark's glyph inside the 22 header disc.
+    public static let sizePlayerHeaderMarkGlyph: CGFloat = 12
+    /// Each of the three dots of the transport's more (…) button, 4 apart.
+    public static let sizePlayerMoreDot: CGFloat = 4
     /// The daily brief card on Journal.
     public static let sizeBriefCardMinHeight: CGFloat = 120
     /// The writing field, empty.
@@ -950,4 +958,96 @@ public enum RNumber {
     public static let opacityDeclined: Double = 0.55
     /// With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine.
     public static let opacitySkeletonPulseFloor: Double = 0.6
+}
+
+/// Shadow stacks from depth.* (CSS box-shadow layers, first on top: x, y, blur, spread, inset). Draw them with
+/// rBoxShadows (RDepth.swift), which keeps the spread; SwiftUI's .shadow has none.
+public enum RElevation {
+    /// Resting on the page: cards, chips, the brief card.
+    public static let tierCard: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 6, blur: 16, spread: -8),
+    ]
+    /// Lifted: the play well, the thumb, the mark.
+    public static let tierRaised: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 10, blur: 24, spread: -10),
+    ]
+    /// Floating over content: mini-player, menus.
+    public static let tierFloating: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 12, blur: 28, spread: -12),
+        RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 24, blur: 60, spread: -20),
+    ]
+    /// Over everything: sheets and dialogs.
+    public static let tierOverlay: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 24, blur: 48, spread: -16),
+        RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 40, blur: 90, spread: -30),
+    ]
+    /// The voice composer while listening or thinking: the contact under the bar and four soft, offset glows outside it (light moving, not a ring). Drawn outside the bar only.
+    public static let glowListening: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.voiceGlowPool, x: -64, y: 10, blur: 34, spread: -16),
+        RShadowLayer(color: RColor.voiceGlowLift, x: 72, y: -6, blur: 30, spread: -14),
+        RShadowLayer(color: RColor.voiceGlowUnder, x: 18, y: 20, blur: 36, spread: -18),
+        RShadowLayer(color: RColor.voiceGlowTop, x: -10, y: -12, blur: 26, spread: -16),
+    ]
+    /// The cream raised pill at rest (connect, add a source): a shallow contact and a small cast pulled in by its spread, so it stays under the pill.
+    public static let pillRaisedRest: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 6, spread: -2),
+    ]
+    /// The cream raised pill pressed: the shadow collapses toward the page.
+    public static let pillRaisedPressed: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
+    /// The top light: inset 0 1 0. A crescent 1pt deep on the flat top that thins round the corners (not a flat strip).
+    public static let boxShadowStrokeInnerTop: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+    ]
+    /// The inner ring: inset 0 0 0 1, a 1pt line just inside the edge.
+    public static let boxShadowStrokeInner: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+    ]
+    /// The outer hairline: 0 0 0 0.5, fully OUTSIDE the edge (not centred on it).
+    public static let boxShadowStrokeOuter: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+    ]
+    /// The voice composer at rest (speaking, muted, typing): top light, inner ring, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge.
+    public static let boxShadowComposerRest: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 12, blur: 28, spread: -12),
+        RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 24, blur: 60, spread: -20),
+    ]
+    /// The voice composer listening (and thinking, which Paper does not draw): top light, the primary ring hairline outside, contact, and four offset sky/amber glows.
+    public static let boxShadowComposerListening: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryRing, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.voiceGlowPool, x: -64, y: 10, blur: 34, spread: -16),
+        RShadowLayer(color: RColor.voiceGlowLift, x: 72, y: -6, blur: 30, spread: -14),
+        RShadowLayer(color: RColor.voiceGlowUnder, x: 18, y: 20, blur: 36, spread: -18),
+        RShadowLayer(color: RColor.voiceGlowTop, x: -10, y: -12, blur: 26, spread: -16),
+    ]
+    /// The cream raised pill at rest (+ connect, add a source).
+    public static let boxShadowPillRaisedRest: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 6, spread: -2),
+    ]
+    /// The cream raised pill pressed: the shadow collapses toward the page.
+    public static let boxShadowPillRaisedPressed: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
 }

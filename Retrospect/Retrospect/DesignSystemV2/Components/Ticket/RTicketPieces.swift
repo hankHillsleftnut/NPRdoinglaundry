@@ -184,13 +184,12 @@ struct RTicketBody: View {
     let geometry: TicketGeometry
     var face: Session.TicketFace?
     var hiddenHoles = 0
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let shape = RTicketShape(part: .body, geometry: geometry)
         ZStack(alignment: .topLeading) {
             VStack(spacing: RDimension.space0) {
-                RArtwork(recipe: RArtworkRecipes.gift(dark: scheme == .dark), width: geometry.width, height: geometry.meshHeight, cornerRadius: 0)
+                RTicketGift(width: geometry.width, height: geometry.meshHeight)
                 faceText
             }
             RTicketHoles(hidden: hiddenHoles)
