@@ -44,7 +44,18 @@ const num = (v) => {
 };
 const f = (x) => (+x.toFixed(4)).toString();
 
-const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], artwork = [], skipped = [];
+const colors = [], dims = [], numbers = [], springs = [], curves = [], haptics = [], artwork = [], shadows = [], skipped = [];
+
+// A depth.* shadow layer whose colour is a reference to a colour token becomes an RShadowLayer that
+// names that RColor (so light and dark follow the colour token). Null when the colour is raw.
+function shadowLayer(layer) {
+  const m = String(layer.color).match(/^\{([^}]+)\}$/);
+  const target = m && get(m[1]);
+  if (!target || target.$type !== 'color' || !/^(color|glow|depth)\./.test(m[1])) return null;
+  const g = ['offsetX', 'offsetY', 'blur', 'spread'].map((k) => num(layer[k]));
+  if (g.some((n) => n === null)) return null;
+  return { color: camel(m[1].startsWith('color.') ? m[1].slice(6) : m[1]), x: g[0], y: g[1], blur: g[2], spread: g[3], inset: layer.inset === true };
+}
 let cornerStyle = null;
 (function walk(o, path) {
   if (!o || typeof o !== 'object') return;
@@ -93,6 +104,10 @@ let cornerStyle = null;
         const dark = rgba(resolve((Array.isArray(dv) && dv[i] ? dv[i] : layer).color, true));
         if (light && dark) colors.push({ name: camel('shadow.' + path.slice('elevation.'.length) + '.' + (i + 1)), light, dark, doc: i === 0 ? o.$description : undefined });
       });
+    } else if (type === 'shadow' && /^depth\./.test(path) && Array.isArray(o.$value) && o.$value.length) {
+      // the whole stack, geometry included (CSS box-shadow: x, y, blur, spread), drawn by rBoxShadows
+      const layers = o.$value.map(shadowLayer);
+      layers.every(Boolean) ? shadows.push({ name: camel(path.slice('depth.'.length)), layers, doc: o.$description }) : skipped.push(path);
     } else if ((type === 'number' && /^(opacity|layer|motion\.|radius\.|layout\.|blur\.)/.test(path)) || type === 'duration') {
       const n = num(resolve(o.$value, false));
       n === null ? skipped.push(path) : numbers.push({ name, n: type === 'duration' && /ms$/.test(String(o.$value)) ? n / 1000 : n, doc: o.$description });
@@ -172,6 +187,16 @@ const lines = [
   ...numbers.map((d) => `${doc(d.doc)}    public static let ${d.name}: Double = ${f(d.n)}`),
   '}',
   '',
+  ...(shadows.length
+    ? [
+        '/// Shadow stacks from depth.* (CSS box-shadow layers, first on top: x, y, blur, spread, inset). Draw them with',
+        '/// rBoxShadows (RDepth.swift), which keeps the spread; SwiftUI\'s .shadow has none.',
+        'public enum RElevation {',
+        ...shadows.map((s) => `${doc(s.doc)}    public static let ${s.name}: [RShadowLayer] = [\n${s.layers.map((l) => `        RShadowLayer(color: RColor.${l.color}, x: ${f(l.x)}, y: ${f(l.y)}, blur: ${f(l.blur)}, spread: ${f(l.spread)}${l.inset ? ', inset: true' : ''}),`).join('\n')}\n    ]`),
+        '}',
+        '',
+      ]
+    : []),
 ];
 writeFileSync(out, lines.join('\n'));
-console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics, ${artwork.length} artworks; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);
+console.log(`${out}: ${colors.length} colours, ${dims.length} dimensions, ${numbers.length} numbers, ${springs.length} springs, ${curves.length} curves, ${haptics.length} haptics, ${artwork.length} artworks, ${shadows.length} shadow stacks; ${skipped.length} tokens left for hand-built Swift (type styles, shadows, gradients, springs, haptics, materials)`);
