@@ -27,8 +27,9 @@ struct RSettingsRow: View {
         case nav
         /// value + › opens its picker.
         case value(String)
-        /// value + ↕: a quick pick between a few values, chosen in place from the row's own menu
-        /// (decision 04; Paper DNO-0 "talk ↕", gate A card 3). VoiceOver hears a pop-up button.
+        /// value + ↕: a quick pick between a few values, chosen in place from the design system's title
+        /// menu, RMenu (decision 04; Paper DNO-0 "talk ↕", gate A card 3; settings-row.md "opens a title
+        /// menu"). The page installs `.rMenuHost()` once, as for any RMenu source.
         case pick(String, options: [String], select: (String) -> Void)
         /// ↗ leaves the app (only for links out).
         case external
@@ -52,6 +53,9 @@ struct RSettingsRow: View {
     var disabled = false
     var action: () -> Void = {}
 
+    /// The quick pick's title menu is open.
+    @State private var pickOpen = false
+
     var body: some View {
         control
             .buttonStyle(RListRowStyle())
@@ -67,26 +71,17 @@ struct RSettingsRow: View {
             .accessibilityAddTraits(isToggle ? .isToggle : [])
     }
 
-    /// A quick pick is the row's own menu (so the menu opens in place and VoiceOver announces a pop-up
-    /// button); every other row is a button.
+    /// Every row is a button. A quick pick's button opens RMenu's title menu, which grows out of the row
+    /// and hands the choice back; any other row toggles its switch (if it has one) and runs its action.
     @ViewBuilder private var control: some View {
         if case let .pick(value, options, select) = trailing {
-            Menu {
-                ForEach(options, id: \.self) { option in
-                    Button {
-                        select(option)
-                    } label: {
-                        if option == value {
-                            Label(option, systemImage: "checkmark")
-                        } else {
-                            Text(option)
-                        }
-                    }
-                }
+            Button {
+                pickOpen = true
             } label: {
                 rowLabel
             }
-            .menuStyle(.button)
+            .rMenuSource(isPresented: $pickOpen, kind: .title, rows: Self.pickRows(value: value, options: options, select: select))
+            .accessibilityHint("shows the choices")
         } else {
             Button {
                 if case let .toggle(isOn) = trailing {
@@ -96,6 +91,14 @@ struct RSettingsRow: View {
             } label: {
                 rowLabel
             }
+        }
+    }
+
+    /// The quick pick's menu rows: one per option, the current value carries RMenu's ink check, and
+    /// choosing one hands it back (RMenu closes itself after its chosen pause).
+    static func pickRows(value: String, options: [String], select: @escaping (String) -> Void) -> [RMenuRow] {
+        options.map { option in
+            RMenuRow(id: option, title: option, selected: option == value) { select(option) }
         }
     }
 
@@ -317,6 +320,8 @@ struct RSettingsRowGallery: View {
             }
             .padding(.vertical, RDimension.space6)
         }
+        // the quick picks' title menus draw here
+        .rMenuHost()
         .background(RColor.backgroundCanvas)
     }
 
