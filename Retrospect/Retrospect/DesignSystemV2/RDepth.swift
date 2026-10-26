@@ -144,3 +144,136 @@ extension View {
             .foregroundStyle(RColor.glowPrimaryForeground)
     }
 }
+
+// MARK: - Paper-exact depth (SH.composer)
+
+// The recipes above draw Paper's box-shadows with SwiftUI's `.shadow`, which has no spread: a
+// `0 12 28 −12` cast becomes `0 12 28 0`, so the shadow is wider than the object and climbs above
+// its top edge (the dark band over the white top line reads as a lip). They also stand in for the
+// inset `0 1 0` top light with a 1pt strip masked to the top row, and centre the 0.5 outer hairline
+// on the edge (half of it inside). The helpers below draw each layer the way CSS does.
+
+/// Which depth a component draws: today's recipe, or Paper's box-shadows layer for layer.
+/// `.current` stays the default everywhere until the founder picks per component.
+enum RDepthLook: Sendable {
+    case current
+    case paper
+}
+
+/// One CSS box-shadow layer, as Paper writes it: offset x y, blur, spread (all in points), inset or not.
+public struct RShadowLayer: Equatable, Sendable {
+    public let color: Color
+    public let x: CGFloat
+    public let y: CGFloat
+    /// The CSS blur. A Gaussian of half this radius draws it.
+    public let blur: CGFloat
+    /// Grows (or, negative, shrinks) the shape before it is blurred. SwiftUI's `.shadow` has no spread.
+    public let spread: CGFloat
+    /// CSS `inset`: painted inside the shape (the top light, the inner ring) instead of outside it.
+    public let inset: Bool
+
+    public init(color: Color, x: CGFloat, y: CGFloat, blur: CGFloat, spread: CGFloat, inset: Bool = false) {
+        self.color = color
+        self.x = x
+        self.y = y
+        self.blur = blur
+        self.spread = spread
+        self.inset = inset
+    }
+
+    /// A hairline ring: `0 0 0 width` (outside the shape as an outer layer, inside as an inset one).
+    static func ring(_ color: Color, _ width: CGFloat) -> RShadowLayer {
+        RShadowLayer(color: color, x: 0, y: 0, blur: 0, spread: width)
+    }
+
+    /// How far past the shape this layer can paint (blur reaches about 1.5 × its CSS value).
+    var reach: CGFloat {
+        abs(x) + abs(y) + max(spread, 0) + blur * 1.5
+    }
+}
+
+/// The strokes every raised surface carries in Paper, from tokens depth.boxShadow.stroke.*:
+/// `inset 0 1 0 innerTop` (the top light), `inset 0 0 0 1 inner`, `0 0 0 0.5 outer` (fully outside).
+enum RPaperStrokes {
+    static let innerTop = RElevation.boxShadowStrokeInnerTop[0]
+    static let inner = RElevation.boxShadowStrokeInner[0]
+    static let outer = RElevation.boxShadowStrokeOuter[0]
+}
+
+/// Outer box-shadows exactly as CSS paints them: the shape grown by the spread (negative pulls it
+/// in, with its radius), moved by the offset, blurred by half the CSS blur, and only ever drawn
+/// OUTSIDE the shape, so a translucent or cross-fading surface never shows its own shadow.
+struct RBoxShadows: View {
+    let layers: [RShadowLayer]
+    let radius: CGFloat
+
+    var body: some View {
+        let shape = RShape.rect(radius)
+        let reach = layers.map(\.reach).max() ?? 0
+        ZStack {
+            // CSS paints the first layer on top, so draw from the last
+            ForEach(Array(layers.enumerated().reversed()), id: \.offset) { _, layer in
+                shape.inset(by: -layer.spread)
+                    .fill(layer.color)
+                    .blur(radius: layer.blur / 2)
+                    .offset(x: layer.x, y: layer.y)
+            }
+        }
+        .mask {
+            Rectangle().inset(by: -reach)
+                .overlay { shape.blendMode(.destinationOut) }
+                .compositingGroup()
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Inset box-shadows exactly as CSS paints them: everything inside the shape except the shape
+/// itself pulled in by the spread and moved by the offset, blurred, clipped to the shape.
+/// `inset 0 1 0` is the top light: a crescent 1pt deep on the flat top that thins round the corners.
+struct RInsetShadows: View {
+    let layers: [RShadowLayer]
+    let radius: CGFloat
+
+    var body: some View {
+        let shape = RShape.rect(radius)
+        ZStack {
+            ForEach(Array(layers.enumerated().reversed()), id: \.offset) { _, layer in
+                Rectangle().inset(by: -layer.reach)
+                    .fill(layer.color)
+                    .overlay {
+                        shape.inset(by: layer.spread)
+                            .offset(x: layer.x, y: layer.y)
+                            .blendMode(.destinationOut)
+                    }
+                    .compositingGroup()
+                    .blur(radius: layer.blur / 2)
+            }
+        }
+        .clipShape(shape)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// Paper's box-shadow stack on a rounded surface: `inset` layers over the fill, `outer` layers
+    /// behind it and outside it. Both lists in Paper's order (first on top).
+    func rBoxShadows(outer: [RShadowLayer], inset: [RShadowLayer] = [], radius: CGFloat) -> some View {
+        overlay { RInsetShadows(layers: inset, radius: radius) }
+            .background { RBoxShadows(layers: outer, radius: radius) }
+    }
+
+    /// One whole Paper stack from a token (an `RElevation.boxShadow*`), split by each layer's `inset`.
+    func rBoxShadows(_ stack: [RShadowLayer], radius: CGFloat) -> some View {
+        rBoxShadows(outer: stack.filter { !$0.inset }, inset: stack.filter(\.inset), radius: radius)
+    }
+
+    /// The cream raised pill exactly as Paper's c:pill/raised (rest D9Z-0, pressed DA6-0): the
+    /// double stroke, the 0.5 hairline outside, and the contact + cast with their spread.
+    func rSecondaryPaper(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false) -> some View {
+        background(RColor.surfaceSecondaryAction, in: RShape.rect(radius))
+            .rBoxShadows(pressed ? RElevation.boxShadowPillRaisedPressed : RElevation.boxShadowPillRaisedRest, radius: radius)
+    }
+}

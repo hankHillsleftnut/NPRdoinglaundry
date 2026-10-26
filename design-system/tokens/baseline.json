@@ -1,0 +1,2899 @@
+{
+ "$description": "Frozen values of every token that existed before SH.composer (origin/main 52f3fb48), checked by tokens.test.mjs so an existing token or the existing generated Swift never changes silently. Add new tokens freely; to change one of these on purpose, regenerate this file in the same PR and say why.",
+ "generatedSwift": {
+  "bytes": 76819,
+  "sha256": "bd5e3a65c34f8868a042a17b952a83bdac6e06a7d2c3a240b16f1a8a853f0c57"
+ },
+ "tokens": {
+  "palette.paper.0": {
+   "value": "#FFFFFF",
+   "dark": null
+  },
+  "palette.paper.25": {
+   "value": "#FBFAF8",
+   "dark": null
+  },
+  "palette.paper.50": {
+   "value": "#F9F7F5",
+   "dark": null
+  },
+  "palette.paper.75": {
+   "value": "#F7F3EE",
+   "dark": null
+  },
+  "palette.paper.100": {
+   "value": "#F4F2EE",
+   "dark": null
+  },
+  "palette.paper.150": {
+   "value": "#EFECE7",
+   "dark": null
+  },
+  "palette.paper.200": {
+   "value": "#EAE7E3",
+   "dark": null
+  },
+  "palette.paper.250": {
+   "value": "#E9E7E2",
+   "dark": null
+  },
+  "palette.paper.300": {
+   "value": "#E4DBCE",
+   "dark": null
+  },
+  "palette.paper.350": {
+   "value": "#DAD6D0",
+   "dark": null
+  },
+  "palette.paper.400": {
+   "value": "#C6C2BE",
+   "dark": null
+  },
+  "palette.paper.450": {
+   "value": "#BAB8B5",
+   "dark": null
+  },
+  "palette.paper.500": {
+   "value": "#A09B97",
+   "dark": null
+  },
+  "palette.paper.520": {
+   "value": "#878481",
+   "dark": null
+  },
+  "palette.paper.550": {
+   "value": "#9E9B97",
+   "dark": null
+  },
+  "palette.paper.560": {
+   "value": "#6F6D6B",
+   "dark": null
+  },
+  "palette.paper.600": {
+   "value": "#9E9E9E",
+   "dark": null
+  },
+  "palette.paper.620": {
+   "value": "#696765",
+   "dark": null
+  },
+  "palette.paper.680": {
+   "value": "#5F5D5B",
+   "dark": null
+  },
+  "palette.paper.700": {
+   "value": "#7C7975",
+   "dark": null
+  },
+  "palette.paper.800": {
+   "value": "#4C4A46",
+   "dark": null
+  },
+  "palette.paper.900": {
+   "value": "#1E1E1E",
+   "dark": null
+  },
+  "palette.paper.950": {
+   "value": "#121212",
+   "dark": null
+  },
+  "palette.night.100": {
+   "value": "#EDEAE4",
+   "dark": null
+  },
+  "palette.night.200": {
+   "value": "#CBC7BF",
+   "dark": null
+  },
+  "palette.night.300": {
+   "value": "#A9A59E",
+   "dark": null
+  },
+  "palette.night.350": {
+   "value": "#96938D",
+   "dark": null
+  },
+  "palette.night.400": {
+   "value": "#8A867F",
+   "dark": null
+  },
+  "palette.night.450": {
+   "value": "#78756F",
+   "dark": null
+  },
+  "palette.night.500": {
+   "value": "#6E6A64",
+   "dark": null
+  },
+  "palette.night.600": {
+   "value": "#4E4B46",
+   "dark": null
+  },
+  "palette.night.700": {
+   "value": "#3A3834",
+   "dark": null
+  },
+  "palette.night.750": {
+   "value": "#2E2C29",
+   "dark": null
+  },
+  "palette.night.800": {
+   "value": "#24221F",
+   "dark": null
+  },
+  "palette.night.850": {
+   "value": "#1C1B18",
+   "dark": null
+  },
+  "palette.night.900": {
+   "value": "#151412",
+   "dark": null
+  },
+  "palette.night.950": {
+   "value": "#0F0E0D",
+   "dark": null
+  },
+  "palette.sky.50": {
+   "value": "#EEF8FF",
+   "dark": null
+  },
+  "palette.sky.100": {
+   "value": "#D9F0FF",
+   "dark": null
+  },
+  "palette.sky.200": {
+   "value": "#B3E1FF",
+   "dark": null
+  },
+  "palette.sky.300": {
+   "value": "#7FCDFF",
+   "dark": null
+  },
+  "palette.sky.400": {
+   "value": "#43B7FF",
+   "dark": null
+  },
+  "palette.sky.450": {
+   "value": "#2FB3FF",
+   "dark": null
+  },
+  "palette.sky.500": {
+   "value": "#2FA8F0",
+   "dark": null
+  },
+  "palette.sky.550": {
+   "value": "#50A4EC",
+   "dark": null
+  },
+  "palette.sky.600": {
+   "value": "#2899DF",
+   "dark": null
+  },
+  "palette.sky.700": {
+   "value": "#1F7DBA",
+   "dark": null
+  },
+  "palette.sky.800": {
+   "value": "#165E8C",
+   "dark": null
+  },
+  "palette.sky.900": {
+   "value": "#0F3F5E",
+   "dark": null
+  },
+  "palette.sky.950": {
+   "value": "#0B2638",
+   "dark": null
+  },
+  "palette.green.50": {
+   "value": "#E9F2E6",
+   "dark": null
+  },
+  "palette.green.200": {
+   "value": "#A7DDB0",
+   "dark": null
+  },
+  "palette.green.300": {
+   "value": "#7FC28A",
+   "dark": null
+  },
+  "palette.green.500": {
+   "value": "#46743E",
+   "dark": null
+  },
+  "palette.green.600": {
+   "value": "#355A2F",
+   "dark": null
+  },
+  "palette.green.700": {
+   "value": "#2A4A25",
+   "dark": null
+  },
+  "palette.green.900": {
+   "value": "#14261A",
+   "dark": null
+  },
+  "palette.amber.50": {
+   "value": "#FBF0DA",
+   "dark": null
+  },
+  "palette.amber.200": {
+   "value": "#FFC85C",
+   "dark": null
+  },
+  "palette.amber.300": {
+   "value": "#F2B84B",
+   "dark": null
+  },
+  "palette.amber.500": {
+   "value": "#B7791F",
+   "dark": null
+  },
+  "palette.amber.600": {
+   "value": "#8A5A12",
+   "dark": null
+  },
+  "palette.amber.900": {
+   "value": "#2E2209",
+   "dark": null
+  },
+  "palette.red.50": {
+   "value": "#F9E6E4",
+   "dark": null
+  },
+  "palette.red.200": {
+   "value": "#FF8A84",
+   "dark": null
+  },
+  "palette.red.300": {
+   "value": "#F0645E",
+   "dark": null
+  },
+  "palette.red.500": {
+   "value": "#A61712",
+   "dark": null
+  },
+  "palette.red.600": {
+   "value": "#8E120E",
+   "dark": null
+  },
+  "palette.red.700": {
+   "value": "#740F0B",
+   "dark": null
+  },
+  "palette.red.900": {
+   "value": "#2D1514",
+   "dark": null
+  },
+  "palette.alpha.white90": {
+   "value": "rgba(255,255,255,0.90)",
+   "dark": null
+  },
+  "palette.alpha.white50": {
+   "value": "rgba(255,255,255,0.50)",
+   "dark": null
+  },
+  "palette.alpha.white12": {
+   "value": "rgba(255,255,255,0.12)",
+   "dark": null
+  },
+  "palette.alpha.ink40": {
+   "value": "rgba(18,18,18,0.40)",
+   "dark": null
+  },
+  "palette.alpha.black60": {
+   "value": "rgba(0,0,0,0.60)",
+   "dark": null
+  },
+  "palette.alpha.sky16": {
+   "value": "rgba(47,168,240,0.16)",
+   "dark": null
+  },
+  "color.background.canvas": {
+   "value": "{palette.paper.100}",
+   "dark": "{palette.night.900}"
+  },
+  "color.background.raised": {
+   "value": "{palette.paper.50}",
+   "dark": "{palette.night.800}"
+  },
+  "color.background.sunken": {
+   "value": "{palette.paper.150}",
+   "dark": "{palette.night.950}"
+  },
+  "color.background.underlay": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.950}"
+  },
+  "color.background.inverse": {
+   "value": "{palette.paper.950}",
+   "dark": "{palette.paper.100}"
+  },
+  "color.background.scrim": {
+   "value": "{palette.alpha.ink40}",
+   "dark": "{palette.alpha.black60}"
+  },
+  "color.background.field": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.night.850}"
+  },
+  "color.background.veil": {
+   "value": "rgba(18,18,18,0.06)",
+   "dark": "rgba(0,0,0,0.30)"
+  },
+  "color.surface.subtle": {
+   "value": "{palette.paper.150}",
+   "dark": "{palette.night.850}"
+  },
+  "color.surface.control": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.750}"
+  },
+  "color.surface.controlPressed": {
+   "value": "{palette.paper.350}",
+   "dark": "{palette.night.700}"
+  },
+  "color.surface.strong": {
+   "value": "{palette.paper.350}",
+   "dark": "{palette.night.700}"
+  },
+  "color.surface.secondaryAction": {
+   "value": "{palette.paper.75}",
+   "dark": "{palette.night.800}"
+  },
+  "color.surface.track": {
+   "value": "{palette.paper.250}",
+   "dark": "{palette.night.750}"
+  },
+  "color.surface.trackFill": {
+   "value": "{palette.paper.550}",
+   "dark": "{palette.night.400}"
+  },
+  "color.surface.thumb": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.0}"
+  },
+  "color.surface.skeleton": {
+   "value": "{palette.paper.150}",
+   "dark": "{palette.night.800}"
+  },
+  "color.surface.skeletonShine": {
+   "value": "{palette.paper.50}",
+   "dark": "{palette.night.750}"
+  },
+  "color.surface.wash": {
+   "value": "rgba(40,36,30,0.06)",
+   "dark": "rgba(255,255,255,0.08)"
+  },
+  "color.surface.washPressed": {
+   "value": "rgba(40,36,30,0.11)",
+   "dark": "rgba(0,0,0,0.30)"
+  },
+  "color.surface.lifted": {
+   "value": "{palette.paper.100}",
+   "dark": "{palette.night.750}"
+  },
+  "color.surface.skeletonContrast": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.750}"
+  },
+  "color.text.primary": {
+   "value": "{palette.paper.950}",
+   "dark": "{palette.night.100}"
+  },
+  "color.text.secondary": {
+   "value": "{palette.paper.680}",
+   "dark": "{palette.night.300}"
+  },
+  "color.text.label": {
+   "value": "{palette.paper.620}",
+   "dark": "{palette.night.300}"
+  },
+  "color.text.placeholder": {
+   "value": "{palette.paper.620}",
+   "dark": "{palette.night.350}"
+  },
+  "color.text.tertiary": {
+   "value": "{palette.paper.560}",
+   "dark": "{palette.night.350}"
+  },
+  "color.text.disabled": {
+   "value": "{palette.paper.400}",
+   "dark": "{palette.night.600}"
+  },
+  "color.text.inverse": {
+   "value": "{palette.paper.25}",
+   "dark": "{palette.night.950}"
+  },
+  "color.text.onAccent": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.0}"
+  },
+  "color.text.onDanger": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.950}"
+  },
+  "color.text.link": {
+   "value": "{palette.sky.800}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.icon.default": {
+   "value": "{palette.paper.900}",
+   "dark": "{palette.night.200}"
+  },
+  "color.icon.muted": {
+   "value": "{palette.paper.520}",
+   "dark": "{palette.night.450}"
+  },
+  "color.icon.mark": {
+   "value": "{palette.paper.450}",
+   "dark": "{palette.night.400}"
+  },
+  "color.border.subtle": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.750}"
+  },
+  "color.border.strong": {
+   "value": "{palette.paper.350}",
+   "dark": "{palette.night.600}"
+  },
+  "color.border.control": {
+   "value": "{palette.paper.520}",
+   "dark": "{palette.night.400}"
+  },
+  "color.border.focus": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.border.highlight": {
+   "value": "{palette.alpha.white90}",
+   "dark": "{palette.alpha.white12}"
+  },
+  "color.border.secondaryRing": {
+   "value": "{palette.paper.300}",
+   "dark": "{palette.night.700}"
+  },
+  "color.border.fieldFocus": {
+   "value": "{color.border.focus}",
+   "dark": "{color.border.focus}"
+  },
+  "color.ink.default": {
+   "value": "{palette.paper.950}",
+   "dark": "{palette.night.100}"
+  },
+  "color.ink.pressed": {
+   "value": "{palette.paper.800}",
+   "dark": "{palette.night.200}"
+  },
+  "color.accent.default": {
+   "value": "{palette.sky.500}",
+   "dark": "{palette.sky.400}"
+  },
+  "color.accent.pressed": {
+   "value": "{palette.sky.600}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.accent.subtle": {
+   "value": "{palette.sky.50}",
+   "dark": "{palette.alpha.sky16}"
+  },
+  "color.accent.text": {
+   "value": "{palette.sky.800}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.accent.border": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.status.success": {
+   "value": "{palette.green.500}",
+   "dark": "{palette.green.300}"
+  },
+  "color.status.successSubtle": {
+   "value": "{palette.green.50}",
+   "dark": "{palette.green.900}"
+  },
+  "color.status.successText": {
+   "value": "{palette.green.600}",
+   "dark": "{palette.green.200}"
+  },
+  "color.status.warning": {
+   "value": "{palette.amber.500}",
+   "dark": "{palette.amber.300}"
+  },
+  "color.status.warningSubtle": {
+   "value": "{palette.amber.50}",
+   "dark": "{palette.amber.900}"
+  },
+  "color.status.warningText": {
+   "value": "{palette.amber.600}",
+   "dark": "{palette.amber.200}"
+  },
+  "color.status.danger": {
+   "value": "{palette.red.500}",
+   "dark": "{palette.red.300}"
+  },
+  "color.status.dangerPressed": {
+   "value": "{palette.red.600}",
+   "dark": "{palette.red.200}"
+  },
+  "color.status.dangerSubtle": {
+   "value": "{palette.red.50}",
+   "dark": "{palette.red.900}"
+  },
+  "color.status.dangerText": {
+   "value": "{palette.red.600}",
+   "dark": "{palette.red.200}"
+  },
+  "color.status.info": {
+   "value": "{color.accent.default}",
+   "dark": "{color.accent.default}"
+  },
+  "color.status.infoSubtle": {
+   "value": "{color.accent.subtle}",
+   "dark": "{color.accent.subtle}"
+  },
+  "color.content.artworkFallback": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.750}"
+  },
+  "color.content.personTint1": {
+   "value": "#E8DCCB",
+   "dark": "#3A3128"
+  },
+  "color.content.personTint2": {
+   "value": "#D9E4DA",
+   "dark": "#2A332B"
+  },
+  "color.content.personTint3": {
+   "value": "#E3DAE6",
+   "dark": "#322B35"
+  },
+  "color.content.personTint4": {
+   "value": "#DCE3EA",
+   "dark": "#29303A"
+  },
+  "color.control.switchOn": {
+   "value": "{color.accent.default}",
+   "dark": "{color.accent.default}"
+  },
+  "color.control.switchOnThumb": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.0}"
+  },
+  "color.control.scrollIndicator": {
+   "value": "{palette.alpha.ink40}",
+   "dark": "{palette.alpha.white50}"
+  },
+  "color.material.reducedTransparency": {
+   "value": "{color.background.raised}",
+   "dark": "{color.background.raised}"
+  },
+  "color.selection": {
+   "value": "{palette.alpha.sky16}",
+   "dark": "{palette.alpha.sky16}"
+  },
+  "color.inference.marker": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.inference.surface": {
+   "value": "{palette.paper.50}",
+   "dark": "{palette.night.850}"
+  },
+  "color.inference.border": {
+   "value": "{palette.paper.520}",
+   "dark": "{palette.night.450}"
+  },
+  "color.confidence.high": {
+   "value": "{color.text.primary}",
+   "dark": "{color.text.primary}"
+  },
+  "color.confidence.medium": {
+   "value": "{color.text.secondary}",
+   "dark": "{color.text.secondary}"
+  },
+  "color.confidence.low": {
+   "value": "{color.text.tertiary}",
+   "dark": "{color.text.tertiary}"
+  },
+  "color.map.node.self": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.500}"
+  },
+  "color.map.node.person": {
+   "value": "{palette.sky.200}",
+   "dark": "{palette.sky.800}"
+  },
+  "color.map.node.goal": {
+   "value": "{palette.green.200}",
+   "dark": "{palette.green.700}"
+  },
+  "color.map.node.theme": {
+   "value": "{palette.amber.200}",
+   "dark": "{palette.amber.900}"
+  },
+  "color.map.node.place": {
+   "value": "{palette.paper.350}",
+   "dark": "{palette.night.600}"
+  },
+  "color.map.node.source": {
+   "value": "{palette.paper.200}",
+   "dark": "{palette.night.700}"
+  },
+  "color.map.nodeLabel": {
+   "value": "{color.text.primary}",
+   "dark": "{color.text.primary}"
+  },
+  "color.map.edge": {
+   "value": "{palette.paper.400}",
+   "dark": "{palette.night.600}"
+  },
+  "color.map.edgeStrong": {
+   "value": "{palette.paper.700}",
+   "dark": "{palette.night.300}"
+  },
+  "color.map.selectedRing": {
+   "value": "{color.accent.default}",
+   "dark": "{color.accent.default}"
+  },
+  "color.map.star.self.core": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.400}"
+  },
+  "color.map.star.self.halo": {
+   "value": "rgba(31,125,186,0.30)",
+   "dark": "rgba(67,183,255,0.50)"
+  },
+  "color.map.star.person.core": {
+   "value": "{palette.sky.600}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.map.star.person.halo": {
+   "value": "rgba(40,153,223,0.26)",
+   "dark": "rgba(127,205,255,0.42)"
+  },
+  "color.map.star.place.core": {
+   "value": "{palette.green.500}",
+   "dark": "{palette.green.300}"
+  },
+  "color.map.star.place.halo": {
+   "value": "rgba(70,116,62,0.22)",
+   "dark": "rgba(127,194,138,0.40)"
+  },
+  "color.map.star.goal.core": {
+   "value": "{palette.amber.500}",
+   "dark": "{palette.amber.200}"
+  },
+  "color.map.star.goal.halo": {
+   "value": "rgba(183,121,31,0.24)",
+   "dark": "rgba(255,200,92,0.40)"
+  },
+  "color.map.star.writing.core": {
+   "value": "{palette.paper.800}",
+   "dark": "{palette.night.100}"
+  },
+  "color.map.star.writing.halo": {
+   "value": "rgba(76,74,70,0.14)",
+   "dark": "rgba(237,234,228,0.32)"
+  },
+  "color.map.star.field": {
+   "value": "{palette.paper.500}",
+   "dark": "{palette.night.300}"
+  },
+  "color.voice.listening": {
+   "value": "{color.accent.default}",
+   "dark": "{color.accent.default}"
+  },
+  "color.voice.speaking": {
+   "value": "{color.ink.default}",
+   "dark": "{color.ink.default}"
+  },
+  "color.voice.waveIdle": {
+   "value": "{palette.paper.400}",
+   "dark": "{palette.night.600}"
+  },
+  "color.voice.glowPool": {
+   "value": "rgba(67,183,255,0.45)",
+   "dark": "rgba(35,154,222,0.45)"
+  },
+  "color.voice.glowLift": {
+   "value": "rgba(179,225,255,0.60)",
+   "dark": "rgba(136,179,207,0.60)"
+  },
+  "color.voice.glowUnder": {
+   "value": "rgba(47,168,240,0.38)",
+   "dark": "rgba(2,141,209,0.38)"
+  },
+  "color.voice.glowTop": {
+   "value": "rgba(255,200,92,0.26)",
+   "dark": "rgba(208,156,46,0.26)"
+  },
+  "color.orb.washCentre": {
+   "value": "rgba(127,205,255,0.40)",
+   "dark": "rgba(136,179,207,0.60)"
+  },
+  "color.orb.washEdge": {
+   "value": "rgba(179,225,255,0.14)",
+   "dark": "rgba(136,179,207,0.14)"
+  },
+  "color.orb.glow": {
+   "value": "rgba(67,183,255,0.32)",
+   "dark": "rgba(35,154,222,0.32)"
+  },
+  "color.orb.ringEdge": {
+   "value": "rgba(127,205,255,0.60)",
+   "dark": "rgba(80,164,236,0.30)"
+  },
+  "color.orb.ringShadow": {
+   "value": "rgba(47,168,240,0.40)",
+   "dark": "rgba(2,141,209,0.38)"
+  },
+  "color.player.progress": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.player.buffered": {
+   "value": "{color.surface.trackFill}",
+   "dark": "{color.surface.trackFill}"
+  },
+  "color.player.chapterMark": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.night.900}"
+  },
+  "color.message.mine": {
+   "value": "{color.surface.control}",
+   "dark": "{color.surface.control}"
+  },
+  "color.message.theirs": {
+   "value": "{color.background.canvas}",
+   "dark": "{color.background.canvas}"
+  },
+  "color.entry.date": {
+   "value": "{color.text.label}",
+   "dark": "{color.text.label}"
+  },
+  "color.proposal.surface": {
+   "value": "{color.accent.subtle}",
+   "dark": "{color.accent.subtle}"
+  },
+  "color.proposal.border": {
+   "value": "{color.accent.border}",
+   "dark": "{color.accent.border}"
+  },
+  "color.receipt.surface": {
+   "value": "{color.status.successSubtle}",
+   "dark": "{color.status.successSubtle}"
+  },
+  "color.goal.said": {
+   "value": "{color.text.secondary}",
+   "dark": "{color.text.secondary}"
+  },
+  "color.goal.did": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.source.connected": {
+   "value": "{color.status.success}",
+   "dark": "{color.status.success}"
+  },
+  "color.source.syncing": {
+   "value": "{palette.sky.700}",
+   "dark": "{palette.sky.300}"
+  },
+  "color.source.problem": {
+   "value": "{color.status.danger}",
+   "dark": "{color.status.danger}"
+  },
+  "color.source.unavailable": {
+   "value": "{color.text.disabled}",
+   "dark": "{color.text.disabled}"
+  },
+  "color.plan.selectedBorder": {
+   "value": "{color.accent.default}",
+   "dark": "{color.accent.default}"
+  },
+  "color.plan.highlight": {
+   "value": "{color.accent.subtle}",
+   "dark": "{color.accent.subtle}"
+  },
+  "color.step.active": {
+   "value": "{color.ink.default}",
+   "dark": "{color.ink.default}"
+  },
+  "color.step.inactive": {
+   "value": "{palette.paper.350}",
+   "dark": "{palette.night.700}"
+  },
+  "color.signIn.appleFill": {
+   "value": "#000000",
+   "dark": "#FFFFFF"
+  },
+  "color.signIn.appleLabel": {
+   "value": "#FFFFFF",
+   "dark": "#000000"
+  },
+  "color.signIn.googleFill": {
+   "value": "{palette.paper.0}",
+   "dark": "#131314"
+  },
+  "color.signIn.googleLabel": {
+   "value": "#1F1F1F",
+   "dark": "#E3E3E3"
+  },
+  "glow.primary.gradientTop": {
+   "value": "{palette.sky.400}",
+   "dark": "#3AA9EE"
+  },
+  "glow.primary.gradientBottom": {
+   "value": "{palette.sky.600}",
+   "dark": "#2287C7"
+  },
+  "glow.primary.ring": {
+   "value": "rgba(80,164,236,0.40)",
+   "dark": "rgba(80,164,236,0.30)"
+  },
+  "glow.primary.rim": {
+   "value": "{palette.alpha.white50}",
+   "dark": "rgba(255,255,255,0.30)"
+  },
+  "glow.primary.halo": {
+   "value": "rgba(47,179,255,0.46)",
+   "dark": "rgba(47,179,255,0.30)"
+  },
+  "glow.primary.gradientTopLit": {
+   "value": "#5CC2FF",
+   "dark": "#4DB5F5"
+  },
+  "glow.primary.gradientBottomLit": {
+   "value": "#33A3E8",
+   "dark": "#2A93D4"
+  },
+  "glow.primary.gradientTopPressed": {
+   "value": "#2FA8F0",
+   "dark": "#2A9AD9"
+  },
+  "glow.primary.gradientBottomPressed": {
+   "value": "#1F8BCC",
+   "dark": "#1C78B0"
+  },
+  "glow.primary.foreground": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.0}"
+  },
+  "glow.primary.cast": {
+   "value": "rgba(18,18,18,0.18)",
+   "dark": "rgba(0,0,0,0.45)"
+  },
+  "glow.primary.edge": {
+   "value": "rgba(22,94,140,0.55)",
+   "dark": "rgba(11,38,56,0.6)"
+  },
+  "glow.primary.bloom": {
+   "value": "rgba(127,205,255,0.45)",
+   "dark": "rgba(127,205,255,0.25)"
+  },
+  "glow.primary.edgeLit": {
+   "value": "rgba(22,94,140,0.45)",
+   "dark": "rgba(11,38,56,0.6)"
+  },
+  "glow.primary.bloomLit": {
+   "value": "rgba(179,225,255,0.55)",
+   "dark": "rgba(127,205,255,0.45)"
+  },
+  "glow.danger.gradientTop": {
+   "value": "#C42B2B",
+   "dark": "#F36A6F"
+  },
+  "glow.danger.gradientBottom": {
+   "value": "#A31F1F",
+   "dark": "#DA474C"
+  },
+  "glow.danger.ring": {
+   "value": "rgba(163,31,31,0.40)",
+   "dark": "rgba(218,71,76,0.30)"
+  },
+  "glow.danger.rim": {
+   "value": "rgba(255,255,255,0.40)",
+   "dark": "rgba(255,255,255,0.50)"
+  },
+  "glow.danger.halo": {
+   "value": "rgba(196,43,43,0.36)",
+   "dark": "rgba(243,106,111,0.25)"
+  },
+  "glow.danger.gradientTopLit": {
+   "value": "#D03333",
+   "dark": "#F98285"
+  },
+  "glow.danger.gradientBottomLit": {
+   "value": "#B02424",
+   "dark": "#E45A5F"
+  },
+  "glow.danger.gradientTopPressed": {
+   "value": "#A82121",
+   "dark": "#EC6368"
+  },
+  "glow.danger.gradientBottomPressed": {
+   "value": "#8A1818",
+   "dark": "#D24449"
+  },
+  "glow.danger.foreground": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.950}"
+  },
+  "glow.danger.cast": {
+   "value": "rgba(18,18,18,0.18)",
+   "dark": "rgba(0,0,0,0.45)"
+  },
+  "glow.danger.edge": {
+   "value": "rgba(116,15,11,0.55)",
+   "dark": "rgba(45,21,20,0.6)"
+  },
+  "glow.danger.bloom": {
+   "value": "rgba(255,138,132,0.35)",
+   "dark": "rgba(255,138,132,0.2)"
+  },
+  "glow.danger.edgeLit": {
+   "value": "rgba(116,15,11,0.45)",
+   "dark": "rgba(45,21,20,0.6)"
+  },
+  "glow.danger.bloomLit": {
+   "value": "rgba(255,170,166,0.45)",
+   "dark": "rgba(255,138,132,0.35)"
+  },
+  "glow.success.gradientTop": {
+   "value": "#1A8445",
+   "dark": "#55D88A"
+  },
+  "glow.success.gradientBottom": {
+   "value": "#136B35",
+   "dark": "#27A75D"
+  },
+  "glow.success.ring": {
+   "value": "rgba(19,107,53,0.40)",
+   "dark": "rgba(39,167,93,0.30)"
+  },
+  "glow.success.rim": {
+   "value": "rgba(255,255,255,0.40)",
+   "dark": "rgba(255,255,255,0.50)"
+  },
+  "glow.success.halo": {
+   "value": "rgba(26,132,69,0.34)",
+   "dark": "rgba(85,216,138,0.25)"
+  },
+  "glow.success.gradientTopLit": {
+   "value": "#1A8445",
+   "dark": "#68E49B"
+  },
+  "glow.success.gradientBottomLit": {
+   "value": "#126F39",
+   "dark": "#32B96B"
+  },
+  "glow.success.gradientTopPressed": {
+   "value": "#157038",
+   "dark": "#43BF74"
+  },
+  "glow.success.gradientBottomPressed": {
+   "value": "#0F5A2B",
+   "dark": "#1F8F4D"
+  },
+  "glow.success.foreground": {
+   "value": "{palette.paper.0}",
+   "dark": "{palette.paper.950}"
+  },
+  "glow.success.cast": {
+   "value": "rgba(18,18,18,0.18)",
+   "dark": "rgba(0,0,0,0.45)"
+  },
+  "glow.success.edge": {
+   "value": "rgba(20,38,26,0.5)",
+   "dark": "rgba(20,38,26,0.6)"
+  },
+  "glow.success.bloom": {
+   "value": "rgba(167,221,176,0.35)",
+   "dark": "rgba(167,221,176,0.2)"
+  },
+  "glow.success.edgeLit": {
+   "value": "rgba(20,38,26,0.4)",
+   "dark": "rgba(20,38,26,0.6)"
+  },
+  "glow.success.bloomLit": {
+   "value": "rgba(200,236,206,0.45)",
+   "dark": "rgba(167,221,176,0.35)"
+  },
+  "material.grain.primary": {
+   "value": {
+    "seed": 19,
+    "size": 0.5,
+    "intensity": 0.2,
+    "density": 1,
+    "lightColor": "{palette.paper.0}",
+    "darkColor": "{palette.sky.600}"
+   },
+   "dark": null
+  },
+  "material.grain.secondary": {
+   "value": {
+    "seed": 239,
+    "size": 0.5,
+    "intensity": 0.045,
+    "density": 0.55,
+    "lightColor": "{palette.paper.0}",
+    "darkColor": "{palette.paper.300}"
+   },
+   "dark": null
+  },
+  "material.grain.signature": {
+   "value": {
+    "seed": 7,
+    "size": 0.5,
+    "intensity": 0.06,
+    "density": 0.6,
+    "lightColor": "{palette.paper.0}",
+    "darkColor": "{palette.paper.300}"
+   },
+   "dark": null
+  },
+  "material.dots": {
+   "value": {
+    "density": "to set",
+    "size": "to set",
+    "color": "{palette.paper.400}",
+    "opacity": 0.35
+   },
+   "dark": null
+  },
+  "material.bar": {
+   "value": "bar",
+   "dark": null
+  },
+  "material.sheet": {
+   "value": "regularMaterial",
+   "dark": null
+  },
+  "elevation.flat": {
+   "value": [],
+   "dark": []
+  },
+  "elevation.card": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "rgba(40,36,30,0.06)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1pt",
+     "spread": "0pt",
+     "color": "rgba(40,36,30,0.04)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.40)"
+    }
+   ]
+  },
+  "elevation.raised": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.12)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.50)"
+    }
+   ]
+  },
+  "elevation.menu": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "8pt",
+     "blur": "24pt",
+     "spread": "-6pt",
+     "color": "rgba(40,36,30,0.16)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "6pt",
+     "spread": "0pt",
+     "color": "rgba(40,36,30,0.06)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "8pt",
+     "blur": "24pt",
+     "spread": "-6pt",
+     "color": "rgba(0,0,0,0.60)"
+    }
+   ]
+  },
+  "elevation.overlay": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "24pt",
+     "blur": "48pt",
+     "spread": "-12pt",
+     "color": "rgba(40,36,30,0.24)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "4pt",
+     "blur": "12pt",
+     "spread": "0pt",
+     "color": "rgba(40,36,30,0.08)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "24pt",
+     "blur": "48pt",
+     "spread": "-12pt",
+     "color": "rgba(0,0,0,0.70)"
+    }
+   ]
+  },
+  "elevation.primaryAction": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "0pt",
+     "blur": "16pt",
+     "spread": "0pt",
+     "color": "{glow.primary.halo}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "6pt",
+     "blur": "7pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.15)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.25)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "0pt",
+     "blur": "16pt",
+     "spread": "0pt",
+     "color": "{glow.primary.halo}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "6pt",
+     "blur": "7pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.40)"
+    }
+   ]
+  },
+  "elevation.secondaryAction": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "4pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.15)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "4pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.45)"
+    }
+   ]
+  },
+  "elevation.mark": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "6pt",
+     "blur": "7pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.24)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.12)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "6pt",
+     "blur": "7pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.50)"
+    }
+   ]
+  },
+  "elevation.thumb": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "5pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.10)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.07)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "5pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.22)"
+    }
+   ]
+  },
+  "elevation.onAccentText": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.20)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.20)"
+    }
+   ]
+  },
+  "elevation.inkAction": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(18,18,18,0.20)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "4pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.50)"
+    }
+   ]
+  },
+  "elevation.popover": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "18pt",
+     "blur": "40pt",
+     "spread": "-10pt",
+     "color": "rgba(40,36,30,0.22)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "6pt",
+     "spread": "0pt",
+     "color": "rgba(40,36,30,0.08)"
+    }
+   ],
+   "dark": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "18pt",
+     "blur": "40pt",
+     "spread": "-10pt",
+     "color": "rgba(0,0,0,0.6)"
+    }
+   ]
+  },
+  "font.family.display": {
+   "value": "HedvigLettersSerif-24ptRegular",
+   "dark": null
+  },
+  "font.family.text": {
+   "value": "SF Pro Text",
+   "dark": null
+  },
+  "font.family.mono": {
+   "value": "SF Mono",
+   "dark": null
+  },
+  "font.family.displayInky": {
+   "value": "Exposure",
+   "dark": null
+  },
+  "font.family.label": {
+   "value": "Geist",
+   "dark": null
+  },
+  "font.size.xs": {
+   "value": "11pt",
+   "dark": null
+  },
+  "font.size.sm": {
+   "value": "12pt",
+   "dark": null
+  },
+  "font.size.md": {
+   "value": "14pt",
+   "dark": null
+  },
+  "font.size.base": {
+   "value": "16pt",
+   "dark": null
+  },
+  "font.size.lg": {
+   "value": "18pt",
+   "dark": null
+  },
+  "font.size.xl": {
+   "value": "22pt",
+   "dark": null
+  },
+  "font.size.2xl": {
+   "value": "28pt",
+   "dark": null
+  },
+  "font.size.3xl": {
+   "value": "30pt",
+   "dark": null
+  },
+  "font.size.4xl": {
+   "value": "40pt",
+   "dark": null
+  },
+  "font.size.body": {
+   "value": "17pt",
+   "dark": null
+  },
+  "font.size.title": {
+   "value": "34pt",
+   "dark": null
+  },
+  "font.size.hero": {
+   "value": "64pt",
+   "dark": null
+  },
+  "font.size.playerTime": {
+   "value": "13pt",
+   "dark": null
+  },
+  "font.size.playerSpeed": {
+   "value": "15pt",
+   "dark": null
+  },
+  "font.weight.regular": {
+   "value": 400,
+   "dark": null
+  },
+  "font.weight.medium": {
+   "value": 500,
+   "dark": null
+  },
+  "font.weight.semibold": {
+   "value": 600,
+   "dark": null
+  },
+  "font.weight.inkTitle": {
+   "value": 398,
+   "dark": null
+  },
+  "font.weight.inkCard": {
+   "value": 399,
+   "dark": null
+  },
+  "font.leading.tight": {
+   "value": 1.1,
+   "dark": null
+  },
+  "font.leading.snug": {
+   "value": 1.3,
+   "dark": null
+  },
+  "font.leading.normal": {
+   "value": 1.45,
+   "dark": null
+  },
+  "font.tracking.display": {
+   "value": "-0.02em",
+   "dark": null
+  },
+  "font.tracking.tight": {
+   "value": "-0.01em",
+   "dark": null
+  },
+  "font.tracking.none": {
+   "value": "0em",
+   "dark": null
+  },
+  "font.tracking.label": {
+   "value": "0.01em",
+   "dark": null
+  },
+  "font.tracking.hero": {
+   "value": "-0.04em",
+   "dark": null
+  },
+  "font.tracking.title": {
+   "value": "-0.035em",
+   "dark": null
+  },
+  "font.tracking.card": {
+   "value": "-0.02em",
+   "dark": null
+  },
+  "font.exposure.hero": {
+   "value": -20,
+   "dark": null
+  },
+  "font.exposure.title": {
+   "value": -20,
+   "dark": null
+  },
+  "font.exposure.card": {
+   "value": -10,
+   "dark": null
+  },
+  "type.display.hero": {
+   "value": {
+    "fontFamily": "{font.family.displayInky}",
+    "fontSize": "64pt",
+    "fontWeight": 400,
+    "lineHeight": 1.1,
+    "letterSpacing": "{font.tracking.hero}"
+   },
+   "dark": null
+  },
+  "type.display.title": {
+   "value": {
+    "fontFamily": "{font.family.displayInky}",
+    "fontSize": "34pt",
+    "fontWeight": 400,
+    "lineHeight": 1.1,
+    "letterSpacing": "{font.tracking.title}"
+   },
+   "dark": null
+  },
+  "type.display.quote": {
+   "value": {
+    "fontFamily": "{font.family.display}",
+    "fontSize": "22pt",
+    "fontWeight": 400,
+    "lineHeight": 1.25,
+    "letterSpacing": "-0.01em"
+   },
+   "dark": null
+  },
+  "type.text.headline": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "17pt",
+    "fontWeight": 600,
+    "lineHeight": 1.3,
+    "letterSpacing": "-0.01em"
+   },
+   "dark": null
+  },
+  "type.text.body": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "17pt",
+    "fontWeight": 400,
+    "lineHeight": 1.45,
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.text.bodySmall": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "14pt",
+    "fontWeight": 400,
+    "lineHeight": 1.4,
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.text.entry": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "17pt",
+    "fontWeight": 400,
+    "lineHeight": 1.45
+   },
+   "dark": null
+  },
+  "type.label.button": {
+   "value": {
+    "fontFamily": "{font.family.mono}",
+    "fontSize": "14pt",
+    "fontWeight": 400,
+    "lineHeight": 1.2,
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.label.default": {
+   "value": {
+    "fontFamily": "{font.family.mono}",
+    "fontSize": "12pt",
+    "fontWeight": 400,
+    "lineHeight": 1.3,
+    "letterSpacing": "0.01em"
+   },
+   "dark": null
+  },
+  "type.label.small": {
+   "value": {
+    "fontFamily": "{font.family.mono}",
+    "fontSize": "11pt",
+    "fontWeight": 500,
+    "lineHeight": 1.3,
+    "letterSpacing": "0.02em"
+   },
+   "dark": null
+  },
+  "type.numeric.time": {
+   "value": {
+    "fontFamily": "{font.family.mono}",
+    "fontSize": "14pt",
+    "fontWeight": 400,
+    "lineHeight": 1.2,
+    "letterSpacing": "0em",
+    "fontFeature": "tabular-nums"
+   },
+   "dark": null
+  },
+  "type.numeric.stat": {
+   "value": {
+    "fontFamily": "{font.family.mono}",
+    "fontSize": "28pt",
+    "fontWeight": 400,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.01em",
+    "fontFeature": "tabular-nums"
+   },
+   "dark": null
+  },
+  "type.ax3.title": {
+   "value": {
+    "fontFamily": "{font.family.displayInky}",
+    "fontSize": "52pt",
+    "fontWeight": 400,
+    "lineHeight": "61pt",
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.ax3.xl": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "44pt",
+    "fontWeight": 400,
+    "lineHeight": "52pt",
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.ax3.body": {
+   "value": {
+    "fontFamily": "{font.family.text}",
+    "fontSize": "40pt",
+    "fontWeight": 400,
+    "lineHeight": "48pt",
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.ax3.md": {
+   "value": {
+    "fontFamily": "{font.family.label}",
+    "fontSize": "36pt",
+    "fontWeight": 400,
+    "lineHeight": "43pt",
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "type.ax3.sm": {
+   "value": {
+    "fontFamily": "{font.family.label}",
+    "fontSize": "32pt",
+    "fontWeight": 400,
+    "lineHeight": "39pt",
+    "letterSpacing": "0em"
+   },
+   "dark": null
+  },
+  "space.0": {
+   "value": "0pt",
+   "dark": null
+  },
+  "space.1": {
+   "value": "4pt",
+   "dark": null
+  },
+  "space.2": {
+   "value": "8pt",
+   "dark": null
+  },
+  "space.3": {
+   "value": "12pt",
+   "dark": null
+  },
+  "space.4": {
+   "value": "16pt",
+   "dark": null
+  },
+  "space.5": {
+   "value": "20pt",
+   "dark": null
+  },
+  "space.6": {
+   "value": "24pt",
+   "dark": null
+  },
+  "space.8": {
+   "value": "32pt",
+   "dark": null
+  },
+  "space.10": {
+   "value": "40pt",
+   "dark": null
+  },
+  "space.12": {
+   "value": "48pt",
+   "dark": null
+  },
+  "space.16": {
+   "value": "64pt",
+   "dark": null
+  },
+  "space.screenMargin": {
+   "value": "{space.6}",
+   "dark": null
+  },
+  "space.section": {
+   "value": "{space.8}",
+   "dark": null
+  },
+  "space.rowGap": {
+   "value": "{space.6}",
+   "dark": null
+  },
+  "space.stackTight": {
+   "value": "{space.2}",
+   "dark": null
+  },
+  "space.stackDefault": {
+   "value": "{space.4}",
+   "dark": null
+  },
+  "space.inline": {
+   "value": "{space.3}",
+   "dark": null
+  },
+  "space.controlPadding": {
+   "value": "{space.5}",
+   "dark": null
+  },
+  "space.listInset": {
+   "value": "{space.4}",
+   "dark": null
+  },
+  "space.betweenEntries": {
+   "value": "{space.6}",
+   "dark": null
+  },
+  "size.control.small": {
+   "value": "32pt",
+   "dark": null
+  },
+  "size.control.medium": {
+   "value": "36pt",
+   "dark": null
+  },
+  "size.control.default": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.control.large": {
+   "value": "48pt",
+   "dark": null
+  },
+  "size.control.hero": {
+   "value": "60pt",
+   "dark": null
+  },
+  "size.control.icon": {
+   "value": "36pt",
+   "dark": null
+  },
+  "size.touchTarget": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.icon.small": {
+   "value": "16pt",
+   "dark": null
+  },
+  "size.icon.default": {
+   "value": "20pt",
+   "dark": null
+  },
+  "size.icon.large": {
+   "value": "24pt",
+   "dark": null
+  },
+  "size.icon.inWell": {
+   "value": "18pt",
+   "dark": null
+  },
+  "size.icon.chevron": {
+   "value": "14pt",
+   "dark": null
+  },
+  "size.artwork.row": {
+   "value": "40pt",
+   "dark": null
+  },
+  "size.artwork.card": {
+   "value": "64pt",
+   "dark": null
+  },
+  "size.artwork.player": {
+   "value": "120pt",
+   "dark": null
+  },
+  "size.artwork.hero": {
+   "value": "240pt",
+   "dark": null
+  },
+  "size.mark": {
+   "value": "38pt",
+   "dark": null
+  },
+  "size.miniPlayer": {
+   "value": "42pt",
+   "dark": null
+  },
+  "size.progress": {
+   "value": "3pt",
+   "dark": null
+  },
+  "size.border.hairline": {
+   "value": "0.5pt",
+   "dark": null
+  },
+  "size.border.default": {
+   "value": "1pt",
+   "dark": null
+  },
+  "size.border.ring": {
+   "value": "2pt",
+   "dark": null
+  },
+  "size.border.inset": {
+   "value": "4pt",
+   "dark": null
+  },
+  "size.avatar.small": {
+   "value": "28pt",
+   "dark": null
+  },
+  "size.avatar.default": {
+   "value": "40pt",
+   "dark": null
+  },
+  "size.avatar.large": {
+   "value": "72pt",
+   "dark": null
+  },
+  "size.badge": {
+   "value": "20pt",
+   "dark": null
+  },
+  "size.tagPadding": {
+   "value": "7pt",
+   "dark": null
+  },
+  "size.row.default": {
+   "value": "56pt",
+   "dark": null
+  },
+  "size.row.compact": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.illustration": {
+   "value": "120pt",
+   "dark": null
+  },
+  "size.navBar": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.tabBar": {
+   "value": "49pt",
+   "dark": null
+  },
+  "size.fieldWell": {
+   "value": "36pt",
+   "dark": null
+  },
+  "size.searchField": {
+   "value": "36pt",
+   "dark": null
+  },
+  "size.grabber.width": {
+   "value": "36pt",
+   "dark": null
+  },
+  "size.grabber.height": {
+   "value": "5pt",
+   "dark": null
+  },
+  "size.inference.dash": {
+   "value": "4pt",
+   "dark": null
+  },
+  "size.inference.edgeIncreased": {
+   "value": "1.5pt",
+   "dark": null
+  },
+  "size.map.nodeMin": {
+   "value": "8pt",
+   "dark": null
+  },
+  "size.map.nodeMax": {
+   "value": "56pt",
+   "dark": null
+  },
+  "size.map.edgeMin": {
+   "value": "0.5pt",
+   "dark": null
+  },
+  "size.map.edgeMax": {
+   "value": "3pt",
+   "dark": null
+  },
+  "size.voice.button": {
+   "value": "72pt",
+   "dark": null
+  },
+  "size.voice.barWidth": {
+   "value": "3pt",
+   "dark": null
+  },
+  "size.voice.barGap": {
+   "value": "2pt",
+   "dark": null
+  },
+  "size.voice.barMax": {
+   "value": "32pt",
+   "dark": null
+  },
+  "size.voice.thinkingDot": {
+   "value": "5pt",
+   "dark": null
+  },
+  "size.player.scrubber": {
+   "value": "4pt",
+   "dark": null
+  },
+  "size.player.thumb": {
+   "value": "12pt",
+   "dark": null
+  },
+  "size.player.button": {
+   "value": "64pt",
+   "dark": null
+  },
+  "size.player.thumbHeld": {
+   "value": "20pt",
+   "dark": null
+  },
+  "size.player.trackRow": {
+   "value": "16pt",
+   "dark": null
+  },
+  "size.player.timesGap": {
+   "value": "10pt",
+   "dark": null
+  },
+  "size.player.tray": {
+   "value": "64pt",
+   "dark": null
+  },
+  "size.player.trayInset": {
+   "value": "22pt",
+   "dark": null
+  },
+  "size.player.skipIcon": {
+   "value": "28pt",
+   "dark": null
+  },
+  "size.player.playIcon": {
+   "value": "22pt",
+   "dark": null
+  },
+  "size.briefCard.minHeight": {
+   "value": "120pt",
+   "dark": null
+  },
+  "size.composer.minHeight": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.composer.maxHeight": {
+   "value": "160pt",
+   "dark": null
+  },
+  "size.composer.cardMinHeight": {
+   "value": "120pt",
+   "dark": null
+  },
+  "size.composer.well": {
+   "value": "40pt",
+   "dark": null
+  },
+  "size.goal.ring": {
+   "value": "44pt",
+   "dark": null
+  },
+  "size.goal.ringStroke": {
+   "value": "4pt",
+   "dark": null
+  },
+  "size.sourceIcon": {
+   "value": "32pt",
+   "dark": null
+  },
+  "size.stepDot": {
+   "value": "6pt",
+   "dark": null
+  },
+  "size.stepDotActive": {
+   "value": "18pt",
+   "dark": null
+  },
+  "size.popoverRow": {
+   "value": "50pt",
+   "dark": null
+  },
+  "size.meter": {
+   "value": "4pt",
+   "dark": null
+  },
+  "size.switch.width": {
+   "value": "51pt",
+   "dark": null
+  },
+  "size.switch.height": {
+   "value": "31pt",
+   "dark": null
+  },
+  "size.switch.thumb": {
+   "value": "27pt",
+   "dark": null
+  },
+  "size.switch.thumbHeld": {
+   "value": "33pt",
+   "dark": null
+  },
+  "size.skeleton.bar": {
+   "value": "18pt",
+   "dark": null
+  },
+  "size.skeleton.gap": {
+   "value": "9pt",
+   "dark": null
+  },
+  "size.emptyMark": {
+   "value": "52pt",
+   "dark": null
+  },
+  "radius.style": {
+   "value": "continuous",
+   "dark": null
+  },
+  "radius.small": {
+   "value": "6pt",
+   "dark": null
+  },
+  "radius.default": {
+   "value": "10pt",
+   "dark": null
+  },
+  "radius.field": {
+   "value": "12pt",
+   "dark": null
+  },
+  "radius.panel": {
+   "value": "16pt",
+   "dark": null
+  },
+  "radius.card": {
+   "value": "20pt",
+   "dark": null
+  },
+  "radius.sheet": {
+   "value": "38pt",
+   "dark": null
+  },
+  "radius.control": {
+   "value": "999pt",
+   "dark": null
+  },
+  "radius.artworkRatio": {
+   "value": 0.2,
+   "dark": null
+  },
+  "radius.message": {
+   "value": "18pt",
+   "dark": null
+  },
+  "radius.widget": {
+   "value": "22pt",
+   "dark": null
+  },
+  "radius.behindSheet": {
+   "value": "12pt",
+   "dark": null
+  },
+  "radius.popover": {
+   "value": "22pt",
+   "dark": null
+  },
+  "radius.composer": {
+   "value": "28pt",
+   "dark": null
+  },
+  "motion.duration.instant": {
+   "value": "80ms",
+   "dark": null
+  },
+  "motion.duration.fast": {
+   "value": "140ms",
+   "dark": null
+  },
+  "motion.duration.base": {
+   "value": "200ms",
+   "dark": null
+  },
+  "motion.duration.slow": {
+   "value": "280ms",
+   "dark": null
+  },
+  "motion.duration.reveal": {
+   "value": "1220ms",
+   "dark": null
+  },
+  "motion.duration.audioFade": {
+   "value": "1050ms",
+   "dark": null
+  },
+  "motion.duration.spin": {
+   "value": "900ms",
+   "dark": null
+  },
+  "motion.duration.expand": {
+   "value": "240ms",
+   "dark": null
+  },
+  "motion.duration.toastVisible": {
+   "value": "4000ms",
+   "dark": null
+  },
+  "motion.duration.shimmer": {
+   "value": "1400ms",
+   "dark": null
+  },
+  "motion.duration.voicePulse": {
+   "value": "1200ms",
+   "dark": null
+  },
+  "motion.duration.typing": {
+   "value": "900ms",
+   "dark": null
+  },
+  "motion.duration.numberTick": {
+   "value": "320ms",
+   "dark": null
+  },
+  "motion.duration.litFade": {
+   "value": "200ms",
+   "dark": null
+  },
+  "motion.duration.pressIn": {
+   "value": "80ms",
+   "dark": null
+  },
+  "motion.duration.pressOut": {
+   "value": "240ms",
+   "dark": null
+  },
+  "motion.duration.transcriptFollow": {
+   "value": "420ms",
+   "dark": null
+  },
+  "motion.duration.followResume": {
+   "value": "4000ms",
+   "dark": null
+  },
+  "motion.duration.playMorph": {
+   "value": "180ms",
+   "dark": null
+  },
+  "motion.duration.scrubPreview": {
+   "value": "120ms",
+   "dark": null
+  },
+  "motion.duration.popoverExit": {
+   "value": "110ms",
+   "dark": null
+  },
+  "motion.duration.sourceDim": {
+   "value": "66ms",
+   "dark": null
+  },
+  "motion.duration.skeletonDelay": {
+   "value": "400ms",
+   "dark": null
+  },
+  "motion.duration.stillWorking": {
+   "value": "8000ms",
+   "dark": null
+  },
+  "motion.curve.standard": {
+   "value": [
+    0.16,
+    1,
+    0.3,
+    1
+   ],
+   "dark": null
+  },
+  "motion.curve.exit": {
+   "value": [
+    0.4,
+    0,
+    1,
+    1
+   ],
+   "dark": null
+  },
+  "motion.curve.reveal": {
+   "value": {
+    "kind": "smooth",
+    "extraBounce": 0.02
+   },
+   "dark": null
+  },
+  "motion.curve.move": {
+   "value": [
+    0.65,
+    0,
+    0.35,
+    1
+   ],
+   "dark": null
+  },
+  "motion.scale.press": {
+   "value": 0.98,
+   "dark": null
+  },
+  "motion.scale.enter": {
+   "value": 0.97,
+   "dark": null
+  },
+  "motion.scale.behindSheet": {
+   "value": 0.94,
+   "dark": null
+  },
+  "motion.scale.scrubThumb": {
+   "value": 1.6,
+   "dark": null
+  },
+  "motion.scale.popoverFrom": {
+   "value": 0.86,
+   "dark": null
+  },
+  "motion.scale.pressSmall": {
+   "value": 0.94,
+   "dark": null
+  },
+  "motion.stagger": {
+   "value": "60ms",
+   "dark": null
+  },
+  "motion.reduced": {
+   "value": "opacity-only, 140ms",
+   "dark": null
+  },
+  "motion.spring.map": {
+   "value": {
+    "response": 0.45,
+    "dampingFraction": 0.8
+   },
+   "dark": null
+  },
+  "motion.spring.sheet": {
+   "value": {
+    "response": 0.4,
+    "dampingFraction": 0.86
+   },
+   "dark": null
+  },
+  "motion.spring.sheetDismiss": {
+   "value": {
+    "response": 0.32,
+    "dampingFraction": 0.9
+   },
+   "dark": null
+  },
+  "motion.spring.popover": {
+   "value": {
+    "response": 0.3,
+    "dampingFraction": 0.74
+   },
+   "dark": null
+  },
+  "motion.spring.snappy": {
+   "value": {
+    "response": 0.25,
+    "dampingFraction": 0.82
+   },
+   "dark": null
+  },
+  "motion.spring.settle": {
+   "value": {
+    "response": 0.45,
+    "dampingFraction": 0.7
+   },
+   "dark": null
+  },
+  "motion.spring.pop": {
+   "value": {
+    "response": 0.35,
+    "dampingFraction": 0.6
+   },
+   "dark": null
+  },
+  "motion.spring.gentle": {
+   "value": {
+    "response": 0.55,
+    "dampingFraction": 0.92
+   },
+   "dark": null
+  },
+  "motion.gesture.dismissDistance": {
+   "value": "140pt",
+   "dark": null
+  },
+  "motion.gesture.dismissVelocity": {
+   "value": 800,
+   "dark": null
+  },
+  "motion.gesture.rubberBand": {
+   "value": 0.55,
+   "dark": null
+  },
+  "motion.gesture.scrubSnap": {
+   "value": "12pt",
+   "dark": null
+  },
+  "motion.gesture.scrubFineStep": {
+   "value": "50pt",
+   "dark": null
+  },
+  "motion.blur.enter": {
+   "value": "8pt",
+   "dark": null
+  },
+  "motion.appear.rise": {
+   "value": "8pt",
+   "dark": null
+  },
+  "motion.appear.blurFrom": {
+   "value": "8pt",
+   "dark": null
+  },
+  "motion.shake.distance": {
+   "value": "6pt",
+   "dark": null
+  },
+  "motion.life.floatAmplitude": {
+   "value": "2pt",
+   "dark": null
+  },
+  "motion.life.floatPeriod": {
+   "value": "5000ms",
+   "dark": null
+  },
+  "motion.life.resumeAfter": {
+   "value": "4000ms",
+   "dark": null
+  },
+  "motion.scrollLag.maxOffset": {
+   "value": "6pt",
+   "dark": null
+  },
+  "motion.scrollLag.maxTilt": {
+   "value": 1.5,
+   "dark": null
+  },
+  "motion.staggerMax": {
+   "value": 6,
+   "dark": null
+  },
+  "blur.tab.band": {
+   "value": "70pt",
+   "dark": null
+  },
+  "blur.tab.bandCompact": {
+   "value": "60pt",
+   "dark": null
+  },
+  "blur.tab.max": {
+   "value": "14pt",
+   "dark": null
+  },
+  "blur.tab.saturation": {
+   "value": 1.5,
+   "dark": null
+  },
+  "blur.tab.tint": {
+   "value": "56pt",
+   "dark": null
+  },
+  "blur.journalTop.band": {
+   "value": "80pt",
+   "dark": null
+  },
+  "blur.journalTop.max": {
+   "value": "8pt",
+   "dark": null
+  },
+  "blur.transcriptTop.band": {
+   "value": "96pt",
+   "dark": null
+  },
+  "blur.transcriptTop.bandCompact": {
+   "value": "64pt",
+   "dark": null
+  },
+  "blur.transcriptTop.max": {
+   "value": "8pt",
+   "dark": null
+  },
+  "blur.transcriptTop.tint": {
+   "value": 0.3,
+   "dark": null
+  },
+  "blur.transcriptBottom.band": {
+   "value": "140pt",
+   "dark": null
+  },
+  "blur.transcriptBottom.bandCompact": {
+   "value": "80pt",
+   "dark": null
+  },
+  "blur.transcriptBottom.max": {
+   "value": "8pt",
+   "dark": null
+  },
+  "blur.transcriptBottom.tint": {
+   "value": 0.15,
+   "dark": null
+  },
+  "blur.drawerFoot.band": {
+   "value": "56pt",
+   "dark": null
+  },
+  "blur.drawerFoot.max": {
+   "value": "6pt",
+   "dark": null
+  },
+  "haptic.select": {
+   "value": "selection",
+   "dark": null
+  },
+  "haptic.confirm": {
+   "value": "notification.success",
+   "dark": null
+  },
+  "haptic.reveal": {
+   "value": "impact.soft",
+   "dark": null
+  },
+  "haptic.warning": {
+   "value": "notification.warning",
+   "dark": null
+  },
+  "haptic.listenStart": {
+   "value": "impact.light",
+   "dark": null
+  },
+  "haptic.listenStop": {
+   "value": "impact.medium",
+   "dark": null
+  },
+  "haptic.turn": {
+   "value": "selection",
+   "dark": null
+  },
+  "haptic.error": {
+   "value": "notification.error",
+   "dark": null
+  },
+  "haptic.tab": {
+   "value": "selection",
+   "dark": null
+  },
+  "haptic.recordStart": {
+   "value": "impact.medium",
+   "dark": null
+  },
+  "haptic.recordStop": {
+   "value": "impact.light",
+   "dark": null
+  },
+  "haptic.refresh": {
+   "value": "impact.light",
+   "dark": null
+  },
+  "haptic.longPress": {
+   "value": "impact.medium",
+   "dark": null
+  },
+  "haptic.press": {
+   "value": "impact.light",
+   "dark": null
+  },
+  "haptic.chapterTick": {
+   "value": "selection",
+   "dark": null
+  },
+  "haptic.sheetSnap": {
+   "value": "impact.soft",
+   "dark": null
+  },
+  "haptic.skip": {
+   "value": "impact.light",
+   "dark": null
+  },
+  "haptic.typeOn": {
+   "value": "impact.soft@0.35",
+   "dark": null
+  },
+  "layer.base": {
+   "value": 0,
+   "dark": null
+  },
+  "layer.miniPlayer": {
+   "value": 10,
+   "dark": null
+  },
+  "layer.sheet": {
+   "value": 20,
+   "dark": null
+  },
+  "layer.dialog": {
+   "value": 40,
+   "dark": null
+  },
+  "layer.popover": {
+   "value": 50,
+   "dark": null
+  },
+  "layer.toast": {
+   "value": 60,
+   "dark": null
+  },
+  "layout.readingWidth": {
+   "value": "326pt",
+   "dark": null
+  },
+  "layout.controlsWidth": {
+   "value": "310pt",
+   "dark": null
+  },
+  "layout.popoverMax": {
+   "value": "320pt",
+   "dark": null
+  },
+  "layout.focusOffset": {
+   "value": "2pt",
+   "dark": null
+  },
+  "layout.focusWidth": {
+   "value": "2pt",
+   "dark": null
+  },
+  "layout.toastMaxWidth": {
+   "value": "340pt",
+   "dark": null
+  },
+  "layout.sheetMaxWidth": {
+   "value": "560pt",
+   "dark": null
+  },
+  "layout.sheetDetent.medium": {
+   "value": 0.5,
+   "dark": null
+  },
+  "layout.dynamicType.max": {
+   "value": "accessibility3",
+   "dark": null
+  },
+  "layout.messageMaxWidth": {
+   "value": 0.78,
+   "dark": null
+  },
+  "layout.widget.padding": {
+   "value": "16pt",
+   "dark": null
+  },
+  "layout.compactHeight": {
+   "value": "700pt",
+   "dark": null
+  },
+  "layout.sheet.top": {
+   "value": "10pt",
+   "dark": null
+  },
+  "layout.sheet.grabberGap": {
+   "value": "18pt",
+   "dark": null
+  },
+  "layout.sheet.inset": {
+   "value": "28pt",
+   "dark": null
+  },
+  "opacity.disabled": {
+   "value": 0.4,
+   "dark": null
+  },
+  "opacity.pressed": {
+   "value": 0.7,
+   "dark": null
+  },
+  "opacity.dimmed": {
+   "value": 0.25,
+   "dark": null
+  },
+  "opacity.sourcePressed": {
+   "value": 0.7,
+   "dark": null
+  },
+  "opacity.pending": {
+   "value": 0.7,
+   "dark": null
+  },
+  "opacity.declined": {
+   "value": 0.55,
+   "dark": null
+  },
+  "opacity.skeletonPulseFloor": {
+   "value": 0.6,
+   "dark": null
+  },
+  "icon.weight": {
+   "value": "regular",
+   "dark": null
+  },
+  "icon.weightEmphasis": {
+   "value": "semibold",
+   "dark": null
+  },
+  "depth.stroke.inner": {
+   "value": "rgba(255,255,255,0.85)",
+   "dark": "rgba(255,255,255,0.08)"
+  },
+  "depth.stroke.innerTop": {
+   "value": "#FFFFFF",
+   "dark": "rgba(255,255,255,0.14)"
+  },
+  "depth.stroke.outer": {
+   "value": "rgba(40,36,30,0.10)",
+   "dark": "rgba(255,255,255,0.07)"
+  },
+  "depth.shadow.contact": {
+   "value": "rgba(58,44,28,0.10)",
+   "dark": "rgba(0,0,0,0.40)"
+  },
+  "depth.shadow.cast": {
+   "value": "rgba(70,52,30,0.16)",
+   "dark": "rgba(0,0,0,0.55)"
+  },
+  "depth.shadow.ambient": {
+   "value": "rgba(70,52,30,0.05)",
+   "dark": "rgba(0,0,0,0.25)"
+  },
+  "depth.shadow.sunken": {
+   "value": "rgba(58,44,28,0.08)",
+   "dark": "rgba(0,0,0,0.35)"
+  },
+  "depth.tint.primary": {
+   "value": "rgba(31,125,186,0.38)",
+   "dark": "rgba(11,38,56,0.6)"
+  },
+  "depth.tint.danger": {
+   "value": "rgba(142,18,14,0.34)",
+   "dark": "rgba(45,21,20,0.6)"
+  },
+  "depth.tint.success": {
+   "value": "rgba(42,74,37,0.32)",
+   "dark": "rgba(20,38,26,0.6)"
+  },
+  "depth.tint.artwork": {
+   "value": "rgba(31,125,186,0.30)",
+   "dark": "rgba(11,38,56,0.5)"
+  },
+  "depth.tier.flat": {
+   "value": [],
+   "dark": null
+  },
+  "depth.tier.card": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1.5pt",
+     "spread": "0pt",
+     "color": "{depth.shadow.contact}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "6pt",
+     "blur": "16pt",
+     "spread": "-8pt",
+     "color": "{depth.shadow.cast}"
+    }
+   ],
+   "dark": null
+  },
+  "depth.tier.raised": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "1.5pt",
+     "spread": "0pt",
+     "color": "{depth.shadow.contact}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "10pt",
+     "blur": "24pt",
+     "spread": "-10pt",
+     "color": "{depth.shadow.cast}"
+    }
+   ],
+   "dark": null
+  },
+  "depth.tier.floating": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "{depth.shadow.contact}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "12pt",
+     "blur": "28pt",
+     "spread": "-12pt",
+     "color": "{depth.shadow.cast}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "24pt",
+     "blur": "60pt",
+     "spread": "-20pt",
+     "color": "{depth.shadow.ambient}"
+    }
+   ],
+   "dark": null
+  },
+  "depth.tier.overlay": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "1pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "{depth.shadow.contact}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "24pt",
+     "blur": "48pt",
+     "spread": "-16pt",
+     "color": "{depth.shadow.cast}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "40pt",
+     "blur": "90pt",
+     "spread": "-30pt",
+     "color": "{depth.shadow.ambient}"
+    }
+   ],
+   "dark": null
+  },
+  "depth.tier.lit": {
+   "value": [
+    {
+     "offsetX": "0pt",
+     "offsetY": "2pt",
+     "blur": "2pt",
+     "spread": "0pt",
+     "color": "rgba(0,0,0,0.25)"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "8pt",
+     "blur": "16pt",
+     "spread": "-6pt",
+     "color": "{depth.tint.primary}"
+    },
+    {
+     "offsetX": "0pt",
+     "offsetY": "0pt",
+     "blur": "16pt",
+     "spread": "0pt",
+     "color": "{glow.primary.halo}"
+    }
+   ],
+   "dark": null
+  },
+  "depth.z.sunken": {
+   "value": "−1 · inset · background.sunken + inner shade (inset 0 1 2 warm 8%, inset 0 0 0 0.5 warm 6%)",
+   "dark": null
+  },
+  "depth.z.page": {
+   "value": "0 · flat · background.canvas, no stroke",
+   "dark": null
+  },
+  "depth.z.wash": {
+   "value": "0.5 · flat translucent · surface.wash, no shadow",
+   "dark": null
+  },
+  "depth.z.card": {
+   "value": "1 · depth.tier.card",
+   "dark": null
+  },
+  "depth.z.raised": {
+   "value": "2 · depth.tier.raised",
+   "dark": null
+  },
+  "depth.z.floating": {
+   "value": "3 · depth.tier.floating",
+   "dark": null
+  },
+  "depth.z.overlay": {
+   "value": "4 · depth.tier.overlay",
+   "dark": null
+  },
+  "depth.z.lit": {
+   "value": "5 · depth.tier.lit",
+   "dark": null
+  },
+  "gradient.glowPrimary": {
+   "value": "linear 180°: #43B7FF 0%, #3FB2FA 25%, #36A8EF 50%, #2C9EE4 75%, #2899DF 100% (OKLCH, smoothstep)",
+   "dark": null
+  },
+  "gradient.glowPrimaryLit": {
+   "value": "linear 180°: #5CC2FF 0%, #56BDFB 25%, #48B2F3 50%, #3AA8EC 75%, #33A3E8 100%",
+   "dark": null
+  },
+  "gradient.glowPrimaryPressed": {
+   "value": "linear 180°: #2FA8F0 0%, #2DA3EA 25%, #2799DE 50%, #228FD2 75%, #1F8BCC 100%",
+   "dark": null
+  },
+  "gradient.glowDanger": {
+   "value": "linear 180°: #C42B2B 0%, #BF2929 25%, #B32525 50%, #A82121 75%, #A31F1F 100%",
+   "dark": null
+  },
+  "gradient.fadeToCanvas": {
+   "value": "linear 180°: 13 stops, alpha by smoothstep^1.1 from 0 to 1 (0, .013, .057, .13, .227, .341, .467, .595, .719, .83, .919, .978, 1)",
+   "dark": null
+  },
+  "gradient.meshMorning": {
+   "value": "base #2FA8F0; blob #7FCDFF at 18% 0% r 70% (alpha 1→0); blob #1F7DBA at 100% 100% r 80%; blob #F7F3EE at 0% 100% r 55% alpha .55→0; softness .7; grain multi 12% size 1.5",
+   "dark": null
+  },
+  "gradient.meshEvening": {
+   "value": "base #1F7DBA; blob #F2B84B at 90% 10% r 45% alpha .8→0; blob #E9906A at 70% 30% r 30% alpha .45→0; blob #165E8C at 0% 100% r 80%; blob #7FCDFF at 12% 30% r 35% alpha .5→0; softness .7; grain multi 12% size 1.5",
+   "dark": null
+  },
+  "gradient.meshQuiet": {
+   "value": "base #EFECE7; blob #B3E1FF at 80% 10% r 60% alpha .8→0; blob #E4DBCE at 10% 90% r 70%; blob #FFFFFF at 30% 20% r 35% alpha .7→0; softness .7; grain multi 12% size 1.5",
+   "dark": null
+  },
+  "gradient.meshSheetGlow": {
+   "value": "radial 120% 80% at 20% 0%: rgba(127,205,255,.22) → 0 at 60%",
+   "dark": null
+  },
+  "gradient.meshWeekly": {
+   "value": "base #3A3834; blob #FFC85C at 88% 8% r 90%; blob #F0645E at 30% 30% r 75% alpha .55→0; blob #B7791F at 70% 80% r 90% alpha .75→0; blob #165E8C at 0% 100% r 85%; blob #FBF0DA at 78% 16% r 33% alpha .75→0; softness .7; grain multi 12% size 1.5",
+   "dark": null
+  }
+ }
+}
