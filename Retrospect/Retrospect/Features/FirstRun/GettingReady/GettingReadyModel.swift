@@ -75,6 +75,8 @@ final class GettingReadyModel {
     /// Words heard but not sent yet (the utterance hasn't ended).
     @ObservationIgnored private var utteranceOpen = false
     @ObservationIgnored private var utterance = 0
+    /// Counts sends, so a late outcome of an older one never overwrites a newer answer.
+    @ObservationIgnored private var sends = 0
 
     /// `kept`: the `this.week` answer from an earlier launch (resume): it shows, and the chip holds it.
     init(
@@ -93,7 +95,7 @@ final class GettingReadyModel {
         if let kept, !kept.isEmpty {
             self.kept = kept
             goingIn = kept
-            words = Self.words(kept.split(separator: " ").map(String.init), utterance: 0, pendingLast: false)
+            words = Self.words(Self.split(kept), utterance: 0, pendingLast: false)
         }
         // the first frame draws the line where the wait is, not at 0; the hand-off waits for `run()`,
         // after the host has set `onReady`
@@ -156,6 +158,8 @@ final class GettingReadyModel {
                 utteranceOpen = false
                 draft = QuestionsModel.restored(failed: spokenWords, typed: draft)
                 goingIn = kept
+                // the half-heard words now live in the field; the page shows the last kept answer
+                words = Self.words(Self.split(kept), utterance: utterance, pendingLast: false)
             }
         } else if mode == .listening, isOnScreen {
             startListening()
@@ -189,7 +193,7 @@ final class GettingReadyModel {
         guard !typed.isEmpty else { return }
         draft = ""
         utterance += 1
-        words = Self.words(typed.split(separator: " ").map(String.init), utterance: utterance, pendingLast: false)
+        words = Self.words(Self.split(typed), utterance: utterance, pendingLast: false)
         goingIn = typed
         await send(typed, given: .typed)
     }
@@ -198,10 +202,17 @@ final class GettingReadyModel {
 
     /// Hands one answer to the seam. Kept: the chip holds it. Not kept: the chip goes back to the
     /// last kept answer, the words wait in the field (typing), and the page says so once.
+    /// Sends can overlap (a voice answer still saving when a typed one goes): only the newest
+    /// decides what the chip, the kept answer and the field show; an older one's outcome is the
+    /// seam's alone (it already holds or keeps those words).
     private func send(_ text: String, given: Flows.FirstRunQuestion.Given) async {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return }
-        switch await firstRun.answer(.thisWeek, text: words, given: given) {
+        sends += 1
+        let attempt = sends
+        let outcome = await firstRun.answer(.thisWeek, text: words, given: given)
+        guard attempt == sends else { return }
+        switch outcome {
         case .saved:
             kept = words
             goingIn = words
@@ -215,6 +226,11 @@ final class GettingReadyModel {
             // the words are in the field now: show it
             setComposerMode(.muted)
         }
+    }
+
+    /// Words of a line, for the page.
+    private static func split(_ line: String?) -> [String] {
+        line?.split(separator: " ").map(String.init) ?? []
     }
 
     private func startListening() {
@@ -236,7 +252,7 @@ final class GettingReadyModel {
 
     /// #191's watch: settle, then ask every `refreshEvery` until made; a cancelled page ends it.
     private func watch() async {
-        settle()
+        await settle()
         while phase == .making {
             do {
                 try await clock.sleep(for: Self.refreshEvery)
@@ -246,23 +262,33 @@ final class GettingReadyModel {
             guard !Task.isCancelled else { return }
             await episode.refresh()
             guard !Task.isCancelled else { return }
-            settle()
+            await settle()
         }
     }
 
     /// Reads the seam: the line while waiting; made (with or without its audio) hands off.
-    private func settle() {
+    private func settle() async {
         switch episode.state {
         case let .waiting(since):
             episodeProgress = Self.progress(since: since, now: now())
         case .ready, .unavailable:
-            becomeReady()
+            await becomeReady()
         }
     }
 
-    private func becomeReady() {
+    /// Made: a sentence still being heard goes in first (the host may leave at once), then the line
+    /// fills and the host hears it, once. Listening carries on while the page stays: what is said
+    /// after this still reaches the seam (it informs the next episodes), as "it all goes in" says.
+    private func becomeReady() async {
         guard phase == .making else { return }
         phase = .ready
+        if utteranceOpen {
+            utteranceOpen = false
+            for index in words.indices {
+                words[index].isPending = false
+            }
+            await send(spokenWords, given: .voice)
+        }
         episodeProgress = 1
         onReady()
     }

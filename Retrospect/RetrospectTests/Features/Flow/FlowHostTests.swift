@@ -246,13 +246,26 @@ struct FlowHostTests {
         #expect(again.step == .gettingReady)
         let resumed = GettingReadyModel(
             firstRun: again.firstRun,
-            episode: again.episode,
+            episode: again.gettingReadyEpisode(),
             listening: again.listening,
             kept: again.answers[.thisWeek],
             clock: FlowImmediateClock()
         )
         #expect(resumed.goingIn == "the investor call on thursday")
         #expect(resumed.spokenWords == "the investor call on thursday")
+    }
+
+    @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")
+    func episodeStartsWithThePage() {
+        let model = flow(MemoryFlowStore(), start: .splash)
+        let first = model.gettingReadyEpisode()
+        #expect(model.gettingReadyEpisode() === first)
+        guard case let .waiting(since) = first.state else {
+            Issue.record("the sample episode should be waiting")
+            return
+        }
+        // Paper's 55%: 66 s into the wait as the page opens
+        #expect(abs(Date().timeIntervalSince(since) - SampleFirstEpisode.makingElapsed) < 5)
     }
 }
 

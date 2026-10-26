@@ -38,7 +38,7 @@ struct SampleFlowHost: View {
             case .gettingReady:
                 GettingReadyPageContainer(
                     firstRun: flow.firstRun,
-                    episode: flow.episode,
+                    episode: flow.gettingReadyEpisode(),
                     listening: flow.listening,
                     kept: flow.answers[.thisWeek],
                     onAnswered: { key, words in flow.answered(key, words: words) },

@@ -27,9 +27,10 @@ final class SampleFlowModel {
     let invite: InviteModel
     /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
-    /// ON-10's episode (made about 30 s after the page opens) and its simulated listening.
-    let episode: SampleFirstEpisode
+    /// ON-10's simulated listening.
     let listening: SampleListening
+    /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
+    @ObservationIgnored private var episode: SampleFirstEpisode?
 
     @ObservationIgnored private let store: any SampleFlowStore
     @ObservationIgnored private let table: [FlowEdge]
@@ -55,7 +56,6 @@ final class SampleFlowModel {
         )
         invite = Self.inviteModel(at: saved.step, sleep: sleep)
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
-        episode = SampleFirstEpisode(scenario: .makingThenReady)
         listening = SampleListening(clock: clock)
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
@@ -98,6 +98,17 @@ final class SampleFlowModel {
         if phase == .torn || phase == .youreIn {
             send(.ticketTorn)
         }
+    }
+
+    /// ON-10's sample episode, started when the page first shows (so a walk from the splash opens it
+    /// where Paper draws the line, 66 s into the wait, however long the walk took); the same one after.
+    func gettingReadyEpisode() -> SampleFirstEpisode {
+        if let episode {
+            return episode
+        }
+        let made = SampleFirstEpisode(scenario: .makingThenReady)
+        episode = made
+        return made
     }
 
     /// An answer the questions page's seam kept.

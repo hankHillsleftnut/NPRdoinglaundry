@@ -28,6 +28,29 @@ private final class RecordingFirstRun: Flows.FirstRun {
     func finishQuestions() async {}
 }
 
+/// A first-run seam whose answers wait until the test lets each one go, in any order.
+@MainActor @Observable
+private final class SuspendingFirstRun: Flows.FirstRun {
+    let questions: [Flows.FirstRunQuestion] = []
+    let answeredKeys: Set<Flows.QuestionKey> = []
+    @ObservationIgnored private var waiting: [CheckedContinuation<Flows.AnswerOutcome, Never>] = []
+
+    var pending: Int {
+        waiting.count
+    }
+
+    func answer(_: Flows.QuestionKey, text _: String, given _: Flows.FirstRunQuestion.Given) async -> Flows.AnswerOutcome {
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    /// Lets the `index`-th answer still waiting finish with `outcome`.
+    func finish(_ index: Int, with outcome: Flows.AnswerOutcome) {
+        waiting.remove(at: index).resume(returning: outcome)
+    }
+
+    func finishQuestions() async {}
+}
+
 /// A first episode that stays where the test puts it, and counts every refresh.
 @MainActor @Observable
 private final class HeldEpisode: Flows.FirstEpisode {
@@ -227,10 +250,63 @@ struct GettingReadyModelTests {
         #expect(listening.stops >= 1)
         #expect(model.draft == "the investor")
         #expect(model.goingIn == nil)
+        // the words moved into the field: none stay on the page, soft or otherwise
+        #expect(model.words.isEmpty)
         #expect(firstRun.sent.isEmpty)
         // a late end of that utterance sends nothing: its words are in the field
         await model.heard(.ended)
         #expect(firstRun.sent.isEmpty)
+    }
+
+    @Test("muting mid-sentence with an answer already kept shows that answer again, whole")
+    func muteShowsKept() async {
+        let model = make(episode: waiting, kept: "the board meeting")
+        await model.heard(.partial(["the", "investor"]))
+        model.setComposerMode(.muted)
+        #expect(model.spokenWords == "the board meeting")
+        #expect(model.words.allSatisfy { !$0.isPending })
+        #expect(model.draft == "the investor")
+    }
+
+    @Test("a sentence still being heard when the episode is made goes in before the host is told")
+    func madeMidSentence() async {
+        let firstRun = RecordingFirstRun()
+        let episode = waiting
+        let model = make(episode: episode, firstRun: firstRun)
+        var sentWhenTold: [RecordingFirstRun.Sent] = []
+        model.onReady = { sentWhenTold = firstRun.sent }
+        await model.heard(.partial(["pottery"]))
+        episode.state = SampleFirstEpisode.readyState
+        await model.run()
+        #expect(firstRun.sent == [.init(key: .thisWeek, text: "pottery", given: .voice)])
+        #expect(sentWhenTold == firstRun.sent)
+        #expect(model.words.allSatisfy { !$0.isPending })
+        // its end, arriving later, sends nothing more
+        await model.heard(.ended)
+        #expect(firstRun.sent.count == 1)
+        model.pageLeft()
+    }
+
+    @Test("sends that finish out of order: only the newest decides the chip, the kept answer and the field")
+    func newestSendWins() async {
+        let firstRun = SuspendingFirstRun()
+        let model = GettingReadyModel(firstRun: firstRun, episode: waiting, listening: HeldListening(), clock: clock, now: { start })
+        var answered: [String] = []
+        model.onAnswered = { _, words in answered.append(words) }
+        await model.heard(.partial(["the", "investor", "call"]))
+        let voice = Task { await model.heard(.ended) }
+        await settle { firstRun.pending == 1 }
+        let typed = Task { await model.sendTyped("the board meeting") }
+        await settle { firstRun.pending == 2 }
+        // the typed answer lands first; the older voice answer comes back later
+        firstRun.finish(1, with: .saved)
+        await typed.value
+        firstRun.finish(0, with: .failedKept(.network))
+        await voice.value
+        #expect(model.goingIn == "the board meeting")
+        #expect(answered == ["the board meeting"])
+        #expect(model.draft.isEmpty)
+        #expect(!model.isFailing)
     }
 
     @Test("on screen it listens; back to talking after typing listens again; off screen it stops")
