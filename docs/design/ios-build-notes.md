@@ -200,3 +200,9 @@ Your Paper comments are also instructions for how the iOS app should be built. E
 ## Onboarding questions · typing haptic (founder, 21 Oct)
 - While Retro types out a question (ON-3–9), play `haptic.typeOn`: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.35, fired once per word as it appears (never per letter), at most ~10 a second, skipping spaces and punctuation. Call `prepare()` once when the question starts.
 - Stop as soon as listening starts (`haptic.listenStart` takes over). No typing haptic when Reduce Motion skips the type-on, or when system haptics are off.
+
+## Ink titles · line height (TYPE.leading, founder 26 Oct: "fix it once, everywhere")
+- **Cause:** Exposure's line box is 1.2 × size; Paper's ink titles are 1.1 × size (--leading-tight). SwiftUI can't set a line below the font's own height with `.lineSpacing`, so each line after the first drifted 3pt lower at 30pt (12pt by line 4 on ON-10's question; review-201 Q7).
+- **Fix:** `RTextModifier` wraps every ink style tighter than the font in `RPaperPitchLayout` + the `RPaperPitch` text renderer: lines are drawn exactly leading × size apart, line 1 unmoved, height = font line + (n − 1) × Paper pitch. One-line titles are unchanged. No token values changed; non-ink styles untouched.
+- **Effect on open comparisons:** the questions (#190), privacy (#196), connect (#199) and getting ready (#201) bundles all improve: the title's later lines land within about 0.3pt of Paper's pitch, and everything below a multi-line title moves up by 3pt per extra line.
+- Don't use a `TextRenderer` that reports a smaller size to shorten text: SwiftUI then lays the text out in that height and drops the last lines. Shorten the frame with a `Layout` around the text instead.

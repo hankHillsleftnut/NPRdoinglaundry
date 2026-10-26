@@ -74,6 +74,14 @@ struct RTextStyle {
         return uiFont.lineHeight
     }
 
+    /// The ink faces whose Paper leading is tighter than the font's own line box (Exposure's is
+    /// 1.2 × size, so --leading-tight 1.1): their lines are drawn at Paper's pitch (`RPaperPitch`).
+    /// The ratio doesn't change with size, so this holds at every Dynamic Type size.
+    var drawsAtPaperPitch: Bool {
+        guard case .inky = family else { return false }
+        return leading * size < naturalLineHeight(scaledSize: size)
+    }
+
     private var isMono: Bool {
         if case .mono = family {
             return true
@@ -314,14 +322,24 @@ private struct RTextModifier: ViewModifier {
         // Paper's line box is leading × size; SwiftUI gives each line the font's own height. The
         // difference goes between lines and, as in CSS, half above and half below the text, so a
         // single line is as tall as Paper draws it too. Tighter leading than the font's own
-        // height can't shrink a SwiftUI line, so it stays at the font's height.
+        // height can't shrink a SwiftUI line with spacing, so the ink faces draw their lines at
+        // Paper's pitch instead (`RPaperPitch`); every other face keeps the font's own height.
         let leading = dynamicTypeSize.isAccessibilitySize ? min(style.leading, style.accessibilityLeading) : style.leading
-        let extra = max(0, leading * size - style.naturalLineHeight(scaledSize: size))
-        content
+        let natural = style.naturalLineHeight(scaledSize: size)
+        let extra = max(0, leading * size - natural)
+        let styled = content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
             .lineSpacing(extra)
             .padding(.vertical, extra / 2)
+        if style.drawsAtPaperPitch {
+            let pitch = RPaperPitch(pitch: leading * size, naturalLineHeight: natural)
+            RPaperPitchLayout(pitch: pitch) {
+                styled.textRenderer(pitch)
+            }
+        } else {
+            styled
+        }
     }
 }
 
