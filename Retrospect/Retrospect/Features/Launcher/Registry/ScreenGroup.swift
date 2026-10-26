@@ -30,6 +30,7 @@ extension ScreenRegistry {
         JournalScreenGroup.self,
         AccountScreenGroup.self,
         ForceUpdateScreenGroup.self,
+        PlayerScreenGroup.self,
         // V2 (plan-v2.md §3): dark, reachable only from here and the lab
         JournalV2Screens.self,
         PodcastsScreens.self,
