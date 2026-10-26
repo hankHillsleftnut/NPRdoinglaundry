@@ -12,7 +12,7 @@
 //  (SF text-md medium, one line) over the subline (Geist text-sm, text.label), 2 apart, and a 44 wash
 //  well (pause / play / retry, a 20 glyph). A 2pt player.progress line along the bottom, clipped by the
 //  pill. Failed (GXB-0): the subline in status.dangerText ("couldn't play · tap to retry"), the well
-//  shows retry and the progress line goes.
+//  shows retry, the whole pill retries (so "tap to retry" holds wherever you tap) and the line goes.
 //  Buffering and paused come from the spec's state table (Paper draws playing and failed only):
 //  paused shows play; buffering keeps the glyph's place with the spinner and holds the line.
 //  Pressed: the body 0.98, the well 0.94 with haptic.press (RPressStyle). Reduce Motion: no scale.
@@ -57,7 +57,8 @@ struct RMiniPlayer: View {
 
     var body: some View {
         HStack(spacing: RDimension.space3) {
-            Button(action: open) {
+            // failed, the whole pill retries, so "tap to retry" (Paper GXF-0) is true wherever you tap
+            Button(action: phase == .failed ? well : open) {
                 HStack(spacing: RDimension.space3) {
                     RArtwork(
                         recipe: artwork,
@@ -83,7 +84,7 @@ struct RMiniPlayer: View {
             .buttonStyle(RPressStyle())
             .accessibilityLabel(title)
             .accessibilityValue(phase == .failed ? Self.failedLine : subline)
-            .accessibilityHint("opens the player")
+            .accessibilityHint(phase == .failed ? "tries again" : "opens the player")
             RMiniPlayerWell(phase: phase, action: well)
         }
         .padding(.horizontal, RDimension.space2)
@@ -96,10 +97,10 @@ struct RMiniPlayer: View {
                         .frame(width: proxy.size.width * played, height: RDimension.sizeBorderRing)
                         .frame(maxHeight: .infinity, alignment: .bottom)
                 }
+                .clipShape(RShape.pill)
                 .accessibilityHidden(true)
             }
         }
-        .clipShape(RShape.pill)
         .animation(RMotion.standard(RNumber.motionDurationPlayMorph), value: phase)
     }
 
