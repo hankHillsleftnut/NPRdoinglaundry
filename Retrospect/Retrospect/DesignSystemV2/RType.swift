@@ -307,6 +307,7 @@ extension RTextStyle {
 private struct RTextModifier: ViewModifier {
     let style: RTextStyle
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.rPaperLineBoxes) private var paperLineBoxes
 
     func body(content: Content) -> some View {
         // tracking and leading are proportions of the size, so they follow the scaled size too
@@ -316,13 +317,36 @@ private struct RTextModifier: ViewModifier {
         // single line is as tall as Paper draws it too. Tighter leading than the font's own
         // height can't shrink a SwiftUI line, so it stays at the font's height.
         let leading = dynamicTypeSize.isAccessibilitySize ? min(style.leading, style.accessibilityLeading) : style.leading
-        let extra = max(0, leading * size - style.naturalLineHeight(scaledSize: size))
+        let natural = style.naturalLineHeight(scaledSize: size)
+        let extra = max(0, leading * size - natural)
         content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
             .lineSpacing(extra)
-            .padding(.vertical, extra / 2)
+            .padding(.vertical, paperLineBoxes ? Self.paperHalfLeading(box: leading * size, natural: natural) : extra / 2)
     }
+
+    /// Half the difference between Paper's line box and the font's own line, above the first line
+    /// and below the last. Paper lays text out as CSS does and rounds each text box up to a whole
+    /// point (17 × 1.3 = 22.1 draws 23 tall), and a box tighter than the font (the inky titles at
+    /// leading-tight) trims the font's line instead of growing to it. Negative trims.
+    static func paperHalfLeading(box: CGFloat, natural: CGFloat) -> CGFloat {
+        // a hair under a whole point stays that point (floating-point products like 30 × 1.1)
+        let rounded = (box - RNumber.paperLineBoxSlack).rounded(.up)
+        return (rounded - natural) / 2
+    }
+}
+
+extension RNumber {
+    /// How far under a whole point a line box may fall and still round to it (30 × 1.1 = 33.000…04).
+    static let paperLineBoxSlack: CGFloat = 0.001 // literal-ok: floating-point slack, not a size
+}
+
+extension EnvironmentValues {
+    /// Text below lays its line boxes out as Paper draws them (`RTextModifier.paperHalfLeading`):
+    /// rounded up to whole points, tight leading trimmed. Opted in per screen as each one is
+    /// matched to Paper (ON-6 first), so screens already approved don't move.
+    @Entry var rPaperLineBoxes = false
 }
 
 extension View {

@@ -1,7 +1,7 @@
 //
 //  RParts2.swift
 //  M14 sub-components, group 2 (S07, S08, S09): the onboarding progress hairline,
-//  the knows-you track and the small syncing spinner. Values from the approved ON-6
+//  the knows-you track (and C36, the meter built on it) and the small syncing spinner. Values from the approved ON-6
 //  board (c:onboarding-progress, c:knows-you-meter) and ST-3 (syncing); tokens only.
 //
 import SwiftUI
@@ -42,6 +42,7 @@ struct RProgressHairline: View {
 struct RKnowsYouTrack: View {
     /// 0…1
     let fraction: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var clamped: Double {
         fraction.clamped01
     }
@@ -57,12 +58,51 @@ struct RKnowsYouTrack: View {
                         endPoint: .trailing
                     ))
                     .frame(width: geo.size.width * clamped)
-                    .shadow(color: RColor.glowPrimaryHalo, radius: RDimension.sizeMeter * 1.5)
+                    // Paper 21C4-0: glow.primary.halo 0 0 6 (a CSS blur of 6 is a SwiftUI radius of 3)
+                    .shadow(color: RColor.glowPrimaryHalo, radius: RDimension.sizeMeter * 0.75) // literal-ok: half of Paper's 6 blur
             }
         }
         .frame(height: RDimension.sizeMeter)
-        .animation(RMotion.move(RNumber.motionDurationTranscriptFollow), value: fraction)
+        // a step travels on curve.move over 420; Reduce Motion: it lands in a short 140 instead
+        .animation(
+            reduceMotion
+                ? RMotion.standard(RNumber.motionDurationFast)
+                : RMotion.move(RNumber.motionDurationTranscriptFollow),
+            value: fraction
+        )
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - C36 · Knows-you meter
+
+/// The knows-you meter (Paper `c:knows-you-meter/1-of-6`, 21C1-0): the lit track, then its words
+/// on the right ("knows you a little"), 12 apart, 4 above. The track fills one step on curve.move
+/// (motion-system "Knows-you meter"); the words blur-replace when they change. At accessibility
+/// sizes the words go under the track so neither is squeezed. One element for VoiceOver: the words.
+struct RKnowsYouMeter: View {
+    /// 0…1
+    let fraction: Double
+    let label: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let parts = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: RDimension.space2))
+            : AnyLayout(HStackLayout(spacing: RDimension.space3))
+        parts {
+            RKnowsYouTrack(fraction: fraction)
+                .frame(maxWidth: .infinity)
+            Text(label)
+                .rText(.labelMedium)
+                .foregroundStyle(RColor.textLabel)
+                .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
+                .contentTransition(.interpolate)
+                .animation(RMotion.standard(RNumber.motionDurationBase), value: label)
+        }
+        .padding(.top, RDimension.space1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
     }
 }
 
@@ -104,6 +144,7 @@ struct RParts2Gallery: View {
         VStack(alignment: .leading, spacing: RDimension.space6) {
             RProgressHairline(fraction: step / 6)
             RKnowsYouTrack(fraction: step / 6)
+            RKnowsYouMeter(fraction: step / 6, label: "knows you a little")
             HStack(spacing: RDimension.space3) {
                 RSpinner()
                 RSpinner(diameter: RDimension.sizeIconDefault)
