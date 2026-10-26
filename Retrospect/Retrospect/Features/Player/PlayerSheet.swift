@@ -13,6 +13,8 @@
 //
 import SwiftUI
 
+/// The "…" menu opens through the nearest `rMenuHost()` above the sheet, installed at screen level
+/// (`PlayerSheetScreen` here; the page under RSheetHost in PS.sheet.c), never on the padded content.
 struct PlayerSheet: View {
     let model: PlayerSheetModel
 
@@ -30,8 +32,6 @@ struct PlayerSheet: View {
             RTransport(playback: model.playback, more: moreRows)
                 .padding(.top, RDimension.space6)
         }
-        // the "…" menu grows over the whole sheet
-        .rMenuHost()
         .accessibilityAction(.escape) { model.collapse() }
     }
 
@@ -95,6 +95,9 @@ struct PlayerSheetScreen<Content: View>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background { RColor.backgroundUnderlay.ignoresSafeArea() }
+        // the "…" menu's host sits at the screen, outside every padding, so its veil covers the
+        // whole screen and a tap anywhere outside the menu closes it (QA 198 M1)
+        .rMenuHost()
     }
 }
 
