@@ -49,4 +49,14 @@ struct RSheetHostTests {
         #expect(abs(RSheetDetent.medium.height(in: 800) - 400) < 0.0001)
         #expect(RSheetDetent.full.height(in: 800) == 800 - RDimension.layoutSheetTop)
     }
+
+    @Test("the page keeps its safe area, but detents still count the strip over the home indicator")
+    func detentsCountTheHomeIndicator() {
+        // iPhone 17 Pro: 874 tall, 62 status bar, 34 home indicator; the page measures 778
+        let pro = RSheetHostFrame(safeHeight: 778, bottomInset: 34)
+        #expect(pro.sheetSpace == 812)
+        #expect(abs(RSheetDetent.medium.height(in: pro.sheetSpace) - 406) < 0.0001)
+        // iPhone SE: no home indicator, nothing added
+        #expect(RSheetHostFrame(safeHeight: 647, bottomInset: 0).sheetSpace == 647)
+    }
 }

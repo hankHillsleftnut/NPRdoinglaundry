@@ -79,6 +79,18 @@ enum RSheetProgress {
     }
 }
 
+/// The host's measured frame: the page's safe height and the home-indicator inset below it.
+struct RSheetHostFrame: Equatable {
+    let safeHeight: CGFloat
+    let bottomInset: CGFloat
+
+    /// The height detents are taken from: the page plus the strip below its safe area, so a sheet
+    /// is as tall as it was when the whole host ran to the screen's bottom edge.
+    var sheetSpace: CGFloat {
+        safeHeight + bottomInset
+    }
+}
+
 // MARK: - The request a page makes
 
 /// What a page asks the host to show. Carried up by preference so the host, installed once at
@@ -130,7 +142,7 @@ struct RSheetHost<Content: View>: View {
     @State private var progress: Double = 0
     /// The request being shown; kept while it closes so the content doesn't vanish mid-motion.
     @State private var shown: RSheetRequest?
-    @State private var hostHeight: CGFloat = 0
+    @State private var frame = RSheetHostFrame(safeHeight: 0, bottomInset: 0)
     @State private var contentAtTop = true
     @State private var dragging = false
     /// Counts settles, so the snap haptic fires once per rest.
@@ -147,26 +159,37 @@ struct RSheetHost<Content: View>: View {
                     }
             }
             .scaleEffect(reduceMotion ? 1 : RSheetProgress.behindScale(progress))
-            .clipShape(RShape.rect(RSheetProgress.behindRadius(progress)))
+            // The page keeps its safe area (its controls stay off the home indicator); the clip runs
+            // to the screen edges, so a background the page lets past the safe area is not cut to a
+            // bare band under the status bar or over the home indicator.
+            .mask {
+                RShape.rect(RSheetProgress.behindRadius(progress)).ignoresSafeArea()
+            }
             .overlay {
                 scrim
             }
-            .overlay(alignment: .bottom) {
-                if let shown {
-                    sheet(shown)
+            .overlay {
+                // a full-height layer that reaches the screen's bottom edge, so the panel does too
+                ZStack(alignment: .bottom) {
+                    if let shown {
+                        sheet(shown)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(.container, edges: .bottom)
             }
             .background {
-                Color.clear.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { hostHeight = $0 }
+                Color.clear.onGeometryChange(for: RSheetHostFrame.self) {
+                    RSheetHostFrame(safeHeight: $0.size.height, bottomInset: $0.safeAreaInsets.bottom)
+                } action: { frame = $0 }
             }
             .sensoryFeedback(RHaptic.sheetSnap, trigger: settled)
-            .ignoresSafeArea(.container, edges: .bottom)
     }
 
     // MARK: Opening and closing
 
     private var sheetHeight: CGFloat {
-        (shown?.detent ?? .medium).height(in: hostHeight)
+        (shown?.detent ?? .medium).height(in: frame.sheetSpace)
     }
 
     /// A new request opens once the current sheet has closed; the same request is left alone.
@@ -233,6 +256,8 @@ struct RSheetHost<Content: View>: View {
                 .scrollDisabled(dragging)
         }
         .padding(.horizontal, RDimension.layoutSheetInset)
+        // the panel runs to the screen edge; its controls stop above the home indicator
+        .padding(.bottom, frame.bottomInset)
         .frame(maxWidth: RDimension.layoutSheetMaxWidth)
         .frame(height: sheetHeight)
         .rSheet()
