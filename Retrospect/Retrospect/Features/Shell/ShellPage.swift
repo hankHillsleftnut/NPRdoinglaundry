@@ -11,9 +11,10 @@
 //  JR-1 on sample data and nothing for the tabs not built yet (no placeholder pages). The drawer (JR-3)
 //  is lane 1's: until it is built the journal's drawer button stays as JR-1 has it.
 //
-//  Layout: the bar sits on the bottom safe area (Paper: the dock 32 above the screen edge, which is the
-//  home indicator), so a page's own bottom inset (the journal's composer) rises above it; the page under
-//  the bar is opaque canvas (build notes, podcasts bottom edge). A tab change cross-fades the page over
+//  Layout: the pages, then the bar under them on the bottom safe area (Paper: the dock 32 above the screen
+//  edge, which is the home indicator). A page ends at the bar's top, so its bottom parts (the journal's
+//  composer, which its sheet host lets reach into the safe area) sit above the bar, never under it; the
+//  strip under the bar is opaque canvas (build notes, podcasts bottom edge). A tab change cross-fades the page over
 //  motion.duration.fast (tab-bar.md "change"; Reduce Motion: no fade) and plays haptic.tab (RTabBar).
 //
 import SwiftUI
@@ -43,28 +44,29 @@ struct ShellPage: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            RColor.backgroundCanvas.ignoresSafeArea()
-            // every built page stays mounted, so switching back keeps its scroll and its words
-            ForEach(RTab.allCases) { tab in
-                let shown = tab == model.selection
-                Group {
-                    if let view = page(tab) {
-                        view
-                    } else {
-                        RColor.backgroundCanvas
+        // the pages, then the bar under them: a page that reaches into the bottom safe area (the
+        // journal's sheet host does) stops at the bar instead of sliding under it
+        VStack(spacing: RDimension.space0) {
+            ZStack {
+                // every built page stays mounted, so switching back keeps its scroll and its words
+                ForEach(RTab.allCases) { tab in
+                    let shown = tab == model.selection
+                    Group {
+                        if let view = page(tab) {
+                            view
+                        } else {
+                            RColor.backgroundCanvas
+                        }
                     }
+                    .opacity(shown ? 1 : 0)
+                    .allowsHitTesting(shown)
+                    .accessibilityHidden(!shown)
                 }
-                .opacity(shown ? 1 : 0)
-                .allowsHitTesting(shown)
-                .accessibilityHidden(!shown)
             }
-        }
-        .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: model.selection)
-        .safeAreaInset(edge: .bottom, spacing: RDimension.space0) {
+            .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: model.selection)
             RTabBar(selection: $model.selection) { model.reselect($0) }
-                .background(RColor.backgroundCanvas.ignoresSafeArea(edges: .bottom))
         }
+        .background(RColor.backgroundCanvas.ignoresSafeArea())
         .accessibilityIdentifier("shell")
     }
 }
