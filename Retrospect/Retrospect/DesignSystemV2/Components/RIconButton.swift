@@ -11,7 +11,7 @@ struct RIconButton: View {
     enum Role {
         case topBar, inField, bubble
         /// The player sheet's header (share, collapse): a 34 circle (Paper ON-11 26PK-0 / 26PH-0)
-        /// with a small glyph at stroke weight (player.md: stroke 2 on the 24 grid).
+        /// with an 18 glyph at stroke weight (player.md: stroke 2 on the 24 grid).
         case sheetHeader
 
         var visible: CGFloat {
@@ -24,7 +24,8 @@ struct RIconButton: View {
         }
 
         var glyph: RIconSize {
-            self == .sheetHeader ? .small : .regular
+            // Paper 26PI-0's glyph box is 18 (size.icon.inWell)
+            self == .sheetHeader ? .inWell : .regular
         }
 
         var weight: Font.Weight {

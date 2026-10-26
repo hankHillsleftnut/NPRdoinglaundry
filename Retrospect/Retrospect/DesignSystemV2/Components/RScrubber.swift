@@ -224,13 +224,13 @@ enum ScrubberWords {
     }
 
     /// The part's name in the given style: counted ("2 of 4 · the article"), or its title alone
-    /// ("the first thing i noticed", Paper ON-11 26OI-0), counted when it has no title.
+    /// ("the first thing i noticed", Paper ON-11 26OI-0), nothing when it has no title (no invented label).
     static func partName(_ index: Int, of count: Int, title: String?, style: RScrubber.PartLabel) -> String {
         switch style {
         case .counted:
             partName(index, of: count, title: title)
         case .title:
-            title ?? partName(index, of: count, title: nil)
+            title ?? ""
         }
     }
 
@@ -288,7 +288,7 @@ struct RScrubber: View {
     enum PartLabel: Equatable, Sendable {
         /// "2 of 3", or "2 of 4 · the article" (JR-2).
         case counted
-        /// The part's title alone (ON-11 26OI-0); counted when the part has no title.
+        /// The part's title alone (ON-11 26OI-0); nothing when the part has no title.
         case title
     }
 
@@ -517,7 +517,8 @@ struct RScrubber: View {
 
     /// The bubble names the part; a one-part brief has no parts to name, so it shows the time.
     private var bubbleWords: String {
-        partCount > 1 ? partWords : ScrubberWords.clock(shownTime)
+        let words = partWords
+        return words.isEmpty ? ScrubberWords.clock(shownTime) : words
     }
 
     private var spokenValue: String {

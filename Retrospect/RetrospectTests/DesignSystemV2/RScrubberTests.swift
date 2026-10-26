@@ -148,10 +148,10 @@ struct RScrubberTests {
         #expect(ScrubberWords.spoken(position: 61, duration: 40, part: 0, parts: 1) == "1 minute 1 second of 40 seconds")
     }
 
-    @Test("a titled label is the chapter's title alone (ON-11 26OI-0); counted when it has no title; counted stays as it was")
+    @Test("a titled label is the chapter's title alone (ON-11 26OI-0); nothing when it has no title; counted stays as it was")
     func titledPartLabel() {
         #expect(ScrubberWords.partName(1, of: 4, title: "the first thing i noticed", style: .title) == "the first thing i noticed")
-        #expect(ScrubberWords.partName(0, of: 4, title: nil, style: .title) == "1 of 4")
+        #expect(ScrubberWords.partName(0, of: 4, title: nil, style: .title) == "", "no invented \"1 of 4\"")
         #expect(ScrubberWords.partName(1, of: 4, title: "the article", style: .counted) == "2 of 4 · the article")
     }
 }

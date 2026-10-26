@@ -4,7 +4,7 @@ import Testing
 
 struct TranscriptTests {
     /// Three lines at 0, 10 and 25 s.
-    private let transcript = Flows.Transcript(lines: [
+    private let transcript = Flows.Transcript(itemID: "episode", lines: [
         .init(id: 0, text: "one", startSeconds: 0),
         .init(id: 1, text: "two", startSeconds: 10),
         .init(id: 2, text: "three", startSeconds: 25),
@@ -19,19 +19,41 @@ struct TranscriptTests {
 
     @Test("before the first line starts, the first line is the one about to be read")
     func beforeTheFirstLine() {
-        let late = Flows.Transcript(lines: [.init(id: 0, text: "one", startSeconds: 3), .init(id: 1, text: "two", startSeconds: 8)])
+        let late = Flows.Transcript(itemID: "episode", lines: [
+            .init(id: 0, text: "one", startSeconds: 3),
+            .init(id: 1, text: "two", startSeconds: 8),
+        ])
         #expect(late.lineIndex(at: 0) == 0)
         #expect(late.lineIndex(at: -5) == 0)
     }
 
     @Test("no lines, no line")
     func empty() {
-        #expect(Flows.Transcript(lines: []).lineIndex(at: 12) == nil)
+        let none = Flows.Transcript(itemID: "episode", lines: [])
+        #expect(none.lineIndex(at: 12) == nil)
+        #expect(!none.isTimed)
+    }
+
+    @Test("lines with no times (the transcript fallback) light nothing and keep their own order")
+    func untimed() {
+        let untimed = Flows.Transcript(itemID: "episode", lines: [
+            .init(id: 1, text: "two", startSeconds: nil),
+            .init(id: 0, text: "one", startSeconds: nil),
+        ])
+        #expect(!untimed.isTimed)
+        #expect(untimed.lines.map(\.id) == [0, 1])
+        #expect(untimed.lineIndex(at: 0) == nil)
+        #expect(untimed.lineIndex(at: 600) == nil, "never the last line for the whole episode")
+        let mixed = Flows.Transcript(itemID: "episode", lines: [
+            .init(id: 0, text: "one", startSeconds: 0),
+            .init(id: 1, text: "two", startSeconds: nil),
+        ])
+        #expect(mixed.lineIndex(at: 30) == nil)
     }
 
     @Test("lines that arrive out of order are read in the order they start")
     func sorted() {
-        let shuffled = Flows.Transcript(lines: [
+        let shuffled = Flows.Transcript(itemID: "episode", lines: [
             .init(id: 2, text: "three", startSeconds: 25),
             .init(id: 0, text: "one", startSeconds: 0),
             .init(id: 1, text: "two", startSeconds: 10),
@@ -40,7 +62,7 @@ struct TranscriptTests {
         #expect(shuffled.lineIndex(at: 12) == 1)
     }
 
-    @Test("the tease's words are Paper's, word for word (26PE-0 … 26PA-0), and its third line is lit at 0:48")
+    @Test("the tease's words are Paper's, word for word (26PE-0 … 26PA-0), and its third line is lit at 0:04")
     func teaseIsPapers() {
         #expect(SampleTranscript.tease.lines.map(\.text) == [
             "This is the week you started, so it's a short one.",
@@ -49,6 +71,7 @@ struct TranscriptTests {
             "You give your mornings to what you care about.",
             "Next Sunday I'll have a whole week to go on.",
         ])
-        #expect(SampleTranscript.tease.lineIndex(at: 48) == 2)
+        #expect(SampleTranscript.tease.lineIndex(at: SamplePlayback.teaseLitLine) == 2)
+        #expect(SampleTranscript.tease.itemID == SamplePlayback.tease.id)
     }
 }

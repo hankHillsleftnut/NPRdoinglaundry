@@ -33,11 +33,13 @@ extension Flows {
         case long
         /// Two parts, 0:45: under a minute, so one capsule and a 15 second forward skip.
         case shortUnderMinute
-        /// ON-11, the first episode's tease (Paper 26NO-0): four chapters, 2:10, playing from 0:48.
+        /// ON-11, the first episode's tease (Paper 26NO-0): 10 seconds in one part (founder Q5 = B),
+        /// playing from the start.
         case tease
-        /// The tease playing at 0:48, held still until something is tapped: the frame compared with Paper.
+        /// The tease playing at 0:04, on the line Paper lights, held still until something is tapped:
+        /// the frame compared with Paper.
         case teaseStill
-        /// The tease paused at 0:48.
+        /// The tease paused at 0:04.
         case teasePaused
         /// The tease played to the end.
         case teaseEnded
@@ -92,16 +94,19 @@ final class SamplePlayback: Flows.Playback {
         switch scenario {
         case .briefPaused, .briefQuiet, .long, .shortUnderMinute:
             state = .paused
-        case .briefPlaying, .tease:
+        case .briefPlaying:
             position = 48
+            state = .playing
+            run()
+        case .tease:
             state = .playing
             run()
         case .teaseStill:
             // playing, as drawn, with no ticker: nothing moves until it's paused and played again
-            position = 48
+            position = Self.teaseLitLine
             state = .playing
         case .teasePaused:
-            position = 48
+            position = Self.teaseLitLine
             state = .paused
         case .briefPlayed, .teaseEnded:
             position = item.durationSeconds ?? 0
@@ -255,21 +260,20 @@ final class SamplePlayback: Flows.Playback {
         }
     }
 
-    /// ON-11's episode (Paper 26NO-0): "the week you started", 2:10 in four chapters whose lengths
-    /// draw Paper's capsules (82 : 114 : 62 : 64 ≈ 33 : 46 : 25 : 26 s). Paper names only the second
-    /// chapter ("the first thing i noticed", 26OI-0); the others are left untitled, not invented.
+    /// ON-11's episode: "the week you started", 10 seconds in one untitled part (founder Q5 = B, 26 Oct:
+    /// one capsule, "00:00 / −00:10", no chapter name). Its words are all five of Paper's lines.
     static let tease = Flows.PlaybackItem(
-        id: "sample-tease",
+        id: SampleTranscript.teaseID,
         kind: .episode,
         title: "the week you started",
         parts: [
-            .init(id: 0, title: nil, text: SampleTranscript.tease.lines[0].text, startSeconds: 0),
-            .init(id: 1, title: "the first thing i noticed", text: SampleTranscript.tease.lines[1].text, startSeconds: 33),
-            .init(id: 2, title: nil, text: SampleTranscript.tease.lines[3].text, startSeconds: 79),
-            .init(id: 3, title: nil, text: SampleTranscript.tease.lines[4].text, startSeconds: 104),
+            .init(id: 0, title: nil, text: SampleTranscript.tease.lines.map(\.text).joined(separator: " "), startSeconds: 0),
         ],
-        durationSeconds: 130
+        durationSeconds: 10
     )
+
+    /// Where the tease reads the line Paper lights (the third, 26PC-0).
+    static let teaseLitLine: Double = 4
 
     private static func brief(id: String, parts: [Flows.PlaybackItem.Part], duration: Double) -> Flows.PlaybackItem {
         Flows.PlaybackItem(id: id, kind: .brief, title: "today's brief", parts: parts, durationSeconds: duration)

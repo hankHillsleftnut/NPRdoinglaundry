@@ -1,10 +1,10 @@
 //
 //  PlayerScreens+Launcher.swift
 //  The player sheet in the launcher (PS.sheet.a): `-Screen player -State tease|tease-still|tease-paused|
-//  tease-ended -Data sample` opens ON-11's sheet on the sample player and the tease's lines. `tease`
-//  plays from 0:48 on the real clock; `tease-still` is the frame compared with Paper (playing at 0:48,
-//  held still until pause and play). Nothing is mounted in the app yet (PS.sheet.c): the collapse says
-//  so in a quiet line.
+//  tease-ended -Data sample` opens ON-11's sheet on the sample player and the tease's lines (a 10-second
+//  episode, founder Q5 = B). `tease` plays from 0:00 on the real clock; `tease-still` is the frame
+//  compared with Paper (playing at 0:04 on the line Paper lights, held still until pause and play).
+//  Nothing is mounted in the app yet (PS.sheet.c): the collapse says so in a quiet line.
 //
 #if DEBUG
 import SwiftUI

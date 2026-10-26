@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 @testable import Retrospect
 import Testing
@@ -29,23 +28,44 @@ struct PlayerSheetModelTests {
         #expect(PlayerSheetModel.State(playback) == sheet)
     }
 
-    @Test("as drawn: playing at 0:48 with the third line lit and Paper's title")
+    @Test("as drawn: playing on the line Paper lights (the third, at 0:04) with Paper's title")
     func asDrawn() {
         let sheet = model(.teaseStill)
         #expect(sheet.state == .playing)
-        #expect(sheet.playback.position == 48)
+        #expect(sheet.playback.position == 4)
         #expect(sheet.currentLine == 2)
         #expect(sheet.title == "the week you started")
     }
 
-    @Test("the lit line follows the player: a skip back to the second chapter lights the second line; the end lights the last")
+    @Test("the lit line follows the player: a seek to 0:02 lights the second line, back 15 the first; the end lights the last")
     func litLineFollowsThePlayer() {
         let sheet = model(.teasePaused)
-        sheet.playback.skip(by: -15)
-        #expect(sheet.playback.position == 33)
+        sheet.playback.seek(to: 2)
         #expect(sheet.currentLine == 1)
+        sheet.playback.seek(to: 1.999)
+        #expect(sheet.currentLine == 0)
+        sheet.playback.skip(by: -15)
+        #expect(sheet.playback.position == 0)
+        #expect(sheet.currentLine == 0)
         #expect(model(.teaseEnded).currentLine == 4)
         #expect(model(.teaseEnded).state == .ended)
+    }
+
+    @Test("the tease starts at 0:00, playing")
+    func teaseStartsAtTheStart() {
+        let sheet = model(.tease)
+        #expect(sheet.playback.position == 0)
+        #expect(sheet.state == .playing)
+        #expect(sheet.currentLine == 0)
+    }
+
+    @Test("when the player moves on to another item, nothing is lit and the header follows the new item")
+    func anotherItemLightsNothing() async {
+        let sheet = model(.teasePaused)
+        #expect(sheet.currentLine == 2)
+        await sheet.playback.load(SamplePlayback.item(for: .briefPaused))
+        #expect(sheet.currentLine == nil, "never this episode's line against another item's time")
+        #expect(sheet.title == "today's brief", "the header reads the player's item, live")
     }
 
     @Test("collapse is handed over once, however often it's tapped")
@@ -58,23 +78,26 @@ struct PlayerSheetModelTests {
         #expect(sheet.hasCollapsed)
     }
 
-    @Test("the tease draws Paper's scrubber: four capsules 82 : 114 : 62 : 64, \"00:48\" · \"the first thing i noticed\" · \"−01:22\"")
-    func teaseScrubberIsPapers() {
+    @Test("the tease is 10 seconds in one part (founder Q5 = B): one capsule, \"00:00 / −00:10\", no chapter name")
+    func teaseIsTenSeconds() {
         let item = SamplePlayback.tease
         #expect(item.kind == .episode)
-        #expect(item.durationSeconds == 130)
-        // Paper 26OM-0 is 346 wide with three 4pt gaps
-        let math = ScrubberMath(width: 346, duration: 130, partStarts: item.parts.map(\.startSeconds))
-        let widths = math.segments.map(\.width)
-        let paper: [CGFloat] = [82, 114, 62, 64].map { 334 * $0 / 322 }
-        #expect(widths.count == 4)
-        for (built, drawn) in zip(widths, paper) {
-            #expect(abs(built - drawn) < 1, "each capsule within 1pt of Paper's")
-        }
-        let part = math.part(at: 48)
-        #expect(ScrubberWords.clock(48) == "00:48")
-        #expect(ScrubberWords.remaining(130 - 48) == "\u{2212}01:22")
-        #expect(ScrubberWords.partName(part, of: 4, title: item.parts[part].title, style: .title) == "the first thing i noticed")
+        #expect(item.durationSeconds == 10)
+        #expect(item.parts.count == 1)
+        #expect(item.parts[0].title == nil)
+        let math = ScrubberMath(width: 346, duration: 10, partStarts: item.parts.map(\.startSeconds))
+        #expect(math.segments.count == 1)
+        #expect(math.segments[0].width == 346)
+        #expect(ScrubberWords.clock(0) == "00:00")
+        #expect(ScrubberWords.remaining(10) == "\u{2212}00:10")
+        #expect(ScrubberWords.partName(0, of: 1, title: item.parts[0].title, style: .title) == "")
+        // every line starts inside the episode, so each is lit in its turn
+        #expect(SampleTranscript.tease.lines.allSatisfy { ($0.startSeconds ?? -1) >= 0 && ($0.startSeconds ?? 99) < 10 })
+    }
+
+    @Test("\"correct this part\" reads Paper's words (26OW-0)")
+    func correctThisPartWords() {
+        #expect(CorrectThisPart.words == "correct this part")
     }
 
     @Test("the launcher opens every player state")

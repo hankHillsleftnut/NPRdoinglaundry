@@ -279,7 +279,11 @@ struct RSheetHost<Content: View>: View {
 /// the top, 18 above the content), the content inset 28, at most layout.sheetMaxWidth wide, on the
 /// rSheet recipe, with a 1pt control line along the top under Increase Contrast. The host moves it;
 /// a screen that opens as a sheet from the start (the tease, PS.sheet) stands it on the underlay.
+/// `surfaceRise` lets the surface alone (a background) start above the content's frame, so the
+/// content can stay inside the safe area while the sheet's edge sits where Paper draws it; the
+/// grabber then gives up as much of its top space as the surface rose, never going above the frame.
 struct RSheetPanel<Content: View>: View {
+    var surfaceRise: CGFloat = 0
     @ViewBuilder let content: () -> Content
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -290,20 +294,33 @@ struct RSheetPanel<Content: View>: View {
         }
         .padding(.horizontal, RDimension.layoutSheetInset)
         .frame(maxWidth: RDimension.layoutSheetMaxWidth, maxHeight: .infinity)
-        .rSheet()
+        // the surface alone casts the sheet's shadow: rSheet() on the content itself would shadow
+        // every glyph and every opaque layer inside it (the transcript's blur bands showed as boxes)
+        .background {
+            surface { Color.clear.rSheet() }
+        }
         // Increase Contrast: a 1pt control line along the top edge
         .overlay(alignment: .top) {
-            RShape.top(RDimension.radiusSheet)
-                .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
-                .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
+            surface {
+                RShape.top(RDimension.radiusSheet)
+                    .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
+                    .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
+            }
         }
+    }
+
+    /// A surface layer: it rises by `surfaceRise` and runs under the home indicator (backgrounds only).
+    private func surface(@ViewBuilder _ layer: () -> some View) -> some View {
+        layer()
+            .padding(.top, -surfaceRise)
+            .ignoresSafeArea(edges: .bottom)
     }
 
     private var grabber: some View {
         RShape.pill
             .fill(RColor.borderStrong)
             .frame(width: RDimension.sizeGrabberWidth, height: RDimension.sizeGrabberHeight)
-            .padding(.top, RDimension.layoutSheetTop)
+            .padding(.top, max(RDimension.layoutSheetTop - surfaceRise, RDimension.space0))
             .padding(.bottom, RDimension.layoutSheetGrabberGap)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

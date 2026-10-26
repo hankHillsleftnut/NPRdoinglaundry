@@ -38,8 +38,6 @@ final class PlayerSheetModel {
 
     let playback: any Flows.Playback
     let transcript: Flows.Transcript
-    /// The header's line: the episode's title (26PP-0).
-    let title: String
     @ObservationIgnored private let onCollapse: () -> Void
     /// The collapse is handed over once; a second tap while the sheet leaves does nothing.
     private(set) var hasCollapsed = false
@@ -47,8 +45,12 @@ final class PlayerSheetModel {
     init(playback: any Flows.Playback, transcript: Flows.Transcript, onCollapse: @escaping () -> Void) {
         self.playback = playback
         self.transcript = transcript
-        title = playback.item?.title ?? ""
         self.onCollapse = onCollapse
+    }
+
+    /// The header's line: the episode's title (26PP-0), read live so a late `load(_:)` still fills it.
+    var title: String {
+        playback.item?.title ?? ""
     }
 
     var state: State {
@@ -56,8 +58,11 @@ final class PlayerSheetModel {
     }
 
     /// The line being read now: dark (`text.primary`); every other line is dim (founder c-lsyb3w).
+    /// Nil (nothing lit) when the player has moved on to another item than these lines' episode, or
+    /// when the lines aren't timed: never the wrong line.
     var currentLine: Int? {
-        transcript.lineIndex(at: playback.position)
+        guard playback.item?.id == transcript.itemID else { return nil }
+        return transcript.lineIndex(at: playback.position)
     }
 
     /// The chevron-down (26PH-0): the sheet goes, once.
