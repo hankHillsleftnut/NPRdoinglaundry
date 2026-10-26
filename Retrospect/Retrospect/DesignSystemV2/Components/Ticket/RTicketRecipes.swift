@@ -34,7 +34,7 @@ enum RTicketPalette {
 /// breath of red between, drawn as Paper's three CSS ellipses over the amber.50 base, no grain. Each
 /// ellipse's radii are shares of the band's width and height (CSS `ellipse 80% 90%`), so the 354 × 132
 /// band shows soft blobs, not the left-to-right sweep a shared-radius mesh made of it. Dark has no
-/// Paper board: the same geometry with each colour's dark twin.
+/// Paper board, so dark keeps the band it had (the dark twins on the artwork mesh) until one is drawn.
 struct RTicketGift: View {
     /// One CSS radial-gradient: colour (at its strength) at the centre, clear by `fade` of the radius.
     struct Blob: Equatable {
@@ -56,21 +56,35 @@ struct RTicketGift: View {
     let height: CGFloat
     @Environment(\.colorScheme) private var scheme
 
-    private var colors: [Color] {
-        scheme == .dark
-            ? [RTicketPalette.amber500, RTicketPalette.sky800, RTicketPalette.red700]
-            : [RTicketPalette.amber200, RTicketPalette.sky300, RTicketPalette.red200]
-    }
+    /// The dark band as it was before SI.fidelity (no Paper frame to change it to).
+    static let dark = RArtworkRecipe(
+        base: RTicketPalette.amber900,
+        blobs: [
+            .init(color: RTicketPalette.amber500, x: 0.85, y: 0.1, radius: 0.8, weight: 0.9),
+            .init(color: RTicketPalette.sky800, x: 0.15, y: 0.9, radius: 0.7, weight: 0.8),
+            .init(color: RTicketPalette.red700, x: 0.55, y: 0.45, radius: 0.4, weight: 0.45),
+        ],
+        softness: 0.7,
+        grain: RArtworkRecipe.Grain(mode: .multi, opacity: 0.12, size: 1.5)
+    ) // literal-ok: the previous dark gift recipe, unchanged
+
+    private static let colors = [RTicketPalette.amber200, RTicketPalette.sky300, RTicketPalette.red200]
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            scheme == .dark ? RTicketPalette.amber900 : RTicketPalette.amber50
-            ForEach(Array(zip(Self.blobs, colors).enumerated()), id: \.offset) { _, pair in
-                blob(pair.0, color: pair.1)
+        Group {
+            if scheme == .dark {
+                RArtwork(recipe: Self.dark, width: width, height: height, cornerRadius: 0)
+            } else {
+                ZStack(alignment: .topLeading) {
+                    RTicketPalette.amber50
+                    ForEach(Array(zip(Self.blobs, Self.colors).enumerated()), id: \.offset) { _, pair in
+                        blob(pair.0, color: pair.1)
+                    }
+                }
+                .frame(width: width, height: height)
+                .clipped()
             }
         }
-        .frame(width: width, height: height)
-        .clipped()
         .accessibilityHidden(true)
     }
 

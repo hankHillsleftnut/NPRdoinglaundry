@@ -44,6 +44,7 @@ struct RSignInButtons: View {
                     // Paper: contact 0 1 2, cast 0 8 16 −8 (the −8 spread is carried by the smaller radius)
                     .shadow(color: RColor.depthShadowContact, radius: 1, y: 1) // literal-ok: Paper T1 contact 0 1 2
                     .shadow(color: RColor.depthShadowCast, radius: 6, y: 8) // literal-ok: Paper T1 cast 0 8 16 -8
+                    .accessibilityIdentifier("signin.apple")
                 if let onGoogle {
                     RGoogleButton(action: onGoogle)
                 }

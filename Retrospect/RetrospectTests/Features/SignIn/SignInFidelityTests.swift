@@ -12,6 +12,7 @@ struct SignInFidelityTests {
         #expect(screen.googleAction == nil)
     }
 
+    #if DEBUG // sample taps and `sampleGoogle` exist only in Debug builds
     @Test("on sample taps (-Flow sample, the launcher) Continue with Google is there (decision 12)")
     func sampleHasGoogle() {
         #expect(SignInScreen.offersGoogle(sampleTaps: true))
@@ -30,6 +31,7 @@ struct SignInFidelityTests {
         await SignInScreen.sampleGoogle(model)
         #expect(handed.count == 1)
     }
+    #endif
 
     @Test("the orbs carry Paper's four sample names at Paper's places")
     func orbNames() {

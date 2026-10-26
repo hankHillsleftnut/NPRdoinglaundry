@@ -171,7 +171,6 @@ struct SignInScreen: View {
                 }
             }
             #endif
-            .accessibilityIdentifier("signin.apple")
             Text(SignInModel.legal)
                 .rText(.metaLine) // Paper `1F53-0`: Geist 12, leading snug, no tracking
                 .foregroundStyle(RColor.textLabel)
