@@ -130,7 +130,7 @@ struct PrivacyPage: View {
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityAction(named: PrivacyModel.moveOnAction) { model.moveOn() }
                     .accessibilityIdentifier("privacy.title")
-                    .modifier(BalancedLines())
+                    .rBalancedLines()
                     .rAppear(index: 1)
                 Text(PrivacyModel.body)
                     .rText(.purposeDescription)
@@ -139,7 +139,7 @@ struct PrivacyPage: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAction(named: PrivacyModel.moveOnAction) { model.moveOn() }
                     .accessibilityIdentifier("privacy.body")
-                    .modifier(BalancedLines())
+                    .rBalancedLines()
                     .rAppear(index: 2)
                 if PrivacyModel.policyURL != nil {
                     policyLink
@@ -378,48 +378,6 @@ private struct OutsideGlow: View {
                     .compositingGroup()
             }
             .allowsHitTesting(false)
-    }
-}
-
-// MARK: - Balanced lines
-
-/// CSS `text-wrap: balance` for a centred line or two: the text is laid out at the narrowest
-/// width that still takes as many lines as at the full width, so a title never leaves one word
-/// alone on its last line ("what you tell / me stays yours.", as Paper draws it).
-private struct BalancedLines: ViewModifier {
-    func body(content: Content) -> some View {
-        BalancedLayout { content }
-    }
-}
-
-private struct BalancedLayout: SwiftUI.Layout {
-    /// Halvings of the width search: under a point of error on any phone.
-    private static let steps = 10 // literal-ok: search depth, not a size
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
-        guard let text = subviews.first else { return .zero }
-        let full = text.sizeThatFits(proposal)
-        guard let width = proposal.width, width.isFinite, width > 0 else { return full }
-        var low: CGFloat = 0
-        var high = min(width, full.width)
-        for _ in 0 ..< Self.steps {
-            let middle = (low + high) / 2
-            let height = text.sizeThatFits(ProposedViewSize(width: middle, height: nil)).height
-            if height > full.height {
-                low = middle
-            } else {
-                high = middle
-            }
-        }
-        return CGSize(width: high.rounded(.up), height: full.height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
-        subviews.first?.place(
-            at: CGPoint(x: bounds.midX, y: bounds.midY),
-            anchor: .center,
-            proposal: ProposedViewSize(width: bounds.width, height: bounds.height)
-        )
     }
 }
 

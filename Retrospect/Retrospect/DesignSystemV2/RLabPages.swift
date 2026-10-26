@@ -22,6 +22,7 @@ struct RLabPage: Identifiable {
         RLabPage("artwork") { RArtworkLab() },
         RLabPage("brief") { RBriefCardGallery() },
         RLabPage("claim") { RClaimGallery() },
+        RLabPage("composer") { RComposerLooksGallery() },
         RLabPage("dialog") { RDialogGallery() },
         RLabPage("empty") { REmptyLineGallery() },
         RLabPage("entryrow") { REntryRowGallery() },
