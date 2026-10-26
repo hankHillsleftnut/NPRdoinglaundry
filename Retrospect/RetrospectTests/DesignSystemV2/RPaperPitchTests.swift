@@ -96,6 +96,16 @@ struct RPaperPitchTests {
         #expect(abs(fixed.height - (one.height + 3 * 33)) <= 0.67, "height \(fixed.height)")
     }
 
+    @Test("rText on anything but a bare Text keeps the font's own line height")
+    func onlyBareText() throws {
+        let rows = try #require(Self.inkRows(VStack { Text("H\nH") }.rText(.inkTitle)))
+        #expect(rows.tops.count == 2)
+        let natural = RTextStyle.inkTitle.naturalLineHeight(scaledSize: RDimension.fontSize3xl)
+        for pitch in zip(rows.tops.dropFirst(), rows.tops).map({ $0 - $1 }) {
+            #expect(abs(pitch - natural) <= 0.67, "pitch \(pitch)")
+        }
+    }
+
     @Test("at accessibility 3 the lines still sit leading × the scaled size apart")
     func accessibilityPitch() throws {
         let size = RTextStyle.inkTitle.scaledSize(at: .accessibility3)

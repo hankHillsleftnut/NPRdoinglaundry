@@ -314,6 +314,8 @@ extension RTextStyle {
 
 private struct RTextModifier: ViewModifier {
     let style: RTextStyle
+    /// Only a bare `Text` draws at Paper's pitch: the line maths needs one text and nothing else.
+    var paperPitch = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     func body(content: Content) -> some View {
@@ -332,7 +334,7 @@ private struct RTextModifier: ViewModifier {
             .tracking(style.tracking * size)
             .lineSpacing(extra)
             .padding(.vertical, extra / 2)
-        if style.drawsAtPaperPitch {
+        if paperPitch, style.drawsAtPaperPitch {
             let pitch = RPaperPitch(pitch: leading * size, naturalLineHeight: natural)
             RPaperPitchLayout(pitch: pitch) {
                 styled.textRenderer(pitch)
@@ -346,4 +348,10 @@ private struct RTextModifier: ViewModifier {
 extension View {
     /// Applies one of the approved text roles.
     func rText(_ style: RTextStyle) -> some View { modifier(RTextModifier(style: style)) }
+}
+
+extension Text {
+    /// Applies one of the approved text roles; on a bare `Text` an ink style also sets its lines
+    /// Paper's pitch apart (`RPaperPitch`). Swift picks this over the `View` one for a `Text`.
+    func rText(_ style: RTextStyle) -> some View { modifier(RTextModifier(style: style, paperPitch: true)) }
 }

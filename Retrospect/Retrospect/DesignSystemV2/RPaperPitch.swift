@@ -74,7 +74,10 @@ struct RPaperPitchLayout: SwiftUI.Layout {
     let pitch: RPaperPitch
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
-        guard let text = subviews.first else { return .zero }
+        guard subviews.count == 1, let text = subviews.first else {
+            assertionFailure("RPaperPitchLayout wraps exactly one Text")
+            return subviews.first?.sizeThatFits(proposal) ?? .zero
+        }
         let laidOut = text.sizeThatFits(textProposal(width: proposal.width, height: proposal.height))
         return CGSize(
             width: laidOut.width,
@@ -83,7 +86,10 @@ struct RPaperPitchLayout: SwiftUI.Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
-        guard let text = subviews.first else { return }
+        guard subviews.count == 1, let text = subviews.first else {
+            subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(bounds.size))
+            return
+        }
         let laidOut = text.sizeThatFits(textProposal(width: bounds.width, height: bounds.height))
         text.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: laidOut.height))
     }
