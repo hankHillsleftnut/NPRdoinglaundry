@@ -11,12 +11,15 @@ import SwiftUI
 /// Icon sizes from size.icon.*.
 enum RIconSize {
     case small, regular, large
+    /// The tab bar's 22 (c:tab-bar/item).
+    case tab
 
     var points: CGFloat {
         switch self {
         case .small: RDimension.sizeIconSmall
         case .regular: RDimension.sizeIconDefault
         case .large: RDimension.sizeIconLarge
+        case .tab: RDimension.sizeTabIcon
         }
     }
 }
