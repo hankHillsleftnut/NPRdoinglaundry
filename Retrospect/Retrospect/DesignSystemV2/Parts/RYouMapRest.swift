@@ -1,14 +1,24 @@
 //
 //  RYouMapRest.swift
 //  C38.1: the You map at rest, as it sits behind the first-run words (Paper `1F5K-0`). The rings,
-//  nine edges, four frosted orbs, five blurred far orbs and the self orb. Labels are hidden on
-//  purpose: no node names before sign-in (build notes, plans-consistency 1.23). Static, so Reduce
+//  nine edges, four frosted orbs, five blurred far orbs and the self orb. The splash (ON-1/2) names
+//  the four orbs with Paper's sample words (maya, running, the river, work; founder "Fix", 24 Oct);
+//  welcome back (AC-1) keeps them hidden, as its build note says (never a person's node names
+//  before sign-in). Static, so Reduce
 //  Motion needs nothing; hidden from VoiceOver. Each orb is Paper's recipe: a faint white base and
 //  two soft washes of colour from opposite corners, a top rim, a hairline and a cast. The palette
 //  fills have no semantic token, so they live here with the dark file's twins
 //  (`--color-dark-sky-*`, `--color-dark-paper-300`), as in RBrandWash.
 //
 import SwiftUI
+
+extension RTextStyle {
+    /// A name beside an orb (Paper `1F5O-0`): Geist 11, regular, leading snug, no tracking.
+    static let mapName = RTextStyle(
+        family: .label, size: RDimension.fontSizeXs, weight: .regular,
+        tracking: RNumber.fontTrackingNone, leading: 1.3, relativeTo: .caption2
+    )
+}
 
 struct RYouMapRest: View {
     @Environment(\.colorScheme) private var scheme
@@ -78,8 +88,17 @@ struct RYouMapRest: View {
         (CGPoint(x: 37, y: 116), Recipe.skyDeep),
     ] // literal-ok: Paper far-orb positions
 
+    /// The four orbs' names (Paper `1F5O-0`, `1F5N-0`, `1F5M-0`, `1F5L-0`): sample words, top-left
+    /// corner of each label in the drawing.
+    static let names: [(String, CGPoint)] = [
+        ("maya", CGPoint(x: 100, y: 86)), ("running", CGPoint(x: 293, y: 113)),
+        ("the river", CGPoint(x: 303, y: 218)), ("work", CGPoint(x: 110, y: 266)),
+    ] // literal-ok: Paper label positions
+
     /// Scale for small phones (build notes: 0.78 at SE).
     var scale: CGFloat = 1
+    /// Paper's sample names beside the orbs: on for the splash, off for welcome back.
+    var labels = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -96,9 +115,23 @@ struct RYouMapRest: View {
                     .offset(x: orb.0.x, y: orb.0.y)
             }
             selfOrb.offset(x: 163, y: 148) // literal-ok: Paper self orb
+            if labels {
+                ForEach(Self.names, id: \.0) { name, corner in
+                    Text(name)
+                        .rText(.mapName)
+                        .foregroundStyle(RColor.textSecondary)
+                        .fixedSize()
+                        .padding(.vertical, RDimension.sizeBorderRing)
+                        .padding(.horizontal, RDimension.space1)
+                        .offset(x: corner.x, y: corner.y)
+                }
+                // part of the picture, which scales as one: the words don't grow with Dynamic Type
+                .dynamicTypeSize(.large)
+            }
         }
         .frame(width: Self.drawing.width, height: Self.drawing.height, alignment: .topLeading)
-        .frame(width: Self.frame.width, height: Self.frame.height)
+        // Paper draws the 390 × 360 drawing at the frame's top-left (0, 0), not centred in it
+        .frame(width: Self.frame.width, height: Self.frame.height, alignment: .topLeading)
         .scaleEffect(scale)
         .frame(width: Self.frame.width * scale, height: Self.frame.height * scale)
         .accessibilityHidden(true)

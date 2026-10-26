@@ -38,11 +38,13 @@ struct TicketStage: View {
     static let printTilt: Double = -14 // literal-ok: build note, rotation3DEffect -14 about the slot
     static let perspective: CGFloat = 0.6 // literal-ok: build note
 
-    /// The stage's layout height: the whole ticket, or the body with the fallen stub under it.
+    /// The stage's layout height: the whole ticket, or the body with the fallen stub under it. Paper T5
+    /// (`2INA-0`) lays out body (to the perforation's centre), the 72 gap, then the whole stub piece from
+    /// the perforation's centre (its half row of holes included), so "you're in" sits under all of it.
     var height: CGFloat {
         switch stub {
         case .joined: geometry.height
-        case .fallen: geometry.perforationY + Self.dropGap(compact: geometry.compact) + geometry.stubHeight
+        case .fallen: geometry.height + Self.dropGap(compact: geometry.compact)
         }
     }
 
