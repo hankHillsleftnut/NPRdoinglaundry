@@ -33,6 +33,7 @@ struct RLabPage: Identifiable {
         RLabPage("journaldata") { SampleJournalGallery() },
         RLabPage("menu") { RMenuGallery() },
         RLabPage("message") { RMessageBubbleGallery() },
+        RLabPage("miniplayer") { RMiniPlayerGallery() },
         RLabPage("motion") { RMotionLab() },
         RLabPage("offline") { ROfflineLineGallery() },
         RLabPage("parts") { RPartsLabPage() },
