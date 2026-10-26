@@ -50,3 +50,51 @@ Everything else is neutral, however important:
 - **Selection** is shown by the raised thumb or an ink tick, not by tinting blue.
 - **Status** keeps its own colours (connected green, problem red), always with words.
 *Because* when blue appears in seven places, it stops meaning "this is the one thing to do next".
+
+## Drawing shadows exactly: the box-shadow look (SH.composer, founder 26 Oct)
+Paper writes every shadow as a CSS box-shadow: `x y blur spread`, with `inset` for layers painted inside the edge. Read the **spread** first. A negative spread pulls the shadow in before it is blurred, which is what keeps a soft shadow under the object instead of around it.
+
+**Why the old recipe spilled above the top edge (the "lip").** SwiftUI's `.shadow(color:radius:x:y:)` has no spread. The older recipes in `RDepth.swift` (`rRaised`, `rSecondary`, `rLit`, `rSheet`, …) either dropped the spread and kept the blur, or shrank the blur to "carry" the spread. Take the composer's cast, `0 12 28 −12`. Without its −12 it reaches about 16pt above the top edge (Paper: about 4), and its ambient `0 24 60 −20` reaches about 36 (Paper: about 16). That grey band sits right over the white top line, and the eye reads the pair as a lip. Three smaller misses add to it:
+- The top light was a 1pt strip masked to the flat top. Paper's `inset 0 1 0` is a crescent that follows the corner curve and thins out.
+- The 0.5pt outer hairline was stroked centred on the edge, so half of it was hidden under the inner ring. Paper's sits fully outside.
+- In dark mode the shadow colours are black 55% / 25%, so the spill is about three times darker.
+
+**The new recipe (the "box-shadow look").** `rBoxShadows(_ stack:radius:)` in `RDepth.swift` draws a token stack layer for layer, the way a browser does:
+- **Pull-in technique (outer layers):** take the shape, grow it by the spread (negative shrinks it, with its corner radius), offset it by x/y, and blur it by half the CSS blur (a Gaussian of radius blur/2 matches CSS). Then mask the whole stack to **outside** the shape, so a translucent or cross-fading surface never shows its own shadow through itself.
+- **Inset layers:** fill everything inside the shape except the shape itself, pulled in by the spread and offset by x/y. Blur it and clip to the shape. `inset 0 1 0` gives the crescent top light; `inset 0 0 0 1` gives the 1pt inner ring.
+- **Rings:** `0 0 0 w` (outer) is a ring fully outside the edge; `inset 0 0 0 w` is fully inside.
+
+**Tokens (new; existing tokens are unchanged and frozen by `tokens/tokens.test.mjs`):**
+
+| token | layers (first on top) | Paper source |
+|---|---|---|
+| `depth.boxShadow.stroke.innerTop` | inset 0 1 0 `depth.stroke.innerTop` | layer 1 of 1F7K-0, B0C-0, D9Z-0, DA6-0 |
+| `depth.boxShadow.stroke.inner` | inset 0 0 0 1 `depth.stroke.inner` | layer 2 of the same |
+| `depth.boxShadow.stroke.outer` | 0 0 0 0.5 `depth.stroke.outer` | layer 3 of the same |
+| `depth.boxShadow.composer.rest` | the three strokes · 0 1 2 contact · 0 12 28 −12 cast · 0 24 60 −20 ambient | c:voice-composer/speaking 1F7K-0 (ON-5), B0C-0, B0R-0, B10-0 |
+| `depth.boxShadow.composer.listening` | inset 0 1 0 innerTop · 0 0 0 0.5 `glow.primary.ring` · 0 1 2 contact · −64 10 34 −16 `voice.glowPool` · 72 −6 30 −14 `voice.glowLift` · 18 20 36 −18 `voice.glowUnder` · −10 −12 26 −16 `voice.glowTop` | 26LI-0 (ON-10), 1F6E-0 (ON-3..9), GEG-0 |
+| `depth.boxShadow.pill.raised.rest` | the three strokes · 0 1 1.5 contact · 0 4 6 −2 cast | c:pill/raised/rest D9Z-0, 219H-0 (ON-6) |
+| `depth.boxShadow.pill.raised.pressed` | the three strokes · 0 0.5 1 contact · 0 1 2 −1 cast | c:pill/raised/pressed DA6-0 |
+| `depth.glow.listening` | the listening stack's outer shadows only (contact + four glows) | 26LI-0, 1F6E-0, GEG-0 |
+| `depth.pill.raised.rest` / `.pressed` | the pill's contact + cast only | D9Z-0 / DA6-0 |
+
+Swift: `RElevation.boxShadowComposerRest`, `…ComposerListening`, `…PillRaisedRest`, `…PillRaisedPressed`, `…StrokeInnerTop/Inner/Outer`, `RElevation.glowListening`, `RElevation.pillRaisedRest/Pressed` (generated), plus the existing tiers now also emitted as layer stacks (`RElevation.tierCard/Raised/Floating/Overlay`, same values).
+
+**Which component uses which look (26 Oct).** Both looks exist side by side, and today's stays the default until the founder picks per component:
+- Voice composer: `RVoiceComposer(look: .current)` (default, `rRaised` + the lit cross-fade) or `.paper` (`depth.boxShadow.composer.rest/.listening`).
+- Raised pill: `RPill(look: .current)` (default, `rSecondary`) or `.paper` (`rSecondaryPaper` → `depth.boxShadow.pill.raised.*`). CN.connect will use `.paper` for `+ connect` once this merges.
+- Everything else still uses the older recipes. Lab page: `-DesignLab -DesignLabPage composer`.
+
+**Audit (no changes made; `pipeline/qa/SH.composer/shadow-audit.md`):**
+1. Every `RDepth` recipe drops the spread. The blur is either kept (too wide, climbing above the top edge) or shrunk (too hard).
+2. One recipe is reused for parts Paper draws differently:
+   - `rRaised` is on the scrub bubble and the lifted message bubble.
+   - `rLit` (the small play button's recipe) is on the 60pt primary CTA.
+   - `rSecondary` is on the 60pt secondary, which has a 2pt ring in Paper.
+3. Outer rings are centred, so only half of each shows.
+4. Dark mode makes the spill about three times darker.
+5. Inset bottom shades (lit buttons) aren't drawn.
+6. `.opacity` cross-fades over shadowed stacks show both shadows mid-fade.
+7. The ticket and source rows match Paper.
+
+Each is a founder question before any change.
