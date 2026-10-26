@@ -27,6 +27,7 @@ struct ScreenRegistryTests {
         "AC-2": ["nothingWaiting", "unsent", "sending", "stuck", "offlineUnsent", "updateRequired", "done"],
         "account": ["rest", "unsent", "offline"],
         "PX": ["rest", "offline", "noStoreLink", "cover"],
+        "player": ["tease", "tease-still", "tease-paused", "tease-ended"],
     ]
 
     static let signIn = ["splash", "signingIn", "signInFailed", "offline", "returning", "restoring", "restoreFailed"]

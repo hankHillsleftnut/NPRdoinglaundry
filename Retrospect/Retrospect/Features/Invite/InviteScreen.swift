@@ -20,6 +20,8 @@ struct InviteScreen: View {
     @State private var stage: InviteStageController
     @State private var caretOn = true
     @State private var toast: RToastItem?
+    /// The page's bottom safe-area inset as laid out (see `bottomPadding`).
+    @State private var bottomInset: CGFloat = 0
     @FocusState private var typing: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.rCompactHeight) private var compact
@@ -32,6 +34,8 @@ struct InviteScreen: View {
     /// The ticket's own coordinate space, declared on the stage and read by the tear drag.
     static let ticketSpace = "ticket"
     private static let promiseBlockShare: CGFloat = 300.0 / 874.0 // literal-ok: Paper T1 `2IGY-0`
+    /// Paper T-alt `2ISE-0` / T5 `2IN3-0`: the ticket's top edge, from the screen's top.
+    private static let ticketTop: CGFloat = 104 // literal-ok: Paper stage padding-top 104
 
     init(model: InviteModel, sampleTaps: Bool = false, printStill: CGFloat? = nil, tear: CGFloat = 0) {
         self.model = model
@@ -61,6 +65,9 @@ struct InviteScreen: View {
                 page
             }
             .safeAreaInset(edge: .bottom, spacing: RDimension.space0) { bottomZone }
+            // the bottom inset the page is actually laid out with: 0 while the sheet host lays it under the
+            // home indicator (main today), the indicator's 34 once the host keeps to the safe area (#200)
+            .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
             // the full detent: at medium the keyboard (typing a note) pushed the sheet's words up over the
             // page behind and cut "cancel", and SE cut the line to "when there'…"
             .rSheet(isPresented: sheetBinding, detent: .full) { InviteWaitlistSheet(model: model) }
@@ -140,7 +147,7 @@ struct InviteScreen: View {
                 Group {
                     switch layout {
                     case .promise: promiseColumn(page: proxy)
-                    case .ticket: ticketColumn(width: proxy.size.width)
+                    case .ticket: ticketColumn(page: proxy)
                     case .paused: pausedColumn(page: proxy)
                     case .empty: Color.clear
                     }
@@ -215,12 +222,15 @@ struct InviteScreen: View {
         TicketGeometry(width: min(ticketWidth(page: page), RDimension.layoutSheetMaxWidth), compact: compact)
     }
 
-    private func ticketColumn(width: CGFloat) -> some View {
+    private func ticketColumn(page: GeometryProxy) -> some View {
         VStack(spacing: RDimension.space0) {
-            ticketStage(width: width)
-                .padding(.top, compact ? RDimension.space8 : RDimension.space10 + RDimension.space2)
-            captionBlock
-                .padding(.top, RDimension.space6)
+            ticketStage(width: page.size.width)
+                // Paper T-alt/T5 `2ISE-0`/`2IN3-0`: the ticket's top is 104 from the screen's top edge
+                .padding(.top, compact ? RDimension.space8 : max(Self.ticketTop - page.safeAreaInsets.top, RDimension.space8))
+            if hasCaption {
+                captionBlock
+                    .padding(.top, RDimension.space6)
+            }
             if model.phase == .youreIn || model.phase == .torn {
                 youreInWords
             }
@@ -339,8 +349,8 @@ struct InviteScreen: View {
                     .rBlurReplace()
             }
             if let hint = model.hint {
+                // Paper T-alt `2ISF-0`: caption and hint 4 apart (the block's own gap)
                 hintPill(hint)
-                    .padding(.top, RDimension.space2)
                     .rBlurReplace()
             }
             if model.offersWaitlist {
@@ -352,7 +362,7 @@ struct InviteScreen: View {
 
     private func hintPill(_ text: String) -> some View {
         Text(text)
-            .rText(.labelMedium)
+            .rText(.pillAction) // Paper `2ISJ-0`: Geist 12 medium, leading snug, no tracking
             .foregroundStyle(RColor.textSecondary)
             .padding(.horizontal, RDimension.space3)
             .frame(minHeight: RDimension.sizeControlSmall)
@@ -431,12 +441,6 @@ struct InviteScreen: View {
         .transition(.opacity)
     }
 
-    /// Paper T1/T-alt: the bottom zone ends 40 above the screen's edge (the sheet host lays the page
-    /// under the home indicator, so this is from the edge); 16 on SE, which has none.
-    private var bottomPadding: CGFloat {
-        compact ? RDimension.space4 : RDimension.space10
-    }
-
     private var isWaiting: Bool {
         if case .waiting = model.phase {
             true
@@ -449,12 +453,13 @@ struct InviteScreen: View {
         if model.phase == .youreIn, model.beginVisible {
             RButton(title: "begin") { model.begin() }
                 .padding(.horizontal, margin)
-                .padding(.bottom, RDimension.space4)
+                // Paper T5 `2IMI-0`: 40 from the screen's edge, clear of the home indicator (was 16 from it)
+                .padding(.bottom, bottomPadding)
                 .transition(.blurReplace)
                 .accessibilityIdentifier("invite.begin")
         } else if let footer = model.footer, !typing { // the footer gives way to the keyboard: above it, it would sit on the caption
             Text(footer)
-                .rText(.label)
+                .rText(.metaLine) // Paper `2IRU-0`: Geist 12, leading snug, no tracking
                 .foregroundStyle(RColor.textLabel)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, bottomPadding)
@@ -480,6 +485,21 @@ struct SampleSignInTap: Error {}
 enum TicketFeedback {
     /// The rip: a rigid impact on the frame the stub lets go (FR0.1's `haptic.rip`).
     static let rip: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.8) // literal-ok: FR0.1 token, not yet generated
+}
+
+/// Layout values read from Paper, kept out of the struct body.
+extension InviteScreen {
+    /// Paper T1/T-alt/T5: the bottom zone ends 40 above the screen's edge, whatever the host does with
+    /// the home indicator: the inset the page is laid out with counts toward the 40 (16 on SE, which has
+    /// none). Never a fixed number standing in for the inset (plan-screens §10).
+    var bottomPadding: CGFloat {
+        compact ? RDimension.space4 : max(RDimension.space10 - bottomInset, RDimension.space1)
+    }
+
+    /// Paper T5 draws nothing between the fallen stub and "you're in": an empty caption block takes no room.
+    var hasCaption: Bool {
+        model.caption != nil || model.subcaption != nil || model.hint != nil || model.offersWaitlist
+    }
 }
 
 /// The tear and hold gestures, kept out of the struct body.
