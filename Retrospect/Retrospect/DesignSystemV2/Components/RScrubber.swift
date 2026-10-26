@@ -2,7 +2,8 @@
 //  RScrubber.swift
 //  C25: the player's scrubber (Paper JR-2 `1FN7-0`, track `1FNE-0`, thumb `1FND-0`, times
 //  `1FN8-0`; held state from part 09 `A3D-0`). One capsule per part with 4pt gaps (one capsule
-//  under a minute), the played fill inside each capsule, a 12pt raised thumb whose x always comes
+//  under a minute), the played fill inside each capsule over the grey downloaded stretch for episodes
+//  (Paper ON-11 26OQ-0, `player.buffered`; founder Q4 = B), a 12pt raised thumb whose x always comes
 //  from the playback fraction, and elapsed · part · remaining under it.
 //
 //  Hold and slide: the thumb grows to 20 and a bubble names the part; crossing into a part ticks
@@ -85,6 +86,11 @@ struct ScrubberMath: Equatable {
 
     func x(atFraction fraction: Double) -> CGFloat {
         x(at: fraction * duration)
+    }
+
+    /// How much of a capsule a fill reaching `x` covers (the played fill, the buffered stretch).
+    static func fill(_ segment: Segment, to x: CGFloat) -> CGFloat {
+        min(max(x - segment.x, 0), segment.width)
     }
 
     /// The part a time is in, from 0.
@@ -223,6 +229,17 @@ enum ScrubberWords {
         return title.map { place + " · " + $0 } ?? place
     }
 
+    /// The part's name in the given style: counted ("2 of 4 · the article"), or its title alone
+    /// ("the first thing i noticed", Paper ON-11 26OI-0), nothing when it has no title (no invented label).
+    static func partName(_ index: Int, of count: Int, title: String?, style: RScrubber.PartLabel) -> String {
+        switch style {
+        case .counted:
+            partName(index, of: count, title: title)
+        case .title:
+            title ?? ""
+        }
+    }
+
     /// What VoiceOver reads: "4 minutes 12 seconds of 11 minutes 30, part 2 of 3".
     static func spoken(position: Double, duration: Double, part: Int?, parts: Int) -> String {
         var words = spoken(position, full: true) + " of " + spoken(duration, full: false)
@@ -273,12 +290,22 @@ extension RTextStyle {
 // MARK: - View
 
 struct RScrubber: View {
+    /// How the part between the times is named.
+    enum PartLabel: Equatable, Sendable {
+        /// "2 of 3", or "2 of 4 · the article" (JR-2).
+        case counted
+        /// The part's title alone (ON-11 26OI-0); nothing when the part has no title.
+        case title
+    }
+
     let playback: any Flows.Playback
+    let partLabel: PartLabel
     @State private var scrub: ScrubController
 
     /// `scrub` is for the lab's held look and for tests; the app lets the scrubber make its own.
-    init(playback: any Flows.Playback, scrub: ScrubController? = nil) {
+    init(playback: any Flows.Playback, scrub: ScrubController? = nil, partLabel: PartLabel = .counted) {
         self.playback = playback
+        self.partLabel = partLabel
         _scrub = State(initialValue: scrub ?? ScrubController())
     }
 
@@ -353,9 +380,11 @@ struct RScrubber: View {
         GeometryReader { geometry in
             let math = ScrubberMath(width: geometry.size.width, duration: duration ?? 0, partStarts: partStarts)
             let thumbX = math.x(at: shownTime)
+            // the downloaded stretch (Paper 26OQ-0), for episodes; briefs report none
+            let bufferedX = duration == nil ? 0 : playback.buffered.map { math.x(atFraction: $0) } ?? 0
             ZStack(alignment: .leading) {
                 ForEach(Array(math.segments.enumerated()), id: \.offset) { _, segment in
-                    capsule(segment, playedTo: duration == nil ? 0 : thumbX)
+                    capsule(segment, playedTo: duration == nil ? 0 : thumbX, bufferedTo: bufferedX)
                 }
                 if duration != nil {
                     thumb
@@ -380,14 +409,18 @@ struct RScrubber: View {
         }
     }
 
-    private func capsule(_ segment: ScrubberMath.Segment, playedTo thumbX: CGFloat) -> some View {
-        let played = min(max(thumbX - segment.x, 0), segment.width)
-        return RShape.pill
+    private func capsule(_ segment: ScrubberMath.Segment, playedTo thumbX: CGFloat, bufferedTo bufferedX: CGFloat) -> some View {
+        RShape.pill
             .fill(contrast == .increased ? RColor.surfaceStrong : RColor.surfaceTrack)
             .overlay(alignment: .leading) {
                 Rectangle()
+                    .fill(RColor.playerBuffered)
+                    .frame(width: ScrubberMath.fill(segment, to: bufferedX))
+            }
+            .overlay(alignment: .leading) {
+                Rectangle()
                     .fill(RColor.playerProgress)
-                    .frame(width: played)
+                    .frame(width: ScrubberMath.fill(segment, to: thumbX))
             }
             .clipShape(RShape.pill)
             .frame(width: segment.width, height: RDimension.sizePlayerScrubber)
@@ -491,12 +524,13 @@ struct RScrubber: View {
     private var partWords: String {
         guard partCount > 1 else { return "" }
         let index = currentPartIndex
-        return ScrubberWords.partName(index, of: partCount, title: playback.item?.parts[safe: index]?.title)
+        return ScrubberWords.partName(index, of: partCount, title: playback.item?.parts[safe: index]?.title, style: partLabel)
     }
 
     /// The bubble names the part; a one-part brief has no parts to name, so it shows the time.
     private var bubbleWords: String {
-        partCount > 1 ? partWords : ScrubberWords.clock(shownTime)
+        let words = partWords
+        return words.isEmpty ? ScrubberWords.clock(shownTime) : words
     }
 
     private var spokenValue: String {
