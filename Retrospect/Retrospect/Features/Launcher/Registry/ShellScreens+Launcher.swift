@@ -41,7 +41,7 @@ struct ShellLaunch: View {
     }
 
     var body: some View {
-        ShellPage(model: model) { tab in
+        ShellPage(model: model) { tab, _ in
             switch tab {
             case .journal: AnyView(JournalLaunch(scenario: .full))
             // not built yet: their lanes add PC-1, GL-1 and YO-1 here

@@ -24,5 +24,16 @@ struct ShellModelTests {
         model.reselect(.goals)
         #expect(model.reselects[.goals] == 2)
         #expect(model.reselects[.journal] == nil)
+        #expect(model.context(for: .goals) == ShellTabContext(isShown: true, reselects: 2))
+        #expect(model.context(for: .journal) == ShellTabContext(isShown: false, reselects: 0))
+    }
+
+    @Test("a tab's page is built the first time it is shown, and kept")
+    func visited() {
+        let model = ShellModel(selection: .podcasts)
+        #expect(model.visited == [.podcasts])
+        model.selection = .you
+        model.selection = .podcasts
+        #expect(model.visited == [.podcasts, .you])
     }
 }
