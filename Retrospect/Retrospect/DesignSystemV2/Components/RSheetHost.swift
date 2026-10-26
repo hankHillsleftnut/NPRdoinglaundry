@@ -136,7 +136,6 @@ struct RSheetHost<Content: View>: View {
     /// Counts settles, so the snap haptic fires once per rest.
     @State private var settled = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         content()
@@ -223,8 +222,7 @@ struct RSheetHost<Content: View>: View {
     }
 
     private func sheet(_ request: RSheetRequest) -> some View {
-        VStack(spacing: RDimension.space0) {
-            grabber
+        RSheetPanel {
             request.content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y <= 0 } action: { _, atTop in
@@ -232,16 +230,7 @@ struct RSheetHost<Content: View>: View {
                 }
                 .scrollDisabled(dragging)
         }
-        .padding(.horizontal, RDimension.layoutSheetInset)
-        .frame(maxWidth: RDimension.layoutSheetMaxWidth)
         .frame(height: sheetHeight)
-        .rSheet()
-        // Increase Contrast: a 1pt control line along the top edge
-        .overlay(alignment: .top) {
-            RShape.top(RDimension.radiusSheet)
-                .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
-                .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
-        }
         .offset(y: reduceMotion ? RDimension.space0 : RSheetProgress.offset(progress, height: sheetHeight))
         .opacity(reduceMotion ? RSheetProgress.scrimOpacity(progress) : 1)
         .simultaneousGesture(drag)
@@ -250,17 +239,6 @@ struct RSheetHost<Content: View>: View {
             close()
         }
         .accessibilityIdentifier("sheet")
-    }
-
-    private var grabber: some View {
-        RShape.pill
-            .fill(RColor.borderStrong)
-            .frame(width: RDimension.sizeGrabberWidth, height: RDimension.sizeGrabberHeight)
-            .padding(.top, RDimension.layoutSheetTop)
-            .padding(.bottom, RDimension.layoutSheetGrabberGap)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .accessibilityHidden(true)
     }
 
     // MARK: The drag
@@ -292,6 +270,44 @@ struct RSheetHost<Content: View>: View {
                     snapBack()
                 }
             }
+    }
+}
+
+// MARK: - The panel
+
+/// The sheet itself at rest, without the presentation: the grabber (36 × 5 `border.strong`, 10 below
+/// the top, 18 above the content), the content inset 28, at most layout.sheetMaxWidth wide, on the
+/// rSheet recipe, with a 1pt control line along the top under Increase Contrast. The host moves it;
+/// a screen that opens as a sheet from the start (the tease, PS.sheet) stands it on the underlay.
+struct RSheetPanel<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        VStack(spacing: RDimension.space0) {
+            grabber
+            content()
+        }
+        .padding(.horizontal, RDimension.layoutSheetInset)
+        .frame(maxWidth: RDimension.layoutSheetMaxWidth, maxHeight: .infinity)
+        .rSheet()
+        // Increase Contrast: a 1pt control line along the top edge
+        .overlay(alignment: .top) {
+            RShape.top(RDimension.radiusSheet)
+                .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
+                .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
+        }
+    }
+
+    private var grabber: some View {
+        RShape.pill
+            .fill(RColor.borderStrong)
+            .frame(width: RDimension.sizeGrabberWidth, height: RDimension.sizeGrabberHeight)
+            .padding(.top, RDimension.layoutSheetTop)
+            .padding(.bottom, RDimension.layoutSheetGrabberGap)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 }
 

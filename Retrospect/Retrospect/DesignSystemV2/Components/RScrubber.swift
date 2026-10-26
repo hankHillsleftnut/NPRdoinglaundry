@@ -223,6 +223,17 @@ enum ScrubberWords {
         return title.map { place + " · " + $0 } ?? place
     }
 
+    /// The part's name in the given style: counted ("2 of 4 · the article"), or its title alone
+    /// ("the first thing i noticed", Paper ON-11 26OI-0), counted when it has no title.
+    static func partName(_ index: Int, of count: Int, title: String?, style: RScrubber.PartLabel) -> String {
+        switch style {
+        case .counted:
+            partName(index, of: count, title: title)
+        case .title:
+            title ?? partName(index, of: count, title: nil)
+        }
+    }
+
     /// What VoiceOver reads: "4 minutes 12 seconds of 11 minutes 30, part 2 of 3".
     static func spoken(position: Double, duration: Double, part: Int?, parts: Int) -> String {
         var words = spoken(position, full: true) + " of " + spoken(duration, full: false)
@@ -273,12 +284,22 @@ extension RTextStyle {
 // MARK: - View
 
 struct RScrubber: View {
+    /// How the part between the times is named.
+    enum PartLabel: Equatable, Sendable {
+        /// "2 of 3", or "2 of 4 · the article" (JR-2).
+        case counted
+        /// The part's title alone (ON-11 26OI-0); counted when the part has no title.
+        case title
+    }
+
     let playback: any Flows.Playback
+    let partLabel: PartLabel
     @State private var scrub: ScrubController
 
     /// `scrub` is for the lab's held look and for tests; the app lets the scrubber make its own.
-    init(playback: any Flows.Playback, scrub: ScrubController? = nil) {
+    init(playback: any Flows.Playback, scrub: ScrubController? = nil, partLabel: PartLabel = .counted) {
         self.playback = playback
+        self.partLabel = partLabel
         _scrub = State(initialValue: scrub ?? ScrubController())
     }
 
@@ -491,7 +512,7 @@ struct RScrubber: View {
     private var partWords: String {
         guard partCount > 1 else { return "" }
         let index = currentPartIndex
-        return ScrubberWords.partName(index, of: partCount, title: playback.item?.parts[safe: index]?.title)
+        return ScrubberWords.partName(index, of: partCount, title: playback.item?.parts[safe: index]?.title, style: partLabel)
     }
 
     /// The bubble names the part; a one-part brief has no parts to name, so it shows the time.

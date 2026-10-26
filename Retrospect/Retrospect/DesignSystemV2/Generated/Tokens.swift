@@ -604,6 +604,12 @@ public enum RDimension {
     public static let sizePlayerSkipIcon: CGFloat = 28
     /// The play / pause glyph inside the raised well.
     public static let sizePlayerPlayIcon: CGFloat = 22
+    /// The player sheet's header buttons (share, collapse): the visible wash circle; the hit area stays 44.
+    public static let sizePlayerHeaderButton: CGFloat = 34
+    /// The mark disc at the start of the player sheet's header.
+    public static let sizePlayerHeaderMark: CGFloat = 22
+    /// The width of the mark's glyph inside the 22 header disc.
+    public static let sizePlayerHeaderMarkGlyph: CGFloat = 12
     /// The daily brief card on Journal.
     public static let sizeBriefCardMinHeight: CGFloat = 120
     /// The writing field, empty.
