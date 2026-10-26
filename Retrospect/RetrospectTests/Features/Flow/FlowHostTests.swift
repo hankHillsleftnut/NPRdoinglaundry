@@ -118,6 +118,20 @@ struct FlowHostTests {
         #expect(await source.type(code: SampleInvite.code) == .printing(SampleInvite.face))
     }
 
+    // MARK: SI.gate.b
+
+    @Test("the typed gate wears the sample header before the check; the code still prints, the edge is unchanged")
+    func typedGateHeader() async {
+        let model = flow(MemoryFlowStore(), start: .inviteGate)
+        #expect(model.invite.phase == .typed)
+        #expect(model.invite.face == SampleInvite.face)
+        #expect(model.invite.waitlistPlace == .foot)
+        model.invite.setCode("BATR4DX9M2QK7")
+        await model.invite.submitTyped()
+        #expect(model.invite.phase == .ready)
+        #expect(model.step == .inviteGate)
+    }
+
     // MARK: Resume (decision 9)
 
     @Test("a relaunch lands on the exact step it left")

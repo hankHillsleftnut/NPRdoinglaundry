@@ -47,7 +47,8 @@ extension InviteModel {
         }
     }
 
-    private var typedCaption: String {
+    /// Only what went wrong, or that the person is on the list: the resting line is the pill (`hint`).
+    private var typedCaption: String? {
         if waitlist == .joined {
             return "you're on the list."
         }
@@ -56,7 +57,7 @@ extension InviteModel {
         case .rateLimited: return "too many tries. try again in a minute."
         case .typeOffline: return "no connection. nothing was used; try again."
         case .typeFailed: return "that didn't go through. try again."
-        default: return "the link didn't bring the code? type it in."
+        default: return nil
         }
     }
 
@@ -104,10 +105,12 @@ extension InviteModel {
         return nil
     }
 
-    /// The pill under the caption (board `2ISG-0`): not pressable.
+    /// The pill under the caption (board `2ISG-0`): not pressable. On the typed ticket it carries the
+    /// resting line (founder, 26 Oct: "type it in" in the pill's small type; "the tear unlocks" is gone);
+    /// a failure's words take its place as the caption.
     var hint: String? {
         switch phase {
-        case .typed where waitlist != .joined: "the tear unlocks when it's filled"
+        case .typed where waitlist != .joined && notice == nil: "the link didn't bring the code? type it in."
         case .ready where !keepGoing && notice == nil: "swipe along the line to tear →"
         default: nil
         }
@@ -118,17 +121,31 @@ extension InviteModel {
         switch phase {
         case .printing, .ready, .sealing: "one use · once it's torn, it's yours"
         case .torn: "the stub stays with you"
-        case .typed, .refused: "one use · yours alone"
+        case .refused: "one use · yours alone"
+        default: nil // the typed ticket's foot is the waitlist button (founder, 26 Oct)
+        }
+    }
+
+    /// Where the waitlist is offered.
+    enum WaitlistPlace: Equatable {
+        /// The typed ticket: a secondary button at the page's foot, where "one use · yours alone" was (founder, 26 Oct).
+        case foot
+        /// A refusal: the text link under the caption, as before.
+        case link
+    }
+
+    static let waitlistAction = "no invitation? join the waitlist"
+
+    var waitlistPlace: WaitlistPlace? {
+        switch phase {
+        case .typed: waitlist != .joined ? .foot : nil
+        case .refused: .link
         default: nil
         }
     }
 
     var offersWaitlist: Bool {
-        switch phase {
-        case .typed: waitlist != .joined
-        case .refused: true
-        default: false
-        }
+        waitlistPlace != nil
     }
 
     // MARK: You're in (T5)

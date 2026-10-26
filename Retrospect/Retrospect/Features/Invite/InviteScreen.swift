@@ -43,7 +43,7 @@ struct InviteScreen: View {
         _stage = State(initialValue: InviteStageController(model: model, printStill: printStill, tear: tear))
     }
 
-    private var margin: CGFloat {
+    var margin: CGFloat {
         compact ? RDimension.space5 : RDimension.spaceScreenMargin
     }
 
@@ -353,21 +353,11 @@ struct InviteScreen: View {
                 hintPill(hint)
                     .rBlurReplace()
             }
-            if model.offersWaitlist {
-                RButton(title: "no invitation? join the waitlist", variant: .text) { model.openWaitlist() }
+            if model.waitlistPlace == .link {
+                RButton(title: InviteModel.waitlistAction, variant: .text) { model.openWaitlist() }
                     .accessibilityIdentifier("invite.waitlist")
             }
         }
-    }
-
-    private func hintPill(_ text: String) -> some View {
-        Text(text)
-            .rText(.pillAction) // Paper `2ISJ-0`: Geist 12 medium, leading snug, no tracking
-            .foregroundStyle(RColor.textSecondary)
-            .padding(.horizontal, RDimension.space3)
-            .frame(minHeight: RDimension.sizeControlSmall)
-            .rWash()
-            .id(text)
     }
 
     private var youreInWords: some View {
@@ -457,6 +447,10 @@ struct InviteScreen: View {
                 .padding(.bottom, bottomPadding)
                 .transition(.blurReplace)
                 .accessibilityIdentifier("invite.begin")
+        } else if model.waitlistPlace == .foot {
+            // founder, 26 Oct: the waitlist is a secondary button at the foot, where "one use · yours alone" was.
+            // It stays above the keyboard, so the way out is never hidden while the code is typed.
+            waitlistFoot
         } else if let footer = model.footer, !typing { // the footer gives way to the keyboard: above it, it would sit on the caption
             Text(footer)
                 .rText(.metaLine) // Paper `2IRU-0`: Geist 12, leading snug, no tracking
@@ -498,7 +492,31 @@ extension InviteScreen {
 
     /// Paper T5 draws nothing between the fallen stub and "you're in": an empty caption block takes no room.
     var hasCaption: Bool {
-        model.caption != nil || model.subcaption != nil || model.hint != nil || model.offersWaitlist
+        model.caption != nil || model.subcaption != nil || model.hint != nil || model.waitlistPlace == .link
+    }
+}
+
+/// The typed ticket's small words and its foot, kept out of the struct body.
+extension InviteScreen {
+    func hintPill(_ text: String) -> some View {
+        Text(text)
+            .rText(.pillAction) // Paper `2ISJ-0`: Geist 12 medium, leading snug, no tracking
+            .foregroundStyle(RColor.textSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, RDimension.space3)
+            .padding(.vertical, RDimension.space1) // only shows when large text wraps it (one line sits inside 32)
+            .frame(minHeight: RDimension.sizeControlSmall)
+            .rWash()
+            .id(text)
+    }
+
+    var waitlistFoot: some View {
+        RButton(title: InviteModel.waitlistAction, variant: .secondary) { model.openWaitlist() }
+            .padding(.horizontal, margin)
+            .padding(.bottom, bottomPadding)
+            .transition(.blurReplace)
+            .accessibilityIdentifier("invite.waitlist")
     }
 }
 
