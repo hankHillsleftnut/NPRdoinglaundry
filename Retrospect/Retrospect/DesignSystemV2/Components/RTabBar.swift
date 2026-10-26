@@ -15,7 +15,8 @@
 //
 //  Icons: SF Symbols (founder, 21 Oct: Apple's symbols for every icon) standing in for Paper's inked
 //  glyphs; logged as discrepancy L0-10. Pressed dims to opacity.pressed at once and back in 240ms; a
-//  change plays haptic.tab; tapping the selected tab again asks the page to scroll to the top (rule 4).
+//  tapped change plays haptic.tab (never a programmatic one) and the items cross-fade their weights;
+//  tapping the selected tab again asks the page to scroll to the top (rule 4).
 //  On a small phone the slots share the width down to 64 (`size.tabItemMinWidth`); at accessibility
 //  sizes the labels hide and a long press shows the large-content viewer (iOS behaviour).
 //
@@ -51,7 +52,9 @@ struct RTabBar: View {
     var reselect: (RTab) -> Void = { _ in }
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Counts taps that changed the tab, so haptic.tab answers a tap and never a programmatic change
+    /// (a deep link, sign-out, state restoration).
+    @State private var tapChanges = 0
 
     var body: some View {
         HStack(spacing: RDimension.space3) {
@@ -72,7 +75,7 @@ struct RTabBar: View {
         }
         // centred like the system bar (B3W-0: justify-content center)
         .frame(maxWidth: .infinity)
-        .sensoryFeedback(RHaptic.tab, trigger: selection)
+        .sensoryFeedback(RHaptic.tab, trigger: tapChanges)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isTabBar)
     }
@@ -82,9 +85,9 @@ struct RTabBar: View {
             reselect(tab)
             return
         }
-        withAnimation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast)) {
-            selection = tab
-        }
+        // written plainly: the bar animates its own look, the page swap is the host's business
+        selection = tab
+        tapChanges += 1
     }
 }
 
@@ -93,6 +96,8 @@ private struct RTabBarItem: View {
     let tab: RTab
     let selected: Bool
     let showsLabel: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: RDimension.sizeBorderRing) {
@@ -114,16 +119,20 @@ private struct RTabBarItem: View {
         .frame(minWidth: RDimension.sizeTabItemMinWidth, maxWidth: RDimension.sizeTabItemWidth)
         .frame(minHeight: RDimension.sizeTabItemHeight)
         .contentShape(Rectangle())
+        // tab-bar.md "change": old weight down, new weight up over 140ms; Reduce Motion: at once
+        .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: selected)
     }
 }
 
 /// Pressed: the slot dims to opacity.pressed at once, and comes back over 240ms.
 private struct RTabPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(configuration.isPressed ? RNumber.opacityPressed : 1)
             .animation(
-                configuration.isPressed ? nil : RMotion.standard(RNumber.motionDurationPressOut),
+                configuration.isPressed || reduceMotion ? nil : RMotion.standard(RNumber.motionDurationPressOut),
                 value: configuration.isPressed
             )
     }
