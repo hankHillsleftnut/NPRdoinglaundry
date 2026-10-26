@@ -386,7 +386,7 @@ private struct OutsideGlow: View {
 /// CSS `text-wrap: balance` for a centred line or two: the text is laid out at the narrowest
 /// width that still takes as many lines as at the full width, so a title never leaves one word
 /// alone on its last line ("what you tell / me stays yours.", as Paper draws it).
-private struct BalancedLines: ViewModifier {
+struct BalancedLines: ViewModifier {
     func body(content: Content) -> some View {
         BalancedLayout { content }
     }
