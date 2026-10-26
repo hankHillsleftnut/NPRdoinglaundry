@@ -27,6 +27,8 @@ struct RSettingsRow: View {
         case nav
         /// value + › opens its picker.
         case value(String)
+        /// value + ↕ opens a quick pick in place (decision 04; Paper DNO-0 "talk ↕", gate A card 3).
+        case pick(String)
         /// ↗ leaves the app (only for links out).
         case external
         /// an ink tick in a 20 slot; titles in a choice group align either way.
@@ -109,6 +111,14 @@ struct RSettingsRow: View {
                     .accessibilityHidden(true)
                 chevron
             }
+        case let .pick(value):
+            HStack(spacing: RDimension.space1) {
+                Text(value)
+                    .rText(.textMd)
+                    .foregroundStyle(disabled ? RColor.textTertiary : RColor.textSecondary)
+                    .accessibilityHidden(true)
+                RSymbol(name: "chevron.up.chevron.down", size: .small, tint: disabled ? RColor.textDisabled : RColor.iconMuted)
+            }
         case .external:
             RSymbol(
                 name: "arrow.up.right",
@@ -176,7 +186,7 @@ struct RSettingsRow: View {
 
     private var accessibilityValue: String {
         switch trailing {
-        case let .value(value): value
+        case let .value(value), let .pick(value): value
         case let .toggle(isOn): isOn.wrappedValue ? "on" : "off"
         default: ""
         }
@@ -225,6 +235,7 @@ struct RSettingsRowGallery: View {
     @State private var autoplay = true
     @State private var download = false
     @State private var voice = "warm"
+    @State private var mode = "talk"
 
     var body: some View {
         ScrollView {
@@ -233,6 +244,13 @@ struct RSettingsRowGallery: View {
                     RSettingsRow(title: "notifications")
                     RSettingsRow(title: "voice", subline: "how retro sounds when it reads to you", trailing: .value(voice))
                     RSettingsRow(title: "what retro can see", subline: "calendar, voice notes and two more")
+                }
+                // quick picks (decision 04): value + ↕, chosen in place (ST-1 DNJ-0 "talk or read · talk")
+                RSettingsGroup(inset: .afterIcon) {
+                    RSettingsRow(title: "talk or read", symbol: "waveform", trailing: .pick(mode)) {
+                        mode = mode == "talk" ? "read" : "talk"
+                    }
+                    RSettingsRow(title: "daily brief", symbol: "sun.max", trailing: .pick("8:30 · on"), disabled: true)
                 }
                 RSettingsGroup(inset: .afterIcon) {
                     RSettingsRow(title: "calendar", subline: "so your brief knows what today holds", symbol: "calendar")
