@@ -19,10 +19,11 @@ struct RClaimTests {
         #expect(RTextStyle.inkTitle.size == RDimension.fontSize3xl)
     }
 
-    @Test("both kinds build with Paper's copy")
+    @Test("VoiceOver reads the meta line with commas, not dots")
     func kinds() {
         let stated = RClaim(kind: .stated, text: "your best days start early.", meta: "stated · from what you did · very sure")
         let asked = RClaim(kind: .asked, text: "are mornings when you do your best work?", meta: "asked · fairly sure · rests on 3 mornings")
-        #expect(stated.kind != asked.kind)
+        #expect(stated.spokenMeta == "stated, from what you did, very sure")
+        #expect(asked.spokenMeta == "asked, fairly sure, rests on 3 mornings")
     }
 }

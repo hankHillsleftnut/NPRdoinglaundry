@@ -12,7 +12,8 @@
 //    inference.border edge inside, padding 16 (space4), 8 between lines: "a guess" (Geist text-sm
 //    medium, text.label), the question in the inky card face at text-2xl (`.inkClaimAsked`), and the
 //    meta line. Status is never colour alone: the dash and the words "a guess" both say it.
-//  Increase Contrast thickens the dash (size.inference.edgeIncreased), as the guess card does.
+//  Increase Contrast thickens the dash (size.inference.edgeIncreased): the asked look is the guess card's
+//  own paper, `RInferenceSurface` (RTag.swift), so a change to one reaches both.
 //
 import SwiftUI
 
@@ -75,11 +76,14 @@ struct RClaim: View {
                 Text(text)
                     .rText(.inkClaimAsked)
                     .foregroundStyle(RColor.textPrimary)
+                    // a long question never truncates in a height-bound slot (as the guess card's)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
                 metaLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(RDimension.space4)
-            .background { RClaimGuessSurface(increasedContrast: contrast == .increased) }
+            .background { RInferenceSurface(increasedContrast: contrast == .increased) }
             .accessibilityElement(children: .combine)
         }
     }
@@ -88,31 +92,12 @@ struct RClaim: View {
         Text(meta)
             .rText(.metaLine)
             .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textLabel)
-    }
-}
-
-/// inference.surface with the dashed inference.border edge inside, closing without a stub.
-private struct RClaimGuessSurface: View {
-    let increasedContrast: Bool
-
-    private var line: CGFloat {
-        increasedContrast ? RDimension.sizeInferenceEdgeIncreased : RDimension.sizeBorderDefault
+            .accessibilityLabel(spokenMeta)
     }
 
-    var body: some View {
-        RShape.rect(RDimension.radiusCard)
-            .fill(RColor.inferenceSurface)
-            .overlay {
-                GeometryReader { proxy in
-                    RShape.rect(RDimension.radiusCard).strokeBorder(
-                        RColor.inferenceBorder,
-                        style: StrokeStyle(
-                            lineWidth: line,
-                            dash: [RInferenceEdge.dash(around: proxy.size, cornerRadius: RDimension.radiusCard, line: line)]
-                        )
-                    )
-                }
-            }
+    /// What VoiceOver reads for the meta line: commas, not dots (as RGuessCard and REvidenceRow).
+    var spokenMeta: String {
+        meta.replacingOccurrences(of: " · ", with: ", ")
     }
 }
 
