@@ -38,10 +38,14 @@ extension RTextStyle {
     )
 }
 
-/// Your words, read or edited in place. The page owns the text and whether it is being edited (the top
-/// bar's "edit" / "cancel · save").
+/// Your words, read or edited in place. The kept words are never touched while editing: the field edits
+/// `draft`, which it fills from `text` each time editing starts. So "cancel" is just `editing = false`,
+/// and the page's "save" keeps `draft` (the top bar's "cancel · save" belong to the page).
 struct REntryWords: View {
-    @Binding var text: String
+    /// The kept words, shown at rest.
+    let text: String
+    /// The words being edited; filled from `text` when editing starts.
+    @Binding var draft: String
     var editing = false
     /// VoiceOver's name for the field while editing.
     var fieldLabel = "your words"
@@ -52,7 +56,8 @@ struct REntryWords: View {
 
     var body: some View {
         if editing {
-            TextField(fieldLabel, text: $text, axis: .vertical)
+            // no title: it would show as the system placeholder if the words are cleared
+            TextField("", text: $draft, axis: .vertical)
                 .rText(.inkEntry)
                 .foregroundStyle(RColor.textPrimary)
                 .tint(RColor.inkDefault)
@@ -60,7 +65,14 @@ struct REntryWords: View {
                 .padding(.vertical, RDimension.space3)
                 .padding(.horizontal, RDimension.space4)
                 .background { REntryWordsField() }
-                .onAppear { focused = focusOnEdit }
+                // the field grows outward, so the words stay where they were at rest
+                .padding(.vertical, -RDimension.space3)
+                .padding(.horizontal, -RDimension.space4)
+                // .task, not .onAppear: the field must be in the responder chain before it can take focus
+                .task {
+                    draft = text
+                    focused = focusOnEdit
+                }
                 .accessibilityLabel(fieldLabel)
         } else {
             Text(text)
@@ -101,7 +113,7 @@ struct RConversationLink: View {
                 RSymbol(name: "chevron.right", size: .small, tint: RColor.textLink, weight: .semibold)
             }
             .foregroundStyle(RColor.textLink)
-            .frame(minHeight: RDimension.sizeTouchTarget)
+            .frame(minWidth: RDimension.sizeTouchTarget, minHeight: RDimension.sizeTouchTarget)
             .contentShape(Rectangle())
         }
         .buttonStyle(RLinkPressStyle())
@@ -125,6 +137,8 @@ private struct RLinkPressStyle: ButtonStyle {
 /// Lab page "entrywords": Paper's words at rest and editing (E2U-0, G8U-0), a live edit toggle, the link.
 struct REntryWordsGallery: View {
     @State private var words = "i think it's the 9am standup. i dread it, every monday"
+    @State private var draft = ""
+    @State private var staticDraft = "i think it's the 9am standup. i dread it, every monday"
     @State private var editing = false
     @State private var followed = 0
 
@@ -132,12 +146,22 @@ struct REntryWordsGallery: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RDimension.space6) {
                 Text("entry words · rest").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
-                REntryWords(text: .constant("i think it's the 9am standup. i dread it."))
+                REntryWords(text: "i think it's the 9am standup. i dread it.", draft: .constant(""))
                 Text("entry words · editing").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
-                REntryWords(text: $words, editing: true, focusOnEdit: false)
+                REntryWords(text: words, draft: $staticDraft, editing: true, focusOnEdit: false)
                 Text("live").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
-                REntryWords(text: $words, editing: editing)
-                RPill(title: editing ? "done" : "edit", style: .raised) { editing.toggle() }
+                REntryWords(text: words, draft: $draft, editing: editing)
+                HStack(spacing: RDimension.space3) {
+                    RPill(title: editing ? "save" : "edit", style: .raised) {
+                        if editing {
+                            words = draft
+                        }
+                        editing.toggle()
+                    }
+                    if editing {
+                        RPill(title: "cancel", style: .neutral) { editing = false }
+                    }
+                }
                 Text("link · followed \(followed)×").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
                 RConversationLink { followed += 1 }
             }

@@ -10,7 +10,7 @@ struct REntryWordsTests {
     func wordsStyle() {
         #expect(RTextStyle.inkEntry.size == RDimension.fontSizeXl)
         #expect(abs(Double(RTextStyle.inkEntry.tracking) - RNumber.fontTrackingCard) < 0.0001)
-        #expect(RTextStyle.inkEntry.leading > RTextStyle.inkCard.leading)
+        #expect(RTextStyle.inkEntry.leading == 1.3) // --leading-snug
         #expect(RTextStyle.inkCard.size == RDimension.fontSizeXl) // unchanged beside it
     }
 
