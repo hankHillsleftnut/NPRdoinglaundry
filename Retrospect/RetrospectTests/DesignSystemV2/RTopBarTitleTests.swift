@@ -10,7 +10,7 @@ struct RTopBarTitleTests {
     func insets() {
         #expect(RTopBar.trailingInset(.none) == 16)
         #expect(RTopBar.trailingInset(.iconButton(symbol: "plus", label: "add a goal") {}) == 16)
-        #expect(RTopBar.trailingInset(.content(AnyView(EmptyView()))) == 24)
+        #expect(RTopBar.trailingInset(.content([AnyView(EmptyView())])) == 24)
         #expect(RDimension.spaceScreenMargin == 24)
     }
 }

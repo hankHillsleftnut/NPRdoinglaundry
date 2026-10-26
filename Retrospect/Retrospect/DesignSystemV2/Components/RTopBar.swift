@@ -57,8 +57,8 @@ struct RTopBar: View {
         case none
         /// GL-1: one wash icon button in its 44 frame ("+", add).
         case iconButton(symbol: String, label: String, action: () -> Void)
-        /// YO-1: 36-tall parts the page builds ("list", the picture), 12 apart, 24 from the edge.
-        case content(AnyView)
+        /// YO-1: 36-tall parts the page builds ("list", the picture), laid 12 apart by the bar, 24 from the edge.
+        case content([AnyView])
     }
 
     enum Entry {
@@ -148,8 +148,10 @@ struct RTopBar: View {
             EmptyView()
         case let .iconButton(symbol, label, action):
             RIconButton(symbol: symbol, label: label, action: action)
-        case let .content(view):
-            HStack(spacing: RDimension.space3) { view }
+        case let .content(parts):
+            HStack(spacing: RDimension.space3) {
+                ForEach(parts.indices, id: \.self) { parts[$0] }
+            }
         }
     }
 
@@ -325,9 +327,13 @@ struct RTopBarGallery: View {
                     RTopBar(variant: .title(title: "goals", trailing: .iconButton(symbol: "plus", label: "add a goal") {}))
                 }
                 section("title · you, content") {
-                    RTopBar(variant: .title(title: "you", trailing: .content(AnyView(
-                        RPill(title: "list", style: .neutral) {}
-                    ))))
+                    RTopBar(variant: .title(title: "you", trailing: .content([
+                        AnyView(RPill(title: "list", style: .neutral) {}),
+                        // stands in for YO-1's 36 picture (1G80-0) so the gap and inset show
+                        AnyView(Circle().fill(RColor.surfaceWash)
+                            .frame(width: RDimension.sizeControlIcon, height: RDimension.sizeControlIcon)
+                            .accessibilityHidden(true)),
+                    ])))
                 }
             }
             .padding(.vertical, RDimension.space6)
