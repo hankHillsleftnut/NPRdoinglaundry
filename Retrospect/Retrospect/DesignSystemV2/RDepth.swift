@@ -181,23 +181,10 @@ public struct RShadowLayer: Equatable, Sendable {
         self.inset = inset
     }
 
-    /// A hairline ring: `0 0 0 width` (outside the shape as an outer layer, inside as an inset one).
-    static func ring(_ color: Color, _ width: CGFloat) -> RShadowLayer {
-        RShadowLayer(color: color, x: 0, y: 0, blur: 0, spread: width)
-    }
-
     /// How far past the shape this layer can paint (blur reaches about 1.5 × its CSS value).
     var reach: CGFloat {
         abs(x) + abs(y) + max(spread, 0) + blur * 1.5
     }
-}
-
-/// The strokes every raised surface carries in Paper, from tokens depth.boxShadow.stroke.*:
-/// `inset 0 1 0 innerTop` (the top light), `inset 0 0 0 1 inner`, `0 0 0 0.5 outer` (fully outside).
-enum RPaperStrokes {
-    static let innerTop = RElevation.boxShadowStrokeInnerTop[0]
-    static let inner = RElevation.boxShadowStrokeInner[0]
-    static let outer = RElevation.boxShadowStrokeOuter[0]
 }
 
 /// Outer box-shadows exactly as CSS paints them: the shape grown by the spread (negative pulls it

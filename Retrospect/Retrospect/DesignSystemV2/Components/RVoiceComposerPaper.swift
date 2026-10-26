@@ -34,13 +34,14 @@ struct RComposerPaperSurface: View {
     var body: some View {
         let radius = RDimension.radiusComposer
         let shape = RShape.rect(radius)
+        // One fill that never fades (no see-through dip mid-change); only the two shadow stacks
+        // cross-fade. Outer layers behind the fill, inset layers over it, each masked to its side.
         ZStack {
+            RBoxShadows(layers: Self.rest.filter { !$0.inset }, radius: radius).opacity(isLit ? 0 : 1)
+            RBoxShadows(layers: Self.listening.filter { !$0.inset }, radius: radius).opacity(isLit ? 1 : 0)
             shape.fill(RColor.backgroundRaised)
-                .rBoxShadows(Self.rest, radius: radius)
-                .opacity(isLit ? 0 : 1)
-            shape.fill(RColor.backgroundRaised)
-                .rBoxShadows(Self.listening, radius: radius)
-                .opacity(isLit ? 1 : 0)
+            RInsetShadows(layers: Self.rest.filter(\.inset), radius: radius).opacity(isLit ? 0 : 1)
+            RInsetShadows(layers: Self.listening.filter(\.inset), radius: radius).opacity(isLit ? 1 : 0)
             // Increase Contrast: a 1pt border.control ring at rest (voice-composer.md), as today
             if contrast == .increased, !isLit {
                 shape.strokeBorder(RColor.borderControl, lineWidth: RDimension.sizeBorderDefault)

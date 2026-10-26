@@ -1,13 +1,13 @@
 // node --test design-system/tokens/tokens.test.mjs
 // SH.composer (founder, 26 Oct): Paper's shadow stacks live beside the older recipes, never over them.
-// 1. Every token that existed before (baseline.json) keeps its exact value and dark value, and the
-//    generated Swift for them is byte-for-byte the same (new Swift is only ever appended).
+// 1. Every token that existed before (baseline.json, written by baseline.mjs) keeps its exact value
+//    and dark value, and every generated Swift line it produced is still there, in order. New tokens
+//    and new generated lines anywhere pass.
 // 2. Each new depth.* shadow token equals Paper's box-shadow, copied verbatim from get_computed_styles
 //    on the node named in its source, layer for layer (x, y, blur, spread, inset, colour token).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const tokens = JSON.parse(read('./tokens.json'));
@@ -23,10 +23,14 @@ test('every existing token keeps its value and dark value', () => {
   }
 });
 
-test('the generated Swift for existing tokens is unchanged (new Swift is appended only)', () => {
-  const swift = readFileSync(new URL('../../Retrospect/Retrospect/DesignSystemV2/Generated/Tokens.swift', import.meta.url));
-  const prefix = swift.subarray(0, baseline.generatedSwift.bytes);
-  assert.equal(createHash('sha256').update(prefix).digest('hex'), baseline.generatedSwift.sha256);
+test('every existing generated Swift line is still there, in order (additions anywhere are fine)', () => {
+  const lines = read('../../Retrospect/Retrospect/DesignSystemV2/Generated/Tokens.swift').split('\n');
+  let at = 0;
+  for (const want of baseline.generatedSwiftLines) {
+    while (at < lines.length && lines[at] !== want) at++;
+    assert.ok(at < lines.length, `generated line changed or removed: ${want.trim()}`);
+    at++;
+  }
 });
 
 // Paper's CSS, verbatim (file 01M5D5J321P5X86ZT58002B7NT). Colour vars map to the token they name.

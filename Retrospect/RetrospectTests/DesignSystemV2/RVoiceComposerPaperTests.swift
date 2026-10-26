@@ -64,7 +64,7 @@ struct RVoiceComposerPaperTests {
 
     @Test("the top light is Paper's inset 0 1 0: 1pt on the flat top, gone below it, thinning round the corner")
     func topLightIsTheInsetCrescent() throws {
-        let image = try render(RInsetShadows(layers: [RPaperStrokes.innerTop], radius: RDimension.radiusComposer))
+        let image = try render(RInsetShadows(layers: [RElevation.boxShadowStrokeInnerTop[0]], radius: RDimension.radiusComposer))
         #expect(image.alpha(x: 177, y: 0.5) > 0.9)
         #expect(image.alpha(x: 177, y: 1.5) == 0)
         // on the left curve 6pt down the crescent is still there (edge at x 10.7, shifted edge at 12.0);
