@@ -148,6 +148,17 @@ struct RScrubberTests {
         #expect(ScrubberWords.spoken(position: 61, duration: 40, part: 0, parts: 1) == "1 minute 1 second of 40 seconds")
     }
 
+    @Test("a fill covers its capsule only up to x: none before it, part inside it, all of it past it")
+    func fillPerCapsule() {
+        let second = math.segments[1]
+        #expect(ScrubberMath.fill(second, to: second.x - 10) == 0)
+        #expect(ScrubberMath.fill(second, to: second.x + 12) == 12)
+        #expect(ScrubberMath.fill(second, to: second.x + second.width + 50) == second.width)
+        // a downloaded stretch to the end fills every capsule
+        let end = math.x(atFraction: 1)
+        #expect(math.segments.allSatisfy { abs(ScrubberMath.fill($0, to: end) - $0.width) < 0.001 })
+    }
+
     @Test("a titled label is the chapter's title alone (ON-11 26OI-0); nothing when it has no title; counted stays as it was")
     func titledPartLabel() {
         #expect(ScrubberWords.partName(1, of: 4, title: "the first thing i noticed", style: .title) == "the first thing i noticed")

@@ -610,6 +610,8 @@ public enum RDimension {
     public static let sizePlayerHeaderMark: CGFloat = 22
     /// The width of the mark's glyph inside the 22 header disc.
     public static let sizePlayerHeaderMarkGlyph: CGFloat = 12
+    /// Each of the three dots of the transport's more (…) button, 4 apart.
+    public static let sizePlayerMoreDot: CGFloat = 4
     /// The daily brief card on Journal.
     public static let sizeBriefCardMinHeight: CGFloat = 120
     /// The writing field, empty.

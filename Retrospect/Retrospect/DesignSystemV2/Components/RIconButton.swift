@@ -41,14 +41,20 @@ struct RIconButton: View {
 
     var body: some View {
         Button(action: action) {
-            RSymbol(name: symbol, size: role.glyph, tint: tint, weight: role.weight)
-                .frame(width: role.visible, height: role.visible)
-                .background(RColor.surfaceWash, in: Circle())
-                .frame(width: max(role.visible, RDimension.sizeControlDefault), height: max(role.visible, RDimension.sizeControlDefault))
-                .contentShape(Rectangle())
+            Self.face(symbol: symbol, role: role, tint: tint)
         }
         .rPress(small: true, haptic: role == .bubble ? RHaptic.press : nil)
         .accessibilityLabel(label)
+    }
+
+    /// The wash circle and its glyph in the 44 hit frame: the button's face, also worn by system
+    /// controls that need their own button (the player header's ShareLink).
+    static func face(symbol: String, role: Role, tint: Color = RColor.iconDefault) -> some View {
+        RSymbol(name: symbol, size: role.glyph, tint: tint, weight: role.weight)
+            .frame(width: role.visible, height: role.visible)
+            .background(RColor.surfaceWash, in: Circle())
+            .frame(width: max(role.visible, RDimension.sizeControlDefault), height: max(role.visible, RDimension.sizeControlDefault))
+            .contentShape(Rectangle())
     }
 }
 

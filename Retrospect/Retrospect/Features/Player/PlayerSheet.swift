@@ -3,10 +3,11 @@
 //  PS.sheet.a: the player sheet as Paper ON-11 draws it (26NO-0; the same sheet as PC-2 1FV9-0), built
 //  from the player parts that exist: the header, the transcript (flexes and scrolls), "correct this
 //  part", RScrubber and RTransport, with Paper's gaps (16, 20, 24). The scrubber names the chapter by
-//  its title alone, as ON-11 does. "correct this part" is drawn as Paper draws it and does nothing yet
-//  (founder Q1 = C, 26 Oct: cosmetic for now). Share and "…" keep their places but aren't built (no
-//  destination drawn; QUESTIONS Q2, Q3). The space under the transport is the caller's: it depends on
-//  the safe area (`PlayerSheetScreen`) or on the host.
+//  its title alone, as ON-11 does, over the grey downloaded stretch (founder Q4 = B). Founder answers,
+//  26 Oct: "correct this part" is drawn as Paper draws it and does nothing yet (Q1 = C); "…" opens the
+//  build note's menu, whose rows only close it for now (Q2 = B); share opens the system share sheet
+//  (Q3 = B). The space under the transport is the caller's: it depends on the safe area
+//  (`PlayerSheetScreen`) or on the host.
 //  `PlayerSheetScreen` stands the sheet on the underlay for a screen that opens as a sheet (the tease);
 //  inside the app the RSheetHost presents the same `PlayerSheet` (PS.sheet.c).
 //
@@ -17,7 +18,7 @@ struct PlayerSheet: View {
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
-            PlayerSheetHeader(title: model.title, onCollapse: model.collapse)
+            PlayerSheetHeader(title: model.title, shareText: model.shareText, onCollapse: model.collapse)
                 .padding(.top, RDimension.space1)
             TranscriptColumn(transcript: model.transcript, current: model.currentLine)
                 .frame(maxHeight: .infinity)
@@ -26,10 +27,26 @@ struct PlayerSheet: View {
                 .padding(.top, RDimension.space4)
             RScrubber(playback: model.playback, partLabel: .title)
                 .padding(.top, RDimension.space5)
-            RTransport(playback: model.playback)
+            RTransport(playback: model.playback, more: moreRows)
                 .padding(.top, RDimension.space6)
         }
+        // the "…" menu grows over the whole sheet
+        .rMenuHost()
         .accessibilityAction(.escape) { model.collapse() }
+    }
+
+    /// The "…" rows (founder Q2 = B): drawn as the build note describes them; choosing one only closes
+    /// the menu until chapters and downloads exist, and VoiceOver says so.
+    private var moreRows: [RMenuRow] {
+        PlayerSheetModel.MoreItem.allCases.map { item in
+            RMenuRow(
+                id: item.rawValue,
+                title: item.title,
+                symbol: item.symbol,
+                opensMore: item.opensMore,
+                accessibilityNote: PlayerSheetModel.notAvailableYet
+            ) {}
+        }
     }
 }
 
@@ -55,7 +72,7 @@ struct CorrectThisPart: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Self.words)
-        .accessibilityValue("not available yet")
+        .accessibilityValue(PlayerSheetModel.notAvailableYet)
         .accessibilityIdentifier("player.correct")
     }
 }

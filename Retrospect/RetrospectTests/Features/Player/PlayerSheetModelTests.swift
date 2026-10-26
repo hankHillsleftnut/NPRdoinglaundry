@@ -95,6 +95,27 @@ struct PlayerSheetModelTests {
         #expect(SampleTranscript.tease.lines.allSatisfy { ($0.startSeconds ?? -1) >= 0 && ($0.startSeconds ?? 99) < 10 })
     }
 
+    @Test("the \"…\" menu is the build note's: chapters (opens more) then download, both not available yet (founder Q2 = B)")
+    func moreMenu() {
+        #expect(PlayerSheetModel.MoreItem.allCases.map(\.title) == ["chapters", "download"])
+        #expect(PlayerSheetModel.MoreItem.chapters.opensMore)
+        #expect(!PlayerSheetModel.MoreItem.download.opensMore)
+        #expect(PlayerSheetModel.notAvailableYet == "not available yet")
+    }
+
+    @Test("share hands over the line of text the founder chose (Q3 = B), from the player's item")
+    func shareText() async {
+        let sheet = model(.teaseStill)
+        #expect(sheet.shareText == "the week you started · retrospect")
+        await sheet.playback.load(SamplePlayback.item(for: .briefPaused))
+        #expect(sheet.shareText == "today's brief · retrospect")
+    }
+
+    @Test("the tease is on the phone: its downloaded stretch is the whole capsule (founder Q4 = B)")
+    func teaseIsFullyDownloaded() {
+        #expect(model(.teaseStill).playback.buffered == 1)
+    }
+
     @Test("\"correct this part\" reads Paper's words (26OW-0)")
     func correctThisPartWords() {
         #expect(CorrectThisPart.words == "correct this part")

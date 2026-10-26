@@ -2,7 +2,8 @@
 //  RScrubber.swift
 //  C25: the player's scrubber (Paper JR-2 `1FN7-0`, track `1FNE-0`, thumb `1FND-0`, times
 //  `1FN8-0`; held state from part 09 `A3D-0`). One capsule per part with 4pt gaps (one capsule
-//  under a minute), the played fill inside each capsule, a 12pt raised thumb whose x always comes
+//  under a minute), the played fill inside each capsule over the grey downloaded stretch for episodes
+//  (Paper ON-11 26OQ-0, `player.buffered`; founder Q4 = B), a 12pt raised thumb whose x always comes
 //  from the playback fraction, and elapsed · part · remaining under it.
 //
 //  Hold and slide: the thumb grows to 20 and a bubble names the part; crossing into a part ticks
@@ -85,6 +86,11 @@ struct ScrubberMath: Equatable {
 
     func x(atFraction fraction: Double) -> CGFloat {
         x(at: fraction * duration)
+    }
+
+    /// How much of a capsule a fill reaching `x` covers (the played fill, the buffered stretch).
+    static func fill(_ segment: Segment, to x: CGFloat) -> CGFloat {
+        min(max(x - segment.x, 0), segment.width)
     }
 
     /// The part a time is in, from 0.
@@ -374,9 +380,11 @@ struct RScrubber: View {
         GeometryReader { geometry in
             let math = ScrubberMath(width: geometry.size.width, duration: duration ?? 0, partStarts: partStarts)
             let thumbX = math.x(at: shownTime)
+            // the downloaded stretch (Paper 26OQ-0), for episodes; briefs report none
+            let bufferedX = duration == nil ? 0 : playback.buffered.map { math.x(atFraction: $0) } ?? 0
             ZStack(alignment: .leading) {
                 ForEach(Array(math.segments.enumerated()), id: \.offset) { _, segment in
-                    capsule(segment, playedTo: duration == nil ? 0 : thumbX)
+                    capsule(segment, playedTo: duration == nil ? 0 : thumbX, bufferedTo: bufferedX)
                 }
                 if duration != nil {
                     thumb
@@ -401,14 +409,18 @@ struct RScrubber: View {
         }
     }
 
-    private func capsule(_ segment: ScrubberMath.Segment, playedTo thumbX: CGFloat) -> some View {
-        let played = min(max(thumbX - segment.x, 0), segment.width)
-        return RShape.pill
+    private func capsule(_ segment: ScrubberMath.Segment, playedTo thumbX: CGFloat, bufferedTo bufferedX: CGFloat) -> some View {
+        RShape.pill
             .fill(contrast == .increased ? RColor.surfaceStrong : RColor.surfaceTrack)
             .overlay(alignment: .leading) {
                 Rectangle()
+                    .fill(RColor.playerBuffered)
+                    .frame(width: ScrubberMath.fill(segment, to: bufferedX))
+            }
+            .overlay(alignment: .leading) {
+                Rectangle()
                     .fill(RColor.playerProgress)
-                    .frame(width: played)
+                    .frame(width: ScrubberMath.fill(segment, to: thumbX))
             }
             .clipShape(RShape.pill)
             .frame(width: segment.width, height: RDimension.sizePlayerScrubber)

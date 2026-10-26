@@ -29,6 +29,9 @@ struct RMenuRow: Identifiable {
     var selected = false
     /// Says why the row can't be chosen; the row dims and reads the reason.
     var disabledReason: String?
+    /// Read by VoiceOver after the title without dimming the row: a row drawn ahead of its
+    /// destination ("not available yet"; the player's "…" menu, founder 26 Oct).
+    var accessibilityNote: String?
     let action: () -> Void
 }
 
@@ -426,7 +429,7 @@ private struct RMenuRowView: View {
         .buttonStyle(.plain)
         .disabled(row.disabledReason != nil)
         .accessibilityAddTraits(row.selected ? .isSelected : [])
-        .accessibilityHint(row.disabledReason ?? "")
+        .accessibilityHint(row.disabledReason ?? row.accessibilityNote ?? "")
         .accessibilityIdentifier("menu.\(row.id)")
     }
 }
