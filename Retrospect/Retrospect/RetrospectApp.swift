@@ -97,6 +97,15 @@ struct RetrospectApp: App {
         #endif
     }
 
+    /// `-Flow sample` (FLOW.host): the first run from the splash on sample data, no backend (debug only).
+    private var isSampleFlowMode: Bool {
+        #if DEBUG
+        FlowLaunch.current.isRequested
+        #else
+        false
+        #endif
+    }
+
     /// Design lab (M14): the DesignSystemV2 gallery, motion lab and component catalogue.
     private var isDesignLabMode: Bool {
         #if DEBUG
@@ -192,6 +201,10 @@ struct RetrospectApp: App {
                 } else if isLauncherMode {
                     #if DEBUG
                     ScreenLauncher()
+                    #endif
+                } else if isSampleFlowMode {
+                    #if DEBUG
+                    SampleFlowHost()
                     #endif
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
@@ -292,8 +305,8 @@ struct RetrospectApp: App {
             .task {
                 // Bridge (DG.4): the launch event and MetricKit crash markers.
                 platform.didLaunch()
-                // the launcher and the design lab run on sample data and never touch the live Keychain
-                guard !isLauncherMode, !isDesignLabMode else { return }
+                // the launcher, the design lab and the sample flow run on sample data and never touch the live Keychain
+                guard !isLauncherMode, !isDesignLabMode, !isSampleFlowMode else { return }
                 platform.followSessionState()
                 platform.startSession()
                 // Bridge (PL2.2b): the background drain finds the outbox through the platform.
@@ -413,6 +426,8 @@ struct RetrospectApp: App {
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 // Bridge (DG.4): foreground and background land in the diagnostics rings.
                 platform.scenePhaseChanged(to: newPhase)
+                // the sample flow reaches no backend: no drain, no version check, no session read, no syncs
+                guard !isSampleFlowMode else { return }
                 // Bridge (PL2.2b): unsent entries go when the app comes back, and while it sleeps.
                 if newPhase == .active {
                     Task { await platform.outbox?.drain(reason: .foreground) }
@@ -445,9 +460,10 @@ struct RetrospectApp: App {
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                 // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
-                if let url = activity.webpageURL { platform.router.open(url) }
+                if !isSampleFlowMode, let url = activity.webpageURL { platform.router.open(url) }
             }
             .onOpenURL { url in
+                guard !isSampleFlowMode else { return } // the sample flow opens no address and syncs nothing
                 // Bridge (PL5.2): the router reads every address first (an invite link goes to the invite
                 // center); the branches below still act for the old screens, unchanged.
                 platform.router.open(url)

@@ -32,6 +32,10 @@ struct QuestionsPageContainer: View {
     let data: any Flows.FirstRun
     /// The questions' part of the first run's progress bar.
     var flowRange: ClosedRange<Double> = QuestionsModel.flowProgress
+    /// Words kept from an earlier launch (the sample flow's resume); empty for a fresh page.
+    var kept: [Flows.QuestionKey: String] = [:]
+    /// Each answer the seam kept, for a host that keeps the words.
+    var onAnswered: (Flows.QuestionKey, String) -> Void = { _, _ in }
     var onDone: () -> Void = {}
 
     var body: some View {
@@ -40,7 +44,8 @@ struct QuestionsPageContainer: View {
     }
 
     private func model() -> QuestionsModel {
-        let model = QuestionsModel(data: data, flowRange: flowRange)
+        let model = QuestionsModel(data: data, flowRange: flowRange, kept: kept)
+        model.onAnswered = onAnswered
         model.onDone = onDone
         return model
     }
