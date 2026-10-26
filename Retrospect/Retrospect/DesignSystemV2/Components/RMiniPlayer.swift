@@ -39,6 +39,29 @@ struct RMiniPlayer: View {
         case buffering
         /// It couldn't play: the subline says so and the well retries.
         case failed
+
+        /// The well's glyph: pause while playing (and under the buffering spinner), play when paused, retry on failure.
+        var wellSymbol: String {
+            switch self {
+            case .playing, .buffering: "pause.fill"
+            case .paused: "play.fill"
+            case .failed: "arrow.clockwise"
+            }
+        }
+
+        /// What the well says to VoiceOver: what a tap will do.
+        var wellLabel: String {
+            switch self {
+            case .playing, .buffering: "pause"
+            case .paused: "play"
+            case .failed: "try again"
+            }
+        }
+
+        /// Whether the 2pt progress line shows (Paper GXB-0 drops it on failure).
+        var showsProgress: Bool {
+            self != .failed
+        }
     }
 
     let title: String
@@ -91,7 +114,7 @@ struct RMiniPlayer: View {
         .frame(minHeight: RDimension.sizePlayerTray)
         .background { RMiniPlayerSurface() }
         .overlay(alignment: .bottomLeading) {
-            if phase != .failed {
+            if phase.showsProgress {
                 GeometryReader { proxy in
                     RColor.playerProgress
                         .frame(width: proxy.size.width * played, height: RDimension.sizeBorderRing)
@@ -106,9 +129,18 @@ struct RMiniPlayer: View {
 
     static let failedLine = "couldn't play · tap to retry"
 
+    /// Paper's box-shadow stack for the pill (GX0-0 / GXB-0): the same in every phase.
+    static let surfaceShadow = RElevation.boxShadowMiniPlayer
+
     /// The share played, held inside 0…1.
     private var played: CGFloat {
-        CGFloat(min(max(progress, .zero), 1))
+        Self.played(progress)
+    }
+
+    /// The share played, held inside 0…1 (a bad or late progress value never overdraws the pill).
+    static func played(_ progress: Double) -> CGFloat {
+        guard progress.isFinite else { return .zero }
+        return CGFloat(min(max(progress, .zero), 1))
     }
 
     private var sublineColor: Color {
@@ -124,30 +156,13 @@ private struct RMiniPlayerWell: View {
     let phase: RMiniPlayer.Phase
     let action: () -> Void
 
-    private var symbol: String {
-        switch phase {
-        case .playing: "pause.fill"
-        case .paused: "play.fill"
-        case .buffering: "pause.fill"
-        case .failed: "arrow.clockwise"
-        }
-    }
-
-    private var label: String {
-        switch phase {
-        case .playing, .buffering: "pause"
-        case .paused: "play"
-        case .failed: "try again"
-        }
-    }
-
     var body: some View {
         Button(action: action) {
             ZStack {
                 if phase == .buffering {
                     RSpinner(diameter: RDimension.sizeIconDefault)
                 } else {
-                    RSymbol(name: symbol)
+                    RSymbol(name: phase.wellSymbol)
                         .contentTransition(.symbolEffect(.replace))
                 }
             }
@@ -156,25 +171,19 @@ private struct RMiniPlayerWell: View {
             .contentShape(Circle())
         }
         .rPress(small: true, haptic: RHaptic.press)
-        .accessibilityLabel(label)
+        .accessibilityLabel(phase.wellLabel)
         .sensoryFeedback(RHaptic.error, trigger: phase) { _, new in new == .failed }
     }
 }
 
-/// background.raised with Paper's floating stack (GX0-0): inner-top 0 1 0 white, 0.5 warm hairline,
-/// contact 0 1 1.5, cast 0 4 10 −4, ambient 0 10 30 −10 (spread has no SwiftUI form: the radius halves it).
+/// background.raised with Paper's floating stack (GX0-0 / GXB-0) layer for layer, through rBoxShadows
+/// (the #202 technique): the inset 0 1 0 top light, the 0.5 hairline fully outside the edge, contact
+/// 0 1 1.5, and the cast 0 4 10 −4 and ambient 0 10 30 −10 pulled in by their spreads, so nothing
+/// climbs above the top edge. All from one token, `RElevation.boxShadowMiniPlayer`.
 private struct RMiniPlayerSurface: View {
     var body: some View {
-        let shape = RShape.pill
-        shape.fill(RColor.backgroundRaised)
-            .overlay(alignment: .top) {
-                shape.strokeBorder(RColor.depthStrokeInnerTop, lineWidth: RDimension.sizeBorderDefault)
-                    .mask(alignment: .top) { Rectangle().frame(height: RDimension.sizeBorderDefault) }
-            }
-            .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: RDimension.sizeBorderHairline))
-            .shadow(color: RColor.depthShadowContact, radius: 0.75, y: 1)
-            .shadow(color: RColor.depthShadowCast, radius: 3, y: 4)
-            .shadow(color: RColor.depthShadowAmbient, radius: 10, y: 10)
+        RShape.pill.fill(RColor.backgroundRaised)
+            .rBoxShadows(RMiniPlayer.surfaceShadow, radius: RDimension.radiusControl)
     }
 }
 
