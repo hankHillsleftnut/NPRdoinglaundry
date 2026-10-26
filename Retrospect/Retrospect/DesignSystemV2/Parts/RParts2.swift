@@ -76,6 +76,19 @@ struct RKnowsYouTrack: View {
 
 // MARK: - C36 · Knows-you meter
 
+extension RTextStyle {
+    /// The meter's words (Paper 21C2-0): Geist 12 medium, leading snug, and no tracking (Paper sets
+    /// none here, unlike the section labels' --tracking-label).
+    static let meterLabel = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeSm,
+        weight: .medium,
+        tracking: RNumber.fontTrackingNone,
+        leading: RTextStyle.labelMedium.leading,
+        relativeTo: .caption
+    )
+}
+
 /// The knows-you meter (Paper `c:knows-you-meter/1-of-6`, 21C1-0): the lit track, then its words
 /// on the right ("knows you a little"), 12 apart, 4 above. The track fills one step on curve.move
 /// (motion-system "Knows-you meter"); the words blur-replace when they change. At accessibility
@@ -94,7 +107,7 @@ struct RKnowsYouMeter: View {
             RKnowsYouTrack(fraction: fraction)
                 .frame(maxWidth: .infinity)
             Text(label)
-                .rText(.labelMedium)
+                .rText(.meterLabel)
                 .foregroundStyle(RColor.textLabel)
                 .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
                 .contentTransition(.interpolate)
