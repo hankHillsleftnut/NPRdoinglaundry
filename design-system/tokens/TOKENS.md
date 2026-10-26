@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**606 tokens** · 530 semantic · 276 marked *to set*
+**610 tokens** · 534 semantic · 276 marked *to set*
 
 ## palette
 
@@ -452,6 +452,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.player.trayInset` | The tray's inner left and right padding. | 22pt |  | Paper JR-2 1FMV-0 |
 | `size.player.skipIcon` | The skip back and skip forward glyphs in the tray. | 28pt |  | Paper JR-2 1FN1-0, 1FMW-0 |
 | `size.player.playIcon` | The play / pause glyph inside the raised well. | 22pt |  | Paper JR-2 1FMZ-0 |
+| `size.player.headerButton` | The player sheet's header buttons (share, collapse): the visible wash circle; the hit area stays 44. | 34pt |  | Paper ON-11 26PK-0 / 26PH-0, player.md anatomy (34 visual wash circles) |
+| `size.player.headerMark` | The mark disc at the start of the player sheet's header. | 22pt |  | Paper ON-11 26PQ-0, ios-handoff (the mark: 22 in the player header) |
+| `size.player.headerMarkGlyph` | The width of the mark's glyph inside the 22 header disc. | 12pt |  | Paper ON-11 26PR-0 (12 × 9) |
+| `size.player.moreDot` | Each of the three dots of the transport's more (…) button, 4 apart. | 4pt |  | Paper ON-11 26OE-0 / 26OD-0 / 26OC-0 (4 × 4, gap 4) |
 | `size.briefCard.minHeight` | The daily brief card on Journal. | 120pt |  | to set: app need |
 | `size.composer.minHeight` | The writing field, empty. | 44pt |  | to set: app need |
 | `size.composer.maxHeight` | The writing field before it scrolls. | 160pt |  | to set: app need |
