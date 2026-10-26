@@ -14,6 +14,10 @@ final class ConnectModel {
     /// ON-6's place in the flow: 55% in Paper (21CF-0), arriving from privacy's 48%.
     static let progress = FlowProgress(from: PrivacyModel.progress.to, to: 0.55)
 
+    /// How full the knows-you meter must be before "continue" appears (founder, 26 Oct: 50%, i.e.
+    /// 3 of 6: calendar plus two more). Below it only "later" moves on. Change it here only.
+    static let continueAppearsAtMeter = 0.5
+
     /// How the page was left. Both exits go to getting ready (founder decision 5); the host may
     /// still want to know which was pressed.
     enum Exit: Equatable {
@@ -79,6 +83,12 @@ final class ConnectModel {
         lastConnected.map { "\($0.name) connected. \(meterWords)." }
     }
 
+    /// "continue" shows once the meter reaches `continueAppearsAtMeter`; "later" always shows.
+    var showsContinue: Bool {
+        // a hair of slack, so 3 of 6 counts as 50% however the division rounds
+        knowsYou.fraction + Self.meterSlack >= Self.continueAppearsAtMeter
+    }
+
     /// Whether a source's "+ connect" can be pressed now: only while no other connect is out.
     func canConnect(_ source: Flows.ConnectSource) -> Bool {
         source.state.canConnect && (phase == .ready || phase == .connecting(source.id))
@@ -104,8 +114,9 @@ final class ConnectModel {
         }
     }
 
-    /// "continue": on to getting ready.
+    /// "continue": on to getting ready, only once it's showing.
     func continueOn() {
+        guard showsContinue else { return }
         leave(.continued)
     }
 
@@ -122,6 +133,8 @@ final class ConnectModel {
     }
 
     // MARK: Private
+
+    private static let meterSlack = 1e-9 // literal-ok: floating-point slack, not a size
 
     private func leave(_ exit: Exit) {
         guard phase != .left else { return }

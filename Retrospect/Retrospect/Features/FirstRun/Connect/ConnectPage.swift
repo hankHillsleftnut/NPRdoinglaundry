@@ -155,13 +155,22 @@ struct ConnectPage: View {
     // MARK: - The thumb zone (Paper 2191-0)
 
     /// The lit "continue" and the text "later": both go on to getting ready (founder decision 5).
+    /// "continue" appears once the meter reaches `ConnectModel.continueAppearsAtMeter` (founder,
+    /// 26 Oct); "later" is always there.
     private var thumbZone: some View {
         VStack(spacing: RDimension.space2) {
-            RButton(title: ConnectModel.continueTitle) { model.continueOn() }
-                .accessibilityIdentifier("connect.continue")
+            if model.showsContinue {
+                RButton(title: ConnectModel.continueTitle) { model.continueOn() }
+                    .accessibilityIdentifier("connect.continue")
+                    .transition(.rBlurReplace(reduceMotion: reduceMotion))
+            }
             RButton(title: ConnectModel.laterTitle, variant: .text) { model.later() }
                 .accessibilityIdentifier("connect.later")
         }
+        .animation(
+            reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.standard(RNumber.motionDurationBase),
+            value: model.showsContinue
+        )
         .padding(.horizontal, margin)
         .padding(.top, RDimension.space4)
         // 32 above the screen's edge (Paper); a phone with no home indicator keeps a tighter 16

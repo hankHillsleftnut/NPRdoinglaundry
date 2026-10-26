@@ -279,9 +279,34 @@ struct ConnectModelTests {
 
     // MARK: Leaving
 
-    @Test("continue and later each leave once, and both go on (founder decision 5)")
-    func continueAndLater() {
+    @Test("continue appears at half a meter (3 of 6): not with calendar alone, not after one more, after two")
+    func continueAppearsAtHalf() async {
+        #expect(ConnectModel.continueAppearsAtMeter == 0.5)
         let model = make()
+        #expect(model.showsContinue == false)
+        await model.connect("apple_health")
+        #expect(model.knowsYou.filled == 2)
+        #expect(model.showsContinue == false)
+        await model.connect("google")
+        #expect(model.knowsYou.filled == 3)
+        #expect(model.showsContinue)
+    }
+
+    @Test("before continue shows it does nothing; later always moves on")
+    func continueHiddenDoesNothing() {
+        let model = make()
+        model.continueOn()
+        #expect(exits.done.isEmpty)
+        #expect(model.phase == .ready)
+        model.later()
+        #expect(exits.done == [.later])
+    }
+
+    @Test("continue and later each leave once, and both go on (founder decision 5)")
+    func continueAndLater() async {
+        let model = make()
+        await model.connect("apple_health")
+        await model.connect("google")
         model.continueOn()
         model.continueOn()
         model.later()
