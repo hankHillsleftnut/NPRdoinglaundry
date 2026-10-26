@@ -1,7 +1,8 @@
 //
 //  RTicketRecipes.swift
-//  The invite's gift mesh and wallpaper (board `2HXR-0`, T1 `2I01-0`). Paper's three radial blobs
-//  mixed in OKLab, approximated by `RArtworkRecipe` points (the PR shows both). The palette colours
+//  The invite's gift mesh and wallpaper (board `2HXR-0`, T1 `2I01-0`, T-alt `2IUL-0`). Both are Paper's
+//  CSS radial ellipses drawn as they are (SI.fidelity: the shared-radius artwork mesh read as a
+//  sweep, not Paper's blobs). The palette colours
 //  are not semantic tokens, so they live here, once, with their dark twins; FR0.1 moves them to
 //  tokens (docs/team/polish-list.md).
 //
@@ -29,30 +30,61 @@ enum RTicketPalette {
     static let red700 = hex(0x740F0B)
 }
 
-extension RArtworkRecipes {
-    /// The gift: amber paper with warm light top right, sky pooling bottom left, a breath of red between.
-    static func gift(dark: Bool) -> RArtworkRecipe {
-        let grain = RArtworkRecipe.Grain(mode: .multi, opacity: 0.12, size: 1.5) // literal-ok: same grain as every mesh recipe
-        if dark {
-            return RArtworkRecipe(
-                base: RTicketPalette.amber900,
-                blobs: [
-                    .init(color: RTicketPalette.amber500, x: 0.85, y: 0.1, radius: 0.8, weight: 0.9),
-                    .init(color: RTicketPalette.sky800, x: 0.15, y: 0.9, radius: 0.7, weight: 0.8),
-                    .init(color: RTicketPalette.red700, x: 0.55, y: 0.45, radius: 0.4, weight: 0.45),
-                ],
-                softness: 0.7, grain: grain
-            )
+/// The gift band (T-alt `2IUL-0`): amber paper with warm light top right, sky pooling bottom left, a
+/// breath of red between, drawn as Paper's three CSS ellipses over the amber.50 base, no grain. Each
+/// ellipse's radii are shares of the band's width and height (CSS `ellipse 80% 90%`), so the 354 × 132
+/// band shows soft blobs, not the left-to-right sweep a shared-radius mesh made of it. Dark has no
+/// Paper board: the same geometry with each colour's dark twin.
+struct RTicketGift: View {
+    /// One CSS radial-gradient: colour (at its strength) at the centre, clear by `fade` of the radius.
+    struct Blob: Equatable {
+        let strength: Double
+        let radiusX: CGFloat
+        let radiusY: CGFloat
+        let at: UnitPoint
+        let fade: CGFloat
+    }
+
+    /// Paper's three, in drawing order: amber.200, sky.300 at 80%, red.200 at 45%.
+    static let blobs = [
+        Blob(strength: 1, radiusX: 0.8, radiusY: 0.9, at: UnitPoint(x: 0.85, y: 0.1), fade: 0.7),
+        Blob(strength: 0.8, radiusX: 0.7, radiusY: 0.8, at: UnitPoint(x: 0.15, y: 0.9), fade: 0.75),
+        Blob(strength: 0.45, radiusX: 0.45, radiusY: 0.4, at: UnitPoint(x: 0.55, y: 0.45), fade: 1),
+    ] // literal-ok: Paper 2IUL-0 gradients
+
+    let width: CGFloat
+    let height: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    private var colors: [Color] {
+        scheme == .dark
+            ? [RTicketPalette.amber500, RTicketPalette.sky800, RTicketPalette.red700]
+            : [RTicketPalette.amber200, RTicketPalette.sky300, RTicketPalette.red200]
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            scheme == .dark ? RTicketPalette.amber900 : RTicketPalette.amber50
+            ForEach(Array(zip(Self.blobs, colors).enumerated()), id: \.offset) { _, pair in
+                blob(pair.0, color: pair.1)
+            }
         }
-        return RArtworkRecipe(
-            base: RTicketPalette.amber50,
-            blobs: [
-                .init(color: RTicketPalette.amber200, x: 0.85, y: 0.1, radius: 0.8, weight: 1),
-                .init(color: RTicketPalette.sky300, x: 0.15, y: 0.9, radius: 0.7, weight: 0.8),
-                .init(color: RTicketPalette.red200, x: 0.55, y: 0.45, radius: 0.4, weight: 0.45),
-            ],
-            softness: 0.7, grain: grain
-        )
+        .frame(width: width, height: height)
+        .clipped()
+        .accessibilityHidden(true)
+    }
+
+    /// The ellipse fills a frame of its two diameters; the gradient runs from its centre to the
+    /// frame's edge (0.5 of the frame), so it is clear at `fade` of each radius.
+    private func blob(_ blob: Blob, color: Color) -> some View {
+        let tint = color.opacity(blob.strength)
+        return Rectangle()
+            .fill(EllipticalGradient(
+                stops: [.init(color: tint, location: 0), .init(color: tint.opacity(0), location: blob.fade)],
+                center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5
+            ))
+            .frame(width: width * blob.radiusX * 2, height: height * blob.radiusY * 2) // literal-ok: radii to diameters
+            .position(x: width * blob.at.x, y: height * blob.at.y)
     }
 }
 

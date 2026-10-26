@@ -18,6 +18,11 @@ extension RTextStyle {
         family: .inky(axis: -10), size: RDimension.fontSize3xl, weight: .regular,
         tracking: RNumber.fontTrackingTitle, leading: 1.1, relativeTo: .largeTitle
     )
+    /// The hint pill under the ticket (T-alt `2ISJ-0`): Geist 12 medium, leading snug, no tracking.
+    static let ticketHint = RTextStyle(
+        family: .label, size: RDimension.fontSizeSm, weight: .medium,
+        tracking: RNumber.fontTrackingNone, leading: 1.3, relativeTo: .caption
+    )
     /// The ticket's small print: Geist 11.
     static let ticketSmall = RTextStyle(
         family: .label, size: RDimension.fontSizeXs, weight: .regular,
@@ -184,13 +189,12 @@ struct RTicketBody: View {
     let geometry: TicketGeometry
     var face: Session.TicketFace?
     var hiddenHoles = 0
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let shape = RTicketShape(part: .body, geometry: geometry)
         ZStack(alignment: .topLeading) {
             VStack(spacing: RDimension.space0) {
-                RArtwork(recipe: RArtworkRecipes.gift(dark: scheme == .dark), width: geometry.width, height: geometry.meshHeight, cornerRadius: 0)
+                RTicketGift(width: geometry.width, height: geometry.meshHeight)
                 faceText
             }
             RTicketHoles(hidden: hiddenHoles)

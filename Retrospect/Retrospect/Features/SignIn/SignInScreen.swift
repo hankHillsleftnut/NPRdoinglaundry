@@ -3,7 +3,8 @@
 //  PI0: sign in with Apple. The splash for a first-time phone (the promise, then one way in) and
 //  "welcome back" for a returning one, from Paper `1F4Q-0` and AC-1 `1GXR-0` (values read from the
 //  part generators `p47_signin_returning.py` and the handoff, Paper Desktop being closed). The You map
-//  at rest (C38.1, RYouMapRest) sits behind the words. Beta 1 is Apple only.
+//  at rest (C38.1, RYouMapRest) sits behind the words, with Paper's orb names on the splash. Live is
+//  Apple only; on sample data "Continue with Google" is there too, as Paper draws it (decision 12).
 //  No lit object: Apple's black button leads.
 //
 import SwiftUI
@@ -15,6 +16,9 @@ struct SignInScreen: View {
     @Environment(\.rCompactHeight) private var compact
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// The home indicator's inset, read from the layout: Paper ends the bottom zone 40 from the screen's
+    /// edge, which is this inset plus the rest.
+    @State private var bottomInset: CGFloat = 0
 
     /// From xxLarge up the failure line wraps; it then takes layout room instead of floating.
     private var largeType: Bool {
@@ -30,7 +34,7 @@ struct SignInScreen: View {
                     // buttons), and free to grow. At large type the buttons join the page and scroll
                     // with it: pinned, the words ran under them (SE at AX3)
                     VStack(spacing: RDimension.space0) {
-                        page(topInset: proxy.safeAreaInsets.top)
+                        page
                         if largeType {
                             Spacer(minLength: RDimension.space6)
                             bottomZone
@@ -40,7 +44,6 @@ struct SignInScreen: View {
                     .frame(minHeight: proxy.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .scrollClipDisabled() // the splash's map runs up under the status bar, as in Paper
             }
         }
         .safeAreaInset(edge: .bottom, spacing: RDimension.space0) {
@@ -48,6 +51,7 @@ struct SignInScreen: View {
                 bottomZone
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.phase)
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationBase), value: model.isOnline)
         .sensoryFeedback(RHaptic.error, trigger: model.failures)
@@ -73,18 +77,18 @@ struct SignInScreen: View {
         largeType ? 0.6 : (compact ? 0.78 : 1)
     } // literal-ok: map scales
 
-    /// Splash (Paper `1F4Q-0`): the map in a 400 slot under the status bar, the words leading and
-    /// anchored above the bottom zone. Welcome back (`1GXR-0`): map then centred words, from the top.
+    /// Splash (Paper `1F4Q-0`): the map from the top of the safe area, the words leading and anchored
+    /// above the bottom zone. Welcome back (`1GXR-0`): map then centred words, from the top.
     /// The failure line floats above the button at normal sizes, so nothing glides when it comes and
     /// goes; at large type it takes its room (and the map shrinks) so it never sits on the words.
-    @ViewBuilder private func page(topInset: CGFloat) -> some View {
+    @ViewBuilder private var page: some View {
         if model.look == .splash {
             VStack(alignment: .leading, spacing: RDimension.space0) {
-                // Paper's 400 slot is measured from the screen's top edge, status bar included: the
-                // slot here starts under the status bar, so it is shorter by it and the map spills up
-                RYouMapRest(scale: mapScale)
+                // Paper bleeds the map under the status bar (slot `1F5J-0`: 400 from the screen's top
+                // edge). The founder's safe-area rule (26 Oct) wins: the whole map starts below the
+                // status bar / Dynamic Island, and only the wash behind it bleeds (QUESTION card).
+                RYouMapRest(scale: mapScale, labels: true)
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(400 * mapScale - topInset, RDimension.space0), alignment: .bottom) // literal-ok: Paper map slot 400
                 Spacer(minLength: RDimension.space0)
                 words(alignment: .leading)
                     .padding(.horizontal, RDimension.spaceScreenMargin)
@@ -110,7 +114,9 @@ struct SignInScreen: View {
                 .multilineTextAlignment(alignment == .leading ? .leading : .center)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
+                .modifier(SplashBalance(on: model.look == .splash))
             line(alignment: alignment)
+                .modifier(SplashBalance(on: model.look == .splash))
         }
     }
 
@@ -149,20 +155,25 @@ struct SignInScreen: View {
                 // at large sizes the line wraps and would float over the words: it takes its room
                 failureLine
             }
-            RSignInButtons(state: model.buttons, onRequest: model.prepare) { result in
-                Task { await model.appleFinished(result) }
-            }
+            RSignInButtons(
+                state: model.buttons,
+                onRequest: model.prepare,
+                onCompletion: { result in Task { await model.appleFinished(result) } },
+                onGoogle: googleAction
+            )
             #if DEBUG // SampleTap lives in the DEBUG-only launcher
-            .overlay {
+            .overlay(alignment: .top) {
+                // over Apple's button only (Google, under it, is a real Button with its own action)
                 if sampleTaps, model.buttons == .rest {
                     Color.clear.contentShape(Rectangle())
+                        .frame(height: RDimension.sizeControlHero)
                         .onTapGesture { Task { await model.appleFinished(.failure(SampleTap())) } }
                 }
             }
             #endif
             .accessibilityIdentifier("signin.apple")
             Text(SignInModel.legal)
-                .rText(.label)
+                .rText(.metaLine) // Paper `1F53-0`: Geist 12, leading snug, no tracking
                 .foregroundStyle(RColor.textLabel)
                 .multilineTextAlignment(.center)
         }
@@ -174,8 +185,39 @@ struct SignInScreen: View {
             }
         }
         .padding(.horizontal, RDimension.spaceScreenMargin)
-        .padding(.bottom, compact ? RDimension.space4 : RDimension.space2) // Paper: 40 from the screen edge on a 17 Pro (34 safe area + 6)
+        // Paper `1F52-0`: the zone ends 40 from the screen's edge (34 home indicator + 6 on a 17 Pro);
+        // SE, short and with no indicator, keeps 16
+        .padding(.bottom, compact ? RDimension.space4 : max(RDimension.space10 - bottomInset, RDimension.space1))
     }
+
+    /// "Continue with Google" exists only where it works: on sample taps (`-Flow sample`, the launcher,
+    /// decision 12), where it signs the sample person in exactly as the Apple tap does. No real Google
+    /// sign-in exists yet, so a live screen has no Google button at all.
+    static func offersGoogle(sampleTaps: Bool) -> Bool {
+        #if DEBUG
+        sampleTaps
+        #else
+        false
+        #endif
+    }
+
+    /// What the Google button does here, or nil when it isn't there.
+    var googleAction: (() -> Void)? {
+        guard Self.offersGoogle(sampleTaps: sampleTaps) else { return nil }
+        #if DEBUG
+        return { [model] in Task { await Self.sampleGoogle(model) } }
+        #else
+        return nil
+        #endif
+    }
+
+    #if DEBUG
+    /// The sample Google tap: the same sample sign-in as the Apple tap, once, from rest only.
+    static func sampleGoogle(_ model: SignInModel) async {
+        guard model.buttons == .rest else { return }
+        await model.appleFinished(.failure(SampleTap()))
+    }
+    #endif
 
     @ViewBuilder private var failureLine: some View {
         if let failure = model.failure {
@@ -191,6 +233,20 @@ struct SignInScreen: View {
             .rBlurReplace()
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("signin.failure")
+        }
+    }
+}
+
+/// The splash sets its words balanced (Paper `1F5H-0`, `1F5G-0`: `text-wrap: balance`); welcome back
+/// keeps the plain wrap until its own pass.
+private struct SplashBalance: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on {
+            content.rBalancedLines()
+        } else {
+            content
         }
     }
 }
