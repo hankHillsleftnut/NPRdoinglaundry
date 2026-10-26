@@ -79,15 +79,17 @@ enum RSheetProgress {
     }
 }
 
-/// The host's measured frame: the page's safe height and the home-indicator inset below it.
+/// The host's measured frame: its own height (to the screen's bottom edge, or to the keyboard's
+/// top while it is up) and the safe area's height with the keyboard left out.
 struct RSheetHostFrame: Equatable {
-    let safeHeight: CGFloat
-    let bottomInset: CGFloat
+    var height: CGFloat = 0
+    var safeHeight: CGFloat = 0
 
-    /// The height detents are taken from: the page plus the strip below its safe area, so a sheet
-    /// is as tall as it was when the whole host ran to the screen's bottom edge.
-    var sheetSpace: CGFloat {
-        safeHeight + bottomInset
+    /// How much of the home-indicator strip lies inside the host: the page and the sheet's content
+    /// are padded by it. Under the keyboard there is none, so nothing is padded twice.
+    var bottomInset: CGFloat {
+        guard height > 0, safeHeight > 0 else { return .zero }
+        return Swift.max(height - safeHeight, .zero)
     }
 }
 
@@ -142,7 +144,7 @@ struct RSheetHost<Content: View>: View {
     @State private var progress: Double = 0
     /// The request being shown; kept while it closes so the content doesn't vanish mid-motion.
     @State private var shown: RSheetRequest?
-    @State private var frame = RSheetHostFrame(safeHeight: 0, bottomInset: 0)
+    @State private var frame = RSheetHostFrame()
     @State private var contentAtTop = true
     @State private var dragging = false
     /// Counts settles, so the snap haptic fires once per rest.
@@ -152,6 +154,10 @@ struct RSheetHost<Content: View>: View {
 
     var body: some View {
         content()
+            // The host runs to the screen's bottom edge (so the sheet does, at its own height); the
+            // page gets the home-indicator strip back as safe area, so its controls stay above it
+            // while a background that ignores the safe area still reaches the edge.
+            .safeAreaPadding(.bottom, frame.bottomInset)
             .overlayPreferenceValue(RSheetRequestKey.self) { requests in
                 Color.clear
                     .onChange(of: requests.first?.id, initial: true) { _, _ in
@@ -159,37 +165,36 @@ struct RSheetHost<Content: View>: View {
                     }
             }
             .scaleEffect(reduceMotion ? 1 : RSheetProgress.behindScale(progress))
-            // The page keeps its safe area (its controls stay off the home indicator); the clip runs
-            // to the screen edges, so a background the page lets past the safe area is not cut to a
-            // bare band under the status bar or over the home indicator.
+            // the clip runs to the screen edges: no bare band under the status bar
             .mask {
                 RShape.rect(RSheetProgress.behindRadius(progress)).ignoresSafeArea()
             }
             .overlay {
                 scrim
             }
-            .overlay {
-                // a full-height layer that reaches the screen's bottom edge, so the panel does too
-                ZStack(alignment: .bottom) {
-                    if let shown {
-                        sheet(shown)
-                    }
+            .overlay(alignment: .bottom) {
+                if let shown {
+                    sheet(shown)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .ignoresSafeArea(.container, edges: .bottom)
             }
+            // the host's own height, as on main: to the screen's edge, or to the keyboard's top
             .background {
-                Color.clear.onGeometryChange(for: RSheetHostFrame.self) {
-                    RSheetHostFrame(safeHeight: $0.size.height, bottomInset: $0.safeAreaInsets.bottom)
-                } action: { frame = $0 }
+                Color.clear.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { frame.height = $0 }
             }
             .sensoryFeedback(RHaptic.sheetSnap, trigger: settled)
+            .ignoresSafeArea(.container, edges: .bottom)
+            // the safe area's height with the keyboard left out, measured outside the host
+            .background {
+                Color.clear
+                    .ignoresSafeArea(.keyboard)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { frame.safeHeight = $0 }
+            }
     }
 
     // MARK: Opening and closing
 
     private var sheetHeight: CGFloat {
-        (shown?.detent ?? .medium).height(in: frame.sheetSpace)
+        (shown?.detent ?? .medium).height(in: frame.height)
     }
 
     /// A new request opens once the current sheet has closed; the same request is left alone.
