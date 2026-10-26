@@ -333,9 +333,25 @@ struct ConnectModelTests {
         #expect(exits.done.isEmpty)
     }
 
-    @Test("the launcher's ON-6 is the first-run group's connect state")
+    @Test("the launcher's ON-6 states: as Paper draws it, and every sample source connected (3 of 6)")
     func launcherState() {
-        #expect(ConnectScenario.allCases.map(\.rawValue) == ["connect"])
-        #expect(ConnectScenario(rawValue: "connect") == .connect)
+        #expect(ConnectScenario.allCases.map(\.rawValue) == ["connect", "connect-3of6"])
+        let full = make(SampleConnect(scenario: .connectAll))
+        #expect(full.knowsYou.filled == 3)
+        #expect(full.showsContinue)
+        #expect((full.onThisIphone + full.yourOtherApps).allSatisfy { $0.state == .connected })
+        #expect(make().knowsYou.filled == 1)
+    }
+
+    @Test("Paper's line boxes: whole points, measured against the line SwiftUI draws on whole pixels")
+    func paperLineBoxes() {
+        // SF 14 (16.707 tall) in Paper's 18.2 box: 19 on screen, so 1 above and 1 below on a 3x screen
+        #expect(abs(RPaperLineBox.halfLeading(box: 18.2, natural: 16.707, scale: 3) - 1) < 0.0001)
+        // the inky title (36.007 tall) in Paper's 33 box: trimmed to 33
+        #expect(abs(RPaperLineBox.halfLeading(box: 30 * 1.1, natural: 36.007, scale: 3) - (33 - 36 - 1.0 / 3) / 2) < 0.0001)
+        // 30 × 1.1 lands a hair over 33 and still counts as 33
+        #expect(abs(RPaperLineBox.onPixels(16.707, scale: 3) - 17) < 0.0001)
+        #expect(abs(RPaperLineBox.onPixels(17, scale: 3) - 17) < 0.0001)
+        #expect(abs(RPaperLineBox.onPixels(16.707, scale: 0) - 16.707) < 0.0001)
     }
 }

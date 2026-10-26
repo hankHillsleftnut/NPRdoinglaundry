@@ -79,6 +79,20 @@ enum RSheetProgress {
     }
 }
 
+/// The host's measured frame: its own height (to the screen's bottom edge, or to the keyboard's
+/// top while it is up) and the safe area's height with the keyboard left out.
+struct RSheetHostFrame: Equatable {
+    var height: CGFloat = 0
+    var safeHeight: CGFloat = 0
+
+    /// How much of the home-indicator strip lies inside the host: the page and the sheet's content
+    /// are padded by it. Under the keyboard there is none, so nothing is padded twice.
+    var bottomInset: CGFloat {
+        guard height > 0, safeHeight > 0 else { return .zero }
+        return Swift.max(height - safeHeight, .zero)
+    }
+}
+
 // MARK: - The request a page makes
 
 /// What a page asks the host to show. Carried up by preference so the host, installed once at
@@ -130,16 +144,19 @@ struct RSheetHost<Content: View>: View {
     @State private var progress: Double = 0
     /// The request being shown; kept while it closes so the content doesn't vanish mid-motion.
     @State private var shown: RSheetRequest?
-    @State private var hostHeight: CGFloat = 0
+    @State private var frame = RSheetHostFrame()
     @State private var contentAtTop = true
     @State private var dragging = false
     /// Counts settles, so the snap haptic fires once per rest.
     @State private var settled = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         content()
+            // The host runs to the screen's bottom edge (so the sheet does, at its own height); the
+            // page gets the home-indicator strip back as safe area, so its controls stay above it
+            // while a background that ignores the safe area still reaches the edge.
+            .safeAreaPadding(.bottom, frame.bottomInset)
             .overlayPreferenceValue(RSheetRequestKey.self) { requests in
                 Color.clear
                     .onChange(of: requests.first?.id, initial: true) { _, _ in
@@ -147,7 +164,10 @@ struct RSheetHost<Content: View>: View {
                     }
             }
             .scaleEffect(reduceMotion ? 1 : RSheetProgress.behindScale(progress))
-            .clipShape(RShape.rect(RSheetProgress.behindRadius(progress)))
+            // the clip runs to the screen edges: no bare band under the status bar
+            .mask {
+                RShape.rect(RSheetProgress.behindRadius(progress)).ignoresSafeArea()
+            }
             .overlay {
                 scrim
             }
@@ -156,17 +176,24 @@ struct RSheetHost<Content: View>: View {
                     sheet(shown)
                 }
             }
+            // the host's own height, as on main: to the screen's edge, or to the keyboard's top
             .background {
-                Color.clear.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { hostHeight = $0 }
+                Color.clear.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { frame.height = $0 }
             }
             .sensoryFeedback(RHaptic.sheetSnap, trigger: settled)
             .ignoresSafeArea(.container, edges: .bottom)
+            // the safe area's height with the keyboard left out, measured outside the host
+            .background {
+                Color.clear
+                    .ignoresSafeArea(.keyboard)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { frame.safeHeight = $0 }
+            }
     }
 
     // MARK: Opening and closing
 
     private var sheetHeight: CGFloat {
-        (shown?.detent ?? .medium).height(in: hostHeight)
+        (shown?.detent ?? .medium).height(in: frame.height)
     }
 
     /// A new request opens once the current sheet has closed; the same request is left alone.
@@ -223,25 +250,18 @@ struct RSheetHost<Content: View>: View {
     }
 
     private func sheet(_ request: RSheetRequest) -> some View {
-        VStack(spacing: RDimension.space0) {
-            grabber
+        RSheetPanel {
             request.content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y <= 0 } action: { _, atTop in
                     contentAtTop = atTop
                 }
                 .scrollDisabled(dragging)
+                // the panel runs to the screen edge; its controls stop above the home indicator
+                // (inside the panel, so its surface still reaches the edge: no strip under it)
+                .padding(.bottom, frame.bottomInset)
         }
-        .padding(.horizontal, RDimension.layoutSheetInset)
-        .frame(maxWidth: RDimension.layoutSheetMaxWidth)
         .frame(height: sheetHeight)
-        .rSheet()
-        // Increase Contrast: a 1pt control line along the top edge
-        .overlay(alignment: .top) {
-            RShape.top(RDimension.radiusSheet)
-                .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
-                .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
-        }
         .offset(y: reduceMotion ? RDimension.space0 : RSheetProgress.offset(progress, height: sheetHeight))
         .opacity(reduceMotion ? RSheetProgress.scrimOpacity(progress) : 1)
         .simultaneousGesture(drag)
@@ -250,17 +270,6 @@ struct RSheetHost<Content: View>: View {
             close()
         }
         .accessibilityIdentifier("sheet")
-    }
-
-    private var grabber: some View {
-        RShape.pill
-            .fill(RColor.borderStrong)
-            .frame(width: RDimension.sizeGrabberWidth, height: RDimension.sizeGrabberHeight)
-            .padding(.top, RDimension.layoutSheetTop)
-            .padding(.bottom, RDimension.layoutSheetGrabberGap)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .accessibilityHidden(true)
     }
 
     // MARK: The drag
@@ -292,6 +301,61 @@ struct RSheetHost<Content: View>: View {
                     snapBack()
                 }
             }
+    }
+}
+
+// MARK: - The panel
+
+/// The sheet itself at rest, without the presentation: the grabber (36 × 5 `border.strong`, 10 below
+/// the top, 18 above the content), the content inset 28, at most layout.sheetMaxWidth wide, on the
+/// rSheet recipe, with a 1pt control line along the top under Increase Contrast. The host moves it;
+/// a screen that opens as a sheet from the start (the tease, PS.sheet) stands it on the underlay.
+/// `surfaceRise` lets the surface alone (a background) start above the content's frame, so the
+/// content can stay inside the safe area while the sheet's edge sits where Paper draws it; the
+/// grabber then gives up as much of its top space as the surface rose, never going above the frame.
+struct RSheetPanel<Content: View>: View {
+    var surfaceRise: CGFloat = 0
+    @ViewBuilder let content: () -> Content
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        VStack(spacing: RDimension.space0) {
+            grabber
+            content()
+        }
+        .padding(.horizontal, RDimension.layoutSheetInset)
+        .frame(maxWidth: RDimension.layoutSheetMaxWidth, maxHeight: .infinity)
+        // the surface alone casts the sheet's shadow: rSheet() on the content itself would shadow
+        // every glyph and every opaque layer inside it (the transcript's blur bands showed as boxes)
+        .background {
+            surface { Color.clear.rSheet() }
+        }
+        // Increase Contrast: a 1pt control line along the top edge
+        .overlay(alignment: .top) {
+            surface {
+                RShape.top(RDimension.radiusSheet)
+                    .stroke(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0)
+                    .mask(alignment: .top) { Rectangle().frame(height: RDimension.radiusSheet) }
+            }
+        }
+    }
+
+    /// A surface layer: it rises by `surfaceRise` and runs under the home indicator (backgrounds only).
+    private func surface(@ViewBuilder _ layer: () -> some View) -> some View {
+        layer()
+            .padding(.top, -surfaceRise)
+            .ignoresSafeArea(edges: .bottom)
+    }
+
+    private var grabber: some View {
+        RShape.pill
+            .fill(RColor.borderStrong)
+            .frame(width: RDimension.sizeGrabberWidth, height: RDimension.sizeGrabberHeight)
+            .padding(.top, max(RDimension.layoutSheetTop - surfaceRise, RDimension.space0))
+            .padding(.bottom, RDimension.layoutSheetGrabberGap)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 }
 

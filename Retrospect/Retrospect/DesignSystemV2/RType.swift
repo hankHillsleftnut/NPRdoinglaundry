@@ -308,6 +308,7 @@ private struct RTextModifier: ViewModifier {
     let style: RTextStyle
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.rPaperLineBoxes) private var paperLineBoxes
+    @Environment(\.displayScale) private var displayScale
 
     func body(content: Content) -> some View {
         // tracking and leading are proportions of the size, so they follow the scaled size too
@@ -323,17 +324,32 @@ private struct RTextModifier: ViewModifier {
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
             .lineSpacing(extra)
-            .padding(.vertical, paperLineBoxes ? Self.paperHalfLeading(box: leading * size, natural: natural) : extra / 2)
+            .padding(
+                .vertical,
+                paperLineBoxes
+                    ? RPaperLineBox.halfLeading(box: leading * size, natural: natural, scale: displayScale)
+                    : extra / 2
+            )
     }
+}
 
-    /// Half the difference between Paper's line box and the font's own line, above the first line
+/// Paper's line boxes for SwiftUI text (used under `rPaperLineBoxes`).
+enum RPaperLineBox {
+    /// Half the difference between Paper's line box and the line SwiftUI draws, above the first line
     /// and below the last. Paper lays text out as CSS does and rounds each text box up to a whole
-    /// point (17 × 1.3 = 22.1 draws 23 tall), and a box tighter than the font (the inky titles at
+    /// point (17 × 1.3 = 22.1 draws 23 tall); a box tighter than the font (the inky titles at
     /// leading-tight) trims the font's line instead of growing to it. Negative trims.
-    static func paperHalfLeading(box: CGFloat, natural: CGFloat) -> CGFloat {
+    static func halfLeading(box: CGFloat, natural: CGFloat, scale: CGFloat) -> CGFloat {
         // a hair under a whole point stays that point (floating-point products like 30 × 1.1)
         let rounded = (box - RNumber.paperLineBoxSlack).rounded(.up)
-        return (rounded - natural) / 2
+        return (rounded - onPixels(natural, scale: scale)) / 2
+    }
+
+    /// SwiftUI lays a line out on whole device pixels, rounding the font's height up (SF 14's 16.71
+    /// is 17 on a 3x screen), so Paper's box is measured against that height, not the raw one.
+    static func onPixels(_ height: CGFloat, scale: CGFloat) -> CGFloat {
+        guard scale > 0 else { return height }
+        return (height * scale - RNumber.paperLineBoxSlack).rounded(.up) / scale
     }
 }
 
@@ -343,7 +359,7 @@ extension RNumber {
 }
 
 extension EnvironmentValues {
-    /// Text below lays its line boxes out as Paper draws them (`RTextModifier.paperHalfLeading`):
+    /// Text below lays its line boxes out as Paper draws them (`RPaperLineBox`):
     /// rounded up to whole points, tight leading trimmed. Opted in per screen as each one is
     /// matched to Paper (ON-6 first), so screens already approved don't move.
     @Entry var rPaperLineBoxes = false

@@ -13,6 +13,9 @@ import Observation
 enum ConnectScenario: String, CaseIterable {
     /// Calendar connected, health and google to connect (Paper 2190-0).
     case connect
+    /// Every sample source connected: the meter at 3 of 6 and continue showing (QA: the state past
+    /// 50% without tapping). 4–6 of 6 need sources Paper doesn't draw yet (founder Q1).
+    case connectAll = "connect-3of6"
 }
 
 @MainActor
@@ -58,8 +61,12 @@ final class SampleConnect: Flows.Connect {
     /// How many connects were asked for (tests).
     @ObservationIgnored private(set) var connectCalls = 0
 
-    init(scenario _: ConnectScenario = .connect, refuses: Set<String> = []) {
-        sources = Self.rows
+    init(scenario: ConnectScenario = .connect, refuses: Set<String> = []) {
+        sources = scenario == .connectAll ? Self.rows.map { row in
+            var row = row
+            row.state = .connected
+            return row
+        } : Self.rows
         self.refuses = refuses
     }
 
