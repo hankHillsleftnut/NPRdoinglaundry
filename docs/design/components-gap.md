@@ -103,7 +103,7 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 - ON (core): pill/choice (GSR-0, GGB-0)
 
 ## 4. Which V2 groups this unblocks
-- **Settings (ST-1..9)** and **Account (AC-1 recheck)**: unblocked now, except ST-2/ST-7's "↕" row (#7, small).
+- **Settings (ST-1..9)** and **Account (AC-1 recheck)**: unblocked now, except ST-1/ST-2/ST-7's "↕" row (#7, small).
 - **You (YO-3, YO-5)**: unblocked now except YO-3's entry words/link (#5, #6). **YO-1, YO-2** need the tab bar and title bar (#1, #2). **YO-4** needs the claim (#3) and the player sheet (#198).
 - **Journal V2**: JR-3 needs only its own parts (the shell hosts the drawer); JR-4 needs #5, #6; JR-2 needs #198 and #9.
 - **Podcasts**: PC-1 needs #1, #2, #4, #8; PC-3 needs #3 and #198.
@@ -120,5 +120,5 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 7. (L0-7) Approved-parts boards FX0-0 (part 40), G1K-0 (part 41), NVD-0 (part 50 map versions B/C) still carry "needs you" red dots on a page meant for approved masters.
 8. (L0-8) `c:top-bar/label/rest` (B5B-0) is the collapsed journal in Paper, while Swift's `.label` is the drawer's bar: one Paper name, two Swift variants.
 9. (L0-9) ST-1's untitled group (DMR-0, DYF-0) still shows a stale "listening" section label (DOU-0).
-10. (L0-11) 233P-0 still describes the legacy row as "c1–c6 and an early splash study"; c2 and the splash study are gone.
-11. (L0-10) Tab bar icons: Paper draws custom inked glyphs (B4C-0, B48-0, B44-0, B40-0); the repo uses SF Symbols (founder, 21 Oct). The tab bar uses `text.page`, `dot.radiowaves.left.and.right`, `target`, `point.3.connected.trianglepath.dotted`.
+10. (L0-10) Tab bar icons: Paper draws custom inked glyphs (B4C-0, B48-0, B44-0, B40-0); the repo uses SF Symbols (founder, 21 Oct). The tab bar uses `text.page`, `dot.radiowaves.left.and.right`, `target`, `point.3.connected.trianglepath.dotted`.
+11. (L0-11) 233P-0 still describes the legacy row as "c1–c6 and an early splash study"; c2 and the splash study are gone.
