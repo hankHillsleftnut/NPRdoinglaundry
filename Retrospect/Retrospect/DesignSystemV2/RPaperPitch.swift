@@ -53,6 +53,18 @@ struct RPaperPitch: TextRenderer {
         let lines = max(1, Int((laidOut / naturalLineHeight).rounded()))
         return laidOut - CGFloat(lines - 1) * squeeze
     }
+
+    /// The height to lay the text out in so it keeps as many lines as fit in `pitchHeight` at
+    /// Paper's pitch: one font line, then one Paper pitch per further line (the inverse of `height`).
+    static func laidOutHeight(forPitchHeight pitchHeight: CGFloat, naturalLineHeight: CGFloat, pitch: CGFloat) -> CGFloat {
+        guard pitchHeight.isFinite, naturalLineHeight > pitch, pitch > 0, pitchHeight >= naturalLineHeight else { return pitchHeight }
+        let lines = Int(((pitchHeight - naturalLineHeight) / pitch + slack).rounded(.down)) + 1
+        // up to one font line more than the lines need: SwiftUI rounds a laid-out line up to a pixel
+        return CGFloat(lines) * naturalLineHeight + pitch * slack * CGFloat(lines)
+    }
+
+    /// A hair of a line, so float error (33 × 4 = 131.999…) never drops a line that fits.
+    private static let slack: CGFloat = 0.05 // literal-ok: fraction of a line, not a size
 }
 
 /// Wraps one text drawn by `RPaperPitch`: lays it out at the font's own height, so every line
@@ -63,7 +75,7 @@ struct RPaperPitchLayout: SwiftUI.Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
         guard let text = subviews.first else { return .zero }
-        let laidOut = text.sizeThatFits(proposal)
+        let laidOut = text.sizeThatFits(textProposal(width: proposal.width, height: proposal.height))
         return CGSize(
             width: laidOut.width,
             height: RPaperPitch.height(laidOut: laidOut.height, naturalLineHeight: pitch.naturalLineHeight, pitch: pitch.pitch)
@@ -72,9 +84,16 @@ struct RPaperPitchLayout: SwiftUI.Layout {
 
     func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
         guard let text = subviews.first else { return }
-        // the page gives the shorter height back; the text still needs the font's own height for
-        // every line, or SwiftUI truncates the last one
-        let laidOut = text.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+        let laidOut = text.sizeThatFits(textProposal(width: bounds.width, height: bounds.height))
         text.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: laidOut.height))
+    }
+
+    /// The text is laid out at the font's own height, so a height offered at Paper's pitch is
+    /// widened to fit the same number of lines; otherwise SwiftUI would drop the last ones.
+    private func textProposal(width: CGFloat?, height: CGFloat?) -> ProposedViewSize {
+        ProposedViewSize(
+            width: width,
+            height: height.map { RPaperPitch.laidOutHeight(forPitchHeight: $0, naturalLineHeight: pitch.naturalLineHeight, pitch: pitch.pitch) }
+        )
     }
 }

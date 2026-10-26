@@ -76,7 +76,7 @@ struct RPaperPitchTests {
         #expect(abs(Self.layoutManagerPitch(font: font, paragraph: paper) - 33) < 0.01)
     }
 
-    @Test("a four-line ink title renders 33pt apart, line 1 in place, 135pt tall")
+    @Test("a four-line ink title renders 33pt apart, line 1 in place, 135pt tall, no line dropped")
     func renderedPitchEqualsPaper() throws {
         let text = "H\nH\nH\nH"
         let fixed = try #require(Self.inkRows(Text(text).rText(.inkTitle)))
@@ -88,7 +88,9 @@ struct RPaperPitchTests {
             #expect(abs(pitch - 33) <= 0.34, "pitch \(pitch)")
         }
         // line 1 sits where SwiftUI puts a bare one-line title (where it was before the fix)
-        #expect(abs(fixed.tops[0] - bare.tops[0]) <= 0.34)
+        let firstLine = try #require(fixed.tops.first)
+        let bareLine = try #require(bare.tops.first)
+        #expect(abs(firstLine - bareLine) <= 0.34)
         #expect(abs(one.height - bare.height) <= 0.34)
         // first line keeps the font's own 36, each later line adds one Paper pitch
         #expect(abs(fixed.height - (one.height + 3 * 33)) <= 0.67, "height \(fixed.height)")
@@ -111,6 +113,14 @@ struct RPaperPitchTests {
         #expect(RPaperPitch.height(laidOut: 144, naturalLineHeight: 36, pitch: 33) == 135)
         #expect(RPaperPitch.height(laidOut: 144, naturalLineHeight: 36, pitch: 40) == 144)
         #expect(RPaperPitch.offset(lineIndex: 3, firstBaseline: 28.5, baseline: 136.5, pitch: 33) == -9)
+        // a height offered at Paper's pitch is widened so the text keeps the same lines
+        let natural = RTextStyle.inkTitle.naturalLineHeight(scaledSize: RDimension.fontSize3xl)
+        let fourLines = RPaperPitch.height(laidOut: 4 * natural, naturalLineHeight: natural, pitch: 33)
+        let widened = RPaperPitch.laidOutHeight(forPitchHeight: fourLines, naturalLineHeight: natural, pitch: 33)
+        #expect(widened >= 4 * natural + 1 / 3)
+        #expect(widened < 5 * natural)
+        #expect(RPaperPitch.laidOutHeight(forPitchHeight: 20, naturalLineHeight: natural, pitch: 33) == 20)
+        #expect(RPaperPitch.laidOutHeight(forPitchHeight: 100, naturalLineHeight: 30, pitch: 33) == 100)
     }
 
     // MARK: - Measuring
@@ -140,6 +150,8 @@ struct RPaperPitchTests {
     /// in points, the top of each band of ink and the view's height.
     private static func inkRows(_ view: some View, dynamicTypeSize: DynamicTypeSize = .large) -> (tops: [CGFloat], height: CGFloat)? {
         let hosting = UIHostingController(rootView: view.foregroundStyle(.black).environment(\.dynamicTypeSize, dynamicTypeSize))
+        // no safe area: the window's insets would push the text down inside its frame
+        hosting.safeAreaRegions = []
         let size = hosting.sizeThatFits(in: CGSize(width: 400, height: 2000))
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 2000))
         window.rootViewController = UIViewController()
