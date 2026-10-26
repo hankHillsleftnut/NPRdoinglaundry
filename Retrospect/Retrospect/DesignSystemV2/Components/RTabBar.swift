@@ -140,12 +140,15 @@ struct RTabBarGallery: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RDimension.space6) {
                 Text("tab bar · master").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
+                    .padding(.horizontal, RDimension.spaceScreenMargin)
                 RTabBar(selection: .constant(.journal))
                 Text("each selected").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
+                    .padding(.horizontal, RDimension.spaceScreenMargin)
                 ForEach(RTab.allCases) { tab in
                     RTabBar(selection: .constant(tab))
                 }
                 Text("live · tapped again \(reselects)×").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
+                    .padding(.horizontal, RDimension.spaceScreenMargin)
                 RTabBar(selection: $live) { _ in reselects += 1 }
             }
             .padding(.vertical, RDimension.spaceScreenMargin)
