@@ -12,7 +12,7 @@ import SwiftUI
 
 /// One group of launchable screens, registered from the group's own file.
 protocol ScreenGroup {
-    /// A short name for the group, used by tests and the unknown-screen page.
+    /// A short name for the group, used by tests (the unknown-screen page lists screen ids only).
     static var name: String { get }
     /// The group's screens, in the order the group lists them.
     static var screens: [LaunchableScreen] { get }
@@ -20,7 +20,8 @@ protocol ScreenGroup {
 
 extension ScreenRegistry {
     /// Every group, core flow first, then V2 in the plan's lane order. A NEW group (rare: every
-    /// planned group is here) is one line; screens never go here.
+    /// planned group is here) is one line here, and its type is declared in its own
+    /// `+Launcher.swift` next to its list (never in `CoreScreenGroups.swift`); screens never go here.
     static let groups: [any ScreenGroup.Type] = [
         // the core flow (splash → first home) and the screens built before V2
         SignInScreenGroup.self,

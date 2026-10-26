@@ -8,7 +8,8 @@ import Testing
 @MainActor
 struct ScreenRegistryTests {
     /// Every `-Screen <id> -State <state>` the launcher answered on main before the split
-    /// (origin/main 52f3fb48). A screen may gain states; none of these may disappear.
+    /// (origin/main 52f3fb48). A screen may gain states; none of these may disappear. A PR that adds a
+    /// core screen id adds it here too (e.g. #198's "player"), so a group line missed in a rebase fails.
     static let pinned: [String: [String]] = [
         "PI0": signIn,
         "AC-1": signIn,
@@ -61,11 +62,16 @@ struct ScreenRegistryTests {
         }
     }
 
-    @Test("the registry is exactly the groups' screens: nothing lost, nothing added outside a group")
-    func registryIsTheGroups() {
-        let fromGroups = ScreenRegistry.groupScreens.map(\.id)
-        #expect(Set(fromGroups) == Set(ScreenRegistry.all.keys))
-        #expect(fromGroups == ScreenRegistry.allIDs)
+    @Test("no group's screen is shadowed by another group's screen with the same id")
+    func noScreenShadowed() {
+        for group in ScreenRegistry.groups {
+            for screen in group.screens {
+                #expect(
+                    ScreenRegistry.screen(screen.id)?.states == screen.states,
+                    "\(group.name): \(screen.id) is shadowed by another group"
+                )
+            }
+        }
     }
 
     @Test("ids are unique across groups, and so are group names")

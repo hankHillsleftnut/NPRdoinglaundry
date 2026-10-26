@@ -2,7 +2,9 @@
 //  CoreScreenGroups.swift
 //  V2.registry: the groups built before the registry split. Each one still lists its screens in
 //  its own feature folder (`Features/<Flow>/<Flow>Screens+Launcher.swift`, unchanged, so open PRs
-//  that add a scenario there keep applying); these types only name them as groups.
+//  that add a scenario there keep applying); these types only name them as groups. Frozen at these six:
+//  a later core flow (e.g. #198's player) declares its group type in its own `+Launcher.swift`, so this
+//  file never becomes the next shared edit.
 //
 #if DEBUG
 import SwiftUI
