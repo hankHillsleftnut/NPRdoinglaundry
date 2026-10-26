@@ -29,7 +29,7 @@ struct RMenuRow: Identifiable {
     var selected = false
     /// Says why the row can't be chosen; the row dims and reads the reason.
     var disabledReason: String?
-    /// Read by VoiceOver after the title without dimming the row: a row drawn ahead of its
+    /// Read by VoiceOver as the row's value, without dimming the row: a row drawn ahead of its
     /// destination ("not available yet"; the player's "…" menu, founder 26 Oct).
     var accessibilityNote: String?
     let action: () -> Void
@@ -238,6 +238,9 @@ private struct RMenuHost: ViewModifier {
                     .animation(requests.isEmpty ? exit : grow, value: requests.first?.id)
                 }
             }
+            // this host drew the menu: a host further up (a page holding the player sheet) never
+            // sees it, so one menu is never drawn twice
+            .transformPreference(RMenuRequestKey.self) { $0 = [] }
             // `select` as the menu settles, and on each row the finger slides onto
             .sensoryFeedback(RHaptic.select, trigger: settled)
             .sensoryFeedback(RHaptic.select, trigger: changes)
@@ -429,7 +432,8 @@ private struct RMenuRowView: View {
         .buttonStyle(.plain)
         .disabled(row.disabledReason != nil)
         .accessibilityAddTraits(row.selected ? .isSelected : [])
-        .accessibilityHint(row.disabledReason ?? row.accessibilityNote ?? "")
+        .accessibilityValue(row.accessibilityNote ?? "")
+        .accessibilityHint(row.disabledReason ?? "")
         .accessibilityIdentifier("menu.\(row.id)")
     }
 }
