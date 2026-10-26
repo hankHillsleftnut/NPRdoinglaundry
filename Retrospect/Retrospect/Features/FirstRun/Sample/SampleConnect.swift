@@ -29,6 +29,7 @@ final class SampleConnect: Flows.Connect {
             purpose: "your days, and who's in them",
             symbol: "calendar",
             group: .onThisIphone,
+            kind: .onDevice,
             state: .connected
         ),
         Flows.ConnectSource(
@@ -37,6 +38,7 @@ final class SampleConnect: Flows.Connect {
             purpose: "sleep, steps and workouts",
             symbol: "heart",
             group: .onThisIphone,
+            kind: .onDevice,
             state: .available
         ),
         Flows.ConnectSource(
@@ -45,6 +47,7 @@ final class SampleConnect: Flows.Connect {
             purpose: "calendar, gmail and drive",
             symbol: "envelope",
             group: .yourOtherApps,
+            kind: .account,
             state: .available
         ),
     ]

@@ -69,9 +69,19 @@ final class ConnectModel {
         data.knowsYou
     }
 
-    /// The meter's one line, as VoiceOver reads it when a source lands.
+    /// The meter's words for where it stands now.
+    var meterWords: String {
+        Self.meterLabel(for: data.knowsYou.level)
+    }
+
+    /// The meter's one line, as VoiceOver reads it when a source lands: the same words the meter shows.
     var announcement: String? {
-        lastConnected.map { "\($0.name) connected. \(Self.meterLabel)." }
+        lastConnected.map { "\($0.name) connected. \(meterWords)." }
+    }
+
+    /// Whether a source's "+ connect" can be pressed now: only while no other connect is out.
+    func canConnect(_ source: Flows.ConnectSource) -> Bool {
+        source.state.canConnect && (phase == .ready || phase == .connecting(source.id))
     }
 
     // MARK: Page events
@@ -81,7 +91,7 @@ final class ConnectModel {
     func connect(_ id: Flows.ConnectSource.ID) async {
         guard phase == .ready,
               let source = data.sources.first(where: { $0.id == id }),
-              source.state == .available
+              source.state.canConnect
         else { return }
         phase = .connecting(id)
         let outcome = await data.connect(id)
@@ -125,6 +135,13 @@ final class ConnectModel {
     static let body = "each one sharpens your episodes. i read, never post."
     /// The meter's label (21C2-0), the only one Paper draws (QUESTION Q2).
     static let meterLabel = "knows you a little"
+
+    /// The meter's words for a level. Paper draws only "knows you a little", so every level says
+    /// that until "better" and "well" are drawn (QUESTION Q2).
+    static func meterLabel(for _: Flows.KnowsYou.Level) -> String {
+        meterLabel
+    }
+
     static let onThisIphoneLabel = "on this iPhone"
     static let yourOtherAppsLabel = "your other apps"
     static let continueTitle = "continue"

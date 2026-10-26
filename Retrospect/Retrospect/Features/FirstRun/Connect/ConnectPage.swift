@@ -109,7 +109,7 @@ struct ConnectPage: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("connect.body")
                 .rAppear(index: 1)
-            RKnowsYouMeter(fraction: model.knowsYou.fraction, label: ConnectModel.meterLabel)
+            RKnowsYouMeter(fraction: model.knowsYou.fraction, label: model.meterWords)
                 .accessibilityIdentifier("connect.meter")
                 .rAppear(index: 2)
         }
@@ -147,6 +147,8 @@ struct ConnectPage: View {
             margin: margin,
             connect: { Task { await model.connect(source.id) } }
         )
+        // while another source's connect is out, this pill can't start a second one (VoiceOver: dimmed)
+        .disabled(!model.canConnect(source) && source.state != .connected)
         .accessibilityIdentifier("connect.row.\(source.id)")
     }
 

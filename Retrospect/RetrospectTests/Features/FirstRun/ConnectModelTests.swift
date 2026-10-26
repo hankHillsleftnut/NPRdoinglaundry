@@ -40,6 +40,29 @@ private final class HeldConnect: Flows.Connect {
     }
 }
 
+/// Fixed sources in any contract state, for the states the sample never reaches.
+@MainActor
+@Observable
+private final class StubConnect: Flows.Connect {
+    var sources: [Flows.ConnectSource]
+    var knowsYou: Flows.KnowsYou
+    private(set) var asked: [String] = []
+
+    init(_ sources: [Flows.ConnectSource], level: Flows.KnowsYou.Level = .little) {
+        self.sources = sources
+        knowsYou = Flows.KnowsYou(filled: 0, steps: 6, level: level)
+    }
+
+    static func source(_ id: String, _ state: Flows.ConnectSource.State, group: Flows.SourceGroup = .onThisIphone) -> Flows.ConnectSource {
+        Flows.ConnectSource(id: id, name: id, purpose: "", symbol: "circle", group: group, kind: .onDevice, state: state)
+    }
+
+    func connect(_ id: Flows.ConnectSource.ID) async -> Flows.ConnectOutcome {
+        asked.append(id)
+        return .notConnected
+    }
+}
+
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct ConnectModelTests {
@@ -192,6 +215,57 @@ struct ConnectModelTests {
         #expect(model.connections == 0)
         #expect(model.announcement == nil)
         #expect(exits.done == [.later])
+    }
+
+    @Test("a source that stopped working or never finished can be connected again; connected and unknown can't")
+    func connectableStates() async {
+        let data = StubConnect([
+            StubConnect.source("problem", .problem),
+            StubConnect.source("connecting", .connecting),
+            StubConnect.source("connected", .connected),
+            StubConnect.source("unknown", .unknown),
+        ])
+        let model = make(data)
+        for id in ["problem", "connecting", "connected", "unknown"] {
+            await model.connect(id)
+        }
+        #expect(data.asked == ["problem", "connecting"])
+    }
+
+    @Test("while one connect is out, only that source's pill is live")
+    func otherPillsWaitWhileConnecting() async {
+        let data = HeldConnect()
+        let model = make(data)
+        let health = model.onThisIphone[1]
+        let google = model.yourOtherApps[0]
+        #expect(model.canConnect(health) && model.canConnect(google))
+        let first = Task { await model.connect(health.id) }
+        await settle()
+        #expect(model.canConnect(health))
+        #expect(model.canConnect(google) == false)
+        await data.land(.notConnected)
+        await first.value
+        #expect(model.canConnect(google))
+    }
+
+    @Test("sources behind 'see all' aren't listed while its page isn't drawn")
+    func seeAllNotListed() {
+        let data = StubConnect([
+            StubConnect.source("calendar", .connected),
+            StubConnect.source("notion", .available, group: .seeAll),
+            StubConnect.source("odd", .available, group: .unknown),
+        ])
+        let model = make(data)
+        #expect(model.onThisIphone.map(\.id) == ["calendar"])
+        #expect(model.yourOtherApps.isEmpty)
+    }
+
+    @Test("the meter's words follow its level, and every level says Paper's one line until Q2")
+    func meterWordsPerLevel() {
+        for level in [Flows.KnowsYou.Level.little, .better, .well, .unknown] {
+            let model = make(StubConnect([], level: level))
+            #expect(model.meterWords == "knows you a little")
+        }
     }
 
     @Test("nothing connects after the page was left")

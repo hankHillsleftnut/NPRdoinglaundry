@@ -16,16 +16,39 @@ extension Flows {
         case onThisIphone
         /// "your other apps": an account Retro connects to (google).
         case yourOtherApps
+        /// Behind "see all" (hidden until its page is drawn: founder decision 5), so not listed.
+        case seeAll
+        case unknown
+    }
+
+    /// How a source connects (contract 01 §5 `kind`): iOS asks on the phone, or an account's own
+    /// sign-in opens. The sample connects either at once.
+    enum SourceKind: String, ContractEnum {
+        case onDevice
+        case account
         case unknown
     }
 
     /// One place Retro can learn from, as ON-6 lists it.
     struct ConnectSource: Hashable, Sendable, Identifiable {
-        enum State: Hashable, Sendable {
+        /// Contract 01 §5 `state` (`hidden` sources never reach the page). Paper draws two looks
+        /// at hi-fi, the "connect" pill and "● connected"; the others show the pill until their
+        /// drawings exist (QUESTION Q3).
+        enum State: String, ContractEnum {
             /// The raised "connect" pill.
             case available
+            /// Started elsewhere and not finished (an account sign-in left open): the pill.
+            case connecting
             /// "● connected".
             case connected
+            /// It stopped working: the pill, so it can be connected again.
+            case problem
+            case unknown
+
+            /// Whether "+ connect" may start a connection from this state.
+            var canConnect: Bool {
+                self == .available || self == .connecting || self == .problem
+            }
         }
 
         /// The catalogue id (`apple_calendar`, `google`, …).
@@ -37,13 +60,21 @@ extension Flows {
         /// The SF Symbol in its well (Paper's layer name `sf:<name>`).
         let symbol: String
         let group: SourceGroup
+        let kind: SourceKind
         var state: State
     }
 
-    /// The knows-you meter: how many of its steps are filled (Paper `c:knows-you-meter/1-of-6`).
+    /// The knows-you meter: how many of its steps are filled (Paper `c:knows-you-meter/1-of-6`)
+    /// and the contract's `level` (`GET /v2/knows-you`), which picks its words.
     struct KnowsYou: Hashable, Sendable {
+        /// Contract 01 §5: computed by the server from sources and answers.
+        enum Level: String, ContractEnum {
+            case little, better, well, unknown
+        }
+
         let filled: Int
         let steps: Int
+        var level: Level = .little
 
         /// 0…1 for the track.
         var fraction: Double {
