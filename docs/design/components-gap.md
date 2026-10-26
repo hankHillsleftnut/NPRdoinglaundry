@@ -1,7 +1,7 @@
 # Components gap: Paper "02 · components" vs DesignSystemV2
-Written 26 Oct 2026 by V2 lane 0 (read-only on Paper file `01M5D5J321P5X86ZT58002B7NT`, page `02 · components`; repo `main` @ 52f3fb48). Copy: `pipeline/screens/components-gap.md`.
+Written 26 Oct 2026 by V2 lane 0 (read-only on Paper file `01M5D5J321P5X86ZT58002B7NT`, page `02 · components`; repo `main` @ 52f3fb48). (The integrator keeps a working copy, and the discrepancy log the L0 ids below refer to, in its pipeline folder outside this repo.)
 
-**Bottom line.** Most parts exist. **Ten** Paper components that two or more V2 screens need are missing or the wrong shape; lane 0 builds them once, in their own homes, before (or alongside) the screen lanes. Everything else that is missing is used by one screen only, so that screen's lane builds it inside its own PR.
+**Bottom line.** Most parts exist. **Nine** Paper components are missing or the wrong shape that lane 0 builds once, in their own homes, before (or alongside) the screen lanes. The rule for lane 0's list: two or more screens need it (V2 or core), or it changes a shared design-system file another PR holds a lease on (so one owner edits it). Everything else that is missing is used by one screen only, so that screen's lane builds it inside its own PR.
 
 How the page was read: the three index rows (233J-0 current set, 233M-0 approved parts, 233P-0 legacy) plus every board's header; named copies (`c:component/variant/state`) from each board's tree. 15 current boards (settings rows over three), 7 approved parts (40, 41, 42, 44, 45, 48, 50), note board 3OIH-0, legacy boards c1, c3–c6 (no c2). The "early splash study" in 233Q-0 has no board.
 
@@ -18,7 +18,7 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 | icon-button/wash/{rest, mic-off, pause, retry, add} | AZY-0, B4U-0, GX5-0, GXG-0, E2L-0 | rest | RIconButton (36 / 32 / 44) | exists; `.sheetHeader` 34 in flight (#198) | JR-2/3/4, GL-1/2, YO-3, ST-*, PC-1 |
 | icon-button/raised/send | GGT-0 | rest | inside RVoiceComposer | exists | — |
 | brief-card/artwork/rest | B17-0 · B3G-0 (legacy states 206-0) | rest | RBriefCard (rest/played/starting/quiet/making/error/offline) | exists (Swift has more states than the master) | (JR-1) |
-| **tab-bar/system/rest + tab-bar/item/{selected, rest}** | B18-0 · B3X-0, B4A-0, B46-0; G0U-0, GXU-0 | journal selected | — (RProgressBlur exists for the edge) | **missing** | PC-1, GL-1, YO-1, YO-2 (+JR-1, ON-13) |
+| **tab-bar/system/rest + tab-bar/item/{selected, rest}** | B18-0 · B3X-0, B4A-0, B46-0; G0U-0, GXU-0 | journal selected | — (RProgressBlur exists for the edge; v1 `MinimalTabBar` / `OptimizedTabView` are not reused) | **missing** | PC-1, GL-1, YO-1, YO-2 (+JR-1, ON-13) |
 | **top-bar/title/rest** | B19-0 · B4R-0; PC-1 FZM-0, H0D-0 | rest | RTopBar `.journal(title:collapsed:openDrawer:)` | **differs**: drawer button required; no variant without a leading button or with a trailing slot (GL-1 add, YO-1 list + picture) | PC-1, GL-1, YO-1, YO-2 |
 | top-bar/label/{rest, scrolled} | B19-0 · B5B-0, B5W-0; DQR-0 | collapsed, scrolled | RTopBar `.label` / `.journal(collapsed: true)` | exists (scrolled blur is the page's RProgressBlur) | JR-3 |
 | top-bar/settings/rest | DY4-0, DJ7-0, DMG-0 | rest | RTopBar `.settings` | exists | ST-1..9, YO-5 |
@@ -42,7 +42,7 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 | brief-item/next/rest | BHX-0, BHU-0 | rest | — | missing | JR-2 |
 | recap-card/rest | BHK-0, BIS-0 | rest | — | missing | (JR-1) |
 | label/section, label/day | DMU-0; DPW-0, DQ2-0, DRP-0 | rest | Parts/RSectionLabel | exists | ST-*, YO-5, PC-3, GL-2, YO-2, JR-3 |
-| **settings-row/value ("↕ quick pick")** | DF7-0 · DMV-0; DS7-0 · DYJ-0, E07-0; DVT-0 | rest | RSettingsRow `.value` / `.nav` | **differs**: no "↕" trailing (decision 04) | ST-2, ST-7 (+ST-1) |
+| **settings-row/value ("↕ quick pick")** | DF7-0 (board note DMB-0: "↕ for a quick pick") · DMV-0, DNJ-0 (DNO-0 "talk ↕"); DS7-0 · DYJ-0, E07-0; DVT-0 | rest | RSettingsRow `.value` / `.nav` | **differs**: no "↕" trailing (decision 04) | ST-2, ST-7 (+ST-1) |
 | settings-row/switch/rest | DS6-0 · DUG-0, DUO-0; K1V-0 | off/on | RSettingsRow `.toggle` | exists | ST-2, ST-5, YO-2 |
 | settings-row/choice/{chosen, rest} | DUX-0, DV6-0, DVD-0 | 2 | RSettingsRow `.choice` | exists | ST-6 |
 | settings-row/leaves-app/rest | DVL-0 | ↗ | RSettingsRow `.external` | exists | ST-9 |
@@ -62,7 +62,7 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 | row/destructive/rest | E3J-0 ("delete entry") | rest | — | missing | JR-4 |
 | dialog/destructive/rest | E4B-0 (scrim E4A-0) | rest | RDialog | exists | JR-4, ST-4, ST-5, ST-9 |
 | onboarding-progress, onboarding/question, /your-words, /quick-answers, privacy-mark | GDY-0, GFS-0, HG8-0; GEA-0, GEB-0, GG6-0; HFX-0 | — | RParts2 / page-private (core-12) | exists / differs (page-private, core) | (ON) |
-| **mini-player/{playing, failed}** | GT1-0 · GX0-0, GXB-0; in use H0Q-0 (legacy pressed 212-0, buffering 21A-0) | playing, failed | — | **missing** | PC-1 (+every tab while playing: GL-1, YO-1, YO-2, JR-1) |
+| **mini-player/{playing, failed}** | GT1-0 · GX0-0, GXB-0; in use H0Q-0 (legacy pressed 212-0, buffering 21A-0) | playing, failed | — (v1 `BottomMiniPlayer` / `DarkMiniPlayer` / `MiniPlayerView` are not reused) | **missing** | PC-1 (+every tab while playing: GL-1, YO-1, YO-2, JR-1) |
 | episode-tile/hero/{rest, making} | FWU-0 · FXR-0, FZ1-0 | 2 | — | missing | PC-1 |
 | episode-tile/square/rest | FYG-0, FYL-0, FYQ-0, FYV-0 | rest | — | missing | PC-1 |
 | status/syncing | FZ5-0 | spinning | RParts2 RSpinner | exists | PC-1, ST-3 |
@@ -76,7 +76,8 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 | source-result/rest | K14-0, K1C-0, K1K-0 | rest (number well) | REvidenceRow lacks `.number` | missing (a variant) | YO-2 |
 | legacy c1 QW-0, c3 X2-0, c4 102-0, c5 1XE-0, c6 25P-0 | toast 2AM-0, dialog 2AC-0, empty 2AS-0, transport 1XJ-0, paywall 123-0, title menu 107-0 | reference | RToast, RDialog, REmptyLine, RTransport, RMenu `.title` | n/a (superseded) | — |
 
-## 2. Missing, needed by two or more V2 screens: lane 0 builds these (one small PR each)
+## 2. Lane 0 builds these (two or more screens, or a leased shared file; one small PR each)
+
 | # | Component | Paper | Home | Screens | Order / note |
 |---|---|---|---|---|---|
 | 1 | **Tab bar** (system + item, progressive-blur edge) | B18-0 · B3X-0, B4A-0, B46-0; G0U-0, GXU-0 | `Components/RTabBar.swift` | PC-1, GL-1, YO-1, YO-2, JR-1, ON-13 | first: the shell needs it |
@@ -85,10 +86,9 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 | 4 | **Mini-player** (playing / failed) | GX0-0, GXB-0, H0Q-0 | `Components/RMiniPlayer.swift` | PC-1 + every tab while playing | component only (sample state); the shell mounts it later |
 | 5 | **Entry words** (rest / editing) | E2U-0, E44-0, G8U-0 | `Components/REntryWords.swift` | JR-4, YO-3 | |
 | 6 | **Conversation link** | E2Z-0 | `Components/RConversationLink.swift` (or a case of REntryWords) | JR-4, YO-3 | |
-| 7 | **Settings row "↕ quick pick"** | DMB-0 note, DMV-0 | `RSettingsRow.Trailing.pick(String)` | ST-2, ST-7 | additive case |
-| 8 | **Lit play button 44** | FXV-0 | `RButton` `.play`, lifted from RBriefCard's private style | PC-1, JR-1 | RBriefCard is leased by #201 (GR.ready): wait for it |
-| 9 | **"More" menu + the transport's "…"** | BFC-0, B9O-0 | `RMenuKind.more` + `RTransport` `.more` | JR-2, PC-2 | after #198 (player is core; check it doesn't already do it) |
-| 10 | **The mark · 16** | V4W-0 | a size in `Parts/RMark.swift` | EX-4 | after #198 adds the glyph |
+| 7 | **Settings row "↕ quick pick"** | DMB-0 note, DNJ-0 / DNO-0 | `RSettingsRow.Trailing.pick(String)` | ST-1, ST-2, ST-7 | additive case |
+| 8 | **Lit play button 44** | FXV-0 | `RButton` `.play`, lifted from RBriefCard's private style | PC-1, JR-1 / ON-13 (core) | shared file: RBriefCard is leased by #201 (GR.ready): wait for it |
+| 9 | **"More" menu + the transport's "…"** | BFC-0, B9O-0 | `RMenuKind.more` + `RTransport` `.more` | JR-2, PC-2 / ON-11 (core) | shared files (RMenu, RTransport; #198 holds RTransport's neighbours): after #198, check it doesn't already do it |
 
 ## 3. Missing, needed by one screen only (the screen's lane builds it)
 - JR-2: brief-item/now (BI2-0), brief-item/next (BHX-0, BHU-0)
@@ -99,6 +99,7 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 - YO-1: the labelled, interactive you-map orbits (B6Q-0)
 - YO-2: answer/found + abstained (K0U-0, K24-0), source-result as an REvidenceRow `.number` leading (K14-0)
 - JR-1 (not V2): recap-card (BHK-0), the "because" row in message/theirs (B8D-0)
+- EX-4: the-mark · 16 (V4W-0), a size in `Parts/RMark.swift` after #198 adds the glyph
 - ON (core): pill/choice (GSR-0, GGB-0)
 
 ## 4. Which V2 groups this unblocks
@@ -107,16 +108,17 @@ Status words: **exists** (reuse it) · **differs** (exists, but a state/variant/
 - **Journal V2**: JR-3 needs only its own parts (the shell hosts the drawer); JR-4 needs #5, #6; JR-2 needs #198 and #9.
 - **Podcasts**: PC-1 needs #1, #2, #4, #8; PC-3 needs #3 and #198.
 - **Goals**: GL-1 needs #1, #2 (+ its own goal card); GL-2 needs #3.
-- **Outside**: EX-1..3 views unblocked; EX-4 needs #10.
+- **Outside**: EX-1..3 views unblocked; EX-4 builds its 16 mark (after #198).
 
-## 5. Discrepancies (also logged in pipeline/screens/DISCREPANCIES.md)
-1. SCREEN-MAP §5 lists "c:mini-player/playing, paused"; part 45 draws playing + failed (legacy c5: pressed, buffering, couldn't play). No paused state is drawn.
-2. Paper names the lit tier `c:pill/lit` (D90-0); Swift calls it `RButton.primary`.
-3. SCREEN-MAP §5 still says c:privacy-mark "in #196"; #196 merged it page-private in Features/FirstRun/Privacy.
-4. SCREEN-MAP §5 lists c:top-bar/onboarding as missing; it exists privately in QuestionsPage.
-5. RMark's header says "the wordless disc"; Paper SUL-0 (founder 21 Oct) puts the brush glyph in all three sizes.
-6. RTransport says the "…" has "no destination yet"; Paper B1C-0 (founder 20 Oct) gives it the chapters + download menu.
-7. Approved-parts boards FX0-0 (part 40), G1K-0 (part 41), NVD-0 (part 50 map versions B/C) still carry "needs you" red dots on a page meant for approved masters.
-8. `c:top-bar/label/rest` (B5B-0) is the collapsed journal in Paper, while Swift's `.label` is the drawer's bar: one Paper name, two Swift variants.
-9. ST-1's untitled group (DMR-0, DYF-0) still shows a stale "listening" section label (DOU-0).
-10. 233P-0 still describes the legacy row as "c1–c6 and an early splash study"; c2 and the splash study are gone.
+## 5. Discrepancies (L0 ids = the integrator's discrepancy log)
+1. (L0-1) SCREEN-MAP §5 lists "c:mini-player/playing, paused"; part 45 draws playing + failed (legacy c5: pressed, buffering, couldn't play). No paused state is drawn.
+2. (L0-2) Paper names the lit tier `c:pill/lit` (DAI-0, DAP-0); Swift calls it `RButton.primary`.
+3. (L0-3) SCREEN-MAP §5 still says c:privacy-mark "in #196"; #196 merged it page-private in Features/FirstRun/Privacy.
+4. (L0-4) SCREEN-MAP §5 lists c:top-bar/onboarding as missing; it exists privately in QuestionsPage.
+5. (L0-5) RMark's header says "the wordless disc"; Paper SUL-0 (founder 21 Oct) puts the brush glyph in all three sizes.
+6. (L0-6) RTransport says the "…" has "no destination yet"; Paper B1C-0 (founder 20 Oct) gives it the chapters + download menu.
+7. (L0-7) Approved-parts boards FX0-0 (part 40), G1K-0 (part 41), NVD-0 (part 50 map versions B/C) still carry "needs you" red dots on a page meant for approved masters.
+8. (L0-8) `c:top-bar/label/rest` (B5B-0) is the collapsed journal in Paper, while Swift's `.label` is the drawer's bar: one Paper name, two Swift variants.
+9. (L0-9) ST-1's untitled group (DMR-0, DYF-0) still shows a stale "listening" section label (DOU-0).
+10. (L0-11) 233P-0 still describes the legacy row as "c1–c6 and an early splash study"; c2 and the splash study are gone.
+11. (L0-10) Tab bar icons: Paper draws custom inked glyphs (B4C-0, B48-0, B44-0, B40-0); the repo uses SF Symbols (founder, 21 Oct). The tab bar uses `text.page`, `dot.radiowaves.left.and.right`, `target`, `point.3.connected.trianglepath.dotted`.
