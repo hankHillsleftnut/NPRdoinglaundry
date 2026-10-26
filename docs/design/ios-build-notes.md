@@ -201,6 +201,20 @@ Your Paper comments are also instructions for how the iOS app should be built. E
 - While Retro types out a question (ON-3–9), play `haptic.typeOn`: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.35, fired once per word as it appears (never per letter), at most ~10 a second, skipping spaces and punctuation. Call `prepare()` once when the question starts.
 - Stop as soon as listening starts (`haptic.listenStart` takes over). No typing haptic when Reduce Motion skips the type-on, or when system haptics are off.
 
+## Shadows · the box-shadow look (founder, 26 Oct: "exactly Paper", "no overriding")
+- **SwiftUI's `.shadow` has no spread.** Never draw a Paper shadow layer with a non-zero spread through `.shadow`. Use `rBoxShadows` with an `RElevation.boxShadow*` token. A negative spread (`0 12 28 −12`) pulls the shape in before blurring. Dropping it makes the shadow wider than the object and lifts it above the top edge (the composer's "lip"): about 16pt for the cast and 36pt for the ambient, against Paper's 4 and 16.
+- **Pull-in technique:** for each outer layer, take `shape.inset(by: −spread)`, `.offset(x, y)` and `.blur(radius: blur / 2)`. Mask the stack to outside the shape (`destinationOut`), so cross-fades and translucent fills never show their own shadow. Inset layers: fill outside a pulled-in, offset copy of the shape, blur it, and clip to the shape.
+- **Top light:** `inset 0 1 0 depth.stroke.innerTop` is a crescent, 1pt on the flat top and thinning to 0 down the corners. It is not a 1pt strip masked to the top row.
+- **Outer hairline:** `0 0 0 0.5 depth.stroke.outer` is fully outside the edge. A centred `.stroke(0.5)` hides half of it.
+- **Exact numbers (Paper file 01M5D5J321P5X86ZT58002B7NT):**
+  - Composer rest (1F7K-0): inset 0 1 0 · inset 0 0 0 1 · 0 0 0 0.5 · 0 1 2 · 0 12 28 −12 · 0 24 60 −20.
+  - Composer listening (26LI-0): inset 0 1 0 · 0 0 0 0.5 ring · 0 1 2 · −64 10 34 −16 · 72 −6 30 −14 · 18 20 36 −18 · −10 −12 26 −16.
+  - Pill rest (D9Z-0): strokes · 0 1 1.5 · 0 4 6 −2.
+  - Pill pressed (DA6-0): strokes · 0 0.5 1 · 0 1 2 −1.
+- **Which look where:** composer and raised pill have `look: .current` (default) and `.paper`. CN.connect's `+ connect` pill switches to `.paper` after SH.composer merges. Every other component keeps its recipe until the founder answers the audit questions.
+- **Tests:**
+  - `design-system/tokens/tokens.test.mjs` freezes every pre-existing token and the existing generated Swift, and pins each new stack to Paper's CSS.
+  - `RVoiceComposerPaperTests` pins the Swift stacks and checks, rendered, that nothing is drawn under the shape and that the top light is the crescent.
 ## Ink titles · line height (TYPE.leading, founder 26 Oct: "fix it once, everywhere")
 - **Cause:** Exposure's line box is 1.2 × size; Paper's ink titles are 1.1 × size (--leading-tight). SwiftUI can't set a line below the font's own height with `.lineSpacing`, so each line after the first drifted 3pt lower at 30pt (12pt by line 4 on ON-10's question; review-201 Q7).
 - **Fix:** `RTextModifier` wraps every ink style tighter than the font in `RPaperPitchLayout` + the `RPaperPitch` text renderer: lines are drawn exactly leading × size apart, line 1 unmoved, height = font line + (n − 1) × Paper pitch. One-line titles are unchanged. No token values changed; non-ink styles untouched.

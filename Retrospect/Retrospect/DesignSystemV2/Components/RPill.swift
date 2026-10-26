@@ -21,6 +21,8 @@ struct RPill: View {
     /// The pill's action is on its way: a turning ring leads the words and the pill can't be
     /// pressed again, without dimming (it's busy, not unavailable).
     var pending = false
+    /// The raised surface: today's (the default) or Paper's c:pill/raised box-shadows exactly (SH.composer).
+    var look = RDepthLook.current
     let action: () -> Void
 
     var body: some View {
@@ -40,7 +42,7 @@ struct RPill: View {
                     .lineLimit(1)
             }
         }
-        .buttonStyle(RPillStyle(style: style, size: size, leadingIcon: pending || (symbol != nil && style != .action)))
+        .buttonStyle(RPillStyle(style: style, size: size, leadingIcon: pending || (symbol != nil && style != .action), look: look))
         .disabled(disabledReason != nil || pending)
         .accessibilityValue(pending ? "busy" : "")
         .opacity(disabledReason == nil ? 1 : RNumber.opacityDisabled)
@@ -52,6 +54,7 @@ private struct RPillStyle: ButtonStyle {
     let style: RPill.Style
     let size: RPill.Size
     let leadingIcon: Bool
+    var look = RDepthLook.current
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var leading: CGFloat {
@@ -75,7 +78,7 @@ private struct RPillStyle: ButtonStyle {
             .padding(.leading, leading)
             .padding(.trailing, trailing)
             .frame(minHeight: height)
-            .modifier(RPillBody(style: style, pressed: pressed))
+            .modifier(RPillBody(style: style, pressed: pressed, look: look))
             .scaleEffect(pressed && !reduceMotion ? RNumber.motionScalePressSmall : 1)
             // weighted press: in fast, out slower (craft 1.9)
             .animation(RMotion.standard(pressed ? RNumber.motionDurationPressIn : RNumber.motionDurationPressOut), value: pressed)
@@ -88,13 +91,16 @@ private struct RPillStyle: ButtonStyle {
 private struct RPillBody: ViewModifier {
     let style: RPill.Style
     let pressed: Bool
+    let look: RDepthLook
 
     func body(content: Content) -> some View {
-        switch style {
-        case .neutral:
+        switch (style, look) {
+        case (.neutral, _):
             content.background(pressed ? RColor.surfaceWashPressed : RColor.surfaceWash, in: RShape.pill)
-        case .raised, .action:
+        case (.raised, .current), (.action, .current):
             content.rSecondary(pressed: pressed)
+        case (.raised, .paper), (.action, .paper):
+            content.rSecondaryPaper(pressed: pressed)
         }
     }
 }
