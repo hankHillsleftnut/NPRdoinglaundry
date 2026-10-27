@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 
+#if DEBUG
 extension SampleSettings {
     @MainActor @Observable
     final class Trust {
@@ -57,3 +58,4 @@ extension SampleSettings: Flows.SettingsTrustData {
         }
     }
 }
+#endif
