@@ -39,12 +39,11 @@ struct DemoShell: View {
 }
 
 extension DemoShell {
-    /// What the system's way in shows: EX-1 or JR-2 over the shell, or the journal.
+    /// What the system's way in shows: EX-1 or JR-2 over the shell.
     private func open(_ way: DemoOutside?) {
         switch way {
         case .share: model.present(.share)
         case .brief: model.present(.brief(id: nil))
-        case .talk: model.select(.journal)
         case nil: break
         }
     }
@@ -131,7 +130,7 @@ private struct DemoYouTab: View {
     @State private var model: YouModel?
 
     var body: some View {
-        YouStack(data: samples.you, navigator: navigator) {
+        YouStack(data: samples.you, navigator: navigator, joinsApp: true) {
             RSheetHost {
                 if let model {
                     YouPage(model: model, navigator: navigator)

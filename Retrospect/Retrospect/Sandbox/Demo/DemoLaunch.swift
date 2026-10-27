@@ -19,7 +19,7 @@ enum DemoStage: String, CaseIterable, Codable, Sendable {
     case returning
 }
 
-/// How the system opened the app (`-DemoOutside <way>`), standing in for the outside-the-app entries
+/// How the system opened the app (`-DemoOutside <way>`, with the app stage), standing in for the outside-the-app entries
 /// until their targets exist (W7): the share extension, a notification, a widget. No control is drawn
 /// for them in the app; the system is the way in.
 enum DemoOutside: String, CaseIterable, Sendable {
@@ -27,8 +27,8 @@ enum DemoOutside: String, CaseIterable, Sendable {
     case share
     /// EX-3 "your brief is ready" / EX-4 medium "play": today's brief (JR-2) rises over the shell.
     case brief
-    /// EX-4 small "tell me…" / medium "talk": the journal (JR-1), where the composer is.
-    case talk
+    // EX-4 "tell me…" / "talk" (JR-1 with the composer listening) waits for a composer hook (W7): without
+    // it the way in would look exactly like a plain launch.
 }
 
 /// What the command line asked of the demo (the arguments only, never UserDefaults).

@@ -324,7 +324,7 @@ final class JournalViewModel {
         }
         starting = Self.next(start, after: player.state)
         if starting == nil, Self.gaveUp(player.state) {
-            playerShown = true
+            showBrief()
         }
     }
 

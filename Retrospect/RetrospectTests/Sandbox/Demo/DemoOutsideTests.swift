@@ -18,24 +18,30 @@ struct DemoOutsideTests {
     func arguments() {
         #expect(DemoLaunch.parse(["-DemoOutside", "share"]).outside == .share)
         #expect(DemoLaunch.parse(["-DemoOutside", "brief", "-DemoStart", "app"]) == DemoLaunch(start: .app, outside: .brief))
-        #expect(DemoLaunch.parse(["-DemoOutside", "talk"]).outside == .talk)
         #expect(DemoLaunch.parse(["-DemoOutside", "fax"]).outside == nil)
         #expect(DemoLaunch.parse(["-DemoOutside"]).outside == nil)
     }
 
-    @Test("the system opens the signed-in app, and the app acts on the way in once")
+    @Test("in the app, the app acts on the way in once; it never moves the stage")
     func opensTheAppOnce() {
-        let model = demo(DemoLaunch(outside: .share))
+        let store = MemoryDemoStore(.app)
+        let model = demo(DemoLaunch(outside: .share), store: store)
         #expect(model.stage == .app)
         #expect(model.takeOutside() == .share)
         #expect(model.takeOutside() == nil)
+        #expect(store.saved == .app)
     }
 
-    @Test("an explicit stage wins; outside the app the way in is dropped")
-    func explicitStageWins() {
-        let model = demo(DemoLaunch(start: .returning, outside: .brief))
-        #expect(model.stage == .returning)
-        #expect(model.takeOutside() == nil)
+    @Test("outside the app (first run, welcome back) the way in is dropped and the stage is kept")
+    func notInTheApp() {
+        let store = MemoryDemoStore(.firstRun)
+        let first = demo(DemoLaunch(outside: .brief), store: store)
+        #expect(first.stage == .firstRun)
+        #expect(first.takeOutside() == nil)
+        #expect(store.saved == .firstRun)
+        let back = demo(DemoLaunch(start: .returning, outside: .brief))
+        #expect(back.stage == .returning)
+        #expect(back.takeOutside() == nil)
     }
 
     @Test("what each way in raises is built by its owner")

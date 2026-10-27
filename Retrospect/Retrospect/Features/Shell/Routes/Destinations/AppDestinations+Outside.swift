@@ -48,10 +48,15 @@ private struct ShareRouteSheet: View {
                         context.back()
                     }
                 }
-        } else if let data {
-            RColor.backgroundCanvas.onAppear { model = ShareModel(data: data) }
         } else {
-            RColor.backgroundCanvas
+            // with no share data behind it (nothing injected it) the sheet closes at once: never a blank sheet
+            RColor.backgroundCanvas.onAppear {
+                if let data {
+                    model = ShareModel(data: data)
+                } else {
+                    context.back()
+                }
+            }
         }
     }
 }

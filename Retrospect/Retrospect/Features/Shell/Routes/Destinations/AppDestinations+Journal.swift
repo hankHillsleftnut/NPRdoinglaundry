@@ -72,13 +72,15 @@ private struct BriefRouteSheet: View {
         if let model {
             BriefSheet(model: model)
                 .rMenuHost()
-        } else if let source {
-            RColor.backgroundCanvas
-                .onAppear {
-                    model = BriefSheetModel(playback: source.playback, content: source.content, onCollapse: context.back)
-                }
         } else {
-            RColor.backgroundCanvas
+            // with no player behind it (nothing injected one) the sheet closes at once: never a blank sheet
+            RColor.backgroundCanvas.onAppear {
+                if let source {
+                    model = BriefSheetModel(playback: source.playback, content: source.content, onCollapse: context.back)
+                } else {
+                    context.back()
+                }
+            }
         }
     }
 }

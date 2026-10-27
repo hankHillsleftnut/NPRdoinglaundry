@@ -85,10 +85,6 @@
             argument = "-DemoOutside brief"
             isEnabled = "NO">
          </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-DemoOutside talk"
-            isEnabled = "NO">
-         </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>
    <ProfileAction

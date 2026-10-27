@@ -28,9 +28,9 @@ It uses the same screens as the real app and the same first run as the Core Flow
 | You | the you tab | ask a question (the answer shows in place), open a source, tap a person on the map, "what i know about you"; **your picture** (top right) opens settings |
 | Settings | your picture, or the drawer's foot | every row opens its page and back returns; daily brief → **play today's** raises today's brief; account → **sign out** → "welcome back" |
 | Welcome back | after signing out, or `-DemoStart returning` | **Sign in with Apple** (sample) brings you back to the journal with everything fresh; **new here? get started** starts a new first run from the splash |
-| From outside the app | `-DemoOutside share`, `brief` or `talk` (below) | as if another app shared to Retrospect (the share sheet over the app), the brief notification or widget (today's brief), or the widget's "tell me…" (the journal) |
+| From outside the app | once you are in the app: `-DemoOutside share` or `brief` (below) | as if another app shared to Retrospect (the share sheet over the app), or the brief notification or widget (today's brief over the app) |
 
-Not joined yet, and why: the podcasts play (waits for the shared play button), a goal row on a source in You (the sample's goal has no goal page drawn), ST-9's plan rows and delete account (not built yet). "your words" on the goal opens the entry page on an entry the entries sample doesn't have, so it says it can't find it (the two samples are being lined up).
+Not joined yet, and why: the podcasts play (waits for the shared play button), a goal row on a source in You (the sample's goal has no goal page drawn), ST-9's plan rows and delete account (not built yet), the widget's "tell me…" (needs the composer to start listening). "your words" on the goal opens the entry page on an entry the entries sample doesn't have, so it says it can't find it (the two samples are being lined up).
 
 ## Start somewhere else (the scheme's switches)
 In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick ONE of these, press ⌘R once, then untick it again (or every run starts there; ticking changes the shared scheme file, so don't commit that change):
@@ -38,7 +38,7 @@ In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick 
 - **`-DemoStart app`**: straight into the app.
 - **`-DemoStart returning`**: "welcome back", as after signing out.
 - **`-FlowStart questions`**: the first run at that screen (change the word to `inviteGate`, `youreIn`, `privacy`, `gettingReady`).
-- **`-DemoOutside share`** / **`brief`** / **`talk`**: the app as the system opens it from the share sheet, a notification or a widget.
+- **`-DemoOutside share`** / **`brief`**: the app as the system opens it from the share sheet or a notification/widget. It acts only when the demo is in the app (tick `-DemoStart app` with it the first time); it never skips the first run.
 
 The quickest full reset: press and hold the Retrospect icon, tap **Remove App**, then press ⌘R.
 

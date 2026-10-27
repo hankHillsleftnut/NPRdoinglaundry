@@ -57,6 +57,9 @@ final class YouNavigator {
 struct YouStack<Root: View>: View {
     let data: any YouData
     @Bindable var navigator: YouNavigator
+    /// Pages under the root may push another group's page (`.app`): only where the host gives those
+    /// pages their data (the demo). Off: your picture and the rest stay inert, as drawn (YO-D14).
+    var joinsApp = false
     @ViewBuilder let root: () -> Root
 
     @Environment(\.appRouter) private var router
@@ -70,8 +73,10 @@ struct YouStack<Root: View>: View {
                         .toolbar(.hidden, for: .navigationBar)
                 }
         }
-        // another group's page lands on this stack, so its back returns here
-        .appRoutePush { navigator.push(.app($0)) }
+        // another group's page lands on this stack, so its back returns here (only where the host joins it)
+        .transformEnvironment(\.appRouter) { router in
+            router.push = joinsApp ? { navigator.push(.app($0)) } : nil
+        }
         .environment(\.youAppPresent, router.present)
     }
 }
