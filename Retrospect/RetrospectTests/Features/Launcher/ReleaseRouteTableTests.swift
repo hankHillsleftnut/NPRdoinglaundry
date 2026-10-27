@@ -138,6 +138,8 @@ struct ReleaseRouteTableTests {
         extension JournalScreen {
             var podcastsRow: some View { PodcastsPage() }
             private var hiddenRow: Int { 1 }
+            private(set) var settableRow = 1
+            public private(set) var publicRow = 1
             func nested() { let local = 1 }
         }
         extension PodcastsPage {
@@ -180,6 +182,8 @@ struct ReleaseRouteTableTests {
         // ... and when the opener wraps, so its `{` comes on a later line; a type nested in such an extension too
         #expect(dark.isSuperset(of: ["wrappedRow", "whereRow", "NestedRowView"]))
         #expect(!dark.contains("Tab"))
+        // private(set) limits the setter only: the getter is reachable, so it is fenced
+        #expect(dark.isSuperset(of: ["settableRow", "publicRow"]))
         // a private extension's members can't be reached from another file
         #expect(!dark.contains("fileOnly"))
         // private helpers, locals and members of the dark types themselves stay out
@@ -226,12 +230,17 @@ struct ReleaseRouteTableTests {
 
     /// Declaration modifiers and attributes (with or without arguments) before a declaration keyword.
     private static let modifiers =
-        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
+        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:(?:public|internal|package|open|private|fileprivate)\(set\)|public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
+
+    /// The modifiers make the declaration private to its file (`private(set)` only limits the setter).
+    static func isPrivate(_ modifiers: Substring) -> Bool {
+        modifiers.range(of: #"\b(?:private|fileprivate)\b(?!\()"#, options: .regularExpression) != nil
+    }
 
     /// The non-private type names a file declares at the top level. A nested type (`PodcastsPage.Tab`) is
     /// reached through its outer type's name, so its short name stays out (a bare `Tab` elsewhere is not a
     /// mount); `nested: true` keeps them (the sandbox's name check wants every depth).
-    static func declaredTypes(in text: String, nested: Bool = false) -> Set<String> {
+    static func declaredTypes(in text: String, nested: Bool = false, includePrivate: Bool = false) -> Set<String> {
         let code = stripped(text)
         let pattern = #"(?m)^\s*"# + modifiers + #"(?:struct|class|enum|actor|protocol|typealias)\s+([A-Z]\w*)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
@@ -244,7 +253,7 @@ struct ReleaseRouteTableTests {
         for match in regex.matches(in: code, range: NSRange(code.startIndex..., in: code)) {
             guard nested || depthAt[match.range.location] == 0,
                   let mods = Range(match.range(at: 1), in: code), let name = Range(match.range(at: 2), in: code),
-                  !code[mods].contains("private") else { continue }
+                  includePrivate || !isPrivate(code[mods]) else { continue }
             names.insert(String(code[name]))
         }
         return names
@@ -269,7 +278,7 @@ struct ReleaseRouteTableTests {
             let range = NSRange(line.startIndex..., in: line)
             guard let decl = member?.firstMatch(in: line, range: range),
                   let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
-                  !line[mods].contains("private") else { return }
+                  !isPrivate(line[mods]) else { return }
             names.insert(String(line[name]))
         }
         for text in code {
@@ -283,7 +292,7 @@ struct ReleaseRouteTableTests {
                    let mods = Range(open.range(at: 1), in: line), let name = Range(open.range(at: 2), in: line),
                    let whole = Range(open.range, in: line) {
                     // a `private extension` adds nothing another file can reach
-                    let outside = !types.contains(String(line[name])) && !line[mods].contains("private")
+                    let outside = !types.contains(String(line[name])) && !isPrivate(line[mods])
                     if line[whole].hasSuffix("{") {
                         outsideExtension = outside
                         // a one-line `extension JournalScreen { var row … }`: the member after the brace

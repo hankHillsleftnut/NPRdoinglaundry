@@ -31,12 +31,12 @@ struct SandboxFenceTests {
         name.range(of: #"^\w+(Gallery|Lab|LabPage|Launch|Sandbox|States|Scenario)$|^Sample\w+$"#, options: .regularExpression) != nil
     }
 
-    /// The sample seams compiled into Release today (27 Oct): the core flow's and JR-1's sample data, which
+    /// The sample seams compiled into Release today (27 Oct; GettingReady's two from main the same day): the core flow's and JR-1's sample data, which
     /// live in core-12 files (FirstRun, Invite, SignIn, Player: leased). Moving them under `#if DEBUG` is a
     /// core-lane change (SampleInvite is read by InviteModel). Pinned so the list only shrinks: a new
     /// sample, scenario or states type in release code fails.
     static let shippedSampleSeams: Set<String> = [
-        "FirstEpisodeScenario", "FirstRunScenario", "InviteScenario", "JournalScenario", "PlaybackScenario",
+        "FirstEpisodeScenario", "FirstRunScenario", "GettingReadyScenario", "SampleListening", "InviteScenario", "JournalScenario", "PlaybackScenario",
         "PrivacyScenario", "SampleFirstEpisode", "SampleFirstRunData", "SampleInvite", "SampleInviteSource",
         "SampleJournalContent", "SampleJournalData", "SamplePlayback", "SamplePrivacyReadAloud", "SampleReportSender",
         "SampleSignIn", "SampleSignInTap", "SampleSignOutFlow", "SampleTranscript", "SignInScenario",
@@ -45,13 +45,17 @@ struct SandboxFenceTests {
     /// The code a Release build compiles: comments and strings blanked, `#if DEBUG` branches blanked (their
     /// `#else`/`#elseif` branches kept), line breaks kept.
     static func releaseCode(_ text: String) -> String {
-        var frames: [(debug: Bool, inElse: Bool)] = []
+        // per open #if: is it `#if DEBUG` (its first branch is debug-only) or `#if !DEBUG` (its #else and
+        // #elseif branches are), and are we past its first branch
+        var frames: [(debug: Bool, notDebug: Bool, inElse: Bool)] = []
         var lines: [String] = []
         for line in Scan.stripped(text).split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
             let directive = line.trimmingCharacters(in: .whitespaces)
             if directive.hasPrefix("#if") {
                 // only a plain `#if DEBUG` is debug-only: `#if DEBUG || X` can be true in Release
-                frames.append((directive.range(of: #"^#if\s+DEBUG\s*$"#, options: .regularExpression) != nil, false))
+                let debug = directive.range(of: #"^#if\s+DEBUG\s*$"#, options: .regularExpression) != nil
+                let notDebug = directive.range(of: #"^#if\s+!\s*DEBUG\s*$"#, options: .regularExpression) != nil
+                frames.append((debug, notDebug, false))
                 lines.append("")
             } else if directive.hasPrefix("#else") || directive.hasPrefix("#elseif") {
                 if !frames.isEmpty { frames[frames.count - 1].inElse = true }
@@ -60,7 +64,8 @@ struct SandboxFenceTests {
                 _ = frames.popLast()
                 lines.append("")
             } else {
-                lines.append(frames.contains { $0.debug && !$0.inElse } ? "" : line)
+                let debugOnly = frames.contains { ($0.debug && !$0.inElse) || ($0.notDebug && $0.inElse) }
+                lines.append(debugOnly ? "" : line)
             }
         }
         return lines.joined(separator: "\n")
@@ -98,8 +103,9 @@ struct SandboxFenceTests {
     func releaseNamesNoDebugType() {
         let files = Scan.swiftFiles(in: Scan.appRoot)
         let release = files.map { (path: $0.path, code: Self.releaseCode($0.text)) }
-        let releaseTypes = release.reduce(into: Set<String>()) { $0.formUnion(Scan.declaredTypes(in: $1.code)) }
-        let debugOnly = files.reduce(into: Set<String>()) { $0.formUnion(Scan.declaredTypes(in: $1.text)) }
+        // private types too: a debug-only private helper named by release code in its own file breaks Release
+        let releaseTypes = release.reduce(into: Set<String>()) { $0.formUnion(Scan.declaredTypes(in: $1.code, includePrivate: true)) }
+        let debugOnly = files.reduce(into: Set<String>()) { $0.formUnion(Scan.declaredTypes(in: $1.text, includePrivate: true)) }
             .subtracting(releaseTypes)
         #expect(debugOnly.contains("ScreenLauncher"), "the scan found no debug-only types")
         var uses: [String] = []
@@ -126,6 +132,13 @@ struct SandboxFenceTests {
         let mixed = "#if DEBUG\nstruct A {}\n#else\nstruct B {}\n#endif\nstruct C {}\n#if DEBUG\n#if os(iOS)\nstruct D {}\n#endif\nstruct E {}\n#endif"
         #expect(Scan.declaredTypes(in: Self.releaseCode(mixed)) == ["B", "C"])
         #expect(Scan.declaredTypes(in: Self.releaseCode("#if !DEBUG\nstruct F {}\n#endif")) == ["F"])
+        #expect(Scan.declaredTypes(in: Self.releaseCode("#if !DEBUG\nstruct F {}\n#else\nstruct DebugF {}\n#endif")) == ["F"])
+        // a private debug-only helper is a debug-only type too
+        let helper = "#if DEBUG\nprivate struct DebugHelper {}\n#endif\nlet h = DebugHelper()"
+        let debugTypes = Scan.declaredTypes(in: helper, includePrivate: true)
+            .subtracting(Scan.declaredTypes(in: Self.releaseCode(helper), includePrivate: true))
+        #expect(debugTypes == ["DebugHelper"])
+        #expect(Scan.names(in: Self.releaseCode(helper), from: debugTypes) == ["DebugHelper"])
         #expect(Scan.declaredTypes(in: Self.releaseCode("#if DEBUG || targetEnvironment(simulator)\nstruct G {}\n#endif")) == ["G"])
         #expect(Scan.declaredTypes(in: Self.releaseCode("#if DEBUG && os(iOS)\nstruct H {}\n#endif")) == ["H"])
         // wholly debug-only, or not
