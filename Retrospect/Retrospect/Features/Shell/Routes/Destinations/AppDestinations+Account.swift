@@ -5,6 +5,8 @@
 //  file lists them: build a page in `page(for:in:)` / `sheet(for:in:)` (data from the environment, as in
 //  the launcher) and remove its kind from `notBuilt` in the same change. AppRouteTableTests fails a kind
 //  that is built and still listed, or listed nowhere. The pages themselves live in Features/Account.
+//  Features/Account is core (the release app's sign-out), so it may not name the table: the sheet is
+//  built here and gets its actions as plain closures.
 //
 import SwiftUI
 

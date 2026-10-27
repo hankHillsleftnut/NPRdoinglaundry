@@ -6,7 +6,7 @@
 //  and drops ids when pushed; this table holds PAGES, built by their owning group, pushed onto the stack
 //  the control is in. The launcher registry is unchanged.
 //
-//  How a group plugs in (its own file only, `Routes/Destinations/<Group>Destinations.swift`):
+//  How a group plugs in (its own file only, `Routes/Destinations/AppDestinations+<Group>.swift`):
 //  build each page it owns in `page(for:in:)` / `sheet(for:in:)`, and drop its kind from `notBuilt`.
 //  How a control uses it: `@Environment(\.appRouter) var router`, then `router.opener(.goal(id: id))`:
 //  nil (a plain control, "not a button": consistency rule a) until the page is built AND something
@@ -19,13 +19,50 @@
 import SwiftUI
 
 /// What a page or sheet built from the table is given.
+/// `open` and `present` only act on built pages, the same rule as `AppRouter`, so a page wired straight
+/// to them never pushes a blank page; a control asks `opener` / `presenter` to know if it is a button.
+@MainActor
 struct AppRouteContext {
     /// Leave this page (pop it and anything above it) or this sheet (dismiss it).
-    var back: () -> Void = {}
-    /// Push another page onto the same stack; nil when nothing above can push.
-    var open: ((AppRoute) -> Void)?
-    /// Present a sheet over the shell; nil when nothing above can present.
-    var present: ((AppSheet) -> Void)?
+    let back: () -> Void
+    /// Push another page onto the same stack (an unbuilt one is ignored); nil when nothing above can push.
+    let open: ((AppRoute) -> Void)?
+    /// Present a sheet over the shell (an unbuilt one is ignored); nil when nothing above can present.
+    let present: ((AppSheet) -> Void)?
+
+    init(back: @escaping () -> Void = {}, open: ((AppRoute) -> Void)? = nil, present: ((AppSheet) -> Void)? = nil) {
+        self.back = back
+        self.open = open.map(Self.builtOnly)
+        self.present = present.map(Self.builtOnly)
+    }
+
+    private static func builtOnly(_ push: @escaping (AppRoute) -> Void) -> (AppRoute) -> Void {
+        { route in
+            if AppRoutes.isBuilt(route) {
+                push(route)
+            }
+        }
+    }
+
+    private static func builtOnly(_ show: @escaping (AppSheet) -> Void) -> (AppSheet) -> Void {
+        { sheet in
+            if AppRoutes.isBuilt(sheet) {
+                show(sheet)
+            }
+        }
+    }
+
+    /// The action for a control on this page that opens `route`, or nil (not built, or nothing can push).
+    func opener(_ route: AppRoute) -> (() -> Void)? {
+        guard let open, AppRoutes.isBuilt(route) else { return nil }
+        return { open(route) }
+    }
+
+    /// The action for a control on this page that presents `sheet`, or nil.
+    func presenter(_ sheet: AppSheet) -> (() -> Void)? {
+        guard let present, AppRoutes.isBuilt(sheet) else { return nil }
+        return { present(sheet) }
+    }
 }
 
 /// One group's pages: built only by the owning group, in its own file.
@@ -68,7 +105,7 @@ enum AppRoutes {
     ]
 
     /// The group that owns `group`'s pages.
-    static func destinations(_ group: AppRouteGroup, in groups: [any AppDestinationGroup.Type] = groups) -> (any AppDestinationGroup.Type)? {
+    static func destinations(_ group: AppRouteGroup) -> (any AppDestinationGroup.Type)? {
         groups.first { $0.group == group }
     }
 

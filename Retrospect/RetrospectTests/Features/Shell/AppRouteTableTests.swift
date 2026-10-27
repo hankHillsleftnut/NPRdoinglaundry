@@ -41,7 +41,11 @@ struct AppRouteTableTests {
 
     @Test("every group has exactly one destinations file in the table")
     func oneTablePerGroup() {
-        let groups = AppRoutes.groups.map(\.group)
+        // a loop, not `map(\.group)`: a key path on the existential metatype crashes the 6.2 compiler
+        var groups: [AppRouteGroup] = []
+        for destinations in AppRoutes.groups {
+            groups.append(destinations.group)
+        }
         #expect(groups.count == Set(groups).count, "a group is listed twice: \(groups.map(\.rawValue))")
         #expect(Set(groups) == Set(AppRouteGroup.allCases), "groups without a destinations file: \(Set(AppRouteGroup.allCases).subtracting(groups))")
     }
@@ -120,6 +124,28 @@ struct AppRouteTableTests {
         #expect(pushed == builtRoutes)
     }
 
+    @Test("a page's own open / present act only on built pages, the same rule as the router")
+    func contextIsGated() {
+        var pushed: [AppRoute] = []
+        var presented: [AppSheet] = []
+        let context = AppRouteContext(open: { pushed.append($0) }, present: { presented.append($0) })
+        for kind in AppRoute.Kind.allCases {
+            let route = Self.sample(kind)
+            context.open?(route)
+            #expect((context.opener(route) != nil) == AppRoutes.isBuilt(route))
+            #expect(AppRouteContext().opener(route) == nil)
+        }
+        for kind in AppSheet.Kind.allCases {
+            let sheet = Self.sample(kind)
+            context.present?(sheet)
+            #expect((context.presenter(sheet) != nil) == AppRoutes.isBuilt(sheet))
+            #expect(AppRouteContext().presenter(sheet) == nil)
+        }
+        // an unbuilt page is never pushed (it would show a blank page with no back)
+        #expect(pushed.allSatisfy { AppRoutes.isBuilt($0) })
+        #expect(presented.allSatisfy { AppRoutes.isBuilt($0) })
+    }
+
     // MARK: the release fence (pinned: only a founder-approved wiring PR changes this)
 
     /// The names the table adds. The release app must name none of them.
@@ -130,7 +156,9 @@ struct AppRouteTableTests {
 
     /// Where the table may be named before the wiring go: the dark V2 folders (ReleaseRouteTableTests,
     /// #205), the debug launcher and the debug demo host (`-Flow demo`, Features/Demo). The release root
-    /// (RetrospectApp, NewAppRoot, FirstRunRoute, LiveJournalRoot) is outside all of them.
+    /// (RetrospectApp, NewAppRoot, FirstRunRoute, LiveJournalRoot) is outside all of them. Features/Player
+    /// and Features/Account are core (the release app's tease and sign-out), so they stay outside too:
+    /// their controls get openers as plain closures from the dark wrappers in the destinations files.
     static let mayName = [
         "Features/Shell/", "Features/Entries/", "Features/Podcasts/", "Features/You/", "Features/Settings/",
         "Features/Goals/", "Features/Outside/", "Features/Launcher/", "Features/Demo/",
@@ -153,12 +181,20 @@ struct AppRouteTableTests {
         for root in ["RetrospectApp.swift", "Features/SignIn/NewAppRoot.swift", "Features/Journal/LiveJournalRoot.swift"] {
             #expect(files.contains { $0.path.hasSuffix(root) }, "\(root) not found")
         }
+        // the release root never moves into a folder allowed to name the table
+        for file in files where ["RetrospectApp.swift", "NewAppRoot.swift", "FirstRunRoute.swift", "LiveJournalRoot.swift"]
+            .contains(where: { file.path.hasSuffix($0) }) {
+            #expect(!Self.mayName.contains { file.path.hasPrefix($0) }, "\(file.path) sits in a folder that may name the table")
+        }
         let pattern = try NSRegularExpression(pattern: #"\b("# + Self.tableNames.joined(separator: "|") + #")\b"#)
         var leaks: [String] = []
         for file in files where !Self.mayName.contains(where: { file.path.hasPrefix($0) }) {
             // code only: comments don't mount anything
             let code = file.text.split(separator: "\n", omittingEmptySubsequences: false)
-                .map { line in line.range(of: "//").map { String(line[..<$0.lowerBound]) } ?? String(line) }
+                // a `//` at the line's start or after a space only (not the one inside "https://…")
+                .map { line in
+                    line.range(of: #"(^|\s)//"#, options: .regularExpression).map { String(line[..<$0.lowerBound]) } ?? String(line)
+                }
                 .joined(separator: "\n")
             let range = NSRange(code.startIndex..., in: code)
             if let match = pattern.firstMatch(in: code, range: range), let name = Range(match.range(at: 1), in: code) {
