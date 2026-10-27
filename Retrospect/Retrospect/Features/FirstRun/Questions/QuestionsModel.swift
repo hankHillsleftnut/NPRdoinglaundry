@@ -80,15 +80,30 @@ final class QuestionsModel {
 
     /// Called after each answer the seam kept, so a host can keep the words (the sample flow, FLOW.host).
     @ObservationIgnored var onAnswered: (Key, String) -> Void = { _, _ in }
+    /// Opened by the next page's back (see `init`).
+    @ObservationIgnored private let cameBack: Bool
 
     /// `kept`: words sent for these questions before this page opened (a host resuming after a relaunch):
     /// they count as answered, and going back shows them, exactly as this session's answers do.
-    init(data: any Flows.FirstRun, flowRange: ClosedRange<Double> = QuestionsModel.flowProgress, kept: [Key: String] = [:]) {
+    /// `cameBack`: the page opens because the next page's back chevron left it (ON-5 privacy, FLOW.edges):
+    /// it opens on the last question with its words in the composer, as back between questions does, and
+    /// does not finish at once on appearing (sent unchanged, the words move on again).
+    init(
+        data: any Flows.FirstRun,
+        flowRange: ClosedRange<Double> = QuestionsModel.flowProgress,
+        kept: [Key: String] = [:],
+        cameBack: Bool = false
+    ) {
         self.data = data
         self.flowRange = flowRange
+        self.cameBack = cameBack
         questions = Self.asked(data.questions)
         answers = kept
-        index = Self.firstUnanswered(questions, answered: data.answeredKeys.union(kept.keys)) ?? max(questions.count - 1, 0)
+        let last = max(questions.count - 1, 0)
+        index = cameBack ? last : Self.firstUnanswered(questions, answered: data.answeredKeys.union(kept.keys)) ?? last
+        if cameBack, questions.indices.contains(index) {
+            draft = kept[questions[index].key] ?? ""
+        }
     }
 
     // MARK: - Pure rules
@@ -201,7 +216,8 @@ final class QuestionsModel {
     /// The page's `.task`: a person who has answered everything is done at once; otherwise the open
     /// question starts listening (when there is an ear and it hasn't been answered).
     func appear() async {
-        if Self.firstUnanswered(questions, answered: answered) == nil {
+        // back from the next page: the person came to look, so the page stays until they send
+        if !cameBack, Self.firstUnanswered(questions, answered: answered) == nil {
             await finish()
             return
         }
@@ -338,7 +354,10 @@ final class QuestionsModel {
         guard !isFinished else { return }
         isFinished = true
         stopHearing()
-        await data.finishQuestions()
+        // came back from the next page: the seam was finished on the way out; only hand on again
+        if !cameBack {
+            await data.finishQuestions()
+        }
         onDone()
     }
 

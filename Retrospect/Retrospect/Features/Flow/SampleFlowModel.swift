@@ -20,6 +20,9 @@ final class SampleFlowModel {
     private(set) var step: FlowStep
     /// The words sent for each question, kept across launches.
     private(set) var answers: [Key: String]
+    /// The step on screen was reached by a page's back (ON-5 back to the questions), not forward: the
+    /// questions then open on the last one instead of finishing at once. Saved, so a relaunch keeps it.
+    private(set) var cameBack = false
 
     /// PI0 on the sample sign-in: the first tap signs in (no scripted failure in the flow).
     let signIn: SignInModel
@@ -50,6 +53,7 @@ final class SampleFlowModel {
         self.table = table
         step = saved.step
         answers = Self.keyed(saved.answers)
+        cameBack = saved.cameBack ?? false
         signIn = SignInModel(
             look: .splash,
             coordinator: SampleSignIn(script: [.signedIn(firstName: SampleInvite.firstName, access: .waitlisted)], sleep: sleep)
@@ -89,6 +93,7 @@ final class SampleFlowModel {
     /// A screen handed off: move where the table says, or stay (no edge: the flow ends here).
     func send(_ event: FlowEvent) {
         guard let next = FlowStep.next(from: step, event: event, table: table) else { return }
+        cameBack = event == .back
         step = next
         save()
     }
@@ -111,6 +116,17 @@ final class SampleFlowModel {
         return made
     }
 
+    /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
+    /// so each visit gets a fresh model: Retro finishing (or a tap) sends `privacyDone`, the back chevron
+    /// sends `back` to the last question. `clock` is the page's reading clock (tests pass an instant one).
+    func makePrivacy(clock: any Clock<Duration> = ContinuousClock()) -> PrivacyModel {
+        PrivacyModel(
+            readAloud: SamplePrivacyReadAloud(clock: clock),
+            onAdvance: { [weak self] in self?.send(.privacyDone) },
+            onBack: { [weak self] in self?.send(.back) }
+        )
+    }
+
     /// An answer the questions page's seam kept.
     func answered(_ key: Key, words: String) {
         answers[key] = words
@@ -121,7 +137,7 @@ final class SampleFlowModel {
 
     private func save() {
         let words = Dictionary(answers.map { ($0.key.rawValue, $0.value) }, uniquingKeysWith: { first, _ in first })
-        store.save(SampleFlowSaved(step: step, answers: words))
+        store.save(SampleFlowSaved(step: step, answers: words, cameBack: cameBack ? true : nil))
     }
 
     /// Saved answers back to keys; a key the app doesn't know is dropped.

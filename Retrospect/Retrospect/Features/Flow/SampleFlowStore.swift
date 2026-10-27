@@ -12,6 +12,8 @@ import Foundation
 struct SampleFlowSaved: Codable, Equatable, Sendable {
     var step: FlowStep = .splash
     var answers: [String: String] = [:]
+    /// The step was reached by a page's back (FLOW.edges); nil otherwise, so older saves still decode.
+    var cameBack: Bool?
 }
 
 @MainActor
