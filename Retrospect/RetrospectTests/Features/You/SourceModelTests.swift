@@ -1,5 +1,4 @@
 @testable import Retrospect
-import SwiftUI
 import Testing
 
 @MainActor
@@ -62,19 +61,25 @@ struct SourceModelTests {
         #expect(model.edit.editing)
     }
 
-    @Test("this supports: an answer opens YO-5; a goal only when GL-2 is in the build")
+    @Test("this supports: an answer opens YO-5; a goal (another group) opens nothing yet")
     func opener() {
         let entry = SampleYou.sleepEntry
-        let bare = YouNavigator()
-        bare.opener(for: entry.supports[0])?()
-        #expect(bare.path == [.whatIKnow])
-        #expect(bare.opener(for: entry.supports[1]) == nil)
+        let navigator = YouNavigator()
+        navigator.opener(for: entry.supports[0])?()
+        #expect(navigator.path == [.whatIKnow])
+        #expect(navigator.opener(for: entry.supports[1]) == nil)
+        navigator.pop()
+        #expect(navigator.path.isEmpty)
+    }
 
-        let withGoals = YouNavigator(has: { $0 == YouNavigator.goalScreenID }, elsewhere: { _ in AnyView(EmptyView()) })
-        withGoals.opener(for: entry.supports[1])?()
-        #expect(withGoals.path == [.elsewhere(YouNavigator.goalScreenID)])
-        withGoals.pop()
-        #expect(withGoals.path.isEmpty)
+    @Test("the page loads once: coming back keeps saved words")
+    func loadsOnce() async {
+        let model = await loaded()
+        model.beginEditing()
+        model.edit.draft = "went to bed at 10."
+        await model.save()
+        await model.load()
+        #expect(model.entry?.words == "went to bed at 10.")
     }
 
     @Test("YO-3 is registered with rest and editing")

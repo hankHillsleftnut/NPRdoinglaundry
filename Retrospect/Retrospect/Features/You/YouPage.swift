@@ -20,7 +20,7 @@ struct YouPage: View {
         VStack(spacing: RDimension.space0) {
             RTopBar(variant: .title(
                 title: "you",
-                trailing: .content([AnyView(YouPicture(action: navigator.opener(elsewhere: YouNavigator.settingsScreenID)))])
+                trailing: .content([AnyView(YouPicture())])
             ))
             ScrollViewReader { reader in
                 ScrollView {
@@ -43,6 +43,7 @@ struct YouPage: View {
                     .padding(.horizontal, RDimension.spaceScreenMargin)
                     .padding(.bottom, RDimension.space8)
                     .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.answer)
+                    .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.onlyCertain)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .rProgressiveBlur(.tabEdge)
@@ -109,21 +110,12 @@ struct YouPage: View {
     }
 }
 
-/// Your picture (1G7Z-0): a 36 sky disc with a warm light at its top right, a rim and a hairline. Opens
-/// settings only when settings is in this build; otherwise it is a picture, not a button (YO-D14).
+/// Your picture (1G7Z-0): a 36 sky disc with a warm light at its top right, a rim and a hairline. Paper
+/// says it opens settings (ST-1, another group); until the wiring PR connects the groups it is a picture,
+/// not a button (YO-D14).
 private struct YouPicture: View {
-    let action: (() -> Void)?
-
     var body: some View {
-        if let action {
-            Button(action: action) { disc }
-                .buttonStyle(.plain)
-                .frame(width: RDimension.sizeTouchTarget, height: RDimension.sizeTouchTarget)
-                .contentShape(Rectangle())
-                .accessibilityLabel("settings")
-        } else {
-            disc.accessibilityHidden(true)
-        }
+        disc.accessibilityHidden(true)
     }
 
     private var disc: some View {

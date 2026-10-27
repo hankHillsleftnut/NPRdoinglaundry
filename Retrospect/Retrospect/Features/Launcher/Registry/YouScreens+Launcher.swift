@@ -8,7 +8,7 @@
 //  YO-4 `person` (the map with a node's sheet up); YO-5 `rest`. The tab page sits under a static tab bar
 //  (the shell joins in a wiring PR, integrator 26 Oct). Pages that aren't built yet below a pushed one
 //  open at their stack's root, so back has nowhere to go there (as the account page's launcher).
-//  Another group's screen opens only when the registry has it (integrator rule, YO-D14).
+//  Another group's screens (a goal, settings) are not opened from here until the wiring PR (YO-D14).
 //
 #if DEBUG
 import SwiftUI
@@ -32,17 +32,6 @@ enum YouScreens: ScreenGroup {
             AnyView(SourceLaunch(editing: arguments.state == "editing"))
         },
     ]
-
-    /// This build registers that screen id (a lookup, nothing built).
-    static func has(_ id: String) -> Bool {
-        ScreenRegistry.screen(id) != nil
-    }
-
-    /// Another group's screen by its launcher id, in its first state, when this build registers it.
-    static func elsewhere(_ id: String) -> AnyView? {
-        guard let screen = ScreenRegistry.screen(id), let state = screen.states.first else { return nil }
-        return screen.build(LaunchArguments(screen: id, state: state))
-    }
 }
 
 /// YO-2's launcher states.
@@ -57,7 +46,7 @@ private struct YouTabLaunch: View {
     /// YO-4: opens on the map with priya's sheet up.
     let opensNode: Bool
     @State private var data = SampleYou()
-    @State private var navigator = YouNavigator(has: YouScreens.has, elsewhere: YouScreens.elsewhere)
+    @State private var navigator = YouNavigator()
     @State private var model: YouModel?
 
     var body: some View {
@@ -100,7 +89,7 @@ private struct YouTabLaunch: View {
 private struct SourceLaunch: View {
     let editing: Bool
     @State private var data = SampleYou()
-    @State private var navigator = YouNavigator(has: YouScreens.has, elsewhere: YouScreens.elsewhere)
+    @State private var navigator = YouNavigator()
 
     var body: some View {
         YouStack(data: data, navigator: navigator) {

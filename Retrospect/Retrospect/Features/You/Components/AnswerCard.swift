@@ -113,7 +113,8 @@ struct SourceList: View {
     }
 }
 
-/// "only what's certain · hides the 1 guess" with its switch (1G91-0). The whole row toggles.
+/// "only what's certain · hides the 1 guess" with its switch (1G91-0). The whole row toggles; VoiceOver
+/// reads it once, as the switch, with the subline as its hint.
 struct OnlyCertainRow: View {
     @Binding var isOn: Bool
 
@@ -128,11 +129,15 @@ struct OnlyCertainRow: View {
                     .foregroundStyle(RColor.textLabel)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
             RSwitch(label: "only what's certain", isOn: $isOn)
+                .accessibilityHint(YouModel.onlyCertainSubline)
         }
         .padding(.vertical, RDimension.space2)
         .padding(.horizontal, RDimension.space4)
         .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
         .background(RColor.surfaceWash, in: RShape.rect(RDimension.radiusPanel))
+        .contentShape(Rectangle())
+        .onTapGesture { isOn.toggle() }
     }
 }
