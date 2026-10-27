@@ -33,7 +33,7 @@ struct EntryPage: View {
         case .loading:
             Color.clear.frame(height: RDimension.sizeTouchTarget)
         case let .failed(reason):
-            REmptyLine(line: reason)
+            REmptyLine(line: reason, action: .init(title: "try again") { Task { await model.load() } })
         case let .shown(words, meta, standing):
             VStack(alignment: .leading, spacing: RDimension.space2) {
                 REntryWords(text: words, draft: .constant(words))
