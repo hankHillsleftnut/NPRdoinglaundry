@@ -38,20 +38,18 @@ struct AccountSettingsPage: View {
     var provider = "apple"
     let back: () -> Void
     @State private var signingOut = false
-    @State private var deleting: Bool
+    @State private var deleting = false
     @State private var status = RDialog.Status.rest
     @Environment(\.dynamicTypeSize) private var typeSize
 
     init(
         data: any Flows.SettingsTrustData,
         flow: any SignOutFlowing,
-        deleting: Bool = false,
         back: @escaping () -> Void
     ) {
         self.data = data
         self.flow = flow
         self.back = back
-        _deleting = State(initialValue: deleting)
     }
 
     var body: some View {
@@ -104,6 +102,9 @@ struct AccountSettingsPage: View {
                     deleting = false
                 }
             }
+            #if DEBUG
+            .modifier(SettingsLaunchDialogOpen(isPresented: $deleting))
+            #endif
         }
         .accessibilityIdentifier("screen.settings.account")
     }
