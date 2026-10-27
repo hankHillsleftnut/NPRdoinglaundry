@@ -40,7 +40,9 @@ struct GoalPage: View {
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load() }
         .onChange(of: model.state) { _, state in
-            if state == .gone { turnedOff() }
+            if state == .gone {
+                turnedOff()
+            }
         }
         .accessibilityIdentifier("goal")
     }
