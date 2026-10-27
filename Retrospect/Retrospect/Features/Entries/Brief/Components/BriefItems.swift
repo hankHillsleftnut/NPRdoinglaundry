@@ -39,8 +39,9 @@ struct BriefItemNow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(label.words)
                     .rText(.briefLabel)
-                    // "playing now" is the accent's one moment; "played" steps back to a label
-                    .foregroundStyle(label == .playingNow ? RColor.accentText : RColor.textLabel)
+                    // ink, not blue: blue is the active colour's four jobs only (founder 27 Oct, rule 14;
+                    // Paper 1FO0-0 draws blue: J-48 PAPER-UPDATE); "played" steps back to a label
+                    .foregroundStyle(label == .playingNow ? RColor.inkDefault : RColor.textLabel)
                 Spacer(minLength: RDimension.space2)
                 Text(place)
                     .rText(.voiceLength)
