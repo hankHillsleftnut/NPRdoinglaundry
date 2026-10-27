@@ -104,6 +104,8 @@ struct OnlyCertainRow: View {
                     .foregroundStyle(RColor.textLabel)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { isOn.toggle() }
             .accessibilityHidden(true)
             RSwitch(label: "only what's certain", isOn: $isOn)
                 .accessibilityHint(YouModel.onlyCertainSubline)
@@ -111,8 +113,12 @@ struct OnlyCertainRow: View {
         .padding(.vertical, RDimension.space2)
         .padding(.horizontal, RDimension.space4)
         .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
-        .background(RColor.surfaceWash, in: RShape.rect(RDimension.radiusPanel))
-        .contentShape(Rectangle())
-        .onTapGesture { isOn.toggle() }
+        // the rest of the row toggles from a layer under the switch: a tap on the switch is the switch's
+        // alone, so one tap is one flip, never two
+        .background {
+            RShape.rect(RDimension.radiusPanel)
+                .fill(RColor.surfaceWash)
+                .onTapGesture { isOn.toggle() }
+        }
     }
 }

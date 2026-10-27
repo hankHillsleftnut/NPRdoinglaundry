@@ -42,7 +42,9 @@ struct YouPage: View {
                     RSearchField(
                         placeholder: "ask anything about yourself",
                         text: $model.query,
-                        onSubmit: { Task { await model.ask() } }
+                        onSubmit: { Task { await model.ask() } },
+                        // no listening for search is drawn: the mic opens the field and its dictation (YO-D6)
+                        micFocusesField: true
                     )
                     Group {
                         if let answer = model.answer {
