@@ -40,6 +40,9 @@ extension Flows {
 
         let key: QuestionKey
         let text: String
+        /// Likely answers offered as chips under the question (Paper c:onboarding/quick-answers MH9-0);
+        /// none by default. Tapping one adds its words to the composer; nothing is sent until send.
+        var quickAnswers: [String] = []
 
         var id: QuestionKey {
             key
