@@ -34,8 +34,18 @@ struct BriefSheet: View {
         .accessibilityAction(.escape) { model.collapse() }
     }
 
+    /// The brief's words, only while the one player is on this brief (never another item's).
     @ViewBuilder
     private var middle: some View {
+        if model.isThisBrief {
+            brief
+        } else {
+            Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private var brief: some View {
         switch model.content.kind {
         case let .quiet(line, note):
             BriefQuietLine(line: line, note: note)

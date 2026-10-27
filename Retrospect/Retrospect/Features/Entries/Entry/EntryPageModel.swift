@@ -3,15 +3,16 @@
 //  V2.journal (dark) · JR-4 one entry: the page's state. Your words, and one meta line that says
 //  when, how (written, voice) and where it is ("read", "sent", "waiting to send", or "didn't send ·
 //  tap to retry"), as Paper draws them (05: rest N51-0, voice note N6E-0, nothing taken yet N7R-0,
-//  offline N9D-0). What the backend can't serve yet stays off (`EntryCapabilities`): edit, delete,
+//  offline N9D-0). Edit is in the cut (founder 27 Oct: your words are editable in the journal, on
+//  sample data until BE1.5b). What the backend can't serve yet stays off (`EntryCapabilities`): delete,
 //  what Retro took and "not right" (founder-review 34), the voice note's play row (no served
 //  recording: 33) and "show it in the conversation" (no drawn landing: SCREEN-MAP row 66).
 //
 import Foundation
 import Observation
 
-/// What the entry page may show. All off is the app's cut until each door exists; the launcher's
-/// `drawn-*` states turn the drawn parts on so they can be seen (J-19).
+/// What the entry page may show. The app's cut has edit on (founder 27 Oct) and the rest off until each
+/// door exists; the launcher's `drawn-*` states turn every drawn part on so they can be seen (J-19).
 struct EntryCapabilities: Equatable {
     /// "edit" and the editing bar (BE1.5b).
     var edit = false
@@ -20,7 +21,7 @@ struct EntryCapabilities: Equatable {
     /// "what i took from this" and "not right" (BE1.7).
     var took = false
 
-    static let cut = EntryCapabilities()
+    static let cut = EntryCapabilities(edit: true)
     static let drawn = EntryCapabilities(edit: true, delete: true, took: true)
 }
 
@@ -66,13 +67,23 @@ final class EntryModel {
             entry = found
             state = .shown(words: found.text, meta: meta(found), standing: Self.standing(found))
         case let .failure(failure):
+            // a reload that fails keeps the last entry on screen; only the first load fails the page
+            if let entry {
+                state = .shown(words: entry.text, meta: meta(entry), standing: Self.standing(entry))
+                return
+            }
             state = .failed(failure.message ?? "couldn't open this entry. try again in a moment.")
         }
     }
 
     /// The meta line's tap: retries an entry that didn't send.
     func retry() async {
-        guard let client = entry?.clientEntryId, case .shown(_, _, .notSent) = state else { return }
+        guard let found = entry, let client = found.clientEntryId, case .shown(_, _, .notSent) = state else { return }
+        // show it sending at once, so a second tap can't send it twice
+        var sending = found
+        sending.delivery = .sending
+        entry = sending
+        state = .shown(words: sending.text, meta: meta(sending), standing: Self.standing(sending))
         await data.retry(clientEntryId: client)
         await load()
     }

@@ -12,6 +12,20 @@
 import SwiftUI
 
 struct YouPage: View {
+    /// What the title bar carries on its right, in Paper's order (1G7Y-0): "list", then your picture.
+    enum Trailing: CaseIterable {
+        case list, picture
+
+        @MainActor var view: AnyView {
+            switch self {
+            case .list: AnyView(ListPill())
+            case .picture: AnyView(YouPicture())
+            }
+        }
+    }
+
+    static let trailing: [Trailing] = [.list, .picture]
+
     @Bindable var model: YouModel
     let navigator: YouNavigator
 
@@ -21,7 +35,7 @@ struct YouPage: View {
         VStack(spacing: RDimension.space0) {
             RTopBar(variant: .title(
                 title: "you",
-                trailing: .content([AnyView(YouPicture())])
+                trailing: .content(Self.trailing.map(\.view))
             ))
             ScrollViewReader { reader in
                 ScrollView {

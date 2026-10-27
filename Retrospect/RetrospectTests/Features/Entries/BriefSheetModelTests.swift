@@ -103,6 +103,8 @@ struct BriefSheetModelTests {
         #expect(sheet.isThisBrief)
         await sheet.playback.load(SamplePlayback.tease)
         #expect(!sheet.isThisBrief)
+        #expect(sheet.title == "a heavier week than usual, and it shows.")
+        #expect(sheet.shareText == "a heavier week than usual, and it shows. · retrospect")
         #expect(sheet.now == nil)
         #expect(sheet.next.isEmpty)
         #expect(sheet.nowLabel == .playingNow)

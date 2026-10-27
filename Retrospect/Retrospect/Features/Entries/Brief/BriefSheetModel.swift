@@ -53,6 +53,8 @@ final class BriefSheetModel {
     /// The brief these words belong to (`Flows.PlaybackItem.id`): once the one player moves on to
     /// something else, the card shows nothing rather than the wrong part.
     let itemID: String?
+    /// The brief's headline, kept with its words: the header never shows another item's title.
+    let headline: String
     @ObservationIgnored private let onCollapse: () -> Void
     /// The collapse is handed over once; a second tap while the sheet leaves does nothing.
     private(set) var hasCollapsed = false
@@ -61,12 +63,13 @@ final class BriefSheetModel {
         self.playback = playback
         self.content = content
         self.itemID = itemID ?? playback.item?.id
+        headline = playback.item?.title ?? ""
         self.onCollapse = onCollapse
     }
 
     /// The header's line: the brief's headline, read from the player's item.
     var title: String {
-        playback.item?.title ?? ""
+        headline
     }
 
     /// What share hands the system share sheet (founder Q3 = B: a line of text).
