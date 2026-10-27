@@ -22,6 +22,9 @@ final class YouModel {
     var query = ""
     /// "only what's certain": hides the guess line and the sources that only back it.
     var onlyCertain = false
+    /// Counts submissions (and clears): only the answer to the latest one may land, even when the same
+    /// words were asked twice.
+    private var submission = 0
     private let data: any YouData
 
     init(data: any YouData) {
@@ -37,10 +40,12 @@ final class YouModel {
         let question = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty else { return }
         onlyCertain = false
+        submission += 1
+        let mine = submission
         phase = .asking(previous: answer)
         let answer = await data.ask(question)
-        // a newer question or a cleared field wins: drop an answer for words no longer in the field
-        guard case .asking = phase, query.trimmingCharacters(in: .whitespacesAndNewlines) == question else { return }
+        // a newer submission or a clear wins: drop an answer that is no longer the latest
+        guard mine == submission, case .asking = phase else { return }
         phase = .answered(answer)
     }
 
@@ -48,6 +53,7 @@ final class YouModel {
     func clear() {
         query = ""
         onlyCertain = false
+        submission += 1
         phase = .rest
     }
 
