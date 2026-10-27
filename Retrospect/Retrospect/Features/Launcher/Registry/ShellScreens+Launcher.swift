@@ -9,6 +9,7 @@
 //  page on a sample sign-out flow, as the app root does until the drawer (JR-3) is built.
 //  `miniPlayer` (G0b, test state): the same, with a sample episode loaded, so the mini-player floats 12
 //  above the bar; tapping it opens the player sheet through the shell's host, over the tab bar (L0-14).
+//  `sheet` (G0b, test state): the same with the player sheet already up, to see it cover the bar.
 //
 #if DEBUG
 import SwiftUI
@@ -26,10 +27,11 @@ enum ShellScreens: ScreenGroup {
 enum ShellScenario: String, CaseIterable {
     case tabs
     case miniPlayer
+    case sheet
 
     var tab: RTab {
         switch self {
-        case .tabs, .miniPlayer: .journal
+        case .tabs, .miniPlayer, .sheet: .journal
         }
     }
 }
@@ -48,12 +50,20 @@ struct ShellLaunch: View {
     }
 
     var body: some View {
-        ShellPage(model: model, miniPlayer: scenario == .miniPlayer ? AnyView(ShellMiniPlayerLaunch()) : nil) { tab, _ in
+        ShellPage(model: model, miniPlayer: miniPlayer) { tab, _ in
             switch tab {
             case .journal: AnyView(ShellJournalLaunch())
             // not built yet (inert in the bar): their lanes add PC-1, GL-1 and YO-1 here
             case .podcasts, .goals, .you: nil
             }
+        }
+    }
+
+    private var miniPlayer: AnyView? {
+        switch scenario {
+        case .tabs: nil
+        case .miniPlayer: AnyView(ShellMiniPlayerLaunch(playerShown: false))
+        case .sheet: AnyView(ShellMiniPlayerLaunch(playerShown: true))
         }
     }
 }
@@ -82,7 +92,11 @@ private struct ShellJournalLaunch: View {
 /// shell's host, so the sheet covers the bar) and its well pauses and plays.
 private struct ShellMiniPlayerLaunch: View {
     @State private var playing = true
-    @State private var playerShown = false
+    @State private var playerShown: Bool
+
+    init(playerShown: Bool) {
+        _playerShown = State(initialValue: playerShown)
+    }
 
     var body: some View {
         RMiniPlayer(
@@ -119,4 +133,5 @@ private struct ShellPlayerLaunch: View {
 
 #Preview("shell · tabs") { ShellLaunch(scenario: .tabs) }
 #Preview("shell · mini-player") { ShellLaunch(scenario: .miniPlayer) }
+#Preview("shell · sheet over the bar") { ShellLaunch(scenario: .sheet) }
 #endif

@@ -9,7 +9,7 @@ struct ShellModelTests {
     @Test("-Screen shell opens on a tab with a page: the journal, alone or with the mini-player (G0b)")
     func launches() {
         let screen = ScreenRegistry.screen("shell")
-        #expect(screen?.states == ["tabs", "miniPlayer"])
+        #expect(screen?.states == ["tabs", "miniPlayer", "sheet"])
         // no launch state opens on a tab with nothing built (no blank pages)
         for scenario in ShellScenario.allCases {
             #expect(ShellLaunch.pages.contains(scenario.tab), "-State \(scenario.rawValue) opens on an unbuilt tab")
