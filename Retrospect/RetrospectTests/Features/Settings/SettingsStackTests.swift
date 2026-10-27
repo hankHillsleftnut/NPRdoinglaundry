@@ -46,6 +46,7 @@ struct SettingsStackTests {
     func routes() {
         let data = SampleSettings(sleep: Self.instant)
         #expect(SettingsDestinations.isBuilt(.account, data: data))
+        #expect(SettingsDestinations.isBuilt(.dailyBrief, data: data))
     }
 
     @Test("every settings page hosts its own menu, so a quick pick (↕) opens on the page it's on")
@@ -60,8 +61,19 @@ struct SettingsStackTests {
         #expect(Set(pages.map(SettingsHubPage.identifier)).count == pages.count)
     }
 
-    @Test("the settings group registers ST-1 in the launcher")
+    @Test("the settings group registers its screens in the launcher")
     func registered() {
         #expect(ScreenRegistry.screen("ST-1")?.states == ["rest"])
+        #expect(ScreenRegistry.screen("ST-2")?.states == ["rest"])
+    }
+
+    @Test("ST-2: the caption follows the length, and ST-1's value follows the switch")
+    func dailyBrief() {
+        let data = SampleSettings(sleep: Self.instant)
+        #expect(DailyBriefPage.caption(for: data.brief) == "standard is about 4 minutes.")
+        data.setBrief(length: .short)
+        #expect(DailyBriefPage.caption(for: data.brief) == "short is about 2 minutes.")
+        data.setBrief(isOn: false)
+        #expect(SettingsHubPage.briefValue(data.brief) == "8:30 · off")
     }
 }
