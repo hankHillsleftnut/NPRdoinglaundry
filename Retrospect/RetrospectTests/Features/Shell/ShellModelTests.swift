@@ -6,10 +6,10 @@ import Testing
 /// #205, fences Features/Shell).
 @MainActor
 struct ShellModelTests {
-    @Test("-Screen shell has one state per tab with a page: today only the journal")
+    @Test("-Screen shell opens on a tab with a page: the journal, alone or with the mini-player (G0b)")
     func launches() {
         let screen = ScreenRegistry.screen("shell")
-        #expect(screen?.states == ["tabs"])
+        #expect(screen?.states == ["tabs", "miniPlayer", "sheet"])
         // no launch state opens on a tab with nothing built (no blank pages)
         for scenario in ShellScenario.allCases {
             #expect(ShellLaunch.pages.contains(scenario.tab), "-State \(scenario.rawValue) opens on an unbuilt tab")
@@ -61,5 +61,23 @@ struct ShellModelTests {
         model.select(.you)
         model.select(.podcasts)
         #expect(model.visited == [.podcasts, .you])
+    }
+
+    @Test("G0b: the shell shows a sheet only when its page is built, and never two at once")
+    func sheets() {
+        let model = ShellModel()
+        for kind in AppSheet.Kind.allCases {
+            let sheet = AppRouteTableTests.sample(kind)
+            model.present(sheet)
+            #expect((model.sheet == sheet) == AppRoutes.isBuilt(sheet), "sheet \(kind.rawValue)")
+            let first = model.sheet
+            // a second request while one is up waits (RSheetHost never stacks two)
+            for other in AppSheet.Kind.allCases.map(AppRouteTableTests.sample) where other != sheet {
+                model.present(other)
+                #expect(first == nil || model.sheet == first)
+            }
+            model.dismissSheet()
+            #expect(model.sheet == nil)
+        }
     }
 }
