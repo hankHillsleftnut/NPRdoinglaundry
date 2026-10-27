@@ -20,8 +20,8 @@ struct QuestionsQuickAnswersTests {
         #expect(model.question?.text == "what news do you actually follow?")
         #expect(model.quickAnswers == ["tech", "markets", "football", "climate", "not really any"])
         #expect(model.question?.key == .readingWatching)
-        // the 9 questions of the flow carry no chips until the founder names them (QC-1)
-        #expect(Flows.FirstRunQuestion.core.allSatisfy(\.quickAnswers.isEmpty))
+        // the flow's questions carry no chips until the founder names them (QC-1)
+        #expect(Flows.FirstRunQuestion.core.allSatisfy { $0.quickAnswers.isEmpty })
     }
 
     @Test("tapping chips builds 'tech, markets' in the field in tap order; tapping again removes one")

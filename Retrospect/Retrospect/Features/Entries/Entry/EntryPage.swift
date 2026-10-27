@@ -4,7 +4,7 @@
 //  your words in the inky face (REntryWords), and one meta line under them, 8 apart; 16 under the
 //  bar, the screen margin each side. A tick follows "read"; "didn't send · tap to retry" is danger
 //  text with the retry glyph, and the line retries. The parts the backend can't serve yet are off in
-//  the cut (EntryCapabilities): the bar shows back only.
+//  the cut (EntryCapabilities): the bar shows back and "edit" (founder 27 Oct), the rest stays off.
 //
 import SwiftUI
 
@@ -124,7 +124,8 @@ struct EntryScreen: View {
     ) {
         _model = State(initialValue: EntryModel(id: id, data: data, capabilities: capabilities))
         // the drawn parts exist only when a capability is on (all off = the app's cut)
-        _drawn = State(initialValue: capabilities == .cut ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))
+        // the edit and the drawn parts live here; nil only when every capability is off
+        _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))
         self.back = back
     }
 
