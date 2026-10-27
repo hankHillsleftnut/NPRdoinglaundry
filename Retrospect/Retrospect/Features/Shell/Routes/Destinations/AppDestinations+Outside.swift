@@ -42,7 +42,8 @@ private struct ShareRouteSheet: View {
 
     var body: some View {
         if let model {
-            SharePage(model: model)
+            // the sheet host draws the grabber: one, not two
+            SharePage(model: model, drawsGrabber: false)
                 .onChange(of: model.state) { _, state in
                     if case .closed = state {
                         context.back()

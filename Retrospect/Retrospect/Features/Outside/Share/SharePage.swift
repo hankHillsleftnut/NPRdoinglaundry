@@ -24,6 +24,8 @@ extension RTextStyle {
 
 struct SharePage: View {
     @Bindable var model: ShareModel
+    /// Paper's own grabber; off when a sheet host already draws one (the app's sheet over the shell).
+    var drawsGrabber = true
 
     var body: some View {
         VStack(spacing: RDimension.space6) {
@@ -50,7 +52,9 @@ struct SharePage: View {
 
     private var column: some View {
         VStack(alignment: .leading, spacing: RDimension.space6) {
-            grabber
+            if drawsGrabber {
+                grabber
+            }
             header
             if let item = model.item {
                 ShareItemCard(item: item)
