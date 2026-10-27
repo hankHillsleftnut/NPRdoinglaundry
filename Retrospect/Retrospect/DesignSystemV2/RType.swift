@@ -74,6 +74,20 @@ struct RTextStyle {
         return uiFont.lineHeight
     }
 
+    /// The ink faces whose Paper leading is tighter than the font's own line box (Exposure's is
+    /// 1.2 × size, so --leading-tight 1.1): their lines are drawn at Paper's pitch (`RPaperPitch`).
+    /// At the style's own leading; the modifier asks with the leading it applies at the size.
+    var drawsAtPaperPitch: Bool {
+        drawsAtPaperPitch(leading: leading, scaledSize: size)
+    }
+
+    /// The same question with the leading actually applied at a size (accessibility sizes cap it
+    /// with `accessibilityLeading`, which can bring a looser ink style under the font's box).
+    func drawsAtPaperPitch(leading applied: CGFloat, scaledSize: CGFloat) -> Bool {
+        guard case .inky = family else { return false }
+        return applied * scaledSize < naturalLineHeight(scaledSize: scaledSize)
+    }
+
     private var isMono: Bool {
         if case .mono = family {
             return true
@@ -306,6 +320,8 @@ extension RTextStyle {
 
 private struct RTextModifier: ViewModifier {
     let style: RTextStyle
+    /// Only a bare `Text` draws at Paper's pitch: the line maths needs one text and nothing else.
+    var paperPitch = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.rPaperLineBoxes) private var paperLineBoxes
     @Environment(\.displayScale) private var displayScale
@@ -316,20 +332,35 @@ private struct RTextModifier: ViewModifier {
         // Paper's line box is leading × size; SwiftUI gives each line the font's own height. The
         // difference goes between lines and, as in CSS, half above and half below the text, so a
         // single line is as tall as Paper draws it too. Tighter leading than the font's own
-        // height can't shrink a SwiftUI line, so it stays at the font's height.
+        // height can't shrink a SwiftUI line with spacing, so the ink faces draw their lines at
+        // Paper's pitch instead (`RPaperPitch`); every other face keeps the font's own height.
         let leading = dynamicTypeSize.isAccessibilitySize ? min(style.leading, style.accessibilityLeading) : style.leading
         let natural = style.naturalLineHeight(scaledSize: size)
         let extra = max(0, leading * size - natural)
-        content
+        // an ink title that 214 draws at Paper's pitch is already in Paper's box: it never takes
+        // the Paper line-box trim too (that would trim it twice); everything else may
+        let atPitch = paperPitch && style.drawsAtPaperPitch(leading: leading, scaledSize: size)
+        let styled = content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
             .lineSpacing(extra)
             .padding(
                 .vertical,
-                paperLineBoxes
+                paperLineBoxes && !atPitch
                     ? RPaperLineBox.halfLeading(box: leading * size, natural: natural, scale: displayScale)
                     : extra / 2
             )
+        if atPitch {
+            let pitch = RPaperPitch(pitch: leading * size, naturalLineHeight: natural)
+            RPaperPitchLayout(pitch: pitch) {
+                styled.textRenderer(pitch)
+            }
+            // Paper's line box, as CSS sets it: half of the font's extra height trims above the
+            // first line and below the last (founder 26 Oct, "fit the lines to Paper")
+            .padding(.vertical, pitch.halfLeading)
+        } else {
+            styled
+        }
     }
 }
 
@@ -368,4 +399,10 @@ extension EnvironmentValues {
 extension View {
     /// Applies one of the approved text roles.
     func rText(_ style: RTextStyle) -> some View { modifier(RTextModifier(style: style)) }
+}
+
+extension Text {
+    /// Applies one of the approved text roles; on a bare `Text` an ink style also sets its lines
+    /// Paper's pitch apart (`RPaperPitch`). Swift picks this over the `View` one for a `Text`.
+    func rText(_ style: RTextStyle) -> some View { modifier(RTextModifier(style: style, paperPitch: true)) }
 }

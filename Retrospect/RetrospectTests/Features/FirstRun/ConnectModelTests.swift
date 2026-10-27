@@ -1,5 +1,6 @@
 import Foundation
 @testable import Retrospect
+import SwiftUI
 import Testing
 
 /// A connect the test lands by hand: `connect` waits until `land(_:)`. Wraps the sample, so the
@@ -353,6 +354,21 @@ struct ConnectModelTests {
         #expect(abs(RIconButton.backChevronGlyphScale - RSymbol.defaultGlyphScale * 11.3 / 14) < 0.005)
         #expect(RIconButton(symbol: "mic", label: "talk", role: .inField) {}.glyphScale == RSymbol.defaultGlyphScale)
         #expect(RButton.primaryHalo == false)
+    }
+
+    @Test("under Paper line boxes a one-line ink title is still 33 tall (214's pitch, not trimmed twice); SF text rounds to Paper's box")
+    func paperLineBoxesOnRenderedText() {
+        #expect(abs(Self.height(Text("i'd love to get to know you.").rText(.inkTitle)) - 33) <= 0.34)
+        #expect(abs(Self.height(Text("each one sharpens your episodes.").rText(.textMd)) - 19) <= 0.34)
+        #expect(abs(Self.height(Text("calendar").rText(.rowTitle)) - 23) <= 0.34)
+    }
+
+    /// The laid-out height of one line of text on the connect page's settings (Paper line boxes on,
+    /// 3x), the way a screen measures it.
+    private static func height(_ view: some View) -> CGFloat {
+        let hosting = UIHostingController(rootView: view.environment(\.rPaperLineBoxes, true).environment(\.displayScale, 3))
+        hosting.safeAreaRegions = []
+        return hosting.sizeThatFits(in: CGSize(width: 400, height: 2000)).height
     }
 
     @Test("Paper's line boxes: whole points, measured against the line SwiftUI draws on whole pixels")
