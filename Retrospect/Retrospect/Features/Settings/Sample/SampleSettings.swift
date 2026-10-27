@@ -30,11 +30,11 @@ final class SampleSettings: Flows.SettingsData {
     @ObservationIgnored private let settle: Duration
 
     init(
-        trust: Trust = Trust(),
+        trust: Trust? = nil,
         settle: Duration = .milliseconds(1500),
         sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
     ) {
-        self.trust = trust
+        self.trust = trust ?? Trust()
         self.settle = settle
         self.sleep = sleep
         brief = Settings.Brief(
