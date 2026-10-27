@@ -8,8 +8,9 @@
 //  The card's shadow is never clipped by the scroll (comment c-vkm9o5 → `.scrollClipDisabled()`).
 //  Not drawn (founder-review lean): "and n more" under the rows, and "nothing to show yet" when no
 //  source can be shown.
-//  Taps without a drawn destination (the rows' ›, "not right": SCREEN-MAP row 80, G6) are disabled
-//  with the reason "not available yet"; back and "hear it" are too until the player hosts the page.
+//  Controls Paper draws with nothing behind them yet (the rows' ›, "not right": SCREEN-MAP row 80,
+//  G6; back and "hear it" until the player hosts the page) are drawn as Paper draws them and inert,
+//  with the VoiceOver value "not available yet" (consistency rules, DECISIONS.md 27 Oct).
 //
 import SwiftUI
 
@@ -31,12 +32,8 @@ struct WhyThisIsHerePage: View {
             .mask { Rectangle().padding(.horizontal, -RDimension.layoutSheetInset) }
             .scrollIndicators(.hidden)
             .frame(maxHeight: .infinity)
-            RPill(
-                title: "not right",
-                symbol: "text.bubble",
-                size: .medium,
-                disabledReason: WhyThisIsHereModel.notAvailableYet
-            ) {}
+            // the correction flow isn't drawn yet (G6): drawn as Paper draws it, inert
+            WhyInertPill(title: "not right", symbol: "text.bubble", size: .medium)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, RDimension.space4)
                 .accessibilityIdentifier("why.notRight")
@@ -52,7 +49,8 @@ struct WhyThisIsHerePage: View {
             RClaim(kind: model.content.kind, text: model.content.claim, meta: model.content.meta)
             restsOn
             if let moment = model.content.moment {
-                VStack(alignment: .leading, spacing: RDimension.space2) {
+                // Paper 1FY1-0: 8 from the label to the card; RSectionLabel brings 4
+                VStack(alignment: .leading, spacing: RDimension.space1) {
                     RSectionLabel(title: model.content.momentLabel)
                     EpisodeMomentCard(moment: moment, hearIt: hearIt)
                 }
@@ -66,17 +64,25 @@ struct WhyThisIsHerePage: View {
         return { model.playMoment() }
     }
 
+    /// Paper's back (1FZI-0): a button when the player hosts the page, else drawn and inert.
+    @ViewBuilder private var back: some View {
+        if let back = model.back {
+            Button(action: back) { WhyBackFace() }
+                .rPress(small: true)
+                .accessibilityLabel("back to the player")
+        } else {
+            WhyBackFace()
+                .accessibilityElement()
+                .accessibilityLabel("back to the player")
+                .accessibilityValue(WhyThisIsHereModel.notAvailableYet)
+        }
+    }
+
     /// Paper 1FZA-0: back and the title 8 apart on the left, collapse on the right.
     private var header: some View {
         HStack(spacing: RDimension.space2) {
-            RIconButton(symbol: "chevron.left", label: "back to the player", role: .inField) {
-                model.back?()
-            }
-            .disabled(model.back == nil)
-            // RIconButton has no disabled look: dim it as RPill dims, so it never looks live
-            .opacity(model.back == nil ? RNumber.opacityDisabled : 1)
-            .accessibilityHint(model.back == nil ? WhyThisIsHereModel.notAvailableYet : "")
-            .accessibilityIdentifier("why.back")
+            back
+                .accessibilityIdentifier("why.back")
             Text(model.content.episodeTitle)
                 .rText(.playerHeaderTitle)
                 .foregroundStyle(RColor.textPrimary)
@@ -95,14 +101,16 @@ struct WhyThisIsHerePage: View {
     /// show the founder-review lean ("nothing to show yet"), the shipped page leaves it out; "and n
     /// more" under the rows is debug-only too (founder 27 Oct: state screens live in the sandbox).
     private var restsOn: some View {
-        VStack(alignment: .leading, spacing: RDimension.space2) {
+        // Paper 1FYC-0: 8 from the label to the panel; RSectionLabel brings 4
+        VStack(alignment: .leading, spacing: RDimension.space1) {
             if !model.content.evidence.isEmpty {
                 RSectionLabel(title: "what it rests on")
                 REvidenceGroup {
                     ForEach(model.content.evidence) { row in
                         REvidenceRow(leading: .kind(symbol: row.kind.symbol), meta: row.meta, words: row.words) {}
+                            // drawn with Paper's ›, inert until a source opens (row 80): no press, no dimming
                             .disabled(true)
-                            .accessibilityHint(WhyThisIsHereModel.notAvailableYet)
+                            .accessibilityValue(WhyThisIsHereModel.notAvailableYet)
                     }
                 }
             }

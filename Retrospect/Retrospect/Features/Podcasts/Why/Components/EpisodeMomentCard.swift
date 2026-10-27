@@ -36,17 +36,23 @@ struct EpisodeMomentCard: View {
                         .foregroundStyle(RColor.textLabel)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                RPill(
-                    title: "hear it",
-                    symbol: "play.fill",
-                    disabledReason: hearIt == nil ? WhyThisIsHereModel.notAvailableYet : nil
-                ) { hearIt?() }
-                    .accessibilityLabel("hear it, \(moment.at)")
+                hearItControl
                     .accessibilityIdentifier("why.hearIt")
             }
         }
         .padding(RDimension.space4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .rRaised(RDimension.radiusPanel)
+    }
+
+    /// "hear it": a pill once the player hosts the page, else Paper's pill drawn and inert.
+    @ViewBuilder private var hearItControl: some View {
+        if let hearIt {
+            RPill(title: "hear it", symbol: "play.fill", action: hearIt)
+                .accessibilityLabel("hear it, \(moment.at)")
+        } else {
+            WhyInertPill(title: "hear it", symbol: "play.fill")
+                .accessibilityLabel("hear it, \(moment.at)")
+        }
     }
 }

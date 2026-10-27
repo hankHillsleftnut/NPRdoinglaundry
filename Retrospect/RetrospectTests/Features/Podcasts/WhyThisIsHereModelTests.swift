@@ -14,7 +14,7 @@ struct WhyThisIsHereModelTests {
         #expect(content.evidence.map(\.meta) == ["14 oct · your words", "16 oct · your words", "17 oct · calendar"])
         #expect(content.momentLabel == "where retro asks it")
         #expect(content.moment?.at == "at 4:12 in this week's")
-        #expect(content.moment?.seconds == 4 * 60 + 12)
+        #expect(content.moment?.seconds == 252) // 4:12
     }
 
     @Test("stated, as 05 NBD-0 draws it: Retro says it")
