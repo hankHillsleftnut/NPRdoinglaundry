@@ -97,6 +97,17 @@ struct BriefSheetModelTests {
         #expect(sheet.next.isEmpty)
     }
 
+    @Test("the player moves on to another item: the card shows nothing rather than the wrong part")
+    func neverTheWrongPart() async {
+        let sheet = model(.briefPaperPaused)
+        #expect(sheet.isThisBrief)
+        await sheet.playback.load(SamplePlayback.tease)
+        #expect(!sheet.isThisBrief)
+        #expect(sheet.now == nil)
+        #expect(sheet.next.isEmpty)
+        #expect(sheet.nowLabel == .playingNow)
+    }
+
     @Test("collapse goes back once; a second tap does nothing")
     func collapseOnce() {
         var collapses = 0

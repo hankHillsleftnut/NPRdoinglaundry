@@ -63,9 +63,12 @@ struct BriefSheet: View {
                 }
                 .padding(.top, RDimension.space6)
                 .padding(.bottom, RDimension.space6)
+                // room inside the clip for the raised card's shadow at the sides
+                .padding(.horizontal, RDimension.space4)
             }
-            // the raised card's shadow reaches past the sheet's 28 inset, as Paper draws it
-            .scrollClipDisabled()
+            // the scroll reaches 16 past the sheet's inset, so the card stays on the inset with its shadow
+            // whole; it stays clipped, so nothing scrolls over the header, the pill or the scrubber
+            .padding(.horizontal, -RDimension.space4)
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
         }

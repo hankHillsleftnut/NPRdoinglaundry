@@ -94,8 +94,6 @@ final class SamplePlayback: Flows.Playback {
     @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
-    // one start per scenario, listed flat so scenarios are only ever added (V2 add-only lease)
-    // swiftlint:disable:next cyclomatic_complexity
     init(scenario: Flows.PlaybackScenario, clock: any Clock<Duration>) {
         self.scenario = scenario
         self.clock = clock
@@ -122,6 +120,20 @@ final class SamplePlayback: Flows.Playback {
         case .briefPlayed, .teaseEnded:
             position = item.durationSeconds ?? 0
             state = .ended
+        case .buffering:
+            state = .buffering
+        case .failed:
+            state = .failed(Flows.Failure(.network))
+        case .offline:
+            state = .offline
+        case .briefPaperPlaying, .briefPaperPaused, .briefPaperPlayed, .briefPaperQuiet:
+            startBriefPaper()
+        }
+    }
+
+    /// JR-2's starting points (V2.journal), apart from `init` so the existing starts stay as they were.
+    private func startBriefPaper() {
+        switch scenario {
         case .briefPaperPlaying, .briefPaperQuiet:
             // playing, as drawn, with no ticker (like `teaseStill`): pause and play to move on
             position = scenario == .briefPaperQuiet ? Self.briefPaperQuietAt : Self.briefPaperAt
@@ -130,14 +142,10 @@ final class SamplePlayback: Flows.Playback {
             position = Self.briefPaperAt
             state = .paused
         case .briefPaperPlayed:
-            position = item.durationSeconds ?? 0
+            position = duration ?? 0
             state = .ended
-        case .buffering:
-            state = .buffering
-        case .failed:
-            state = .failed(Flows.Failure(.network))
-        case .offline:
-            state = .offline
+        default:
+            break
         }
     }
 

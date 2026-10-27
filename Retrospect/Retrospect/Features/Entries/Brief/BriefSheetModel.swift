@@ -50,13 +50,17 @@ final class BriefSheetModel {
 
     let playback: any Flows.Playback
     let content: BriefSheetContent
+    /// The brief these words belong to (`Flows.PlaybackItem.id`): once the one player moves on to
+    /// something else, the card shows nothing rather than the wrong part.
+    let itemID: String?
     @ObservationIgnored private let onCollapse: () -> Void
     /// The collapse is handed over once; a second tap while the sheet leaves does nothing.
     private(set) var hasCollapsed = false
 
-    init(playback: any Flows.Playback, content: BriefSheetContent, onCollapse: @escaping () -> Void) {
+    init(playback: any Flows.Playback, content: BriefSheetContent, itemID: String? = nil, onCollapse: @escaping () -> Void) {
         self.playback = playback
         self.content = content
+        self.itemID = itemID ?? playback.item?.id
         self.onCollapse = onCollapse
     }
 
@@ -84,22 +88,29 @@ final class BriefSheetModel {
         return false
     }
 
-    var hasPlayed: Bool {
-        playback.state == .ended
+    /// The player is on this brief (never the wrong part, like the transcript's lit line).
+    var isThisBrief: Bool {
+        itemID != nil && playback.item?.id == itemID
     }
 
-    /// The part the card shows: the player's part, clamped to the parts the brief has; the last
-    /// part once the brief has played.
-    var currentIndex: Int {
-        guard !parts.isEmpty else { return 0 }
+    var hasPlayed: Bool {
+        isThisBrief && playback.state == .ended
+    }
+
+    /// The part the card shows, as a position in `parts`: the player's part (its id, found among the
+    /// item's parts), clamped to the parts the brief has; the last part once the brief has played;
+    /// nil when the player is on something else.
+    var currentIndex: Int? {
+        guard isThisBrief, !parts.isEmpty else { return nil }
         if hasPlayed {
             return parts.count - 1
         }
-        return min(max(playback.currentPart ?? 0, 0), parts.count - 1)
+        let position = playback.currentPart.flatMap { id in playback.item?.parts.firstIndex { $0.id == id } } ?? 0
+        return min(max(position, 0), parts.count - 1)
     }
 
     var now: BriefSheetContent.Part? {
-        parts.isEmpty ? nil : parts[currentIndex]
+        currentIndex.map { parts[$0] }
     }
 
     var nowLabel: NowLabel {
@@ -108,13 +119,13 @@ final class BriefSheetModel {
 
     /// "1 of 3".
     var place: String {
-        "\(currentIndex + 1) of \(parts.count)"
+        "\((currentIndex ?? 0) + 1) of \(parts.count)"
     }
 
     /// The parts after the one playing, with their numbers ("2 · four meetings before noon");
     /// nothing once the brief has played (GNY-0).
     var next: [NextPart] {
-        guard !hasPlayed, currentIndex + 1 < parts.count else { return [] }
+        guard !hasPlayed, let currentIndex, currentIndex + 1 < parts.count else { return [] }
         return (currentIndex + 1 ..< parts.count).map { NextPart(number: $0 + 1, part: parts[$0]) }
     }
 

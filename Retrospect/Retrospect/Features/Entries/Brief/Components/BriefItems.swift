@@ -17,15 +17,6 @@ extension RTextStyle {
         leading: 1.3,
         relativeTo: .headline
     )
-    /// "1 of 3" and the next rows' numbers (Geist Mono --text-sm, 16 line).
-    static let briefPlace = RTextStyle(
-        family: .mono,
-        size: RDimension.fontSizeSm,
-        weight: .regular,
-        tracking: RNumber.fontTrackingNone,
-        leading: 1.3,
-        relativeTo: .caption
-    )
     /// The quiet day's line (GSN-0: the ink card face at --text-2xl, tracking card, leading tight).
     static let inkBriefQuiet = RTextStyle(
         family: .inky(axis: -10),
@@ -52,7 +43,7 @@ struct BriefItemNow: View {
                     .foregroundStyle(label == .playingNow ? RColor.accentText : RColor.textLabel)
                 Spacer(minLength: RDimension.space2)
                 Text(place)
-                    .rText(.briefPlace)
+                    .rText(.voiceLength)
                     .foregroundStyle(RColor.textLabel)
             }
             Text(part.title)
@@ -89,7 +80,7 @@ struct BriefItemNext: View {
     var body: some View {
         HStack(spacing: RDimension.space3) {
             Text("\(number)")
-                .rText(.briefPlace)
+                .rText(.voiceLength)
                 .foregroundStyle(RColor.textTertiary)
                 .frame(width: RDimension.space4, alignment: .leading)
             Text(words)
