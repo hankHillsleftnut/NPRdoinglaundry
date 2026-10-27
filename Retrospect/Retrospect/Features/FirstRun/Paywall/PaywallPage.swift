@@ -12,16 +12,30 @@ import SwiftUI
 
 struct PaywallPage: View {
     @State private var model: PaywallModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(model: PaywallModel) {
         _model = State(initialValue: model)
     }
 
     var body: some View {
-        VStack(spacing: RDimension.space0) {
-            top
-            benefits
-            decision
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                // accessibility text sizes: one scroll for the whole page, so nothing is cut or squeezed
+                ScrollView {
+                    VStack(spacing: RDimension.space0) {
+                        top
+                        benefitList
+                        decision
+                    }
+                }
+            } else {
+                VStack(spacing: RDimension.space0) {
+                    top
+                    benefits
+                    decision
+                }
+            }
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .task { await model.load() }
@@ -44,6 +58,7 @@ struct PaywallPage: View {
             Text(Self.headline)
                 .rText(.inkTitle)
                 .foregroundStyle(RColor.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
                 .rBalancedLines()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
@@ -54,15 +69,19 @@ struct PaywallPage: View {
 
     // MARK: middle (22MR-0 → 22Q9-0)
 
+    private var benefitList: some View {
+        VStack(spacing: RDimension.space1) {
+            ForEach(Benefit.paper) { BenefitRow(benefit: $0) }
+        }
+        .padding(.horizontal, RDimension.spaceScreenMargin)
+        .padding(.top, RDimension.space4)
+    }
+
     private var benefits: some View {
         ScrollView {
-            VStack(spacing: RDimension.space1) {
-                ForEach(Benefit.paper) { BenefitRow(benefit: $0) }
-            }
-            .padding(.horizontal, RDimension.spaceScreenMargin)
-            .padding(.top, RDimension.space4)
-            // room for the fade, so the last row can scroll clear of it
-            .padding(.bottom, RDimension.space16)
+            benefitList
+                // room for the fade, so the last row can scroll clear of it
+                .padding(.bottom, RDimension.space16)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
@@ -74,7 +93,12 @@ struct PaywallPage: View {
     private var decision: some View {
         VStack(spacing: RDimension.space3) {
             if let offer = model.offer {
-                HStack(spacing: RDimension.space3) {
+                // side by side as Paper draws them; stacked at accessibility text sizes, so no price is cut
+                // (the badge keeps its room above the lit plan either way)
+                let pair = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: RDimension.space8))
+                    : AnyLayout(HStackLayout(spacing: RDimension.space3))
+                pair {
                     PlanButton(plan: offer.monthly, lit: false) { choose(.monthly) }
                     PlanButton(plan: offer.yearly, lit: true, saving: offer.saving) { choose(.yearly) }
                         .rNudge(trigger: model.nudges)
@@ -98,11 +122,16 @@ struct PaywallPage: View {
 
     /// restore · privacy · terms (22MB-0, 22M9-0, 22M7-0): drawn, inert (DECISIONS 7; PW-Q5 A).
     private var links: some View {
-        HStack(spacing: RDimension.space2) {
+        // one row as drawn; stacked at accessibility text sizes so no word is cut
+        let row = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: RDimension.space0))
+            : AnyLayout(HStackLayout(spacing: RDimension.space2))
+        return row {
             ForEach(Self.links, id: \.self) { word in
                 Text(word)
                     .rText(.metaLine)
                     .foregroundStyle(RColor.textLabel)
+                    .fixedSize()
                     .padding(.horizontal, RDimension.space2)
                     .frame(minHeight: RDimension.sizeTouchTarget)
                     .accessibilityLabel(word)

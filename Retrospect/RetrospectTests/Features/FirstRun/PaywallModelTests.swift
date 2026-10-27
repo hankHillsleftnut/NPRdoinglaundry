@@ -160,3 +160,19 @@ struct PaywallModelTests {
         #expect(PaywallScenario.allCases.map(\.rawValue) == ["paywall", "paywall-still", "paywall-nudge"])
     }
 }
+
+struct NudgeRulesTests {
+    @Test("Reduce Motion: the nudge doesn't move (the haptic alone)")
+    func reduceMotion() {
+        #expect(NudgeRules.moves(reduceMotion: false))
+        #expect(!NudgeRules.moves(reduceMotion: true))
+    }
+
+    @Test("haptics: at most one per 80 ms (motion.duration.instant)")
+    func hapticGate() {
+        var rules = NudgeRules()
+        let start = ContinuousClock.now
+        let fired = [0, 40, 79, 80, 100, 400].map { rules.allowHaptic(at: start.advanced(by: .milliseconds($0))) }
+        #expect(fired == [true, false, false, true, false, true])
+    }
+}

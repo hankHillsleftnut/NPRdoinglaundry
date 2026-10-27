@@ -40,7 +40,7 @@ struct PlanButton: View {
             }
             .contentShape(RShape.pill)
         }
-        .rPress(haptic: lit ? RHaptic.press : nil)
+        .rPress(haptic: RHaptic.press)
         .accessibilityLabel(Self.spoken(plan: plan, saving: lit ? saving : nil))
     }
 
@@ -79,38 +79,76 @@ private struct SaveBadge: View {
             .frame(minWidth: RDimension.sizeSaveBadgeWidth, minHeight: RDimension.sizeSaveBadgeHeight)
             .background(RColor.backgroundRaised, in: RShape.pill)
             .rBoxShadows(RElevation.boxShadowPaywallSaveBadge, radius: RDimension.radiusControl)
+            // the badge is a tag on the button, read with it: it grows with text only so far, so at
+            // accessibility sizes it never covers the price
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .accessibilityHidden(true)
     }
 }
 
 // MARK: - The nudge (founder, 26 Oct night; scopes/PW.paywall.md §6a)
 
+/// The nudge's rules, apart from the view so they can be tested: whether it moves (not under Reduce
+/// Motion: the haptic alone), and the haptic gate (motion-system §5: at most one haptic per 80 ms,
+/// motion.duration.instant), so quick taps never stack two haptics.
+struct NudgeRules {
+    /// The nudge scales only when Reduce Motion is off.
+    static func moves(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
+
+    /// When the last haptic fired.
+    private(set) var lastHaptic: ContinuousClock.Instant?
+
+    /// True when a haptic may fire at `now`; records it when it does.
+    mutating func allowHaptic(at now: ContinuousClock.Instant) -> Bool {
+        if let lastHaptic, lastHaptic.duration(to: now) < .seconds(RNumber.motionDurationInstant) {
+            return false
+        }
+        lastHaptic = now
+        return true
+    }
+}
+
 /// A barely visible nudge: 1.0 → motion.scale.nudge (rising on the standard curve over
 /// motion.duration.fast) → 1.0 (settling on the snappy spring), with one selection haptic on the frame
 /// the scale peaks. Each change of `trigger` nudges once; a tap during a nudge restarts it from where it
-/// is. Reduce Motion: the haptic alone, nothing moves.
+/// is, and only the latest nudge's peak may fire the haptic (an interrupted one never does). Reduce
+/// Motion: the haptic alone, nothing moves. Haptics pass the 80 ms gate.
 private struct RNudge<Trigger: Equatable>: ViewModifier {
     let trigger: Trigger
     @State private var scale: CGFloat = 1
     @State private var peaks = 0
+    @State private var latest = 0
+    @State private var rules = NudgeRules()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
             .scaleEffect(scale)
             .onChange(of: trigger) { _, _ in
-                guard !reduceMotion else {
-                    peaks += 1
+                latest += 1
+                let nudge = latest
+                guard NudgeRules.moves(reduceMotion: reduceMotion) else {
+                    peak()
                     return
                 }
                 withAnimation(RMotion.standard(RNumber.motionDurationFast)) {
                     scale = RNumber.motionScaleNudge
                 } completion: {
-                    peaks += 1
+                    // an interrupted nudge's completion stays silent: only the latest peaks
+                    guard nudge == latest else { return }
+                    peak()
                     withAnimation(RMotion.snappy) { scale = 1 }
                 }
             }
             .sensoryFeedback(RHaptic.select, trigger: peaks)
+    }
+
+    private func peak() {
+        if rules.allowHaptic(at: .now) {
+            peaks += 1
+        }
     }
 }
 
