@@ -74,7 +74,7 @@ struct TookRow: View {
                     glyphScale: 0.7
                 ) // literal-ok: Paper's 14 tick in the 16 frame
                 Text("noted")
-                    .rText(.tookNoted)
+                    .rText(.entryTookNoted)
                     .foregroundStyle(RColor.textLabel)
             }
             .accessibilityElement(children: .ignore)
@@ -116,7 +116,7 @@ struct DestructiveRow: View {
 
 extension RTextStyle {
     /// "noted" (N59-0: Geist md regular, snug).
-    static let tookNoted = RTextStyle(
+    static let entryTookNoted = RTextStyle(
         family: .label,
         size: RDimension.fontSizeMd,
         weight: .regular,
