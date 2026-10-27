@@ -11,9 +11,12 @@ import SwiftUI
 /// Icon sizes from size.icon.*.
 enum RIconSize {
     case small, regular, large
+    /// size.icon.inWell (18): a glyph inside a small wash circle (the player header's buttons).
+    case inWell
 
     var points: CGFloat {
         switch self {
+        case .inWell: RDimension.sizeIconInWell
         case .small: RDimension.sizeIconSmall
         case .regular: RDimension.sizeIconDefault
         case .large: RDimension.sizeIconLarge

@@ -53,6 +53,8 @@ struct RVoiceComposer: View {
     /// What VoiceOver calls the corner while Retro speaks. Nobody is listening then, so never
     /// "stop listening"; a host whose corner does something else names it (ON-5: "move on").
     var speakingCornerLabel = RVoiceComposer.typeInstead
+    /// The surface: today's (the default) or Paper's box-shadows exactly (RVoiceComposerPaper.swift).
+    var look = Look.current
 
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
@@ -109,7 +111,13 @@ struct RVoiceComposer: View {
         .padding(.leading, RDimension.space5)
         .padding(.trailing, RDimension.space3)
         .frame(minHeight: Self.growth.restHeight)
-        .background { surface }
+        .background {
+            if look == .paper {
+                RComposerPaperSurface(isLit: isLit)
+            } else {
+                surface
+            }
+        }
         .contentShape(RShape.rect(RDimension.radiusComposer))
         .onTapGesture {
             if mode == .speaking {

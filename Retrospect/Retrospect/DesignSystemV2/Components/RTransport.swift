@@ -3,8 +3,8 @@
 //  C24: the player's transport (Paper JR-2 row `1FMT-0`: tray `1FMV-0`, skips `1FN1-0` / `1FMW-0`,
 //  raised play well `1FMY-0` with `1FMZ-0`, speed `1FMU-0`). A recessed 64 tray holds skip back 15,
 //  the play/pause well and skip forward 30 (15 under a minute); the speed figure sits to its right.
-//  The "..." Paper draws to the left has no destination yet, so it is not built: its 44 slot stays
-//  empty so the tray stays centred as drawn.
+//  The "..." Paper draws to the left opens a menu when the page gives one (`more`, the player
+//  sheet, PS.sheet); without one its 44 slot stays empty so the tray stays centred as drawn.
 //
 //  The glyph follows the player's state, never the button: pause shows only while the player says
 //  `.playing`. Buffering turns a ring around the glyph; the end offers "play again" with forward
@@ -117,6 +117,9 @@ struct RTransport: View {
     // MARK: View
 
     let playback: any Flows.Playback
+    /// The "…" menu's rows (Paper 26OB-0; build note: chapters ›, download). Nil leaves the slot
+    /// empty, as before; the menu opens through the page's `rMenuHost()`.
+    var more: [RMenuRow]?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
@@ -139,10 +142,14 @@ struct RTransport: View {
                     .rBlurReplace()
             }
             HStack(spacing: RDimension.space0) {
-                // Paper's "..." slot: no destination drawn yet, so nothing to tap; the tray stays centred
-                Color.clear
-                    .frame(width: RDimension.sizeTouchTarget, height: RDimension.sizeTouchTarget)
-                    .accessibilityHidden(true)
+                if let more {
+                    MoreButton(rows: more)
+                } else {
+                    // Paper's "..." slot with no menu given: nothing to tap; the tray stays centred
+                    Color.clear
+                        .frame(width: RDimension.sizeTouchTarget, height: RDimension.sizeTouchTarget)
+                        .accessibilityHidden(true)
+                }
                 Spacer(minLength: RDimension.space0)
                 tray(look)
                 Spacer(minLength: RDimension.space0)
@@ -304,6 +311,33 @@ extension RTextStyle {
         leading: 1.2,
         relativeTo: .subheadline
     )
+}
+
+/// The "…" (Paper 26OB-0): three 4 dots in `icon.muted`, 4 apart, in a 44 frame; a tap opens the
+/// menu, which grows out of it (RMenu).
+private struct MoreButton: View {
+    let rows: [RMenuRow]
+    @State private var open = false
+
+    var body: some View {
+        Button {
+            open = true
+        } label: {
+            HStack(spacing: RDimension.space1) {
+                ForEach(0 ..< 3, id: \.self) { _ in
+                    Circle()
+                        .fill(RColor.iconMuted)
+                        .frame(width: RDimension.sizePlayerMoreDot, height: RDimension.sizePlayerMoreDot)
+                }
+            }
+            .frame(width: RDimension.sizeTouchTarget, height: RDimension.sizeTouchTarget)
+            .contentShape(Rectangle())
+        }
+        .rPress(small: true)
+        .rMenuSource(isPresented: $open, rows: rows)
+        .accessibilityLabel("more")
+        .accessibilityIdentifier("transport.more")
+    }
 }
 
 /// A skip: the arrow turns toward its direction while pressed and springs back (no turn with

@@ -122,7 +122,7 @@ struct GettingReadyPage: View {
                 .rText(.inkTitle)
                 .foregroundStyle(RColor.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-                .modifier(BalancedLines())
+                .rBalancedLines()
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("gettingReady.question")
             if !model.words.isEmpty {

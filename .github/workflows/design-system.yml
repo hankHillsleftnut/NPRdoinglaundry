@@ -22,6 +22,8 @@ jobs:
           node-version: 22
       - name: Tokens validate
         run: node design-system/tokens/validate.mjs
+      - name: Existing tokens frozen; Paper shadow tokens pinned to Paper
+        run: node --test design-system/tokens/tokens.test.mjs
       - name: Generated Swift is up to date
         run: |
           node design-system/tokens/to-swift.mjs
