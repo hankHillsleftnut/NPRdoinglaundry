@@ -19,6 +19,9 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case youreIn
     /// ON-3–9: the questions (#190).
     case questions
+    /// ON-10: getting ready (GR.ready). Reached from connect (ON-6) once connect is a step; until
+    /// then `-FlowStart gettingReady` opens it.
+    case gettingReady
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -32,6 +35,9 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case begin
     /// ON-3–9: every question answered.
     case questionsDone
+    /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
+    /// with the tease; until then the flow ends at getting ready.
+    case episodeReady
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.
