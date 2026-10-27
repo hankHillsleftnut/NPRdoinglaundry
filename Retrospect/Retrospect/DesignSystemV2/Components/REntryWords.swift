@@ -38,13 +38,40 @@ extension RTextStyle {
     )
 }
 
+/// One entry's edit, owned by the page (or its model): the draft is filled from the kept words ONCE,
+/// when editing starts, and never again until the next start. The field never writes it on appearing,
+/// so a field that scrolls out of a lazy stack and back, or is rebuilt, keeps what you typed.
+struct REntryEdit: Equatable {
+    private(set) var editing = false
+    /// The words being edited; the kept words stay untouched until `save`.
+    var draft = ""
+
+    /// Starts editing from the kept words. A second call while editing keeps the draft.
+    mutating func begin(from text: String) {
+        guard !editing else { return }
+        draft = text
+        editing = true
+    }
+
+    /// Stops editing; the kept words were never touched.
+    mutating func cancel() {
+        editing = false
+    }
+
+    /// Stops editing and hands back the words to keep.
+    mutating func save() -> String {
+        editing = false
+        return draft
+    }
+}
+
 /// Your words, read or edited in place. The kept words are never touched while editing: the field edits
-/// `draft`, which it fills from `text` each time editing starts. So "cancel" is just `editing = false`,
-/// and the page's "save" keeps `draft` (the top bar's "cancel · save" belong to the page).
+/// `draft`, which the page fills once when editing starts (`REntryEdit.begin(from:)`). So "cancel" is
+/// just leaving editing, and the page's "save" keeps `draft` (the top bar's "cancel · save" belong to the page).
 struct REntryWords: View {
     /// The kept words, shown at rest.
     let text: String
-    /// The words being edited; filled from `text` when editing starts.
+    /// The words being edited. The page fills it when editing starts; this view never overwrites it.
     @Binding var draft: String
     var editing = false
     /// VoiceOver's name for the field while editing.
@@ -68,9 +95,9 @@ struct REntryWords: View {
                 // the field grows outward, so the words stay where they were at rest
                 .padding(.vertical, -RDimension.space3)
                 .padding(.horizontal, -RDimension.space4)
-                // .task, not .onAppear: the field must be in the responder chain before it can take focus
+                // .task, not .onAppear: the field must be in the responder chain before it can take focus.
+                // Focus only: the draft is the page's (seeding it here would wipe typed words on reappearing).
                 .task {
-                    draft = text
                     focused = focusOnEdit
                 }
                 .accessibilityLabel(fieldLabel)
@@ -110,7 +137,15 @@ struct RConversationLink: View {
             HStack(spacing: RDimension.space1) {
                 Text(title)
                     .rText(.inlineLink)
-                RSymbol(name: "chevron.right", size: .small, tint: RColor.textLink, weight: .semibold)
+                // Paper E31-0: a 14 × 14 chevron (size.icon.chevron), drawn in RSymbol's 16 and laid out at 14
+                RSymbol(
+                    name: "chevron.right",
+                    size: .small,
+                    tint: RColor.textLink,
+                    weight: .semibold,
+                    glyphScale: RSymbol.defaultGlyphScale * Self.chevronSize / RDimension.sizeIconSmall
+                )
+                .frame(width: Self.chevronSize, height: Self.chevronSize)
             }
             .foregroundStyle(RColor.textLink)
             .frame(minWidth: RDimension.sizeTouchTarget, minHeight: RDimension.sizeTouchTarget)
@@ -119,6 +154,9 @@ struct RConversationLink: View {
         .buttonStyle(RLinkPressStyle())
         .accessibilityAddTraits(.isLink)
     }
+
+    /// The chevron's box (E31-0: 14).
+    static let chevronSize = RDimension.sizeIconChevron
 }
 
 /// A link dims to opacity.pressed while held, in 80 and out over 240.
@@ -137,9 +175,8 @@ private struct RLinkPressStyle: ButtonStyle {
 /// Lab page "entrywords": Paper's words at rest and editing (E2U-0, G8U-0), a live edit toggle, the link.
 struct REntryWordsGallery: View {
     @State private var words = "i think it's the 9am standup. i dread it, every monday"
-    @State private var draft = ""
+    @State private var edit = REntryEdit()
     @State private var staticDraft = "i think it's the 9am standup. i dread it, every monday"
-    @State private var editing = false
     @State private var followed = 0
 
     var body: some View {
@@ -150,16 +187,17 @@ struct REntryWordsGallery: View {
                 Text("entry words · editing").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
                 REntryWords(text: words, draft: $staticDraft, editing: true, focusOnEdit: false)
                 Text("live").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
-                REntryWords(text: words, draft: $draft, editing: editing)
+                REntryWords(text: words, draft: $edit.draft, editing: edit.editing)
                 HStack(spacing: RDimension.space3) {
-                    RPill(title: editing ? "save" : "edit", style: .raised) {
-                        if editing {
-                            words = draft
+                    RPill(title: edit.editing ? "save" : "edit", style: .raised) {
+                        if edit.editing {
+                            words = edit.save()
+                        } else {
+                            edit.begin(from: words)
                         }
-                        editing.toggle()
                     }
-                    if editing {
-                        RPill(title: "cancel", style: .neutral) { editing = false }
+                    if edit.editing {
+                        RPill(title: "cancel", style: .neutral) { edit.cancel() }
                     }
                 }
                 Text("link · followed \(followed)×").rText(.labelMedium).foregroundStyle(RColor.textSecondary)
