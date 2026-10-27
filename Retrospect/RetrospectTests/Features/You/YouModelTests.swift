@@ -48,6 +48,27 @@ struct YouModelTests {
         #expect(model.answer == SampleYou.nothingFound)
     }
 
+    @Test("the same question asked twice: only the latest answer lands, whichever returns first", arguments: [false, true])
+    func latestSubmissionWins(newerReturnsFirst: Bool) async {
+        let data = SteppedYou()
+        let model = YouModel(data: data)
+        model.query = SampleYou.sleepQuestion
+        let first = Task { await model.ask() }
+        await data.waitForPending(1)
+        let second = Task { await model.ask() }
+        await data.waitForPending(2)
+        if newerReturnsFirst {
+            data.reply(at: 1, SampleYou.sleepAnswer)
+            data.reply(at: 0, SampleYou.nothingFound)
+        } else {
+            data.reply(at: 0, SampleYou.nothingFound)
+            data.reply(at: 1, SampleYou.sleepAnswer)
+        }
+        await first.value
+        await second.value
+        #expect(model.phase == .answered(SampleYou.sleepAnswer))
+    }
+
     @Test("an empty field asks nothing")
     func empty() async {
         let model = await asked("   ")
