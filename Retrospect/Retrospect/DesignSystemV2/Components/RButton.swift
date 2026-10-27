@@ -18,6 +18,10 @@ struct RButton: View {
         case error(String)
     }
 
+    /// The lit primary button draws its ring and cast but no outer glow (founder, 26 Oct, from ON-6
+    /// `2194-0`: "no halo on the lit continue"). Every screen's primary button follows.
+    static let primaryHalo = false
+
     let title: String
     var variant: Variant = .primary
     var status: Status = .rest
@@ -126,7 +130,7 @@ private struct PrimaryBody: ViewModifier {
 
     func body(content: Content) -> some View {
         if enabled {
-            content.rLit(pressed: pressed)
+            content.rLit(pressed: pressed, halo: RButton.primaryHalo)
         } else {
             content.background(RColor.surfaceControl, in: RShape.pill)
         }

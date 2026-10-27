@@ -5,8 +5,9 @@
 //  - The card: background.raised on the raised depth stack, radius.card, padding 20, 8 between lines:
 //    "what i found" (Geist 12 medium, text.label), the answer in the inky face at text-xl, then the guess
 //    or the closest thing in SF 17, text.secondary. Superscript numbers cite the sources, as Paper draws
-//    them (unicode, not mono chips: YO-D4); each is a link that scrolls to its row and shows it pressed
-//    for a beat (YO-D21). VoiceOver reads the answer whole and offers the citations in the links rotor.
+//    them (unicode, not mono chips: YO-D4). They are words, not links: a superscript is 3 to 7pt wide, far
+//    under a 44pt target, so the numbered source rows below (56 high) are the one way in (QA batch 5;
+//    YO-D21). VoiceOver reads the card as one sentence with each citation as "source n".
 //  - Sources: "sources" over one grouped panel of REvidenceRow `.number` rows. A row opens its source's
 //    page only when one is drawn (the journal entry, YO-3); the others are drawn the same but inert (YO-D7).
 //  - "only what's certain": a wash panel (radius.panel, min 56, padding 8 / 16) with a switch; on, the
@@ -18,25 +19,20 @@ struct AnswerCard: View {
     let answer: Flows.Answer
     /// The second line as the page shows it now (nil when hidden by "only what's certain").
     let secondLine: [Flows.Cited]?
-    let cite: (Int) -> Void
-
-    static let citeScheme = "retro-cite"
 
     var body: some View {
         VStack(alignment: .leading, spacing: RDimension.space2) {
             Text("what i found")
                 .rText(.labelMedium)
                 .foregroundStyle(RColor.textLabel)
-            Text(Self.attributed(answer.headline))
+            Text(Self.written(answer.headline))
                 .rText(.inkEntry)
                 .foregroundStyle(RColor.textPrimary)
-                .tint(RColor.textPrimary)
                 .rBalancedLines()
             if let secondLine {
-                Text(Self.attributed(secondLine))
+                Text(Self.written(secondLine))
                     .rText(.body)
                     .foregroundStyle(RColor.textSecondary)
-                    .tint(RColor.textSecondary)
                     .rBalancedLines()
                     .transition(.opacity)
             }
@@ -44,14 +40,8 @@ struct AnswerCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(RDimension.space5)
         .rRaised(RDimension.radiusCard)
-        .environment(\.openURL, OpenURLAction { url in
-            guard url.scheme == Self.citeScheme, let number = Int(url.host() ?? "") else { return .systemAction }
-            cite(number)
-            return .handled
-        })
-        .accessibilityElement(children: .combine)
-        // the citations read as "source 1" (a superscript "¹" would read as a bare digit); the card's links
-        // stay in the rotor through the combined children
+        // one element: the citations read as "source 1" (a superscript "¹" would read as a bare digit)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Self.spoken(answer.headline, secondLine))
     }
 
@@ -63,18 +53,9 @@ struct AnswerCard: View {
         return (["what i found.", read(headline)] + (secondLine.map { [read($0)] } ?? [])).joined(separator: " ")
     }
 
-    /// The words with each cited source as a superscript number that links to its row.
-    static func attributed(_ runs: [Flows.Cited]) -> AttributedString {
-        var text = AttributedString()
-        for run in runs {
-            text += AttributedString(run.text)
-            if let source = run.source {
-                var mark = AttributedString(superscript(source))
-                mark.link = URL(string: "\(citeScheme)://\(source)")
-                text += mark
-            }
-        }
-        return text
+    /// The words with each cited source as a superscript number, as Paper writes them.
+    static func written(_ runs: [Flows.Cited]) -> String {
+        runs.map { run in run.text + (run.source.map(superscript) ?? "") }.joined()
     }
 
     /// 1 → "¹" (Paper draws the unicode superscripts).
@@ -87,14 +68,7 @@ struct AnswerCard: View {
 /// "sources" and the numbered rows (1G97-0): the label 8 above one grouped panel.
 struct SourceList: View {
     let sources: [Flows.SourceResult]
-    @Binding var highlighted: Int?
     let open: (String) -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    static func rowID(_ number: Int) -> String {
-        "source-\(number)"
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: RDimension.space1) {
@@ -108,25 +82,14 @@ struct SourceList: View {
                         }
                     }
                     .youInert(source.sourceID == nil)
-                    .background(highlighted == source.id ? RColor.surfaceSubtle : .clear)
-                    .id(Self.rowID(source.id))
                 }
-            }
-        }
-        .task(id: highlighted) {
-            // a cited row shows pressed for a beat, then fades back like any pressed row
-            guard highlighted != nil else { return }
-            try? await Task.sleep(for: .seconds(RNumber.motionDurationReveal))
-            withAnimation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationPressOut)) {
-                highlighted = nil
             }
         }
     }
 }
 
 /// "only what's certain · hides the 1 guess" with its switch (1G91-0). A tap anywhere on the wash row
-/// toggles it (as the switch does); VoiceOver
-/// reads it once, as the switch, with the subline as its hint.
+/// toggles it (as the switch does); VoiceOver reads it once, as the switch, with the subline as its hint.
 struct OnlyCertainRow: View {
     @Binding var isOn: Bool
 

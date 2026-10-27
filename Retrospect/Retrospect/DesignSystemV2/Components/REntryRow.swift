@@ -7,6 +7,8 @@
 //  search, the matched words are accent.text, medium (Paper DRA-0; screen rule 14, blue's fourth
 //  job). Not sent: the meta line becomes "not sent · tap to retry" in status.dangerText, and a tap
 //  retries. Waiting (offline): "waiting to send", grey, never red.
+//  Here (V2.journal, Paper c:entry-row/drawer/here 1FQN-0): the entry the journal is showing sits
+//  on a card, background.canvas with a 0.5 outer stroke and the contact shadow (0 1 1.5).
 //
 import SwiftUI
 
@@ -27,6 +29,8 @@ struct REntryRow: View {
     /// Search matches in `words`, as UTF-16 offsets and lengths (contract 02 §5).
     var matches: [Range<Int>] = []
     var status: Status = .rest
+    /// The entry the journal is showing right now: drawn on a card (Paper 1FQN-0).
+    var here = false
     /// Opens the entry in the thread, or retries when it didn't send.
     let action: () -> Void
 
@@ -45,13 +49,27 @@ struct REntryRow: View {
             }
             .padding(RDimension.space3)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                if here {
+                    hereCard
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(RDrawerRowStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
+        .accessibilityValue(here ? "showing in the journal" : "")
         .accessibilityHint(status == .notSent ? "double tap to retry" : "")
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// Paper 1FQN-0: canvas, the 0.5 outer stroke, the contact shadow 0 1 1.5, radius.default.
+    private var hereCard: some View {
+        let shape = RShape.rect(RDimension.radiusDefault)
+        return shape.fill(RColor.backgroundCanvas)
+            .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
+            .shadow(color: RColor.depthShadowContact, radius: 0.75, y: 1)
     }
 
     @ViewBuilder private var metaLine: some View {
@@ -157,6 +175,8 @@ struct REntryRowGallery: View {
             VStack(alignment: .leading, spacing: RDimension.space0) {
                 caption("rest")
                 REntryRow(words: "slept badly, long day of meetings", meta: "2 messages · 22:40") {}
+                caption("here (the entry the journal shows)")
+                REntryRow(words: "i think it's the 9am standup. i dread it.", meta: "written · 9:12", here: true) {}
                 caption("search · standup")
                 REntryRow(words: "the 9am standup again", meta: "today · 9:12", matches: [8 ..< 15]) {}
                 REntryRow(words: "standup ran long again", meta: "tue 14 oct · 10:05", matches: [0 ..< 7]) {}

@@ -28,6 +28,8 @@ struct RSourceRow: View {
     let symbol: String
     var state: State = .notConnected
     var density: Density = .settings
+    /// The page's side margin: 24, or 20 on the smallest phones (craft 8.4).
+    var margin: CGFloat = RDimension.spaceScreenMargin
     var connect: () -> Void = {}
     /// Opens the source's own page; nil where the row only connects (onboarding).
     var open: (() -> Void)?
@@ -59,7 +61,7 @@ struct RSourceRow: View {
             }
         }
         .padding(.vertical, density == .settings ? RDimension.space4 : RDimension.space3)
-        .padding(.horizontal, RDimension.spaceScreenMargin)
+        .padding(.horizontal, margin)
         .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
         // the row's own target sits behind the content, so the connect pill keeps its own 44
         .background {
@@ -81,7 +83,7 @@ struct RSourceRow: View {
     @ViewBuilder private var trailing: some View {
         switch state {
         case .notConnected:
-            RPill(title: "connect", symbol: "plus", style: .raised, action: connect)
+            RSourceRowConnectPill(source: title, action: connect)
                 .transition(.opacity)
         case .connected:
             RStatusDot(status: .connected).allowsHitTesting(false)

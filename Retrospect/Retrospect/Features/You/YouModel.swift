@@ -22,8 +22,6 @@ final class YouModel {
     var query = ""
     /// "only what's certain": hides the guess line and the sources that only back it.
     var onlyCertain = false
-    /// The source a citation was tapped for, shown pressed for a beat.
-    var highlighted: Int?
     /// The node in the sheet (YO-4); kept while the sheet closes so its content doesn't vanish mid-motion.
     private(set) var node: Flows.Node?
     /// The sheet is up.
@@ -62,7 +60,6 @@ final class YouModel {
         let question = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty else { return }
         onlyCertain = false
-        highlighted = nil
         phase = .asking(previous: answer)
         let answer = await data.ask(question)
         // a newer question or a cleared field wins: drop an answer for words no longer in the field
@@ -74,15 +71,17 @@ final class YouModel {
     func clear() {
         query = ""
         onlyCertain = false
-        highlighted = nil
         phase = .rest
     }
 
+    /// The answer on screen: the latest, or the one before while a new question is out (only clearing
+    /// brings the map back).
     var answer: Flows.Answer? {
-        if case let .answered(answer) = phase {
-            return answer
+        switch phase {
+        case .rest: nil
+        case let .asking(previous): previous
+        case let .answered(answer): answer
         }
-        return nil
     }
 
     /// The second line, unless it is a guess and only what's certain is on.

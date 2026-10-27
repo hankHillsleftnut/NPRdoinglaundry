@@ -27,3 +27,16 @@ All in `Retrospect/Retrospect/Features/Journal/Sample/`.
 | all | server failure message | "Something went wrong on our side." | fixture `02/error.internal.json` | 00 §2 |
 | JR-1 | ids of entries sent from the sample | `00000000-0000-4000-8000-0000000050NN` | invented | 02 §2 `clientEntryId` |
 | all | send delay | one second of the injected clock | invented (the card's one second) | none |
+
+## Journal V2 · the drawer (V2.journal J1, dark) · removed by the journal V2 wiring PR
+
+All in `Retrospect/Retrospect/Features/Entries/Sample/`. Words are Paper's invented lines (JR-3 1FOQ-0 and the 05 state frames).
+
+| Screen | Field | Sample value | Source | Contract path |
+|---|---|---|---|---|
+| JR-3 | days and entries | today "i think it's the 9am standup. i dread it."; yesterday "slept badly, long day of meetings", "on the walk home i kept thinking about the offer, and…" (voice), "the fundraise article you shared" (didn't send); sun 19 oct "long walk, first good sleep in a week", "mum called. we talked about dad for the first time in months" (voice); sat 18 oct "couldn't stop thinking about what sam said at dinner", "ran 5k without stopping" | Paper (invented) | 02 §5 `GET /v2/entries` |
+| JR-3 | times | 9:12, 22:40, 18:05, 14:30, 21:05, 18:20, 23:10, 8:02, read in Europe/London | Paper where drawn, else invented | 02 §5 `createdAt` |
+| JR-3 | search | "standup" finds "the 9am standup again" (today 9:12) and "standup ran long, i said nothing" (tue 14 oct 10:05); "kayak" finds nothing | Paper MZJ-0, N17-0 | 02 §5 `?q=` |
+| JR-3 | offline queued row | "the train is stuck again, writing this underground" (today 9:40, waiting) | Paper N2N-0 | 02 §2 local queue |
+| JR-3 | ids | `00000000-0000-4000-8000-000000000aNN` | invented | 02 §5 |
+| JR-3 | retry delay | 0.6 s, then sent (offline: back to waiting) | invented | none |

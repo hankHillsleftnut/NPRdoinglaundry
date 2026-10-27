@@ -66,12 +66,10 @@ struct YouModelTests {
     func clear() async {
         let model = await asked(SampleYou.sleepQuestion)
         model.onlyCertain = true
-        model.highlighted = 2
         model.clear()
         #expect(model.phase == .rest)
         #expect(model.query.isEmpty)
         #expect(!model.onlyCertain)
-        #expect(model.highlighted == nil)
     }
 
     @Test("only the journal source opens a page (YO-3); the others open nothing yet")
@@ -79,14 +77,11 @@ struct YouModelTests {
         #expect(SampleYou.sleepAnswer.sources.map(\.sourceID) == [nil, SampleYou.sleepEntry.id, nil])
     }
 
-    @Test("citations: unicode superscripts that link to their source")
+    @Test("citations: unicode superscripts as Paper writes them, words not links (the source rows are the way in)")
     func citations() {
         #expect(AnswerCard.superscript(1) == "¹")
         #expect(AnswerCard.superscript(12) == "¹²")
-        let text = AnswerCard.attributed(SampleYou.sleepAnswer.headline)
-        #expect(String(text.characters) == "after days you run¹, and when work stops before 9².")
-        let links = text.runs.compactMap(\.link)
-        #expect(links == [URL(string: "retro-cite://1"), URL(string: "retro-cite://2")])
+        #expect(AnswerCard.written(SampleYou.sleepAnswer.headline) == "after days you run¹, and when work stops before 9².")
     }
 
     @Test("YO-1 and YO-2 are registered with their states")
