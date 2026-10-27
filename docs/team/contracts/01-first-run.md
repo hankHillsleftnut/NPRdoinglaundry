@@ -50,6 +50,7 @@ type QuestionKey =
   | "year.from.now"     // best possible self
   | "care.most"         // values
   | "on.your.mind"      // what's taking up your head
+  // "struggle" is PENDING (founder, 26 Oct): "what's one thing you're really struggling with these days that could be really important?", asked after on.your.mind. App sample only today; it joins this list when the attach phase adds it to the door (QUESTION_KEYS, after on.your.mind, and QUESTION_LINES) and the app's endpoint enum, in that order
   | "working.on"        // what you're working on, and how it's going
   | "keep.meaning"      // the change you keep meaning to make
   | "high.low"          // a high point and a low point
@@ -377,7 +378,7 @@ Product ids (`retro.monthly`, `retro.yearly`) are the founder's App Store Connec
 4. **The paid gate.** Lean: no door refuses reading; new episodes and briefs stop when the free period ends, with a new `subscription_required` (402) on `POST /v2/episodes/jobs` (kind weekly, later) and brief generation. First run itself is never gated.
 5. **Push timing.** Lean: ask on ON-10 while waiting, with Apple's prompt only after the person taps "tell me"; the ask promises what the founder decided (every note is written for you, never a generic ping). The notes themselves are contract 07's.
 6. **Goals in onboarding.** Lean: not in first run; the candidates appear later as Goals' question cards (contract 04).
-7. **Which questions** (the v2 set in `docs/second-brain/brief-onboarding-questions.md`, 8 core + 2 fallbacks) and **one model-written follow-up per answer** (lean: no follow-ups in the first build; they add a model call and a wait to every answer).
+7. **Which questions** (the v2 set in `docs/second-brain/brief-onboarding-questions.md`, 8 core + 2 fallbacks; the founder added a 9th, `struggle`, on 26 Oct: app sample only until the attach phase) and **one model-written follow-up per answer** (lean: no follow-ups in the first build; they add a model call and a wait to every answer).
 8. **Inviter's name before sign-in** (§2.1). Lean: yes, only for a live code, exactly like the link page.
 9. **The ticket's number** (`serial`). Lean: the invite's place in the order invites were made, printed "no. 0412". Alternatives: your member number (only known after the tear), or no number.
 10. **Who a founder invite is "from".** Lean: your first name, since you send it personally. Review invites (App Review) print "an invitation" with no name.
