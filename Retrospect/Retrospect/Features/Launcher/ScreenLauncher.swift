@@ -98,15 +98,17 @@ struct LaunchableScreen {
 }
 
 enum ScreenRegistry {
-    /// Every registered screen, by id. Each flow adds its own in its `+Launcher.swift` file.
+    /// Every registered screen, by id. Each group lists its own in its `+Launcher.swift` file and
+    /// is named once in `groups` (`Registry/ScreenGroup.swift`); this file never changes for a
+    /// new screen.
     static let all: [String: LaunchableScreen] = Dictionary(
-        (journalScreens + inviteScreens + signInScreens + accountScreens + forceUpdateScreens + firstRunScreens + playerScreens).map { ($0.id, $0) },
+        groupScreens.map { ($0.id, $0) },
         uniquingKeysWith: { first, _ in first }
     )
 
-    /// Every id registered by every flow, duplicates included (a test asserts there are none).
+    /// Every id registered by every group, duplicates included (a test asserts there are none).
     static var allIDs: [String] {
-        (journalScreens + inviteScreens + signInScreens + accountScreens + forceUpdateScreens + firstRunScreens + playerScreens).map(\.id)
+        groupScreens.map(\.id)
     }
 
     static func screen(_ id: String) -> LaunchableScreen? {

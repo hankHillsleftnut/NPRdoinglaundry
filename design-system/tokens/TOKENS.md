@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**611 tokens** · 535 semantic · 276 marked *to set*
+**615 tokens** · 539 semantic · 276 marked *to set*
 
 ## palette
 
@@ -427,6 +427,10 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.illustration` | The drawing on an empty or error state. | 120pt |  | to set: Lime coverage |
 | `size.navBar` | The navigation bar (without the status bar). | 44pt |  | to set: app need |
 | `size.tabBar` | The tab bar (without the home indicator). | 49pt |  | to set: app need |
+| `size.tabItemWidth` | One tab bar slot's width (four equal slots). | 72pt |  | paper: 02 · components c:tab-bar/item (B4A-0) |
+| `size.tabItemMinWidth` | The narrowest a tab slot may get on a small phone (tab-bar.md edge cases). | 64pt |  | paper: 02 · components c:tab-bar/item (B4A-0) |
+| `size.tabItemHeight` | One tab bar slot's height, icon over label. | 48pt |  | paper: 02 · components c:tab-bar/item (B4A-0) |
+| `size.tabIcon` | A tab bar icon. | 22pt |  | paper: 02 · components c:tab-bar/item (B4A-0) |
 | `size.fieldWell` | A well or button slot inside a 48 field: the search field's mic well and its clear slot. | 36pt |  | Paper approvals · part 23 c:search-field/rest, /typed (21 Oct) |
 | `size.searchField` | The search field on You. | 36pt |  | to set: app need |
 | `size.grabber.width` | The handle at the top of a sheet. | 36pt |  | to set: app need |
