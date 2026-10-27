@@ -43,6 +43,15 @@ extension Flows {
         case teasePaused
         /// The tease played to the end.
         case teaseEnded
+        /// JR-2 (Paper 1FMG-0): today's brief as Paper draws it, 4:10 in three parts (1:30, 1:20, 1:20),
+        /// playing at 0:48 in part 1, held still until something is tapped: the frame compared with Paper.
+        case briefPaperPlaying
+        /// JR-2 paused (GLN-0): the same brief, paused at 0:48.
+        case briefPaperPaused
+        /// JR-2 played (GNY-0): the same brief, played to the end.
+        case briefPaperPlayed
+        /// JR-2 quiet day (GQ9-0): one part, 0:40, playing at 0:12, held still.
+        case briefPaperQuiet
     }
 }
 
@@ -85,6 +94,8 @@ final class SamplePlayback: Flows.Playback {
     @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
+    // one start per scenario, listed flat so scenarios are only ever added (V2 add-only lease)
+    // swiftlint:disable:next cyclomatic_complexity
     init(scenario: Flows.PlaybackScenario, clock: any Clock<Duration>) {
         self.scenario = scenario
         self.clock = clock
@@ -109,6 +120,16 @@ final class SamplePlayback: Flows.Playback {
             position = Self.teaseLitLine
             state = .paused
         case .briefPlayed, .teaseEnded:
+            position = item.durationSeconds ?? 0
+            state = .ended
+        case .briefPaperPlaying, .briefPaperQuiet:
+            // playing, as drawn, with no ticker (like `teaseStill`): pause and play to move on
+            position = scenario == .briefPaperQuiet ? Self.briefPaperQuietAt : Self.briefPaperAt
+            state = .playing
+        case .briefPaperPaused:
+            position = Self.briefPaperAt
+            state = .paused
+        case .briefPaperPlayed:
             position = item.durationSeconds ?? 0
             state = .ended
         case .buffering:
@@ -257,6 +278,10 @@ final class SamplePlayback: Flows.Playback {
             }, duration: 45)
         case .tease, .teaseStill, .teasePaused, .teaseEnded:
             tease
+        case .briefPaperPlaying, .briefPaperPaused, .briefPaperPlayed:
+            briefPaper
+        case .briefPaperQuiet:
+            briefPaperQuiet
         }
     }
 
@@ -293,4 +318,35 @@ final class SamplePlayback: Flows.Playback {
     private static let longParts: [Flows.PlaybackItem.Part] = (0 ..< 12).map { index in
         .init(id: index, title: nil, text: "A sample line for part \(index + 1) of a long brief.", startSeconds: Double(index) * 57.5)
     }
+
+    // MARK: JR-2 as Paper draws it (V2.journal, add-only)
+
+    /// Where Paper's brief is drawn: 0:48 into part 1 (1FNB-0 "00:48", "−03:22").
+    static let briefPaperAt: Double = 48
+    /// Where Paper's quiet brief is drawn: 0:12 of 0:40 (GQ9-0).
+    static let briefPaperQuietAt: Double = 12
+
+    /// Paper's brief (1FMG-0): titled by its headline, three parts whose capsules Paper draws
+    /// 90 : 80 : 80 (1FNE-0). The parts carry Paper's short names ("1 of 3 · the article"); the
+    /// contract's parts have no title yet (DISCREPANCIES J-20).
+    static let briefPaper = Flows.PlaybackItem(
+        id: "sample-brief-paper",
+        kind: .brief,
+        title: "a heavier week than usual, and it shows.",
+        parts: [
+            .init(id: 0, title: "the article", text: "the fundraise article you sent", startSeconds: 0),
+            .init(id: 1, title: "the meetings", text: "four meetings before noon", startSeconds: 90),
+            .init(id: 2, title: "the sleep", text: "five hours of sleep, two nights running", startSeconds: 170),
+        ],
+        durationSeconds: 250
+    )
+
+    /// Paper's quiet day (GQ9-0): one untitled part, 40 seconds.
+    static let briefPaperQuiet = Flows.PlaybackItem(
+        id: "sample-brief-paper-quiet",
+        kind: .brief,
+        title: "a quiet tuesday",
+        parts: [.init(id: 0, title: nil, text: "nothing much moved. enjoy the quiet.", startSeconds: 0)],
+        durationSeconds: 40
+    )
 }

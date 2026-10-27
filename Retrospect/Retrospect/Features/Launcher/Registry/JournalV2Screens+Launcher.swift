@@ -9,7 +9,7 @@ import SwiftUI
 
 enum JournalV2Screens: ScreenGroup {
     static let name = "journal · v2"
-    /// Empty until lane 1's first screen PR adds one.
-    static let screens: [LaunchableScreen] = []
+    /// JR-2 (today's brief) lists itself in `Features/Entries/Brief/BriefLaunch.swift`.
+    static let screens: [LaunchableScreen] = briefScreens
 }
 #endif
