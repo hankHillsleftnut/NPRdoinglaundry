@@ -42,6 +42,35 @@ extension Flows.Settings {
         }
     }
 
+    /// How fast briefs and episodes play (ST-7 "speed"). Paper draws only "1×"; the other speeds are
+    /// provisional (ST-D24).
+    enum Speed: Double, CaseIterable, Sendable {
+        case slower = 0.8
+        case normal = 1
+        case faster = 1.25
+        case fastest = 1.5
+
+        /// "1×", "1.25×"
+        var label: String {
+            switch self {
+            case .slower: "0.8×"
+            case .normal: "1×"
+            case .faster: "1.25×"
+            case .fastest: "1.5×"
+            }
+        }
+    }
+
+    /// Reading in the background (contract 06 `AmbientSettings`): your own switch, whether it is
+    /// actually reading, and the founder's paused-for-everyone switch (its look is undrawn: ST-D20).
+    struct Ambient: Equatable, Sendable {
+        /// Your switch (ST-5 "read in the background").
+        var enabled: Bool
+        /// Whether retro is reading now (off when paused for everyone, even with yours on).
+        var effective: Bool
+        var pausedForEveryone: Bool
+    }
+
     /// Who set how straight retro is (contract 06 §2 `straightness.source`).
     enum StraightnessSource: Sendable {
         /// You chose it on ST-6.
@@ -90,7 +119,18 @@ extension Flows {
         var straightness: Settings.StraightnessSetting { get }
         var learned: Settings.Learned { get }
 
+        var ambient: Settings.Ambient { get }
+        /// ST-7: how briefs and episodes play.
+        var speed: Settings.Speed { get }
+
         /// Your choice, or nil to let retro decide again.
         func setStraightness(_ level: Settings.Straightness?)
+        /// Your ambient switch. Throws when it couldn't be saved; `ambient` then still says what is true,
+        /// so the switch snaps back (contract 06 §1).
+        func setAmbient(enabled: Bool) async throws
+        func setSpeed(_ value: Settings.Speed)
+        /// ST-5 "delete my data…", confirmed in its dialog. Throws when it didn't happen, so the dialog
+        /// stays up with its error line.
+        func deleteMyData() async throws
     }
 }
