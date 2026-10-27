@@ -44,7 +44,7 @@ struct EntryPage: View {
         case .loading:
             Color.clear.frame(height: RDimension.sizeTouchTarget)
         case let .failed(reason):
-            REmptyLine(line: reason)
+            REmptyLine(line: reason, action: .init(title: "try again") { Task { await model.load() } })
         case let .shown(words, meta, standing):
             if let drawn {
                 drawnContent(drawn, words: words, meta: meta, standing: standing)

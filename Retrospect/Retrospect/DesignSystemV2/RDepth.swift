@@ -130,8 +130,9 @@ extension View {
             .foregroundStyle(RColor.glowDangerForeground)
     }
 
-    /// The one lit object on a screen (primary buttons, plan "yearly", the play well).
-    func rLit(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false) -> some View {
+    /// The one lit object on a screen (primary buttons, plan "yearly", the play well). `halo: false`
+    /// leaves out the outer glow (the primary button, founder 26 Oct: the ring, no glow).
+    func rLit(_ radius: CGFloat = RDimension.radiusControl, pressed: Bool = false, halo: Bool = true) -> some View {
         let shape = RShape.rect(radius)
         let top = pressed ? RColor.glowPrimaryGradientTopPressed : RColor.glowPrimaryGradientTop
         let bottom = pressed ? RColor.glowPrimaryGradientBottomPressed : RColor.glowPrimaryGradientBottom
@@ -140,7 +141,7 @@ extension View {
             .overlay(alignment: .top) { shape.strokeBorder(RColor.glowPrimaryRim, lineWidth: 1).mask(alignment: .top) { Rectangle().frame(height: 1) } }
             .overlay(shape.stroke(RColor.glowPrimaryRing, lineWidth: 1.5))
             .shadow(color: RColor.glowPrimaryCast, radius: 1, y: 2)
-            .shadow(color: RColor.glowPrimaryHalo, radius: 7, y: 6)
+            .shadow(color: halo ? RColor.glowPrimaryHalo : .clear, radius: 7, y: 6)
             .foregroundStyle(RColor.glowPrimaryForeground)
     }
 }

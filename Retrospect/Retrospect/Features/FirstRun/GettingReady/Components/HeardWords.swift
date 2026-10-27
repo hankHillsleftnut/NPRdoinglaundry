@@ -11,6 +11,8 @@ import SwiftUI
 
 struct HeardWords: View {
     let words: [GettingReadyModel.Word]
+    /// The UI-test name (ON-10's by default; the questions page passes its own).
+    var identifier = "gettingReady.words"
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -35,7 +37,7 @@ struct HeardWords: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(words.map(\.text).joined(separator: " "))
         .accessibilityHidden(words.isEmpty)
-        .accessibilityIdentifier("gettingReady.words")
+        .accessibilityIdentifier(identifier)
     }
 
     /// In: sharpening from the blur (Reduce Motion: a fade). Out (a new answer replaces them):
