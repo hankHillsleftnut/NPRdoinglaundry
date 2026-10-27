@@ -118,6 +118,20 @@ struct FlowHostTests {
         #expect(await source.type(code: SampleInvite.code) == .printing(SampleInvite.face))
     }
 
+    // MARK: SI.gate.b
+
+    @Test("the typed gate wears the sample header before the check; the code still prints, the edge is unchanged")
+    func typedGateHeader() async {
+        let model = flow(MemoryFlowStore(), start: .inviteGate)
+        #expect(model.invite.phase == .typed)
+        #expect(model.invite.face == SampleInvite.face)
+        #expect(model.invite.waitlistPlace == .foot)
+        model.invite.setCode(SampleInvite.code)
+        await model.invite.submitTyped()
+        #expect(model.invite.phase == .ready)
+        #expect(model.step == .inviteGate)
+    }
+
     // MARK: Resume (decision 9)
 
     @Test("a relaunch lands on the exact step it left")
@@ -184,8 +198,8 @@ struct FlowHostTests {
 
     // MARK: The end
 
-    @Test("the last question hands on to privacy; privacy's end stays put (connect isn't a step yet)")
-    func questionsToPrivacyThenEnds() async {
+    @Test("the last question hands on to privacy; privacy's end goes on to connect")
+    func questionsToPrivacyToConnect() async {
         let store = MemoryFlowStore(SampleFlowSaved(step: .questions))
         let model = flow(store)
         let page = QuestionsModel(data: model.firstRun, kept: model.answers)
@@ -204,28 +218,64 @@ struct FlowHostTests {
         #expect(store.saved?.step == .privacy)
         #expect(model.answers.count == page.questions.count)
 
-        // Retro reads to the end (instant clock): privacy is done, and with no row the flow ends here
+        // Retro reads to the end (instant clock): privacy is done, on to connect; not the end of the walk
         let privacy = model.makePrivacy(clock: FlowImmediateClock())
         await privacy.run()
         #expect(privacy.hasLeft)
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
+        #expect(model.isAtEnd == false)
     }
 
-    @Test("privacy: a tap moves on early (ending the flow for now); a fresh visit's back returns to the questions")
+    @Test("privacy: a tap moves on early to connect; connect's back returns to privacy; privacy's back to the questions")
     func privacyMoves() {
         let model = flow(MemoryFlowStore(), start: .privacy)
         let tapped = model.makePrivacy(clock: FlowImmediateClock())
         tapped.tapAnywhere()
         #expect(tapped.hasLeft)
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
         // a left page never fires again: a later back on it moves nothing
         tapped.back()
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
 
+        model.send(.connectBack)
+        #expect(model.step == .privacy)
         let visit = model.makePrivacy(clock: FlowImmediateClock())
         visit.back()
         #expect(visit.hasLeft)
         #expect(model.step == .questions)
+    }
+
+    // MARK: The end of what's built
+
+    @Test("getting ready's 'made' ends the walk: the start-over pill shows there, and starting over is a fresh splash")
+    func endOfWhatsBuilt() {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .gettingReady)
+        model.answered(.namePlace, words: "sam.")
+        #expect(model.isAtEnd == false)
+        model.send(.episodeReady)
+        #expect(model.step == .gettingReady)
+        #expect(model.endedAt == .gettingReady)
+        #expect(model.isAtEnd)
+
+        let fresh = model.startedOver()
+        #expect(fresh.step == .splash)
+        #expect(fresh.answers.isEmpty)
+        #expect(fresh.isAtEnd == false)
+        #expect(store.saved == SampleFlowSaved(step: .splash))
+    }
+
+    @Test("a stray event with no planned hand-off never shows the pill (the invite's phase after 'you're in')")
+    func strayEventIsNotTheEnd() {
+        let model = flow(MemoryFlowStore(), start: .youreIn)
+        model.send(.ticketTorn)
+        model.send(.connectDone)
+        #expect(model.endedAt == nil)
+        #expect(model.isAtEnd == false)
+        // a real hand-off still moves on as before
+        model.send(.begin)
+        #expect(model.step == .questions)
+        #expect(model.isAtEnd == false)
     }
 
     @Test("back from privacy opens the last question with its words in the composer; sent unchanged, on to privacy")
@@ -362,6 +412,27 @@ struct FlowHostTests {
         )
         #expect(resumed.goingIn == "the investor call on thursday")
         #expect(resumed.spokenWords == "the investor call on thursday")
+    }
+
+    @Test("connect: continue or later moves on to getting ready and is kept; back goes to privacy; a connection lasts the flow")
+    func connectMovesOnToGettingReady() async {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .connect)
+        #expect(model.step == .connect)
+        await ConnectModel(data: model.connect, onDone: { _ in }, onBack: {}).connect("apple_health")
+        #expect(model.connect.knowsYou.filled == 2)
+        model.send(.connectBack)
+        #expect(model.step == .privacy)
+        model.send(.privacyDone)
+        #expect(model.step == .connect)
+        model.send(.connectDone)
+        #expect(model.step == .gettingReady)
+        #expect(store.saved?.step == .gettingReady)
+        // the page's own exits are the flow's one event: later goes on too
+        let later = flow(MemoryFlowStore(), start: .connect)
+        let page = ConnectModel(data: later.connect, onDone: { _ in later.send(.connectDone) }, onBack: { later.send(.connectBack) })
+        page.later()
+        #expect(later.step == .gettingReady)
     }
 
     @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")

@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Observation
 @testable import Retrospect
 import Testing
 
@@ -24,6 +25,12 @@ final class FakeApple: Session.AppleReauthorizing {
     }
 }
 
+/// Every session state a test has seen, observable so a test can wait for one without a clock.
+@MainActor @Observable
+final class SeenStates {
+    var value: [Session.State] = []
+}
+
 /// PL3.7g.min: deleting the account on the phone, end to end on the platform: the session harness's manager and
 /// client against a stubbed server, and the person's store on disk (an in-memory database would erase nothing real).
 @MainActor
@@ -46,13 +53,6 @@ struct AccountDeletionTests {
         )
     }
 
-    private func settle(_ condition: @MainActor () -> Bool) async throws {
-        for _ in 0 ..< 500 where !condition() {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        try #require(condition(), "the stack did not settle")
-    }
-
     private func rows() throws -> Int {
         let database = try Store.LocalDatabase.onDisk(ownerUserID: userID, directory: folder)
         return try database.writer.read { try Store.OutboxRow.fetchCount($0) }
@@ -63,7 +63,8 @@ struct AccountDeletionTests {
         try h.keychain.write(Data("7KQ2".utf8), account: "pending_invite_code")
         await h.store.keep(Session.KeptFirstAuthorization(appleUser: "001234.invented", givenName: "sam", familyName: nil, email: nil))
         env.startSession()
-        try await settle { env.outbox != nil }
+        // the store opens behind a queue of main-actor hops: wait for it to open, not for a guess at how long that takes
+        await observedUntil { env.outbox != nil }
         let outbox = try #require(env.outbox)
         try await outbox.enqueueEntry(#require(Store.EntryDraft(kind: .typed, text: "unsent words", createdAt: Date())))
         #expect(try rows() == 1)
@@ -79,8 +80,8 @@ struct AccountDeletionTests {
         }
     }
 
-    private func states(_ h: SessionHarness) -> Platform.Box<[Session.State]> {
-        let seen = Platform.Box([Session.State]())
+    private func states(_ h: SessionHarness) -> SeenStates {
+        let seen = SeenStates()
         let stream = h.manager.states()
         Task { for await state in stream {
             seen.value.append(state)
@@ -177,7 +178,7 @@ struct AccountDeletionTests {
         #expect(await h.manager.state == .signedOut(hasSignedInBefore: false, reason: .none), "the splash, never welcome back")
         #expect(StubProtocol.requests(on: h.session).count == afterSend, "no sign-out or refresh with the dead tokens")
         #expect(h.recorder.events.contains(.accountDeletion(.finished)))
-        try await settle { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
+        await observedUntil { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
         #expect(!Self.flashedSignInAgain(seen.value), "no 'please sign in again' flash")
         #expect(!String(describing: h.recorder.events).contains("c0de"), "the Apple code is never in a log line")
     }
@@ -219,7 +220,7 @@ struct AccountDeletionTests {
         #expect(h.requests(to: "/v2/auth/refresh").count == 1)
         #expect(try rows() == 0)
         await env.finishAccountDeletion()
-        try await settle { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
+        await observedUntil { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
         #expect(!Self.flashedSignInAgain(seen.value), "the refused refresh doesn't end the session under the goodbye")
     }
 
@@ -328,7 +329,7 @@ struct AccountDeletionTests {
         #expect(try rows() == 0)
         #expect(h.keychain.contents.isEmpty)
         #expect(await h.manager.state == .signedOut(hasSignedInBefore: false, reason: .none))
-        try await settle { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
+        await observedUntil { seen.value.last == .signedOut(hasSignedInBefore: false, reason: .none) }
         #expect(!Self.flashedSignInAgain(seen.value))
     }
 

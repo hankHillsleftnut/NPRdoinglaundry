@@ -131,7 +131,7 @@ final class QuestionsModel {
         Self.progress(index: index, count: questions.count, in: flowRange)
     }
 
-    /// "step 3 of 8", for VoiceOver.
+    /// "step 3 of 9", for VoiceOver.
     var stepLabel: String {
         "step \(min(index + 1, questions.count)) of \(questions.count)"
     }

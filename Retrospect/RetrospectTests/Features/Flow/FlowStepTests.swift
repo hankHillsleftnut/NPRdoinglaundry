@@ -3,7 +3,7 @@ import Testing
 
 /// FLOW.host: the sample flow's edge table (SCREEN-MAP §3.1). Every step is reachable from the splash by
 /// the table alone, every edge leads to a step that exists, nothing moves without a row, and the flow ends
-/// at the last merged screen (privacy has no forward row until connect adds one).
+/// at the last merged screen (getting ready has no forward row until the tease adds one).
 struct FlowStepTests {
     /// Every step the table reaches from `start`, in the order it reaches them.
     private func walk(from start: FlowStep, table: [FlowEdge] = FlowEdge.table) -> [FlowStep] {
@@ -16,10 +16,10 @@ struct FlowStepTests {
         return reached
     }
 
-    /// Steps merged ahead of the screens that lead to them: getting ready (ON-10) is reached from connect
-    /// (ON-6), which isn't a step yet; the walk from the splash ends at privacy (FLOW.edges). Each island
-    /// starts its own walk until the missing screens add their rows; then this list empties.
-    private static let waitingForAnIncomingRow: [FlowStep] = [.gettingReady]
+    /// Steps merged ahead of the screens that lead to them (each starts its own walk until the missing
+    /// screens add their rows). Empty since FLOW.edges joined privacy to connect: one walk, splash to
+    /// getting ready.
+    private static let waitingForAnIncomingRow: [FlowStep] = []
 
     @Test("from the splash the table walks every step, in the app's order (islands waiting for a row aside)")
     func everyStepReachable() {
@@ -41,7 +41,7 @@ struct FlowStepTests {
 
     @Test("each edge of the table is the move next(from:event:) makes")
     func eachEdgeMoves() {
-        #expect(FlowEdge.table.count == 5)
+        #expect(FlowEdge.table.count == 8)
         for edge in FlowEdge.table {
             #expect(FlowStep.next(from: edge.from, event: edge.event) == edge.to, "\(edge.from) \(edge.event)")
         }
@@ -49,7 +49,17 @@ struct FlowStepTests {
         #expect(FlowStep.next(from: .inviteGate, event: .ticketTorn) == .youreIn)
         #expect(FlowStep.next(from: .youreIn, event: .begin) == .questions)
         #expect(FlowStep.next(from: .questions, event: .questionsDone) == .privacy)
+        #expect(FlowStep.next(from: .privacy, event: .privacyDone) == .connect)
         #expect(FlowStep.next(from: .privacy, event: .back) == .questions)
+        #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
+        #expect(FlowStep.next(from: .connect, event: .connectBack) == .privacy)
+    }
+
+    @Test("connect (ON-6): continue and later both go on to getting ready; back returns to privacy")
+    func connectEdges() {
+        #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
+        #expect(FlowStep.next(from: .connect, event: .connectBack) == .privacy)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "connect"]).start == .connect)
     }
 
     @Test("an event with no row moves nothing: no skipping ahead, no going back through the host")
@@ -62,19 +72,13 @@ struct FlowStepTests {
         }
     }
 
-    @Test("the flow ends at the last merged screen: privacy has no forward edge yet")
-    func endsAtPrivacy() {
-        #expect(FlowEdge.table.contains { $0.from == .privacy && $0.event != .back } == false)
-        #expect(FlowStep.next(from: .privacy, event: .privacyDone) == nil)
-        // connect's PR adds one row, and the walk takes it
-        let withConnect = FlowEdge.table + [FlowEdge(.privacy, .privacyDone, .splash)]
-        #expect(FlowStep.next(from: .privacy, event: .privacyDone, table: withConnect) == .splash)
-    }
-
-    @Test("back leaves a page only where one is drawn: privacy to the questions; nothing else goes back")
-    func backOnlyFromPrivacy() {
+    @Test("back leaves a page only where one is drawn: privacy to the questions, connect to privacy")
+    func backOnlyWhereDrawn() {
         for step in FlowStep.allCases where step != .privacy {
             #expect(FlowStep.next(from: step, event: .back) == nil, "\(step)")
+        }
+        for step in FlowStep.allCases where step != .connect {
+            #expect(FlowStep.next(from: step, event: .connectBack) == nil, "\(step)")
         }
     }
 
