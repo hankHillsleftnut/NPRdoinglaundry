@@ -8,8 +8,9 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct DemoOutsideTests {
-    private func demo(_ launch: DemoLaunch, store: MemoryDemoStore = MemoryDemoStore(.firstRun)) -> DemoModel {
-        let model = DemoModel(store: store, flowStore: MemoryFlowStore(), launch: launch, sleep: { _ in })
+    private func demo(_ launch: DemoLaunch, store: MemoryDemoStore? = nil) -> DemoModel {
+        // built here, on the main actor (a default argument is evaluated off it)
+        let model = DemoModel(store: store ?? MemoryDemoStore(.firstRun), flowStore: MemoryFlowStore(), launch: launch, sleep: { _ in })
         model.started()
         return model
     }
