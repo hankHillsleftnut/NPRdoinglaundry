@@ -66,7 +66,8 @@ struct REvidenceRow: View {
         }
     }
 
-    private var accessibilityText: String {
+    /// What VoiceOver reads for the row, either way: "14 oct, your words, <the full excerpt>".
+    var accessibilityText: String {
         "\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)"
     }
 
