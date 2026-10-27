@@ -47,6 +47,12 @@ final class SampleFlowModel {
     /// shows its "start over" pill while the flow is still there.
     private(set) var endedAt: FlowStep?
 
+    /// The tease's sheet is up over getting ready: the page behind is hidden from VoiceOver, out of touch,
+    /// and the sheet is modal (the host reads this one value for all three).
+    var sheetCoversPage: Bool {
+        step == .tease
+    }
+
     /// The walk has reached the end of what's built (the page on screen handed on and nothing follows).
     var isAtEnd: Bool {
         endedAt == step

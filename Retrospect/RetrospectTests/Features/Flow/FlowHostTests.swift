@@ -288,6 +288,20 @@ struct FlowHostTests {
         #expect(model.endedAt == .tease)
     }
 
+    @Test("while the tease is up, the sheet covers getting ready (hidden, out of touch, modal); never before or on other steps")
+    func sheetCoversOnlyDuringTheTease() {
+        let model = flow(MemoryFlowStore(), start: .gettingReady)
+        #expect(model.sheetCoversPage == false)
+        model.send(.episodeReady)
+        #expect(model.sheetCoversPage)
+        // the end of the tease keeps the sheet up (the pill shows over it)
+        model.send(.teaseEnded)
+        #expect(model.sheetCoversPage)
+        for step in FlowStep.allCases where step != .tease {
+            #expect(flow(MemoryFlowStore(), start: step).sheetCoversPage == false, "\(step)")
+        }
+    }
+
     @Test("the tease's collapse hands on like its end (row 39 default until the founder answers)")
     func teaseCollapseHandsOn() {
         let model = flow(MemoryFlowStore(), start: .tease)

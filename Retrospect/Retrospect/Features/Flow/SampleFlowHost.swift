@@ -62,26 +62,29 @@ struct SampleFlowHost: View {
             }
         }
         // getting ready stays mounted under the tease but out of reach: VoiceOver stays on the sheet
-        .accessibilityHidden(flow.step == .tease)
+        .accessibilityHidden(flow.sheetCoversPage)
         // and out of touch: a field still focused there lets go, so no keyboard stays up over the sheet
-        .disabled(flow.step == .tease)
-        // ON-11: the tease rises over getting ready as the player sheet, exactly as `-Screen player` shows it
+        .disabled(flow.sheetCoversPage)
+        // ON-11: the tease rises over getting ready as the player sheet, exactly as `-Screen player` shows it;
+        // modal for VoiceOver, as RSheetHost's sheets are, so nothing behind it can be reached (QA 7)
         .overlay {
-            if flow.step == .tease {
+            if flow.sheetCoversPage {
                 PlayerSheetScreen {
                     PlayerSheet(model: flow.teaseSheet())
                 }
+                // the end pill sits inside the modal layer, so VoiceOver can still reach it over the sheet
+                .overlay(alignment: .top) { endPill }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isModal)
                 .transition(reduceMotion ? .opacity : .move(edge: .bottom))
             }
         }
-        .animation(RMotion.sheet, value: flow.step == .tease)
+        .animation(RMotion.sheet, value: flow.sheetCoversPage)
         // the end of what's built (sample flow only): a small pill to walk it again, so a page that handed on
-        // to a screen not built yet never looks frozen
+        // to a screen not built yet never looks frozen (over the tease, the sheet's layer carries it)
         .overlay(alignment: .top) {
-            if flow.isAtEnd {
-                FlowEndPill { flow = flow.startedOver() }
-                    .padding(.top, RDimension.space2)
-                    .transition(.opacity)
+            if !flow.sheetCoversPage {
+                endPill
             }
         }
         // the same move between pages as the live root's
@@ -89,6 +92,14 @@ struct SampleFlowHost: View {
         .animation(RMotion.snappy, value: flow.isAtEnd)
         // the kept model only: a model SwiftUI built and dropped never writes
         .onAppear { flow.started() }
+    }
+
+    @ViewBuilder private var endPill: some View {
+        if flow.isAtEnd {
+            FlowEndPill { flow = flow.startedOver() }
+                .padding(.top, RDimension.space2)
+                .transition(.opacity)
+        }
     }
 }
 
