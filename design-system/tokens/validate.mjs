@@ -32,12 +32,16 @@ for (const { path, node } of tokens) {
 const show = (v) => (typeof v === 'object' ? JSON.stringify(v) : String(v)).replace(/\|/g, '\\|');
 const groups = new Map();
 for (const t of tokens) { const g = t.path.split('.')[0]; (groups.get(g) ?? groups.set(g, []).get(g)).push(t); }
-let md = `# Retrospect tokens\n\nGenerated from \`tokens.json\` by \`validate.mjs\`. Do not edit by hand.\n\n**${tokens.length} tokens** · ${tokens.filter((t) => !t.path.startsWith('palette.')).length} semantic · ${tokens.filter((t) => t.node.$extensions?.retrospect?.source?.startsWith('to set')).length} marked *to set*\n`;
+// The counts (total / semantic / to set) are printed to stdout, not written into TOKENS.md: a header
+// line that changes with every added token made TOKENS.md conflict on nearly every merge of main.
+const semantic = tokens.filter((t) => !t.path.startsWith('palette.')).length;
+const toSet = tokens.filter((t) => t.node.$extensions?.retrospect?.source?.startsWith('to set')).length;
+let md = `# Retrospect tokens\n\nGenerated from \`tokens.json\` by \`validate.mjs\`. Do not edit by hand. For the counts (total, semantic, marked *to set*) run the validator; it prints them.\n`;
 for (const [g, list] of groups) {
   md += `\n## ${g}\n\n| Token | Purpose | Light | Dark | Source |\n|---|---|---|---|---|\n`;
   for (const { path, node } of list) md += `| \`${path}\` | ${show(node.$description ?? '')} | ${show(node.$value)} | ${show(node.$extensions?.retrospect?.dark ?? '')} | ${node.$extensions?.retrospect?.source ?? ''} |\n`;
 }
 writeFileSync(join(here, 'TOKENS.md'), md);
-console.log(`${tokens.length} tokens, ${errors.length} problem(s)`);
+console.log(`${tokens.length} tokens · ${semantic} semantic · ${toSet} marked to set · ${errors.length} problem(s)`);
 for (const e of errors) console.log('  ✗', e);
 process.exit(errors.length ? 1 : 0);

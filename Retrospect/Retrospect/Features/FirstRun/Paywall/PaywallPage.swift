@@ -53,7 +53,9 @@ struct PaywallPage: View {
                 phase: .paused,
                 progress: model.tease.progress,
                 open: nil,
-                well: { model.nudge() }
+                well: { model.nudge() },
+                wellHint: Self.playHint,
+                wellHaptic: Self.playTapPressHaptic
             )
             Text(Self.headline)
                 .rText(.inkTitle)
@@ -146,6 +148,12 @@ struct PaywallPage: View {
     }
 
     static let headline = "hear the rest, and one every week."
+    /// PW-Q9 (founder, 27 Oct): what VoiceOver hears after "play" on the little player, since a tap
+    /// nudges the lit plan instead of playing.
+    static let playHint = "the rest comes with a plan"
+    /// The little player's play gives ONE haptic per tap: the nudge's selection haptic at its peak.
+    /// So the well's own press haptic is off here (nil), or a tap would give two.
+    static let playTapPressHaptic: SensoryFeedback? = nil
     static let links = ["restore", "privacy", "terms"]
     static let notYet = "not available yet"
 }

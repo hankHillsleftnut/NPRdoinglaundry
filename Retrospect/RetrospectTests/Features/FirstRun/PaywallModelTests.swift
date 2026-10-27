@@ -184,4 +184,22 @@ struct NudgeRulesTests {
         let fired = [0, 40, 79, 80, 100, 400].map { rules.allowHaptic(at: start.advanced(by: .milliseconds($0))) }
         #expect(fired == [true, false, false, true, false, true])
     }
+
+    @Test("one play tap gives one haptic: the nudge's, so the well's press haptic is off on the paywall")
+    @MainActor
+    func onePlayTapOneHaptic() {
+        // the well would add haptic.press on the press, and the nudge adds haptic.select at its peak,
+        // ~motion.duration.fast later (past the 80 ms gate): two per tap unless the well's is off
+        #expect(PaywallPage.playTapPressHaptic == nil)
+        var rules = NudgeRules()
+        let tap = ContinuousClock.now
+        let peak = tap.advanced(by: .seconds(RNumber.motionDurationFast))
+        #expect(rules.allowHaptic(at: peak))
+    }
+
+    @Test("PW-Q9: play on the paywall's little player tells VoiceOver what it does")
+    @MainActor
+    func playHint() {
+        #expect(PaywallPage.playHint == "the rest comes with a plan")
+    }
 }

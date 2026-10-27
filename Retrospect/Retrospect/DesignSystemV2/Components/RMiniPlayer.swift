@@ -76,6 +76,12 @@ struct RMiniPlayer: View {
     let open: (() -> Void)?
     /// The well: pause, play or retry, by phase.
     let well: () -> Void
+    /// What VoiceOver hears after the well's label, where a tap does more than the label says (the
+    /// ON-12 paywall, PW-Q9: play nudges the plan instead of playing). Nil: no hint; additive.
+    var wellHint: String? = nil
+    /// The well's press haptic. Nil where the tap's answer carries its own haptic (the paywall's nudge
+    /// fires one selection haptic at its peak), so one tap never gives two; additive.
+    var wellHaptic: SensoryFeedback? = RHaptic.press
 
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -96,7 +102,7 @@ struct RMiniPlayer: View {
                     .accessibilityLabel(title)
                     .accessibilityValue(subline)
             }
-            RMiniPlayerWell(phase: phase, action: well)
+            RMiniPlayerWell(phase: phase, hint: wellHint, haptic: wellHaptic, action: well)
         }
         .padding(.horizontal, RDimension.space2)
         .frame(minHeight: RDimension.sizePlayerTray)
@@ -171,6 +177,8 @@ struct RMiniPlayer: View {
 /// The 44 wash well: pause while playing, play when paused, the spinner while buffering, retry on failure.
 private struct RMiniPlayerWell: View {
     let phase: RMiniPlayer.Phase
+    let hint: String?
+    let haptic: SensoryFeedback?
     let action: () -> Void
 
     var body: some View {
@@ -187,8 +195,9 @@ private struct RMiniPlayerWell: View {
             .background(RColor.surfaceWash, in: Circle())
             .contentShape(Circle())
         }
-        .rPress(small: true, haptic: RHaptic.press)
+        .rPress(small: true, haptic: haptic)
         .accessibilityLabel(phase.wellLabel)
+        .accessibilityHint(hint ?? "")
         .sensoryFeedback(RHaptic.error, trigger: phase) { _, new in new == .failed }
     }
 }
