@@ -43,6 +43,8 @@ final class SampleListening: Flows.Listening {
     /// The words this listen hears (ON-10: Paper's; the questions: the sample person's answer).
     private let words: [String]
     private let ends: Bool
+    /// With nothing (more) to say, the listen ends after the usual pause instead of staying open.
+    private let quietEnds: Bool
     private let waits: Bool
     private var hasSpoken = false
     private var continuation: AsyncStream<Flows.Heard>.Continuation?
@@ -55,8 +57,10 @@ final class SampleListening: Flows.Listening {
         clock: any Clock<Duration> = ContinuousClock(),
         ends: Bool = true,
         waits: Bool = true,
-        utterance: [String] = SampleListening.utterance
+        utterance: [String] = SampleListening.utterance,
+        quietEnds: Bool = false
     ) {
+        self.quietEnds = quietEnds
         self.clock = clock
         words = utterance
         self.ends = ends
@@ -67,7 +71,12 @@ final class SampleListening: Flows.Listening {
         stop()
         let (stream, continuation) = AsyncStream<Flows.Heard>.makeStream()
         self.continuation = continuation
-        guard !hasSpoken, !words.isEmpty else { return stream }
+        guard !hasSpoken, !words.isEmpty else {
+            if quietEnds {
+                endAfterQuiet(continuation)
+            }
+            return stream
+        }
         hasSpoken = true
         let task = Task { [clock, ends, waits, words] in
             if waits {
@@ -92,6 +101,17 @@ final class SampleListening: Flows.Listening {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+
+    /// The questions' mic on an answer already heard: a pause, then the listen ends.
+    private func endAfterQuiet(_ continuation: AsyncStream<Flows.Heard>.Continuation) {
+        let quiet = Task { [clock] in
+            try? await clock.sleep(for: Self.endAfter)
+            guard !Task.isCancelled else { return }
+            continuation.yield(.ended)
+            continuation.finish()
+        }
+        continuation.onTermination = { _ in quiet.cancel() }
     }
 
     func stop() {

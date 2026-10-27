@@ -79,7 +79,9 @@ final class SampleFirstRunData: Flows.FirstRun {
         if let ear = ears[key] {
             return ear
         }
-        let ear = SampleListening(clock: clock, utterance: Self.spoken[key] ?? [])
+        // a scripted answer, once; listening to it again ends after a quiet (nothing new to hear)
+        let words = Self.spoken[key] ?? []
+        let ear = SampleListening(clock: clock, utterance: words, quietEnds: !words.isEmpty)
         ears[key] = ear
         return ear
     }
@@ -91,6 +93,7 @@ final class SampleFirstRunData: Flows.FirstRun {
         .yearFromNow: ["the", "seed", "is", "raised,", "and", "i", "sleep", "before", "midnight."],
         .careMost: ["my", "sister,", "my", "health,", "and", "the", "team."],
         .onYourMind: ["the", "raise.", "the", "investor", "call", "on", "thursday."],
+        .struggle: ["sleep.", "i", "keep", "pushing", "bedtime", "past", "one."],
         .workingOn: ["retrospect.", "it's", "going,", "slower", "than", "i'd", "like."],
         .keepMeaning: ["running", "in", "the", "mornings.", "work", "keeps", "winning."],
         .highLow: ["high:", "the", "first", "demo.", "low:", "losing", "a", "client."],

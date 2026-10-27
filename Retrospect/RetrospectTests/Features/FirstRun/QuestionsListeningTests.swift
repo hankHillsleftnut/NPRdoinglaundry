@@ -232,7 +232,15 @@ struct QuestionsListeningTests {
         #expect(events.dropLast().last == .partial(["sam.", "i'm in", "london"]))
         // the same ear for the question, so a second listen hears nothing new
         #expect(data.listening(for: .namePlace) === ear)
-        // every question the flow asks has words, but Paper's quick-answers question (none scripted)
+        // ...and ends after a pause, so the mic on an answer already heard never hangs on "listening…"
+        var again: [Flows.Heard] = []
+        if let ear {
+            for await event in ear.listen() {
+                again.append(event)
+            }
+        }
+        #expect(again == [.ended])
+        // every question the flow asks has words (the struggle question too); Paper's quick-answers one has none
         #expect(Flows.FirstRunQuestion.core.allSatisfy { !(SampleFirstRunData.spoken[$0.key] ?? []).isEmpty })
     }
 
