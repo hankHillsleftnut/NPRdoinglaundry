@@ -11,6 +11,8 @@ import SwiftUI
 /// Icon sizes from size.icon.*.
 enum RIconSize {
     case small, regular, large
+    /// The tab bar's 22 (c:tab-bar/item).
+    case tab
     /// size.icon.inWell (18): a glyph inside a small wash circle (the player header's buttons).
     case inWell
 
@@ -20,6 +22,7 @@ enum RIconSize {
         case .small: RDimension.sizeIconSmall
         case .regular: RDimension.sizeIconDefault
         case .large: RDimension.sizeIconLarge
+        case .tab: RDimension.sizeTabIcon
         }
     }
 }

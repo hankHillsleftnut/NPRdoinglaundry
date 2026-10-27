@@ -560,6 +560,14 @@ public enum RDimension {
     public static let sizeNavBar: CGFloat = 44
     /// The tab bar (without the home indicator).
     public static let sizeTabBar: CGFloat = 49
+    /// One tab bar slot's width (four equal slots).
+    public static let sizeTabItemWidth: CGFloat = 72
+    /// The narrowest a tab slot may get on a small phone (tab-bar.md edge cases).
+    public static let sizeTabItemMinWidth: CGFloat = 64
+    /// One tab bar slot's height, icon over label.
+    public static let sizeTabItemHeight: CGFloat = 48
+    /// A tab bar icon.
+    public static let sizeTabIcon: CGFloat = 22
     /// A well or button slot inside a 48 field: the search field's mic well and its clear slot.
     public static let sizeFieldWell: CGFloat = 36
     /// The search field on You.
