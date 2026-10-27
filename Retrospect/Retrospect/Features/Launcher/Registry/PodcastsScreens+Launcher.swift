@@ -9,7 +9,7 @@ import SwiftUI
 
 enum PodcastsScreens: ScreenGroup {
     static let name = "podcasts"
-    /// Empty until lane 2's first screen PR adds one.
-    static let screens: [LaunchableScreen] = []
+    /// PC-2 in episode mode (V2.podcasts.c) registers from its own file.
+    static let screens: [LaunchableScreen] = ScreenRegistry.podcastsPlayerScreens
 }
 #endif
