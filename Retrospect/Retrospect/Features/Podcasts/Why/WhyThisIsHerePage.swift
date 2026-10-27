@@ -25,7 +25,10 @@ struct WhyThisIsHerePage: View {
                     .padding(.top, RDimension.space6)
                     .padding(.bottom, RDimension.space4)
             }
+            // the cards' shadows may spill sideways past the column (c-vkm9o5), but the column never
+            // draws over the header or under "not right" while it scrolls
             .scrollClipDisabled()
+            .mask { Rectangle().padding(.horizontal, -RDimension.layoutSheetInset) }
             .scrollIndicators(.hidden)
             .frame(maxHeight: .infinity)
             RPill(
@@ -38,7 +41,8 @@ struct WhyThisIsHerePage: View {
                 .padding(.top, RDimension.space4)
                 .accessibilityIdentifier("why.notRight")
         }
-        .accessibilityAction(.escape) { model.dismiss() }
+        // VoiceOver's escape goes back to the player when it hosts the page, else closes the sheet
+        .accessibilityAction(.escape) { (model.back ?? model.dismiss)() }
         .accessibilityIdentifier("why")
     }
 
@@ -69,6 +73,8 @@ struct WhyThisIsHerePage: View {
                 model.back?()
             }
             .disabled(model.back == nil)
+            // RIconButton has no disabled look: dim it as RPill dims, so it never looks live
+            .opacity(model.back == nil ? RNumber.opacityDisabled : 1)
             .accessibilityHint(model.back == nil ? WhyThisIsHereModel.notAvailableYet : "")
             .accessibilityIdentifier("why.back")
             Text(model.content.episodeTitle)
