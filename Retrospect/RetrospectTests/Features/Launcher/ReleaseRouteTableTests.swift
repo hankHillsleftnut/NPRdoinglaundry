@@ -121,6 +121,8 @@ struct ReleaseRouteTableTests {
             mounts += named.sorted().map { "\(file.path) names \($0)" }
         }
         #expect(mounts.isEmpty, "a dark V2 screen is reachable outside the launcher/lab (wiring PR only):\n\(mounts.joined(separator: "\n"))")
+        let unnamed = Self.unnamedBackDoors(in: darkFiles.map(\.text))
+        #expect(unnamed.isEmpty, "a dark folder adds an init/subscript to an outside type (release code could reach a dark screen through it):\n\(unnamed.joined(separator: "\n"))")
     }
 
     @Test("the fence itself works: mounts and back doors are caught; comments, strings and private helpers are not")
@@ -138,6 +140,8 @@ struct ReleaseRouteTableTests {
         extension JournalScreen {
             var podcastsRow: some View { PodcastsPage() }
             private var hiddenRow: Int { 1 }
+            private(set) var settableRow = 1
+            public private(set) var publicRow = 1
             func nested() { let local = 1 }
         }
         extension PodcastsPage {
@@ -151,17 +155,51 @@ struct ReleaseRouteTableTests {
             static func splitRow() -> some View { PodcastsPage() }
         }
         extension JournalScreen { var oneLineRow: Int { 1 } }
+        extension JournalScreen:
+            Equatable {
+            var wrappedRow: Int { 1 }
+        }
+        extension JournalScreen
+            where Item == Int
+        {
+            var whereRow: Int { 1 }
+            struct NestedRowView {}
+        }
+        struct TabsHost {
+            enum Tab {}
+        }
+        nonisolated(unsafe) var sharedRow = 1
+        extension RSheet where Content == PodcastsPage {
+            init() { self.init(content: PodcastsPage()) }
+            public subscript(row: Int) -> Int { row }
+            private init(hidden: Int) {}
+        }
+        extension PodcastsPage {
+            init(sample: Int) {}
+        }
         private extension JournalScreen {
             var fileOnly: Int { 1 }
         }
         """
         let types = Self.declaredTypes(in: darkFile)
-        #expect(types == ["PodcastsPage", "PodcastsModel", "GatedPage", "OpenPage", "PackagePage", "TreePage"])
+        #expect(types == ["PodcastsPage", "PodcastsModel", "GatedPage", "OpenPage", "PackagePage", "TreePage", "TabsHost"])
+        // a nested type is reached through its outer name: its short name is not collected
+        #expect(Self.declaredTypes(in: darkFile, nested: true).isSuperset(of: ["Tab", "NestedRowView"]))
         let dark = Self.darkNames(in: [darkFile])
         // the back doors: a top-level function, and a member added to a type declared outside the fence
         #expect(dark.isSuperset(of: ["makePodcastsTab", "podcastsRow"]))
         // ... also behind attributes with arguments, on the line before, and on the opener's own line
         #expect(dark.isSuperset(of: ["gatedRow", "splitRow", "oneLineRow"]))
+        // ... and when the opener wraps, so its `{` comes on a later line; a type nested in such an extension too
+        #expect(dark.isSuperset(of: ["wrappedRow", "whereRow", "NestedRowView"]))
+        #expect(!dark.contains("Tab"))
+        // a modifier with arguments on a top-level value
+        #expect(dark.contains("sharedRow"))
+        // an init or subscript added to an outside type has no name to fence: it fails on its own;
+        // a private one, and one on a dark type, do not
+        #expect(Self.unnamedBackDoors(in: [darkFile]) == ["init() { self.init(content: PodcastsPage()) }", "public subscript(row: Int) -> Int { row }"])
+        // private(set) limits the setter only: the getter is reachable, so it is fenced
+        #expect(dark.isSuperset(of: ["settableRow", "publicRow"]))
         // a private extension's members can't be reached from another file
         #expect(!dark.contains("fileOnly"))
         // private helpers, locals and members of the dark types themselves stay out
@@ -208,67 +246,110 @@ struct ReleaseRouteTableTests {
 
     /// Declaration modifiers and attributes (with or without arguments) before a declaration keyword.
     private static let modifiers =
-        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
+        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:(?:public|internal|package|open|private|fileprivate)\(set\)|nonisolated\(unsafe\)|public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
 
-    /// The non-private type names a file declares.
-    static func declaredTypes(in text: String) -> Set<String> {
+    /// The modifiers make the declaration private to its file (`private(set)` only limits the setter).
+    static func isPrivate(_ modifiers: Substring) -> Bool {
+        modifiers.range(of: #"\b(?:private|fileprivate)\b(?!\()"#, options: .regularExpression) != nil
+    }
+
+    /// The non-private type names a file declares at the top level. A nested type (`PodcastsPage.Tab`) is
+    /// reached through its outer type's name, so its short name stays out (a bare `Tab` elsewhere is not a
+    /// mount); `nested: true` keeps them (the sandbox's name check wants every depth).
+    static func declaredTypes(in text: String, nested: Bool = false, includePrivate: Bool = false) -> Set<String> {
+        let code = stripped(text)
         let pattern = #"(?m)^\s*"# + modifiers + #"(?:struct|class|enum|actor|protocol|typealias)\s+([A-Z]\w*)"#
-        return matches(of: pattern, in: stripped(text))
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let units = Array(code.utf16)
+        var depthAt = [Int](repeating: 0, count: units.count + 1)
+        for (offset, unit) in units.enumerated() {
+            depthAt[offset + 1] = depthAt[offset] + (unit == 123 ? 1 : unit == 125 ? -1 : 0)
+        }
+        var names: Set<String> = []
+        for match in regex.matches(in: code, range: NSRange(code.startIndex..., in: code)) {
+            guard nested || depthAt[match.range.location] == 0,
+                  let mods = Range(match.range(at: 1), in: code), let name = Range(match.range(at: 2), in: code),
+                  includePrivate || !isPrivate(code[mods]) else { continue }
+            names.insert(String(code[name]))
+        }
+        return names
     }
 
     /// Everything a dark folder adds that the app could reach: its non-private types, its top-level
-    /// functions and values, and the members it adds to types declared outside the fence (the back door
-    /// of `extension JournalScreen { var podcastsRow … }`). Members of its own types stay out (their
-    /// type is already fenced, and names like `body` would match everywhere).
+    /// functions and values, and the members (nested types included) it adds to types declared outside the
+    /// fence (the back door of `extension JournalScreen { var podcastsRow … }`, however the opener wraps).
+    /// Members of its own types stay out (their type is already fenced, and names like `body` would match
+    /// everywhere).
     static func darkNames(in texts: [String]) -> Set<String> {
+        scanDark(texts).names
+    }
+
+    /// What a dark folder adds to an outside type that has no name of its own to look for: a non-private
+    /// `init` or `subscript` (`extension RSheet where Content == PodcastsPage { init() { … } }` would let
+    /// release code write `RSheet()` and show a dark screen). Each is a failure, by its line.
+    static func unnamedBackDoors(in texts: [String]) -> [String] {
+        scanDark(texts).unnamed
+    }
+
+    private static func scanDark(_ texts: [String]) -> (names: Set<String>, unnamed: [String]) {
         let code = texts.map(stripped)
         let types = code.reduce(into: Set<String>()) { $0.formUnion(declaredTypes(in: $1)) }
-        let member = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"(?:func|var|let)\s+(\w+)"#)
+        let member = try? NSRegularExpression(
+            pattern: #"^\s*"# + modifiers + #"(?:func|var|let|struct|class|enum|actor|protocol|typealias)\s+(\w+)"#
+        )
         // attributes with arguments too (`@available(iOS 18, *) extension …`), and any access modifier
         let opener = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"extension\s+([A-Z]\w*)[^{\n]*\{?"#)
+        let unnamedMember = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"(?:init|subscript)\b"#)
         var names = types
-        func collect(_ line: String) {
+        var unnamed: [String] = []
+        func collect(_ line: Substring, outside: Bool = true) {
+            let line = String(line)
             let range = NSRange(line.startIndex..., in: line)
+            if outside, let decl = unnamedMember?.firstMatch(in: line, range: range),
+               let mods = Range(decl.range(at: 1), in: line), !isPrivate(line[mods]) {
+                unnamed.append(line.trimmingCharacters(in: .whitespaces))
+                return
+            }
             guard let decl = member?.firstMatch(in: line, range: range),
                   let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
-                  !line[mods].contains("private") else { return }
+                  !isPrivate(line[mods]) else { return }
             names.insert(String(line[name]))
         }
         for text in code {
             var depth = 0
             var outsideExtension = false
+            // an opener whose `{` hasn't come yet (a wrapped conformance list or `where` clause)
+            var pending: Bool?
             for line in text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
                 let range = NSRange(line.startIndex..., in: line)
                 if depth == 0, let open = opener?.firstMatch(in: line, range: range),
                    let mods = Range(open.range(at: 1), in: line), let name = Range(open.range(at: 2), in: line),
                    let whole = Range(open.range, in: line) {
                     // a `private extension` adds nothing another file can reach
-                    outsideExtension = !types.contains(String(line[name])) && !line[mods].contains("private")
-                    // a one-line `extension JournalScreen { var row … }`: the member after the brace
-                    if outsideExtension, line[whole].hasSuffix("{") {
-                        collect(String(line[whole.upperBound...]))
+                    let outside = !types.contains(String(line[name])) && !isPrivate(line[mods])
+                    if line[whole].hasSuffix("{") {
+                        outsideExtension = outside
+                        // a one-line `extension JournalScreen { var row … }`: the member after the brace
+                        if outside { collect(line[whole.upperBound...]) }
+                    } else {
+                        pending = outside
+                    }
+                } else if depth == 0, let outside = pending {
+                    if let brace = line.firstIndex(of: "{") {
+                        pending = nil
+                        outsideExtension = outside
+                        if outside { collect(line[line.index(after: brace)...]) }
                     }
                 } else if depth == 0 || (depth == 1 && outsideExtension) {
-                    collect(line)
+                    collect(line[...], outside: depth == 1)
                 }
                 depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
-                if depth == 0 {
+                if depth == 0, pending == nil {
                     outsideExtension = false
                 }
             }
         }
-        return names
-    }
-
-    private static func matches(of pattern: String, in text: String) -> Set<String> {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        var names: Set<String> = []
-        for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
-            guard let mods = Range(match.range(at: 1), in: text), let name = Range(match.range(at: 2), in: text) else { continue }
-            if text[mods].contains("private") { continue }
-            names.insert(String(text[name]))
-        }
-        return names
+        return (names, unnamed)
     }
 
     /// The code with comments and string literals blanked out (a `//` inside a string is not a comment),
