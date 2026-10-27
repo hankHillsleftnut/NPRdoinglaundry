@@ -12,7 +12,7 @@
 //  or a 44 icon button keep 16 on the trailing side (the button's 36 sits 20 in, like the drawer
 //  button opposite); 36-tall content (YO-1's "list" pill and picture, 12 apart) sits 24 in.
 //
-//  V2.goals.parts (GL-D9): `.entry(.back)`, the entry bar with back only, for pages whose "edit" has
+//  V2.goals.parts (GL-D9): `.entry(.back(back:))`, the entry bar with back only, for pages whose "edit" has
 //  nothing drawn behind it yet (GL-2's rename mode). The same bar as `.rest` without the word.
 //
 import SwiftUI
