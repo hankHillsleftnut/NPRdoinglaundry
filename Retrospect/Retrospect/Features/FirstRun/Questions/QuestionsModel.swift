@@ -206,11 +206,15 @@ final class QuestionsModel {
         Self.runs(of: quickAnswers.contains(chip) ? quickAnswers : quickAnswers + [chip], in: parts)[chip] ?? []
     }
 
-    /// Every chip's runs in `parts` (case-insensitive), longest chips first, no run overlapping another.
+    /// Every chip's runs in `parts` (case-insensitive), longest chips first (ties in the question's
+    /// order, so the claim is deterministic), no run overlapping another.
     static func runs(of chips: [String], in parts: [String]) -> [String: [Range<Int>]] {
         var taken = Set<Int>()
         var found: [String: [Range<Int>]] = [:]
-        for chip in chips.sorted(by: { Self.parts(of: $0).count > Self.parts(of: $1).count }) {
+        let ordered = chips.enumerated()
+            .sorted { (Self.parts(of: $0.element).count, $1.offset) > (Self.parts(of: $1.element).count, $0.offset) }
+            .map(\.element)
+        for chip in ordered {
             let words = Self.parts(of: chip)
             guard !words.isEmpty, words.count <= parts.count else { continue }
             var start = 0
@@ -360,7 +364,10 @@ final class QuestionsModel {
             for run in found.reversed() {
                 parts.removeSubrange(run)
             }
-        } else if found.isEmpty {
+        } else if found.isEmpty, Self.runs(of: [chip], in: parts)[chip] == nil {
+            // never a duplicate: words already in the field that a longer chip claims ("friends,
+            // family" holding "family") stay as they are; offering a comma chip beside the single
+            // chips it is made of is a QC-1 question, not something a tap can untangle
             parts += Self.parts(of: chip)
         }
         draft = parts.joined(separator: ", ")
