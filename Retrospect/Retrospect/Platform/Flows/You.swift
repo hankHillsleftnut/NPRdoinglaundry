@@ -57,4 +57,6 @@ extension Flows {
 protocol YouData: AnyObject {
     /// YO-5's areas and answers.
     func whatIKnow() async -> Flows.WhatIKnow
+    /// YO-3: one source by id; nil when it doesn't exist.
+    func source(id: String) async -> Flows.SourceEntry?
 }
