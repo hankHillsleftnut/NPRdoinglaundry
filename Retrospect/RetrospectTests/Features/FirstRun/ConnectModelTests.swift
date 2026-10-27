@@ -343,6 +343,18 @@ struct ConnectModelTests {
         #expect(make().knowsYou.filled == 1)
     }
 
+    @Test("founder 26 Oct (#199): the onboarding back chevron at Paper's size; the lit primary button without its halo")
+    func sharedPartsMatchPaper() {
+        let back = RIconButton.onboardingBack {}
+        #expect(back.symbol == "chevron.left")
+        #expect(back.role == .inField)
+        #expect(back.glyphScale == RIconButton.backChevronGlyphScale)
+        // 11.3pt of SF's 14 at the default 0.82
+        #expect(abs(RIconButton.backChevronGlyphScale - RSymbol.defaultGlyphScale * 11.3 / 14) < 0.005)
+        #expect(RIconButton(symbol: "mic", label: "talk", role: .inField) {}.glyphScale == RSymbol.defaultGlyphScale)
+        #expect(RButton.primaryHalo == false)
+    }
+
     @Test("Paper's line boxes: whole points, measured against the line SwiftUI draws on whole pixels")
     func paperLineBoxes() {
         // SF 14 (16.707 tall) in Paper's 18.2 box: 19 on screen, so 1 above and 1 below on a 3x screen

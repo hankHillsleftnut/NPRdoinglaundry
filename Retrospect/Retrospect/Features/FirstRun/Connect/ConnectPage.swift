@@ -68,7 +68,7 @@ struct ConnectPage: View {
     /// right (screen-rules 6). Paper 21C7-0.
     private var topBar: some View {
         HStack(spacing: RDimension.space0) {
-            RIconButton(symbol: "chevron.left", label: "back", role: .inField) { model.back() }
+            RIconButton.onboardingBack { model.back() }
                 .accessibilityIdentifier("connect.back")
             Spacer(minLength: RDimension.space0)
         }

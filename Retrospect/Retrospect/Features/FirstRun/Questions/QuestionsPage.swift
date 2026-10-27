@@ -126,7 +126,7 @@ struct QuestionsPage: View {
     private var topBar: some View {
         HStack(spacing: RDimension.space0) {
             // Paper c:top-bar/onboarding: the chevron in a 32 wash circle inside a 44 hit area
-            RIconButton(symbol: "chevron.left", label: "back", role: .inField) {
+            RIconButton.onboardingBack {
                 withAnimation(motion) {
                     model.back()
                 }
