@@ -86,6 +86,8 @@ struct BriefWidgetMedium: View {
     }
 }
 
+#if DEBUG
+// Preview-only (founder 27 Oct: state and preview scenes stay in the debug launcher, out of release).
 /// The surface a target's container gives a widget, for the preview: background.raised, radius.widget,
 /// the 0.5 outer line and the soft cast Paper draws on the home screen.
 struct WidgetPreviewSurface: ViewModifier {
@@ -118,3 +120,4 @@ struct WidgetsPreviewPage: View {
         .accessibilityIdentifier("widgets")
     }
 }
+#endif
