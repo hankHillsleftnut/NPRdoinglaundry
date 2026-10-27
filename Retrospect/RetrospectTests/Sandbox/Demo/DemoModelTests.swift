@@ -12,13 +12,21 @@ struct DemoModelTests {
     private let noWait: DemoModel.Sleep = { _ in }
 
     private func demo(
-        _ store: MemoryDemoStore = MemoryDemoStore(),
-        flowStore: MemoryFlowStore = MemoryFlowStore(),
+        _ store: MemoryDemoStore? = nil,
+        flowStore: MemoryFlowStore? = nil,
         start: DemoStage? = nil,
         flowStart: FlowStep? = nil,
         handOff: FlowStep? = FirstRunScreen.firstHome.step
     ) -> DemoModel {
-        let model = DemoModel(store: store, flowStore: flowStore, launch: DemoLaunch(start: start), flowStart: flowStart, handOff: handOff, sleep: noWait)
+        // built here, on the main actor (a default argument is evaluated off it)
+        let model = DemoModel(
+            store: store ?? MemoryDemoStore(),
+            flowStore: flowStore ?? MemoryFlowStore(),
+            launch: DemoLaunch(start: start),
+            flowStart: flowStart,
+            handOff: handOff,
+            sleep: noWait
+        )
         model.started()
         return model
     }
