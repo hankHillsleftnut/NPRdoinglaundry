@@ -5,6 +5,8 @@
 //
 import Foundation
 
+// Sample data is sandbox only (founder 27 Oct; SandboxFenceTests): never in a Release build.
+#if DEBUG
 @MainActor
 final class SampleShare: ShareData {
     /// What "save" recorded: nil until saved; the why ("" when none was added).
@@ -29,3 +31,4 @@ final class SampleShare: ShareData {
 enum SampleWidgets {
     static let brief = WidgetBrief(label: "today's brief · 4 min", line: "a heavier week than usual, and it shows.")
 }
+#endif
