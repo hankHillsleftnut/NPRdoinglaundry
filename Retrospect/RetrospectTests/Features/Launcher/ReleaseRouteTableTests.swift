@@ -42,12 +42,9 @@ struct ReleaseRouteTableTests {
     ]
 
     /// Debug-only surfaces that may name a dark screen: the launcher (and its group registry), the lab, and
-    /// the sandbox (`Sandbox/`: the full-app demo, `-Flow demo`, DECISIONS 27 Oct), whose every file is
-    /// DEBUG-only (`sandboxIsDebugOnly`).
+    /// the sandbox (`Sandbox/`: the full-app demo, `-Flow demo`, DECISIONS 27 Oct), whose files are wholly
+    /// DEBUG-only (SandboxFenceTests).
     static let allowedToNameDark = ["Features/Launcher/", "DesignSystemV2/RLabPages", "Sandbox/"]
-
-    /// The sandbox folder: test and demo hosts that never ship (founder 27 Oct, binding).
-    static let sandboxFolder = "Sandbox"
 
     // MARK: guard 1: the pinned tables
 
@@ -128,53 +125,6 @@ struct ReleaseRouteTableTests {
         #expect(mounts.isEmpty, "a dark V2 screen is reachable outside the launcher/lab (wiring PR only):\n\(mounts.joined(separator: "\n"))")
         let unnamed = Self.unnamedBackDoors(in: darkFiles.map(\.text))
         #expect(unnamed.isEmpty, "a dark folder adds an init/subscript to an outside type (release code could reach a dark screen through it):\n\(unnamed.joined(separator: "\n"))")
-    }
-
-    @Test("every sandbox file is debug-only: its code sits inside one #if DEBUG … #endif")
-    func sandboxIsDebugOnly() {
-        let files = Self.swiftFiles(in: Self.appRoot.appendingPathComponent(Self.sandboxFolder, isDirectory: true))
-        #expect(!files.isEmpty, "no sandbox files found under \(Self.appRoot.path)/\(Self.sandboxFolder)")
-        for file in files {
-            #expect(Self.isDebugOnly(file.text), "\(file.path) has code outside #if DEBUG: a sandbox file would ship")
-        }
-    }
-
-    @Test("the debug-only check catches code before or after the DEBUG block")
-    func debugOnlyCheckWorks() {
-        #expect(Self.isDebugOnly("//\n// header\n//\n#if DEBUG\nimport SwiftUI\nstruct Demo {}\n#endif\n"))
-        #expect(!Self.isDebugOnly("import SwiftUI\n#if DEBUG\nstruct Demo {}\n#endif\n"))
-        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#endif\nstruct Shipped {}\n"))
-        #expect(!Self.isDebugOnly("struct Shipped {}\n"))
-        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#endif\nstruct Shipped {}\n#if os(iOS)\n#endif\n"))
-        #expect(Self.isDebugOnly("#if DEBUG\n#if os(iOS)\nstruct Demo {}\n#endif\n#endif\n"))
-        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#else\nstruct Shipped {}\n#endif\n"))
-        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#elseif os(iOS)\nstruct Shipped {}\n#endif\n"))
-        // a nested #else stays inside DEBUG: fine
-        #expect(Self.isDebugOnly("#if DEBUG\n#if os(iOS)\nstruct A {}\n#else\nstruct B {}\n#endif\n#endif\n"))
-    }
-
-    /// The file's only code is one `#if DEBUG` block with no `#else`/`#elseif` of its own (that branch would
-    /// compile in release): before it only comments and blank lines, after its closing `#endif` nothing.
-    static func isDebugOnly(_ text: String) -> Bool {
-        let lines = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
-        let code = lines.filter { !$0.isEmpty && !$0.hasPrefix("//") }
-        guard code.first == "#if DEBUG", code.count > 1 else { return false }
-        // the first block's own #endif must be the last line: depth reaches 0 there and nowhere before
-        var depth = 0
-        for (index, line) in code.enumerated() {
-            if line.hasPrefix("#if") {
-                depth += 1
-            } else if depth == 1, line.hasPrefix("#else") || line.hasPrefix("#elseif") {
-                // the DEBUG block's other branch is release code
-                return false
-            } else if line.hasPrefix("#endif") {
-                depth -= 1
-                if depth == 0 {
-                    return index == code.count - 1
-                }
-            }
-        }
-        return false
     }
 
     @Test("the fence itself works: mounts and back doors are caught; comments, strings and private helpers are not")
