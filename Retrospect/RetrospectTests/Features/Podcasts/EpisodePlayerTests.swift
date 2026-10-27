@@ -36,15 +36,16 @@ struct EpisodePlayerTests {
     func linesAndLitLine() {
         #expect(SampleEpisodeTranscript.weekly.lines.map(\.text) == SamplePlayback.weeklyLines)
         #expect(SampleEpisodeTranscript.weekly.isTimed)
-        let sheet = model(.weeklyEpisodePaused)
+        let sheet = model(.weeklyEpisodeStill)
         sheet.playback.seek(to: 150)
         #expect(sheet.currentLine == 1)
         sheet.playback.seek(to: 0)
         #expect(sheet.currentLine == 0)
         sheet.playback.seek(to: 300)
         #expect(sheet.currentLine == 3)
-        #expect(model(.weeklyEpisodeEnded).currentLine == 4)
-        #expect(model(.weeklyEpisodeEnded).state == .ended)
+        sheet.playback.seek(to: 690)
+        #expect(sheet.currentLine == 4)
+        #expect(sheet.state == .ended)
     }
 
     @Test("the downloaded stretch ends inside chapter 2, as drawn; the tease stays fully downloaded")
@@ -53,18 +54,6 @@ struct EpisodePlayerTests {
         let fraction = try #require(weekly.buffered)
         #expect(abs(fraction - 391.0 / 690.0) < 0.0001)
         #expect(SamplePlayback(scenario: .teaseStill, clock: clock).buffered == 1)
-    }
-
-    @Test(
-        "the weekly episode's failed and offline states never play, whatever is tapped",
-        arguments: [Flows.PlaybackScenario.weeklyEpisodeFailed, .weeklyEpisodeOffline]
-    )
-    func unplayable(scenario: Flows.PlaybackScenario) {
-        let sheet = model(scenario)
-        let before = sheet.state
-        sheet.playback.play()
-        #expect(sheet.state == before)
-        #expect(sheet.state == (scenario == .weeklyEpisodeFailed ? .failed : .offline))
     }
 
     @Test("the weekly episode plays from 04:12 on the clock")
@@ -85,10 +74,10 @@ struct EpisodePlayerTests {
         #expect(sheet.onTapLine == nil)
     }
 
-    @Test("PC-2 is in the launcher with its six states, and a line tap hands over to why this is here")
+    @Test("PC-2 is in the launcher with Paper's one drawn state, live and held still, and a line tap hands over to why this is here")
     func launcher() {
         let screen = ScreenRegistry.groupScreens.first { $0.id == "PC-2" }
-        #expect(screen?.states == ["playing", "playing-still", "paused", "ended", "failed", "offline"])
+        #expect(screen?.states == ["playing", "playing-still"])
         #expect(EpisodePlayerExit.whyThisIsHere(line: 2).standIn == "why this is here · line 3")
         for scenario in EpisodePlayerScenario.allCases {
             #expect(SamplePlayback.weeklyScenarios.contains(scenario.playback))

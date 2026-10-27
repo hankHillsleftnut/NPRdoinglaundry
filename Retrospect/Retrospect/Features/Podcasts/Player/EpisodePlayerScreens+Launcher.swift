@@ -10,24 +10,17 @@
 #if DEBUG
 import SwiftUI
 
-/// PC-2's launcher states. `playing-still` is the frame compared with Paper (4:12, held still);
-/// `paused`, `ended`, `failed`, `offline` are the states Paper doesn't draw (PCD-6, founder-review lean).
+/// PC-2's launcher states: Paper draws it playing only (founder 27 Oct: key drawn states only; paused,
+/// ended, couldn't load and offline are undrawn, not built). `playing` runs from 4:12 on the real clock;
+/// `playing-still` is the frame compared with Paper (4:12, held still until pause and play).
 enum EpisodePlayerScenario: String, CaseIterable {
     case playing
     case playingStill = "playing-still"
-    case paused
-    case ended
-    case failed
-    case offline
 
     var playback: Flows.PlaybackScenario {
         switch self {
         case .playing: .weeklyEpisode
         case .playingStill: .weeklyEpisodeStill
-        case .paused: .weeklyEpisodePaused
-        case .ended: .weeklyEpisodeEnded
-        case .failed: .weeklyEpisodeFailed
-        case .offline: .weeklyEpisodeOffline
         }
     }
 }
@@ -93,8 +86,4 @@ struct EpisodePlayerLaunch: View {
 }
 
 #Preview("PC-2 · as drawn") { EpisodePlayerLaunch(scenario: .playingStill) }
-#Preview("PC-2 · paused") { EpisodePlayerLaunch(scenario: .paused) }
-#Preview("PC-2 · ended") { EpisodePlayerLaunch(scenario: .ended) }
-#Preview("PC-2 · failed") { EpisodePlayerLaunch(scenario: .failed) }
-#Preview("PC-2 · offline") { EpisodePlayerLaunch(scenario: .offline) }
 #endif

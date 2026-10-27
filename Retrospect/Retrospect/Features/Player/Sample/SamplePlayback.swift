@@ -49,14 +49,6 @@ extension Flows {
         /// The weekly episode playing at 4:12 on the line Paper lights, held still until something is
         /// tapped: the frame compared with Paper.
         case weeklyEpisodeStill
-        /// The weekly episode paused at 4:12.
-        case weeklyEpisodePaused
-        /// The weekly episode played to the end.
-        case weeklyEpisodeEnded
-        /// The weekly episode's audio could not be loaded.
-        case weeklyEpisodeFailed
-        /// Offline, and the weekly episode isn't on the phone.
-        case weeklyEpisodeOffline
     }
 }
 
@@ -135,13 +127,13 @@ final class SamplePlayback: Flows.Playback {
             state = .failed(Flows.Failure(.network))
         case .offline:
             state = .offline
-        case .weeklyEpisode, .weeklyEpisodeStill, .weeklyEpisodePaused, .weeklyEpisodeEnded, .weeklyEpisodeFailed,
-             .weeklyEpisodeOffline:
+        case .weeklyEpisode, .weeklyEpisodeStill:
             startWeekly()
         }
     }
 
-    /// The weekly episode's starting points (PC-2), apart from `init` so the tease's lines stay as they were.
+    /// The weekly episode's starting points (PC-2), apart from `init` so the tease's lines stay as they were (Paper draws
+    /// PC-2 playing only; founder 27 Oct: no undrawn states).
     private func startWeekly() {
         switch scenario {
         case .weeklyEpisode:
@@ -152,16 +144,6 @@ final class SamplePlayback: Flows.Playback {
             // playing, as drawn, with no ticker (like the tease's still)
             position = Self.weeklyLitLine
             state = .playing
-        case .weeklyEpisodePaused:
-            position = Self.weeklyLitLine
-            state = .paused
-        case .weeklyEpisodeEnded:
-            position = duration ?? 0
-            state = .ended
-        case .weeklyEpisodeFailed:
-            state = .failed(Flows.Failure(.network))
-        case .weeklyEpisodeOffline:
-            state = .offline
         default:
             break
         }
@@ -231,8 +213,6 @@ final class SamplePlayback: Flows.Playback {
         switch scenario {
         case .failed: .failed(Flows.Failure(.network))
         case .offline: .offline
-        case .weeklyEpisodeFailed: .failed(Flows.Failure(.network))
-        case .weeklyEpisodeOffline: .offline
         default: nil
         }
     }
@@ -306,8 +286,7 @@ final class SamplePlayback: Flows.Playback {
             }, duration: 45)
         case .tease, .teaseStill, .teasePaused, .teaseEnded:
             tease
-        case .weeklyEpisode, .weeklyEpisodeStill, .weeklyEpisodePaused, .weeklyEpisodeEnded, .weeklyEpisodeFailed,
-             .weeklyEpisodeOffline:
+        case .weeklyEpisode, .weeklyEpisodeStill:
             weeklyEpisode
         }
     }
@@ -364,9 +343,7 @@ final class SamplePlayback: Flows.Playback {
     static let weeklyBuffered: Double = 391
 
     /// Every scenario that plays the weekly episode.
-    static let weeklyScenarios: Set<Flows.PlaybackScenario> = [
-        .weeklyEpisode, .weeklyEpisodeStill, .weeklyEpisodePaused, .weeklyEpisodeEnded, .weeklyEpisodeFailed, .weeklyEpisodeOffline,
-    ]
+    static let weeklyScenarios: Set<Flows.PlaybackScenario> = [.weeklyEpisode, .weeklyEpisodeStill]
 
     private static func brief(id: String, parts: [Flows.PlaybackItem.Part], duration: Double) -> Flows.PlaybackItem {
         Flows.PlaybackItem(id: id, kind: .brief, title: "today's brief", parts: parts, durationSeconds: duration)
