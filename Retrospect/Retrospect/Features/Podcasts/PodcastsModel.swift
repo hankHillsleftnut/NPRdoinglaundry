@@ -56,9 +56,6 @@ final class PodcastsModel {
         case failed
     }
 
-    /// The empty page's line (founder-review lean, not drawn in Paper).
-    static let emptyLine = "your episodes appear here every sunday."
-    static let errorLine = "the podcasts didn't load."
     /// The play is drawn ahead of the player (V2.podcasts.d): VoiceOver says so.
     static let notAvailableYet = "not available yet"
 
