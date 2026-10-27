@@ -57,12 +57,18 @@ struct EpisodePlayerLaunch: View {
 
     var body: some View {
         if let exit {
-            Text(exit.standIn)
-                .rText(.textMd)
-                .foregroundStyle(RColor.textSecondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(RColor.backgroundCanvas)
-                .accessibilityIdentifier("pc2.exit")
+            VStack(spacing: RDimension.space4) {
+                Text(exit.standIn)
+                    .rText(.textMd)
+                    .foregroundStyle(RColor.textSecondary)
+                    .accessibilityIdentifier("pc2.exit")
+                // back to the same sheet, where it was (the stand-in is a dead end otherwise)
+                RButton(title: "back to the player", variant: .secondary) { self.exit = nil }
+                    .fixedSize()
+                    .accessibilityIdentifier("pc2.exit.back")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(RColor.backgroundCanvas)
         } else if let model {
             PlayerSheetScreen {
                 PlayerSheet(model: model, partLabel: .counted) { line in
