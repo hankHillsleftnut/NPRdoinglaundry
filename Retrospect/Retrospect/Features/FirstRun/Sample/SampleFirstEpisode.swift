@@ -18,6 +18,10 @@ extension Flows {
         case ready
         /// Made, but without its audio.
         case unavailable
+        /// GR.ready (ON-10): 66 s into the ~2 min wait (Paper's line at 55%), and it stays waiting.
+        case making
+        /// GR.ready: as `making`, then made after `SampleFirstEpisode.refreshesToReadyOnScreen` refreshes.
+        case makingThenReady
     }
 }
 
@@ -43,12 +47,22 @@ final class SampleFirstEpisode: Flows.FirstEpisode {
             state = Self.readyState
         case .unavailable:
             state = .unavailable(title: Self.title)
+        case .making, .makingThenReady:
+            state = .waiting(since: now.addingTimeInterval(-Self.makingElapsed))
         }
     }
+
+    /// GR.ready: how far into the wait the sample starts (66 of the ~120 s: Paper's 55% line).
+    static let makingElapsed: TimeInterval = 66
+    /// GR.ready: refreshes before `makingThenReady` is made (three 10 s asks: about 30 s on screen).
+    static let refreshesToReadyOnScreen = 3
 
     func refresh() async {
         refreshes += 1
         if scenario == .becomesReady, refreshes >= Self.refreshesToReady {
+            state = Self.readyState
+        }
+        if scenario == .makingThenReady, refreshes >= Self.refreshesToReadyOnScreen {
             state = Self.readyState
         }
     }
