@@ -182,45 +182,14 @@ final class DrawerModel {
         }
     }
 
-    /// "today", "yesterday", else "sun 19 oct" (Paper's day labels), from the contract's local day.
+    /// "today", "yesterday", else "sun 19 oct".
     func dayLabel(_ day: String) -> String {
-        guard let date = Self.day(day), let today = Self.day(data.today) else { return day }
-        let days = Self.utc.dateComponents([.day], from: date, to: today).day ?? 0
-        switch days {
-        case 0: return "today"
-        case 1: return "yesterday"
-        default: return Self.dayFormatter.string(from: date).lowercased()
-        }
+        EntryWords.dayLabel(day, today: data.today)
     }
 
-    /// "9:12", "22:40": the hour without a leading zero, in the person's time zone (Paper's times).
+    /// "9:12", "22:40" in the person's time zone.
     func time(_ date: Date) -> String {
-        var calendar = Self.utc
-        calendar.timeZone = data.timeZone
-        let parts = calendar.dateComponents([.hour, .minute], from: date)
-        let minute = parts.minute ?? 0
-        return "\(parts.hour ?? 0):\(minute < 10 ? "0" : "")\(minute)"
-    }
-
-    private static let utc: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC") ?? .current
-        return calendar
-    }()
-
-    /// "Sun 19 Oct" (lowercased on use): fixed words, as Paper writes them, whatever the phone's language.
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = utc.timeZone
-        formatter.dateFormat = "EEE d MMM"
-        return formatter
-    }()
-
-    private static func day(_ day: String) -> Date? {
-        let parts = day.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return utc.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        EntryWords.time(date, in: data.timeZone)
     }
 
     static func cleaned(_ query: String) -> String? {

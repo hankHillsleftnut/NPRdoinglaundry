@@ -43,6 +43,8 @@ final class SampleEntriesData: EntriesData {
     static let hereID = SampleEntries.hereID
 
     private var kept: [Entry]
+    /// Entries only the entry page opens (JR-4's own states).
+    private var pages = SampleEntries.pages
     /// How long the sample's retry takes to send (a beat, so "sending" can be seen).
     private let sendBeat: Duration
 
@@ -60,13 +62,25 @@ final class SampleEntriesData: EntriesData {
         return .success(Flows.Page(items: found, nextCursor: nil))
     }
 
+    func entry(id: String) async -> Result<Entry, Flows.Failure> {
+        let found = (kept + pages).first { $0.id == id || $0.serverId == id }
+        return found.map { .success($0) } ?? .failure(Flows.Failure(.notFound))
+    }
+
     func retry(clientEntryId: String) async {
-        guard let index = kept.firstIndex(where: { $0.clientEntryId == clientEntryId }) else { return }
-        kept[index].delivery = .sending
+        setDelivery(.sending, of: clientEntryId)
         try? await Task.sleep(for: sendBeat)
-        guard let again = kept.firstIndex(where: { $0.clientEntryId == clientEntryId }) else { return }
         // offline, it waits on the phone; online, it sends
-        kept[again].delivery = isOffline ? .waiting : .sent
+        setDelivery(isOffline ? .waiting : .sent, of: clientEntryId)
+    }
+
+    private func setDelivery(_ delivery: Entry.Delivery, of clientEntryId: String) {
+        if let index = kept.firstIndex(where: { $0.clientEntryId == clientEntryId }) {
+            kept[index].delivery = delivery
+        }
+        if let index = pages.firstIndex(where: { $0.clientEntryId == clientEntryId }) {
+            pages[index].delivery = delivery
+        }
     }
 }
 
@@ -109,7 +123,7 @@ enum SampleEntries {
                 reading: .read
             ).entry,
             Seed(
-                id: "00000000-0000-4000-8000-000000000a03", client: nil, kind: .voice,
+                id: walkID, client: nil, kind: .voice,
                 text: "on the walk home i kept thinking about the offer, and whether i even want it. "
                     + "the money's better, but i'd be commuting again, and i only just got my mornings back.",
                 at: "2026-10-20T17:05:00.000Z", reading: .read
@@ -149,6 +163,32 @@ enum SampleEntries {
             ).entry,
         ]
     }
+
+    /// JR-4's own entries (Paper N7R-0, N9D-0), opened only from the entry launcher states.
+    static var pages: [Entry] {
+        [
+            Seed(
+                id: ranID,
+                client: nil,
+                kind: .typed,
+                text: "ran 5k without stopping",
+                at: "2026-10-21T07:02:00.000Z",
+                reading: .waiting
+            ).entry,
+            Entry(
+                local: trainID,
+                kind: .typed,
+                text: "the train is stuck again, writing this underground",
+                createdAt: date("2026-10-21T08:40:00.000Z"),
+                day: "2026-10-21",
+                delivery: .failed(Flows.Failure(.network))
+            ),
+        ]
+    }
+
+    static let walkID = "00000000-0000-4000-8000-000000000a03"
+    static let ranID = "00000000-0000-4000-8000-000000000a30"
+    static let trainID = "00000000-0000-4000-8000-000000000a31"
 
     /// Paper MZJ-0: the two lines "standup" finds, among others it doesn't.
     static var searchable: [Entry] {
