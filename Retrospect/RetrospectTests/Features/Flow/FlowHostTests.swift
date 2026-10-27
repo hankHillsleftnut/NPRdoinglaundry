@@ -269,6 +269,25 @@ struct FlowHostTests {
         #expect(resumed.spokenWords == "the investor call on thursday")
     }
 
+    @Test("connect: continue or later moves on to getting ready and is kept; back stays; a connection lasts the flow")
+    func connectMovesOnToGettingReady() async {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .connect)
+        #expect(model.step == .connect)
+        await ConnectModel(data: model.connect, onDone: { _ in }, onBack: {}).connect("apple_health")
+        #expect(model.connect.knowsYou.filled == 2)
+        model.send(.connectBack)
+        #expect(model.step == .connect)
+        model.send(.connectDone)
+        #expect(model.step == .gettingReady)
+        #expect(store.saved?.step == .gettingReady)
+        // the page's own exits are the flow's one event: later goes on too
+        let later = flow(MemoryFlowStore(), start: .connect)
+        let page = ConnectModel(data: later.connect, onDone: { _ in later.send(.connectDone) }, onBack: { later.send(.connectBack) })
+        page.later()
+        #expect(later.step == .gettingReady)
+    }
+
     @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")
     func episodeStartsWithThePage() {
         let model = flow(MemoryFlowStore(), start: .splash)
