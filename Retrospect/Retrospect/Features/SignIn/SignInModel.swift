@@ -23,7 +23,8 @@ final class SignInModel {
         case failed
     }
 
-    let look: Look
+    /// Welcome back can become the splash once ("new here? get started", AC-1 `1GY6-0`); never back.
+    private(set) var look: Look
     private(set) var phase: Phase
     private(set) var isOnline: Bool
     /// Counts of failures and successes, for the haptics (each fires once per change).
@@ -62,6 +63,26 @@ final class SignInModel {
             arrivals += 1
             onSignedIn(name, access)
         }
+    }
+
+    /// AC-1's "new here? get started": welcome back becomes the splash, the first-run start (founder,
+    /// 27 Oct). From rest or a failure only: while Apple's answer is being checked the page holds still.
+    /// The failure goes with the look (it belonged to the welcome-back try); the connection stays.
+    func startFresh() {
+        guard look == .returning, phase != .signingIn else { return }
+        look = .splash
+        phase = .rest
+    }
+
+    /// AC-1 `1GY6-0` draws the link where the splash has its legal line (`1F53-0`); welcome back has no
+    /// legal line in Paper, and the splash it opens carries it.
+    var offersNewHere: Bool {
+        look == .returning
+    }
+
+    /// The link can be pressed when `startFresh` would act (not while signing in).
+    var newHereEnabled: Bool {
+        phase != .signingIn
     }
 
     /// Follows the phone's connection: offline, the button rests disabled with the reason.
@@ -117,4 +138,5 @@ final class SignInModel {
     static let splashTitle = "everything about you, finally connected."
     static let splashLine = "retrospect gets to know you, and tells you what it sees."
     static let legal = "by continuing you agree to the terms · privacy"
+    static let newHere = "new here? get started"
 }
