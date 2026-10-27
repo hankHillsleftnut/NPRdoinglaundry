@@ -4,6 +4,7 @@
 //  "save 20%"; DECISIONS 7). The plan buttons are dummies (founder, 26 Oct night): `choose` answers
 //  `.subscribed` at once, charges nothing, asks nothing of Apple, keeps nothing.
 //
+#if DEBUG
 import Foundation
 
 /// The launcher's ON-12 states (`-Screen first-run -State paywall|paywall-still|paywall-nudge`).
@@ -46,3 +47,4 @@ final class SamplePaywall: Flows.Paywall {
         return answer
     }
 }
+#endif
