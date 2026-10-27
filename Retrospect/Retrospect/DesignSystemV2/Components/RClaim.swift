@@ -53,6 +53,9 @@ struct RClaim: View {
     let text: String
     /// "stated · from what you did · very sure"; "asked · fairly sure · rests on 3 mornings".
     let meta: String
+    /// The stated claim's face: the master part draws it at text-3xl (`.inkTitle`); a screen that draws
+    /// it smaller passes its own (YO-4 1GDU-0: text-2xl). Additive, `.inkTitle` by default.
+    var statedStyle: RTextStyle = .inkTitle
 
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -61,7 +64,7 @@ struct RClaim: View {
         case .stated:
             VStack(alignment: .leading, spacing: RDimension.space2) {
                 Text(text)
-                    .rText(.inkTitle)
+                    .rText(statedStyle)
                     .foregroundStyle(RColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
                 metaLine
