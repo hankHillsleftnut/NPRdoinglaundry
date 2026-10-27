@@ -47,7 +47,8 @@ enum DemoPage: String, CaseIterable, Sendable {
         case .tease: ["player"]
         case .st9: ["account"]
         case .shell: ["shell"]
-        case .launch, .system, .questions, .privacy, .connect, .gettingReady, .paywall, .firstHome, .miniPlayer, .ex2, .ex3, .ex4:
+        // EX-4's views open in the launcher (#221: `-Screen EX-4`); EX-2 and EX-3 are content only
+        case .launch, .system, .questions, .privacy, .connect, .gettingReady, .paywall, .firstHome, .miniPlayer, .ex2, .ex3:
             []
         default: [rawValue]
         }
@@ -140,8 +141,8 @@ struct DemoEdge: Sendable {
 }
 
 enum DemoFlowEdges {
-    /// Flipped by the demo host's last PR (DEMO.app.c) in the same change that sets every row's status:
-    /// from then on no row may be planned, open or missing, and every page is reachable from a launch.
+    /// Flipped by the demo's final PR (after FLOW.edges.c, PS.sheet.c, PW and FH land) in the same change that
+    /// sets every row's status: from then on no row may be planned, open or missing, and every page is reachable.
     static let demoHostLanded = false
 
     /// Pages that have no way out inside the app, by design: the lock screen's now playing has no page in a
@@ -339,11 +340,11 @@ enum DemoFlowEdges {
         DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .pr(253), join: "D30 -DemoOutside share"),
         DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .pr(253), join: "DEMO.app.c (save closes: DM-3)"),
         DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .pr(253), join: "DEMO.app.c"),
-        DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("DEMO.app.c")),
+        DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("W7 (DEMO.app.c stands in for share and brief only)")),
         DemoEdge("X04a", .ex3, "your brief is ready", .tap, .jr2, .route("brief"), .pr(253), join: "-DemoOutside brief"),
-        DemoEdge("X04b", .ex3, "a new episode", .tap, .pc2, .route("episode"), .planned("DEMO.app.c"), join: "-DemoOutside episode"),
-        DemoEdge("X04c", .ex3, "a question", .tap, .yo4, .route("node"), .planned("DEMO.app.c"), join: "-DemoOutside question"),
-        DemoEdge("X05", .system, "a widget on the home screen", .system, .ex4, .system, .planned("DEMO.app.c")),
+        DemoEdge("X04b", .ex3, "a new episode", .tap, .pc2, .route("episode"), .planned("W7 + PC-2 as an app sheet"), join: "-DemoOutside episode (not built)"),
+        DemoEdge("X04c", .ex3, "a question", .tap, .yo4, .route("node"), .planned("W7 + YO-4 as an app sheet"), join: "-DemoOutside question (not built)"),
+        DemoEdge("X05", .system, "a widget on the home screen", .system, .ex4, .system, .planned("W7 (widget target)")),
         DemoEdge("X05a", .ex4, "tell me…", .tap, .jr1, .host, .missing("needs a composer-listening hook"), join: "DEMO.app.c dropped -DemoOutside talk"),
         DemoEdge("X05b", .ex4, "play", .tap, .jr2, .route("brief"), .pr(253), join: "-DemoOutside brief"),
     ]

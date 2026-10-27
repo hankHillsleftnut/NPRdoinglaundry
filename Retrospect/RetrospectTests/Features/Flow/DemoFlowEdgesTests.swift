@@ -63,6 +63,9 @@ struct DemoFlowEdgesTests {
             if case let .route(kind) = edge.via {
                 #expect(Self.g0Kinds.contains(kind), "\(edge.id) names \(kind), not a G0 route or sheet")
             }
+            if case let .pr(number) = edge.status, Self.demoPRs.contains(number) {
+                #expect(edge.join != nil, "\(edge.id) is joined by demo PR #\(number) but names no join")
+            }
         }
     }
 
@@ -152,7 +155,7 @@ struct DemoFlowEdgesTests {
         }
     }
 
-    // MARK: the demo gate (DEMO.app.c flips `demoHostLanded`)
+    // MARK: the demo gate (the demo's final PR flips `demoHostLanded`)
 
     @Test("the gate is flipped exactly when nothing is left to build")
     func gateMatchesTheTable() {
