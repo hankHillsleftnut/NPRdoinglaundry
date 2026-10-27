@@ -93,6 +93,11 @@ struct TearSimulation {
         return false
     }
 
+    /// The redeem answered mid-run: the last bridge snaps when the front reaches it.
+    var ripIsPending: Bool {
+        ripPending
+    }
+
     var isRunning: Bool {
         if case .running = phase {
             return true

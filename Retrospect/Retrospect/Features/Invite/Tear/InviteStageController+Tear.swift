@@ -78,6 +78,9 @@ extension InviteStageController {
     func tearPhaseChanged() {
         switch model.phase {
         case .torn:
+            if let tear, tear.isSeparated || tear.ripIsPending {
+                break // already snapped (or snapping on the last bridge): a repeat is not a second rip
+            }
             if let tear, stillTear == 0, tear.isRunning || tear.phase == .sealing {
                 update { $0.rip() }
             } else {

@@ -67,6 +67,9 @@ struct InviteStageTearTests {
         stage.phaseChanged(reduceMotion: false)
         #expect(stage.rips == 1) // the snap frame
         #expect(stage.tearFrame?.separated == true)
+        stage.phaseChanged(reduceMotion: false) // the torn phase seen again: no second rip, no restart
+        #expect(stage.rips == 1)
+        #expect(stage.tearFrame?.separated == true)
         play(stage, hands, to: hands.now + 2)
         #expect(stage.stubLandings == 1)
         #expect(stage.rips == 1)
