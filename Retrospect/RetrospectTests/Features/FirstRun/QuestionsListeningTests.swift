@@ -193,6 +193,47 @@ struct QuestionsListeningTests {
         #expect(model.question?.key == .namePlace)
     }
 
+    @Test("the mic, then a quiet with nothing new: the carried words go back in the field, nothing is sent")
+    func nothingNewHeard() async {
+        let ear = ScriptedEar()
+        let data = EaredFirstRun(ear: ear)
+        let model = QuestionsModel(data: data)
+        await model.appear()
+        model.typeInstead()
+        model.draft = "sam, half typed"
+        model.talkInstead()
+        ear.say(.ended)
+        for _ in 0 ..< 5000 where model.composer != .typing {
+            await Task.yield()
+        }
+        #expect(model.composer == .typing)
+        #expect(model.draft == "sam, half typed")
+        #expect(data.sent.isEmpty)
+        #expect(ear.stops >= 1)
+    }
+
+    @Test("mic off while thinking is ignored: the answer on its way decides what comes next")
+    func micOffWhileThinking() async {
+        let ear = ScriptedEar()
+        let data = EaredFirstRun(ear: ear)
+        data.holds = true
+        let model = QuestionsModel(data: data)
+        await model.appear()
+        ear.word("sam.")
+        ear.say(.ended)
+        for _ in 0 ..< 5000 where !data.isHolding {
+            await Task.yield()
+        }
+        model.typeInstead()
+        #expect(model.composer == .thinking)
+        data.release()
+        for _ in 0 ..< 5000 where model.question?.key == .namePlace {
+            await Task.yield()
+        }
+        #expect(model.question?.key == .yearFromNow)
+        #expect(model.composer == .listening)
+    }
+
     @Test("under VoiceOver a new question never opens the ear by itself; the mic still listens")
     func voiceOverStartsTyped() async {
         let ear = ScriptedEar()
