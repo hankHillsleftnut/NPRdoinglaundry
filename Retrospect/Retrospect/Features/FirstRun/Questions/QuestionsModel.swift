@@ -300,8 +300,9 @@ final class QuestionsModel {
             stopHearing()
         }
         var parts = Self.parts(of: draft)
-        if let at = parts.firstIndex(where: { Self.same($0, chip) }) {
-            parts.remove(at: at)
+        if parts.contains(where: { Self.same($0, chip) }) {
+            // every spelling of it ("tech, Tech" typed by hand), so the chip really turns off
+            parts.removeAll { Self.same($0, chip) }
         } else {
             parts.append(chip)
         }

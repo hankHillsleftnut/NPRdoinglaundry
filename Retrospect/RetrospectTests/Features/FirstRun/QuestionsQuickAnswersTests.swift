@@ -123,6 +123,11 @@ struct QuestionsQuickAnswersTests {
         #expect(model.isChosen("tech"))
         model.toggle("tech")
         #expect(model.draft.isEmpty)
+        // typed twice by hand: one tap clears every spelling, so the chip really turns off
+        model.draft = "tech, Tech"
+        model.toggle("tech")
+        #expect(model.draft.isEmpty)
+        #expect(!model.isChosen("tech"))
     }
 
     @Test("a word that isn't one of the question's chips does nothing")

@@ -207,6 +207,8 @@ struct QuestionsPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // toggle refuses a tap while an answer is on its way: don't offer one (no stray haptic)
+        .disabled(model.isSending || model.isFinished)
     }
 
     // MARK: - The composer
