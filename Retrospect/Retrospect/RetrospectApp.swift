@@ -204,7 +204,11 @@ struct RetrospectApp: App {
                     #endif
                 } else if isSampleFlowMode {
                     #if DEBUG
-                    SampleFlowHost()
+                    if FlowLaunch.current.isDemo {
+                        DemoAppHost() // DEMO.app: the whole app on sample data (`-Flow demo`)
+                    } else {
+                        SampleFlowHost()
+                    }
                     #endif
                 } else if isFirstPodcastFinaleMode {
                     #if DEBUG
