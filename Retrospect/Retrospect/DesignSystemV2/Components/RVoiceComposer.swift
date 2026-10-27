@@ -164,7 +164,8 @@ struct RVoiceComposer: View {
                     .frame(height: Self.growth.lineHeight(at: dynamicTypeSize))
                 Text(stateWord(mode) ?? "")
                     .rText(.composerText)
-                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textPlaceholder)
+                    // Paper's state lines are text.tertiary (1F6J-0 "listening…", 1F7Q-0 "retro is speaking…")
+                    .foregroundStyle(contrast == .increased ? RColor.textSecondary : RColor.textTertiary)
                     .contentTransition(.interpolate)
             }
             .padding(.vertical, Self.growth.textInset)

@@ -185,6 +185,15 @@ const lines = [
   '/// Opacities, layers and durations (seconds).',
   'public enum RNumber {',
   ...numbers.map((d) => `${doc(d.doc)}    public static let ${d.name}: Double = ${f(d.n)}`),
+  // TEAR.motion: each motion.spring.* also as its two numbers, for models that solve the spring themselves
+  // (the tear's physics steps the design system's springs in closed form; RMotion keeps the Animation)
+  ...springs.flatMap((m) => {
+    const base = `motionSpring${m.name[0].toUpperCase()}${m.name.slice(1)}`;
+    return [
+      `    /// ${m.name} spring: response (seconds).\n    public static let ${base}Response: Double = ${f(m.r)}`,
+      `    /// ${m.name} spring: damping fraction.\n    public static let ${base}Damping: Double = ${f(m.d)}`,
+    ];
+  }),
   '}',
   '',
   ...(shadows.length

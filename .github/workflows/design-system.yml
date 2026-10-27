@@ -13,15 +13,19 @@ concurrency:
 
 jobs:
   tokens-and-literals:
-    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    # Light job: always on GitHub's runner (free while public), never queued behind the iOS build; see quality.yml.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Tokens validate
-        run: node design-system/tokens/validate.mjs
+      - name: Tokens validate; TOKENS.md is up to date
+        # TOKENS.md no longer carries a token-count line, so this diff only fails when a token
+        # really changed and the table was not regenerated (or someone edited it by hand).
+        run: |
+          node design-system/tokens/validate.mjs
+          git diff --exit-code design-system/tokens/TOKENS.md
       - name: Existing tokens frozen; Paper shadow tokens pinned to Paper
         run: node --test design-system/tokens/tokens.test.mjs
       - name: Generated Swift is up to date

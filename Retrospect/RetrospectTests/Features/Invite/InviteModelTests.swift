@@ -9,7 +9,9 @@ final class ScriptedInviteSource: InviteSource, SignInCoordinating {
     var afterSignIn: Session.Ticket = .printing(SampleInvite.face)
     var typed: Session.Ticket = .printing(SampleInvite.face)
     var tears: [Session.TearOutcome] = [.yours(SampleInvite.youreIn)]
-    var tearDelay: Duration = .zero
+    /// When set, the server's answer to the tear waits until this clock reaches one second. The instant is absolute,
+    /// so it doesn't matter whether the test moves the clock before or after the tear starts.
+    var tearClock: TestClock?
     var joins = true
     private(set) var tearCalls = 0
     private(set) var tearTouchDowns = 0
@@ -27,8 +29,8 @@ final class ScriptedInviteSource: InviteSource, SignInCoordinating {
     func beginTear() { tearTouchDowns += 1 }
     func tear() async -> Session.TearOutcome {
         tearCalls += 1
-        if tearDelay > .zero {
-            try? await Task.sleep(for: tearDelay)
+        if let tearClock {
+            try? await tearClock.sleep(until: ScriptedInviteSource.tearAnswers)
         }
         return tears.isEmpty ? .failed : tears.removeFirst()
     }
@@ -36,6 +38,9 @@ final class ScriptedInviteSource: InviteSource, SignInCoordinating {
     func pendingCode() async -> String? { SampleInvite.code }
     func joinWaitlist(reason _: String?) async -> Bool { joins }
     func begin() { begun += 1 }
+
+    /// When the held tear answers: `tearClock.advance(by: .seconds(1))` lets it through.
+    static let tearAnswers = TestClock.Instant(offset: .seconds(1))
 }
 
 private struct AppleStub: Error {}
@@ -45,7 +50,10 @@ final class ModelBox {
     var model: InviteModel?
 }
 
+/// No test here waits on the wall clock: the model's waits and the server's answers run on clocks the test moves,
+/// and a test waits for a state by observing it. A wait that never ends fails at the time limit.
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct InviteModelTests {
     private func model(_ phase: InviteModel.Phase, _ source: ScriptedInviteSource, name: String? = "sam") -> InviteModel {
         InviteModel(
@@ -59,6 +67,12 @@ struct InviteModelTests {
         if duration == .seconds(8) {
             try? await Task.sleep(for: .seconds(3600))
         }
+    }
+
+    /// Every wait of the model runs on `clock`, which only the test moves: a wait of `d` ends once the clock
+    /// reaches `d` from zero, whether the test moves it before or after the wait starts.
+    static func on(_ clock: TestClock) -> @Sendable (Duration) async -> Void {
+        { duration in try? await clock.sleep(until: TestClock.Instant(offset: duration)) }
     }
 
     // MARK: Sign in
@@ -198,13 +212,23 @@ struct InviteModelTests {
     func rateLimited() async {
         let source = ScriptedInviteSource()
         source.typed = .waiting(.rateLimited(retryAfterSeconds: 60))
-        let model = model(.typed, source)
+        // The lock's minute runs on a clock only the test moves, so it can't lift before the checks below
+        // (an instant wait let it lift first on a busy runner).
+        let clock = TestClock()
+        let model = InviteModel(
+            phase: .typed, source: source, signIn: source, preview: SampleInvite.face, face: SampleInvite.face, firstName: "sam",
+            sleep: Self.on(clock)
+        )
         model.setCode(SampleInvite.code)
         await model.submitTyped()
         #expect(model.codeLocked)
         #expect(model.caption == "too many tries. try again in a minute.")
         model.setCode("")
         #expect(model.tiles == SampleInvite.code)
+        // the minute passes: the field opens again and the words go
+        clock.advance(by: .seconds(60))
+        await observedUntil { !model.codeLocked }
+        #expect(model.notice == nil)
     }
 
     // MARK: The tear
@@ -212,12 +236,13 @@ struct InviteModelTests {
     @Test("nothing is yours until the server says so: sealing is not torn")
     func sealingIsNotTorn() async {
         let source = ScriptedInviteSource()
-        source.tearDelay = .milliseconds(200)
+        let server = TestClock()
+        source.tearClock = server
         let model = model(.ready, source)
         let tearing = Task { await model.commitTear() }
-        try? await Task.sleep(for: .milliseconds(50))
-        #expect(model.phase == .sealing)
+        await observedUntil { model.phase == .sealing }
         #expect(model.rips == 0)
+        server.advance(by: .seconds(1))
         await tearing.value
         #expect(model.phase == .youreIn)
         #expect(model.rips == 1)
@@ -264,11 +289,13 @@ struct InviteModelTests {
     @Test("a second tear while one is sealing does nothing")
     func singleTear() async {
         let source = ScriptedInviteSource()
-        source.tearDelay = .milliseconds(100)
+        let server = TestClock()
+        source.tearClock = server
         let model = model(.ready, source)
         let first = Task { await model.commitTear() }
-        try? await Task.sleep(for: .milliseconds(20))
+        await observedUntil { model.phase == .sealing }
         await model.commitTear()
+        server.advance(by: .seconds(1))
         await first.value
         #expect(source.tearCalls == 1)
     }
@@ -297,22 +324,20 @@ struct InviteModelTests {
     @Test("a tear over eight seconds springs back, and a late success still lets the person in")
     func timeout() async {
         let source = ScriptedInviteSource()
-        source.tearDelay = .milliseconds(300)
-        // the injected clock makes the eight seconds instant, so the answer is still in flight
+        let server = TestClock()
+        source.tearClock = server
+        // the model's waits are instant, so the eight seconds pass while the server's answer is still held
         let model = InviteModel(
             phase: .ready, source: source, signIn: source, preview: SampleInvite.face, face: SampleInvite.face, firstName: "sam",
-            sleep: { duration in
-                if duration == .seconds(8) {
-                    return
-                }
-                try? await Task.sleep(for: .milliseconds(1))
-            }
+            sleep: { _ in }
         )
         await model.commitTear()
         #expect(model.phase == .ready)
         #expect(model.caption == "that didn't go through. nothing was used; try again.")
-        try? await Task.sleep(for: .milliseconds(600))
-        #expect(model.phase == .youreIn)
+        // the late answer lands: the person is let in
+        server.advance(by: .seconds(1))
+        await observedUntil { model.phase == .youreIn }
+        #expect(source.tearCalls == 1)
     }
 
     @Test("begin hands on once, and only after the words have landed")
