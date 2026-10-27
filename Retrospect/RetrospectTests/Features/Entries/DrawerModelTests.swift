@@ -160,6 +160,23 @@ struct DrawerModelTests {
         #expect(!sections(drawer).flatMap(\.rows).contains { drawer.isLast($0) })
     }
 
+    @Test("a new search drops the old next page: a late 'load more' asks for nothing")
+    func newSearchDropsOldCursor() async {
+        let data = CountingEntries()
+        let drawer = DrawerModel(data: data, debounce: .zero)
+        await drawer.load()
+        data.slowFirstPage = .milliseconds(50)
+        drawer.query = "walk"
+        // the search's first page is still on its way when the old list's last row asks for more
+        for _ in 0 ..< 100 where data.cursors.count < 2 {
+            await Task.yield()
+        }
+        #expect(data.cursors == [nil, nil])
+        await drawer.loadMore()
+        await drawer.settle()
+        #expect(!data.cursors.contains("next"))
+    }
+
     @Test("delivery maps to the row's status")
     func statuses() {
         #expect(DrawerModel.status(.sent) == .rest)
@@ -177,10 +194,18 @@ private final class CountingEntries: EntriesData {
     let timeZone = SampleEntries.london
     let isOffline = false
     private(set) var retries = 0
+    /// Cursors asked for, in order (nil = a first page).
+    private(set) var cursors: [String?] = []
+    /// Holds the next first page this long (a slow search).
+    var slowFirstPage: Duration = .zero
 
     func entries(cursor: String?, query _: String?) async -> Result<Flows.Page<Flows.Journal.Entry>, Flows.Failure> {
         let rest = SampleEntries.rest
+        cursors.append(cursor)
         if cursor == nil {
+            if slowFirstPage > .zero {
+                try? await Task.sleep(for: slowFirstPage)
+            }
             // today, then yesterday's unsent row
             return .success(Flows.Page(items: [rest[0], SampleEntries.unsent], nextCursor: "next"))
         }

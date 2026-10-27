@@ -88,6 +88,8 @@ final class DrawerModel {
 
     func load() async {
         generation += 1
+        // the old list's next page belongs to the old search: a late "load more" must not add it here
+        nextCursor = nil
         let mine = generation
         let searched = Self.cleaned(query)
         let result = await data.entries(cursor: nil, query: searched)
