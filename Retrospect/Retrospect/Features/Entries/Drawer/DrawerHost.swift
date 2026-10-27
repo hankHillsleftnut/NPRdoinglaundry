@@ -24,7 +24,8 @@ struct DrawerHost<Drawer: View, Journal: View>: View {
         RDimension.space5
     }
 
-    @GestureState private var drag: CGFloat = 0
+    // a drag that doesn't commit springs back on the same spring, not a jump
+    @GestureState(resetTransaction: Transaction(animation: RMotion.sheet)) private var drag: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -49,7 +50,9 @@ struct DrawerHost<Drawer: View, Journal: View>: View {
 
                 journalLayer(insets: insets, progress: progress)
                     .offset(x: reduceMotion ? (isOpen ? travel : 0) : offset)
-                    .overlay(alignment: .leading) { gestureStrip(travel: travel, offset: offset) }
+                    // closed: a swipe that starts on the leading edge opens; taps still reach the journal
+                    .simultaneousGesture(swipe(travel: travel, fromEdgeOnly: true), including: isOpen ? .subviews : .all)
+                    .overlay(alignment: .leading) { closeStrip(offset: offset, travel: travel) }
             }
             .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.sheet, value: isOpen)
             // VoiceOver's two-finger scrub closes the drawer
@@ -70,20 +73,18 @@ struct DrawerHost<Drawer: View, Journal: View>: View {
                 card.padding(.top, -insets.top).padding(.bottom, -insets.bottom)
             }
             .background {
-                card.fill(RColor.backgroundCanvas)
-                    .overlay(card.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
-                    .shadow(color: RColor.shadowOverlay2.opacity(progress), radius: 6, y: 4)
-                    .shadow(color: RColor.shadowOverlay1.opacity(progress), radius: 18, y: 24)
+                // the shared overlay depth (Paper 1FP7-0: outer 0.5, 0 4 12 and 0 24 48 −12), only while pushed
+                Color.clear
+                    .rOverlay(radius)
                     .padding(.top, -insets.top)
                     .padding(.bottom, -insets.bottom)
                     .opacity(progress > 0 ? 1 : 0)
             }
     }
 
-    /// Closed: a thin strip on the leading edge takes the swipe that opens the drawer. Open: the
-    /// journal's visible edge takes the tap or swipe that closes it, and is VoiceOver's way back.
+    /// Open: the journal's visible edge takes the tap or swipe that closes it, and is VoiceOver's way back.
     @ViewBuilder
-    private func gestureStrip(travel: CGFloat, offset: CGFloat) -> some View {
+    private func closeStrip(offset: CGFloat, travel: CGFloat) -> some View {
         if isOpen {
             Color.clear
                 .frame(width: Self.journalEdge)
@@ -91,29 +92,25 @@ struct DrawerHost<Drawer: View, Journal: View>: View {
                 .contentShape(Rectangle())
                 .offset(x: offset)
                 .onTapGesture { isOpen = false }
-                .gesture(swipe(travel: travel))
+                .gesture(swipe(travel: travel, fromEdgeOnly: false))
                 .ignoresSafeArea()
                 .accessibilityElement()
                 .accessibilityLabel("back to the journal")
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { isOpen = false }
                 .accessibilityIdentifier("drawer.close")
-        } else {
-            Color.clear
-                .frame(width: Self.edgeSwipeWidth)
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(swipe(travel: travel))
-                .accessibilityHidden(true)
         }
     }
 
-    private func swipe(travel: CGFloat) -> some Gesture {
+    /// `fromEdgeOnly`: only a drag that starts within the leading edge counts (the open swipe).
+    private func swipe(travel: CGFloat, fromEdgeOnly: Bool) -> some Gesture {
         DragGesture(minimumDistance: RDimension.space2, coordinateSpace: .global)
             .updating($drag) { value, state, _ in
+                guard !fromEdgeOnly || value.startLocation.x <= Self.edgeSwipeWidth else { return }
                 state = value.translation.width
             }
             .onEnded { value in
+                guard !fromEdgeOnly || value.startLocation.x <= Self.edgeSwipeWidth else { return }
                 let moved = value.predictedEndTranslation.width
                 // past a third of the way, it goes; otherwise it springs back
                 if isOpen, moved < -travel / 3 {
