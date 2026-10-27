@@ -115,4 +115,9 @@ struct YouModelTests {
     func nodeRegistered() {
         #expect(ScreenRegistry.screen("YO-4")?.states == ["person"])
     }
+
+    @Test("the title bar carries Paper's 'list' pill, then your picture (1G7Y-0)")
+    func trailing() {
+        #expect(YouPage.trailing == [.list, .picture])
+    }
 }
