@@ -26,6 +26,7 @@ struct RLabPage: Identifiable {
         RLabPage("dialog") { RDialogGallery() },
         RLabPage("empty") { REmptyLineGallery() },
         RLabPage("entryrow") { REntryRowGallery() },
+        RLabPage("entrywords") { REntryWordsGallery() },
         RLabPage("error") { RErrorStateGallery() },
         RLabPage("evidence") { REvidenceRowGallery() },
         RLabPage("firstepisode") { FirstEpisodeLab() },
