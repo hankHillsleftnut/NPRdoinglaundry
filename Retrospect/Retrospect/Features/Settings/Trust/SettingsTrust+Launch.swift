@@ -8,9 +8,9 @@
 #if DEBUG
 import SwiftUI
 
-/// The launcher asks for the page's danger dialog, once.
-@MainActor
-final class SettingsLaunchDialog {
+/// The launcher asks for the page's danger dialog, once. Made in the launcher's nonisolated builder and
+/// read and spent only on the main thread (a page's onAppear), so it is not main-actor bound.
+final class SettingsLaunchDialog: @unchecked Sendable {
     var pending: Bool
 
     init(_ pending: Bool) {
