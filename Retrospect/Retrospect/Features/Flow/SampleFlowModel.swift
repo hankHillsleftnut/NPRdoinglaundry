@@ -155,7 +155,8 @@ final class SampleFlowModel {
             phase: torn ? .youreIn : .typed,
             source: source,
             signIn: source,
-            face: torn ? SampleInvite.face : nil,
+            // the typed ticket wears Paper's header before the check, in the sample only (founder, 26 Oct)
+            face: SampleInvite.face,
             firstName: SampleInvite.firstName,
             youreIn: torn ? stub : nil,
             sleep: sleep

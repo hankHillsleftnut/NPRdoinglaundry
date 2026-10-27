@@ -640,6 +640,12 @@ public enum RDimension {
     public static let sizeGoalRing: CGFloat = 44
     /// The progress ring's thickness.
     public static let sizeGoalRingStroke: CGFloat = 4
+    /// The said and did bars' track on a goal card.
+    public static let sizeGoalTrack: CGFloat = 4
+    /// The said / did words' slot before the bar.
+    public static let sizeGoalLabel: CGFloat = 28
+    /// The count's slot after the bar.
+    public static let sizeGoalCount: CGFloat = 64
     /// A source's app icon in a row.
     public static let sizeSourceIcon: CGFloat = 32
     /// A step dot in onboarding.
