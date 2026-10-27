@@ -5,9 +5,11 @@
 //  the third line, the one Paper lights, starts with chapter 2 (2:56) and is lit at 4:12. Only the line
 //  being read is dark; every other line is dim (founder c-lsyb3w, which replaced Paper's "next
 //  secondary" on every player master). Sample only: the live lines come from the episode later.
+//  Debug only (sandbox fence): only the launcher and the tests read it.
 //
 import Foundation
 
+#if DEBUG
 enum SampleEpisodeTranscript {
     /// When each of Paper's five lines starts: two in chapter 1 (0:00–2:56), three in chapter 2, the
     /// first of them on the chapter's start so the lit line and the scrubber's chapter always agree.
@@ -23,3 +25,4 @@ enum SampleEpisodeTranscript {
         }
     )
 }
+#endif
