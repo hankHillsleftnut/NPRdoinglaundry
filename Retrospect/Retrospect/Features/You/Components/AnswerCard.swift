@@ -50,6 +50,17 @@ struct AnswerCard: View {
             return .handled
         })
         .accessibilityElement(children: .combine)
+        // the citations read as "source 1" (a superscript "¹" would read as a bare digit); the card's links
+        // stay in the rotor through the combined children
+        .accessibilityLabel(Self.spoken(answer.headline, secondLine))
+    }
+
+    /// What VoiceOver reads for the card: "what i found. after days you run, source 1, and when …".
+    static func spoken(_ headline: [Flows.Cited], _ secondLine: [Flows.Cited]?) -> String {
+        let read: ([Flows.Cited]) -> String = { runs in
+            runs.map { run in run.source.map { "\(run.text), source \($0)" } ?? run.text }.joined()
+        }
+        return (["what i found.", read(headline)] + (secondLine.map { [read($0)] } ?? [])).joined(separator: " ")
     }
 
     /// The words with each cited source as a superscript number that links to its row.
@@ -60,7 +71,6 @@ struct AnswerCard: View {
             if let source = run.source {
                 var mark = AttributedString(superscript(source))
                 mark.link = URL(string: "\(citeScheme)://\(source)")
-                mark.accessibilityLabel = "source \(source)"
                 text += mark
             }
         }
