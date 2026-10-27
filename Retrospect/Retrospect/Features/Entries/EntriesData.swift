@@ -7,10 +7,12 @@
 //  (ReleaseRouteTableTests fences `Features/Entries`).
 //
 import Foundation
+import Observation
 
 /// What the drawer and the entry page need from the journal.
+/// Observable, so the drawer redraws when the phone goes offline or comes back.
 @MainActor
-protocol EntriesData: AnyObject {
+protocol EntriesData: AnyObject, Observable {
     /// A page of entries, newest first; with a `query`, only the ones that match, with their spans
     /// (contract 02 §5, the same call as `Flows.JournalData.entries`).
     func entries(cursor: String?, query: String?) async -> Result<Flows.Page<Flows.Journal.Entry>, Flows.Failure>

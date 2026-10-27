@@ -9,6 +9,7 @@
 //
 #if DEBUG
 import Foundation
+import Observation
 
 /// The drawer's sample states (`-Screen JR-3 -State <rawValue>`).
 enum EntriesScenario: String, CaseIterable, Sendable {
@@ -31,17 +32,20 @@ enum EntriesScenario: String, CaseIterable, Sendable {
 }
 
 @MainActor
+@Observable
 final class SampleEntriesData: EntriesData {
     typealias Entry = Flows.Journal.Entry
 
     let scenario: EntriesScenario
-    let today = SampleJournalContent.today
+    /// Paper's calendar: 21 oct is a tuesday (2025), so 19 and 18 oct read sun and sat as drawn.
+    let today = SampleEntries.today
     let timeZone = SampleEntries.london
     var isOffline: Bool {
         scenario == .offline
     }
 
     /// The entry the journal behind the drawer is showing (the "here" row).
+    static let today = "2025-10-21"
     static let hereID = SampleEntries.hereID
 
     private var kept: [Entry]
@@ -79,6 +83,7 @@ enum SampleEntries {
     typealias Seed = SampleJournalContent.Seed
 
     static let london = TimeZone(identifier: "Europe/London") ?? .current
+    static let today = "2025-10-21"
     static let hereID = "00000000-0000-4000-8000-000000000a01"
     static let unsentID = "00000000-0000-4000-8000-000000000a90"
     static let waitingID = "00000000-0000-4000-8000-000000000a91"
@@ -100,7 +105,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "i think it's the 9am standup. i dread it.",
-                at: "2026-10-21T08:12:00.000Z",
+                at: "2025-10-21T08:12:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -108,14 +113,14 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "slept badly, long day of meetings",
-                at: "2026-10-20T21:40:00.000Z",
+                at: "2025-10-20T21:40:00.000Z",
                 reading: .read
             ).entry,
             Seed(
                 id: "00000000-0000-4000-8000-000000000a03", client: nil, kind: .voice,
                 text: "on the walk home i kept thinking about the offer, and whether i even want it. "
                     + "the money's better, but i'd be commuting again, and i only just got my mornings back.",
-                at: "2026-10-20T17:05:00.000Z", reading: .read
+                at: "2025-10-20T17:05:00.000Z", reading: .read
             ).entry,
             unsent,
             Seed(
@@ -123,7 +128,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "long walk, first good sleep in a week",
-                at: "2026-10-19T20:05:00.000Z",
+                at: "2025-10-19T20:05:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -131,7 +136,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .voice,
                 text: "mum called. we talked about dad for the first time in months",
-                at: "2026-10-19T17:20:00.000Z",
+                at: "2025-10-19T17:20:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -139,7 +144,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "couldn't stop thinking about what sam said at dinner",
-                at: "2026-10-18T22:10:00.000Z",
+                at: "2025-10-18T22:10:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -147,7 +152,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "ran 5k without stopping",
-                at: "2026-10-18T07:02:00.000Z",
+                at: "2025-10-18T07:02:00.000Z",
                 reading: .read
             ).entry,
         ]
@@ -161,7 +166,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "the 9am standup again",
-                at: "2026-10-21T08:12:00.000Z",
+                at: "2025-10-21T08:12:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -169,7 +174,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "slept badly, long day of meetings",
-                at: "2026-10-20T21:40:00.000Z",
+                at: "2025-10-20T21:40:00.000Z",
                 reading: .read
             ).entry,
             Seed(
@@ -177,7 +182,7 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "standup ran long, i said nothing",
-                at: "2026-10-14T09:05:00.000Z",
+                at: "2025-10-14T09:05:00.000Z",
                 reading: .read
             ).entry,
         ]
@@ -189,8 +194,8 @@ enum SampleEntries {
             local: unsentID,
             kind: .imported,
             text: "the fundraise article you shared",
-            createdAt: date("2026-10-20T13:30:00.000Z"),
-            day: "2026-10-20",
+            createdAt: date("2025-10-20T13:30:00.000Z"),
+            day: "2025-10-20",
             delivery: .failed(Flows.Failure(.network))
         )
     }
@@ -201,8 +206,8 @@ enum SampleEntries {
             local: waitingID,
             kind: .typed,
             text: "the train is stuck again, writing this underground",
-            createdAt: date("2026-10-21T08:40:00.000Z"),
-            day: "2026-10-21",
+            createdAt: date("2025-10-21T08:40:00.000Z"),
+            day: "2025-10-21",
             delivery: .waiting
         )
     }
