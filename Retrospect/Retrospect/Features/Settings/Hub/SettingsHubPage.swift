@@ -55,9 +55,13 @@ struct SettingsHubPage: View {
         }
     }
 
-    /// "8:30 · on"
     private var briefValue: String {
-        "\(data.brief.time.short) · \(data.brief.isOn ? "on" : "off")"
+        Self.briefValue(data.brief)
+    }
+
+    /// "8:30 · on"
+    static func briefValue(_ brief: Flows.Settings.Brief) -> String {
+        "\(brief.time.short) · \(brief.isOn ? "on" : "off")"
     }
 
     /// "4 · 1 needs you"
