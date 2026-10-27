@@ -194,7 +194,8 @@ struct NudgeRulesTests {
         var rules = NudgeRules()
         let tap = ContinuousClock.now
         let peak = tap.advanced(by: .seconds(RNumber.motionDurationFast))
-        #expect(rules.allowHaptic(at: peak))
+        let fired = rules.allowHaptic(at: peak)
+        #expect(fired)
     }
 
     @Test("PW-Q9: play on the paywall's little player tells VoiceOver what it does")
