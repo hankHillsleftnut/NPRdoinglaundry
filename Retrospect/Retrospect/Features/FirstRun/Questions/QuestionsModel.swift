@@ -11,6 +11,7 @@
 //  answered out loud: the composer listens, the words land under the question one by one, a quiet
 //  ends the answer (thinking), and the words go to the seam as `.voice`. Mic off moves the words
 //  heard so far into the field and keeps typing on (QC-3 lead); the mic listens again.
+//  QU.followups.b: a question may offer quick answers; a chip tap puts its words in the field.
 //
 import Foundation
 import Observation
@@ -79,15 +80,35 @@ final class QuestionsModel {
 
     /// Called after each answer the seam kept, so a host can keep the words (the sample flow, FLOW.host).
     @ObservationIgnored var onAnswered: (Key, String) -> Void = { _, _ in }
+    /// Opened by the next page's back (see `init`).
+    @ObservationIgnored private let cameBack: Bool
+    /// The seam's `finishQuestions()` already ran on an earlier pass of this first run (the host knows).
+    @ObservationIgnored private let seamFinished: Bool
 
     /// `kept`: words sent for these questions before this page opened (a host resuming after a relaunch):
     /// they count as answered, and going back shows them, exactly as this session's answers do.
-    init(data: any Flows.FirstRun, flowRange: ClosedRange<Double> = QuestionsModel.flowProgress, kept: [Key: String] = [:]) {
+    /// `cameBack`: the page opens because the next page's back chevron left it (ON-5 privacy, FLOW.edges):
+    /// it opens on the last question with its words in the composer, as back between questions does, and
+    /// does not finish at once on appearing (sent unchanged, the words move on again). `seamFinished`: the
+    /// seam's `finishQuestions()` already ran for this first run, so finishing again only hands on.
+    init(
+        data: any Flows.FirstRun,
+        flowRange: ClosedRange<Double> = QuestionsModel.flowProgress,
+        kept: [Key: String] = [:],
+        cameBack: Bool = false,
+        seamFinished: Bool = false
+    ) {
         self.data = data
         self.flowRange = flowRange
+        self.cameBack = cameBack
+        self.seamFinished = seamFinished
         questions = Self.asked(data.questions)
         answers = kept
-        index = Self.firstUnanswered(questions, answered: data.answeredKeys.union(kept.keys)) ?? max(questions.count - 1, 0)
+        let last = max(questions.count - 1, 0)
+        index = cameBack ? last : Self.firstUnanswered(questions, answered: data.answeredKeys.union(kept.keys)) ?? last
+        if cameBack, questions.indices.contains(index) {
+            draft = kept[questions[index].key] ?? ""
+        }
     }
 
     // MARK: - Pure rules
@@ -167,6 +188,29 @@ final class QuestionsModel {
         question.flatMap { data.listening(for: $0.key) } != nil
     }
 
+    /// The question's likely answers, as chips (Paper c:onboarding/quick-answers); usually none.
+    var quickAnswers: [String] {
+        question?.quickAnswers ?? []
+    }
+
+    /// A chip is chosen while its words are one of the field's comma-separated parts, so the field is
+    /// the one truth: editing the words by hand chooses or clears chips too.
+    func isChosen(_ chip: String) -> Bool {
+        Self.parts(of: draft).contains { Self.same($0, chip) }
+    }
+
+    /// A chip's words and a part of the field match whatever their case ("Tech" from the keyboard).
+    static func same(_ part: String, _ chip: String) -> Bool {
+        part.caseInsensitiveCompare(chip) == .orderedSame
+    }
+
+    /// The field's answer split at commas, trimmed, empty parts dropped.
+    static func parts(of text: String) -> [String] {
+        text.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
     /// The words heard so far, as one answer.
     var heardText: String {
         heard.map(\.text).joined(separator: " ")
@@ -177,7 +221,8 @@ final class QuestionsModel {
     /// The page's `.task`: a person who has answered everything is done at once; otherwise the open
     /// question starts listening (when there is an ear and it hasn't been answered).
     func appear() async {
-        if Self.firstUnanswered(questions, answered: answered) == nil {
+        // back from the next page: the person came to look, so the page stays until they send
+        if !cameBack, Self.firstUnanswered(questions, answered: answered) == nil {
             await finish()
             return
         }
@@ -266,6 +311,28 @@ final class QuestionsModel {
         move(to: index - 1)
     }
 
+    /// A chip tap (Paper MGZ-0, build notes "quick answers"): adds or removes its words in the field
+    /// ("tech, markets"), and the composer types with the lit send. The ear closes (what it heard
+    /// stays in the field, first). Never sends by itself.
+    func toggle(_ chip: String) {
+        // never while an answer is on its way: the words would land on a question being answered
+        guard !isFinished, !isSending, question?.quickAnswers.contains(chip) == true else { return }
+        // on or off as the person saw it before the tap: while listening the chips show off (the
+        // field is empty), so a tap turns its chip on even when the ear already heard its words
+        let wasChosen = composer == .typing && isChosen(chip)
+        if composer != .typing {
+            stopHearing()
+        }
+        var parts = Self.parts(of: draft)
+        if wasChosen {
+            // every spelling of it ("tech, Tech" typed by hand), so the chip really turns off
+            parts.removeAll { Self.same($0, chip) }
+        } else if !parts.contains(where: { Self.same($0, chip) }) {
+            parts.append(chip)
+        }
+        draft = parts.joined(separator: ", ")
+    }
+
     // MARK: - Private
 
     private func advance(from key: Key) async {
@@ -297,7 +364,10 @@ final class QuestionsModel {
         guard !isFinished else { return }
         isFinished = true
         stopHearing()
-        await data.finishQuestions()
+        // the seam was finished on an earlier pass (back from the next page): only hand on again
+        if !seamFinished {
+            await data.finishQuestions()
+        }
         onDone()
     }
 

@@ -15,6 +15,8 @@ enum RIconSize {
     case tab
     /// size.icon.inWell (18): a glyph inside a small wash circle (the player header's buttons).
     case inWell
+    /// size.icon.check (14): the check before a chosen quick answer (RChoicePill).
+    case check
 
     var points: CGFloat {
         switch self {
@@ -23,6 +25,7 @@ enum RIconSize {
         case .regular: RDimension.sizeIconDefault
         case .large: RDimension.sizeIconLarge
         case .tab: RDimension.sizeTabIcon
+        case .check: RDimension.sizeIconCheck
         }
     }
 }
