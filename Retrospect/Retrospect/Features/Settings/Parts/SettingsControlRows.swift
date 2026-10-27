@@ -15,16 +15,26 @@ struct SettingsSwitchRow: View {
     let title: String
     var subline: String?
     @Binding var isOn: Bool
+    /// Ticks for taps on the row around the switch (the switch ticks for its own), one haptic per change.
+    @State private var rowTick = 0
 
     var body: some View {
-        SettingsControlFrame(title: title, subline: subline) {
+        // VoiceOver: one stop, the switch ("each morning, switch, on"), with the subline as its hint
+        SettingsControlFrame(title: title, subline: subline, wordsHidden: true) {
             RSwitch(label: title, isOn: $isOn)
+                .accessibilityHint(subline ?? "")
         }
         .background {
-            Button { isOn.toggle() } label: { Color.clear.contentShape(Rectangle()) }
-                .buttonStyle(RListRowStyle())
-                .accessibilityHidden(true)
+            Button {
+                isOn.toggle()
+                rowTick += 1
+            } label: {
+                Color.clear.contentShape(Rectangle())
+            }
+            .buttonStyle(RListRowStyle())
+            .accessibilityHidden(true)
         }
+        .sensoryFeedback(RHaptic.select, trigger: rowTick)
     }
 }
 
@@ -50,6 +60,8 @@ struct SettingsActionRow: View {
 struct SettingsControlFrame<Control: View>: View {
     let title: String
     var subline: String?
+    /// The control speaks for the row (a switch): the words are not a VoiceOver stop of their own.
+    var wordsHidden = false
     @ViewBuilder let control: Control
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -71,6 +83,7 @@ struct SettingsControlFrame<Control: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .allowsHitTesting(false)
             .accessibilityElement(children: .combine)
+            .accessibilityHidden(wordsHidden)
             control
         }
         .padding(.vertical, RDimension.space4)
