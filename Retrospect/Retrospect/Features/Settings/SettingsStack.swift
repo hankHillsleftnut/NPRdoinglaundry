@@ -29,8 +29,6 @@ enum SettingsDestinations {
         /// Closes this route only if it is still the top page (an awaited action ending after the
         /// person already went back must not pop the page under it).
         var close: (SettingsRoute) -> Void = { _ in }
-        /// Launcher stills only: ST-4 opens with this question already asked.
-        var asking: SourcePage.Asking?
         /// ST-9's sign-out flow, when the host owns one (the demo hears it end); nil: the page's own sample.
         var signOut: (any SignOutFlowing)?
     }
@@ -57,7 +55,7 @@ enum SettingsDestinations {
             AnyView(SourcesPage(data: context.data, open: context.open, back: context.back))
         case let .source(id):
             context.data.source(id)?.hasPage == true
-                ? AnyView(SourcePage(data: context.data, id: id, asking: context.asking, back: context.back) { context.close(.source(id)) })
+                ? AnyView(SourcePage(data: context.data, id: id, back: context.back) { context.close(.source(id)) })
                 : nil
         default:
             nil
@@ -69,20 +67,15 @@ struct SettingsStack: View {
     let data: any Flows.SettingsData
     /// ST-1's back: where settings was opened from.
     var leave: () -> Void = {}
-    /// Launcher stills only: ST-4 opens with this question already asked, once. Any move in the
-    /// stack spends it, so pushing ST-4 again doesn't ask again.
-    @State private var asking: SourcePage.Asking?
     @State private var path: [SettingsRoute]
 
     init(
         data: any Flows.SettingsData,
         path: [SettingsRoute] = [],
-        asking: SourcePage.Asking? = nil,
         leave: @escaping () -> Void = {}
     ) {
         self.data = data
         self.leave = leave
-        _asking = State(initialValue: asking)
         _path = State(initialValue: path)
     }
 
@@ -93,11 +86,10 @@ struct SettingsStack: View {
                     SettingsDestinations.view(for: page, in: context)
                 }
         }
-        .onChange(of: path) { asking = nil }
     }
 
     private var context: SettingsDestinations.Context {
-        SettingsDestinations.Context(data: data, open: open, back: back, close: close, asking: asking)
+        SettingsDestinations.Context(data: data, open: open, back: back, close: close)
     }
 
     private func open(_ page: SettingsRoute) {

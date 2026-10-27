@@ -59,14 +59,15 @@ final class ShellModel {
 
     /// Opens on `selection` if it has a page, else on the first tab that does (journal first).
     /// Whether a sheet has a page (the route table's answer; tests stand in for groups not built yet).
-    private let sheetIsBuilt: @MainActor (AppSheet) -> Bool
+    private let sheetIsBuilt: (AppSheet) -> Bool
 
     init(
         selection: RTab = .journal,
         available: Set<RTab> = Set(RTab.allCases),
-        sheetIsBuilt: @escaping @MainActor (AppSheet) -> Bool = { AppRoutes.isBuilt($0) }
+        sheetIsBuilt: ((AppSheet) -> Bool)? = nil
     ) {
-        self.sheetIsBuilt = sheetIsBuilt
+        // the default is formed here, on the main actor (a default argument isn't)
+        self.sheetIsBuilt = sheetIsBuilt ?? { AppRoutes.isBuilt($0) }
         let start = available.contains(selection) ? selection : RTab.allCases.first(where: available.contains) ?? selection
         self.available = available
         self.selection = start

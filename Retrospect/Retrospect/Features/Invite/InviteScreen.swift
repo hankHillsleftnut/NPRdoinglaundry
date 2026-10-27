@@ -43,7 +43,7 @@ struct InviteScreen: View {
         _stage = State(initialValue: InviteStageController(model: model, printStill: printStill, tear: tear))
     }
 
-    var margin: CGFloat {
+    private var margin: CGFloat {
         compact ? RDimension.space5 : RDimension.spaceScreenMargin
     }
 
@@ -444,9 +444,8 @@ struct InviteScreen: View {
                 .padding(.bottom, bottomPadding)
                 .transition(.blurReplace)
                 .accessibilityIdentifier("invite.begin")
-        } else if model.waitlistPlace == .foot {
-            // founder, 26 Oct: the waitlist is a secondary button at the foot, where "one use · yours alone" was.
-            // It stays above the keyboard, so the way out is never hidden while the code is typed.
+        } else if Self.showsWaitlistFoot(model.waitlistPlace, typing: typing) {
+            // founder, 26 Oct: the waitlist is a secondary button at the foot, where "one use · yours alone" was
             waitlistFoot
         } else if let footer = model.footer, !typing { // the footer gives way to the keyboard: above it, it would sit on the caption
             Text(footer)
@@ -482,6 +481,12 @@ extension InviteScreen {
         compact ? RDimension.space4 : max(RDimension.space10 - bottomInset, RDimension.space1)
     }
 
+    /// The foot gives way to the keyboard, as the footer always did on main: above it, it would sit on the
+    /// pill and on a wrong code's words. It comes back when the keyboard goes (a scroll or a tap away).
+    static func showsWaitlistFoot(_ place: InviteModel.WaitlistPlace?, typing: Bool) -> Bool {
+        place == .foot && !typing
+    }
+
     /// Paper T5 draws nothing between the fallen stub and "you're in": an empty caption block takes no room.
     var hasCaption: Bool {
         model.caption != nil || model.subcaption != nil || model.hint != nil || model.waitlistPlace == .link
@@ -490,7 +495,7 @@ extension InviteScreen {
 
 /// The typed ticket's small words and its foot, kept out of the struct body.
 extension InviteScreen {
-    func hintPill(_ text: String) -> some View {
+    private func hintPill(_ text: String) -> some View {
         Text(text)
             .rText(.pillAction) // Paper `2ISJ-0`: Geist 12 medium, leading snug, no tracking
             .foregroundStyle(RColor.textSecondary)
@@ -503,7 +508,7 @@ extension InviteScreen {
             .id(text)
     }
 
-    var waitlistFoot: some View {
+    private var waitlistFoot: some View {
         RButton(title: InviteModel.waitlistAction, variant: .secondary) { model.openWaitlist() }
             // the shared pill holds one line: at the largest text sizes the words shrink to fit, never cut ("join t…" at AX3)
             .minimumScaleFactor(0.6) // literal-ok: the smallest the label may shrink, accessibility sizes only

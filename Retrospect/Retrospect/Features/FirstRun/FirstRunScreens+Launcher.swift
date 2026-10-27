@@ -1,8 +1,8 @@
 //
 //  FirstRunScreens+Launcher.swift
 //  First run's screens in the launcher (T02): `-Screen first-run -State questions|questions-resume|
-//  questions-offline|questions-quick` opens ON-3–9 on `SampleFirstRunData` in that scenario (quick:
-//  Paper's quick-answers frame); `-State privacy` opens
+//  questions-offline|questions-still|questions-quick` opens ON-3–9 on `SampleFirstRunData` in that
+//  scenario (still / quick: Paper's listening and quick-answers frames); `-State privacy` opens
 //  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on; `-State getting-ready|
 //  getting-ready-still` opens ON-10 on the sample listening and episode. Nothing is mounted in the
 //  app yet (FR.root): when a page is left it says so in a quiet line.
@@ -109,6 +109,7 @@ struct GettingReadyLaunch: View {
 #Preview("questions · fresh") { QuestionsLaunch(scenario: .questions) }
 #Preview("questions · resume") { QuestionsLaunch(scenario: .questionsResume) }
 #Preview("questions · offline") { QuestionsLaunch(scenario: .questionsOffline) }
+#Preview("questions · still (Paper 1F6C-0)") { QuestionsLaunch(scenario: .questionsStill) }
 #Preview("questions · quick answers") { QuestionsLaunch(scenario: .questionsQuick) }
 #Preview("privacy") { PrivacyLaunch(scenario: .privacy) }
 #endif

@@ -131,7 +131,8 @@ struct RChoicePill: View {
                 Text(title)
                     .rText(.pill)
                     .foregroundStyle(RColor.textPrimary)
-                    .lineLimit(1)
+                    // never cut: at accessibility sizes a long answer wraps inside its pill
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.leading, isOn ? RDimension.space3 : RDimension.space4)
             .padding(.trailing, RDimension.space4)

@@ -10,6 +10,11 @@
 import SwiftUI
 
 struct DrawerPage: View {
+    /// Where the foot's backing turns solid (Paper 1FOR-0: underlay at 38%).
+    static var footSolidFrom: CGFloat {
+        0.38
+    } // literal-ok: Paper's gradient stop, a fraction
+
     @Bindable var model: DrawerModel
     /// The screen has a home indicator (the foot sits on its safe area).
     var onHomeIndicator = true
@@ -29,7 +34,21 @@ struct DrawerPage: View {
         .padding(.horizontal, RDimension.space4)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .bottom) {
+            // Paper 1FOR-0: the foot stands on its own backing, 48 of clear easing into the underlay
+            // (solid from 38%) and running to the screen's bottom edge, so the last rows fade under it
             DrawerFoot(onHomeIndicator: onHomeIndicator, openSettings: openSettings)
+                .padding(.top, RDimension.space12)
+                .background(alignment: .bottom) {
+                    LinearGradient(
+                        stops: [
+                            .init(color: RColor.backgroundUnderlay.opacity(0), location: 0),
+                            .init(color: RColor.backgroundUnderlay, location: Self.footSolidFrom),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                }
         }
         .background(RColor.backgroundUnderlay)
         .task { await model.load() }

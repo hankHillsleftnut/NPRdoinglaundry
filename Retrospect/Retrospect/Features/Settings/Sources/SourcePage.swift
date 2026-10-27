@@ -24,7 +24,6 @@ struct SourcePage: View {
     init(
         data: any Flows.SettingsData,
         id: Flows.Settings.Source.ID,
-        asking: Asking? = nil,
         back: @escaping () -> Void,
         leave: @escaping () -> Void = {}
     ) {
@@ -32,7 +31,6 @@ struct SourcePage: View {
         self.id = id
         self.back = back
         self.leave = leave
-        _asking = State(initialValue: asking)
     }
 
     var body: some View {
@@ -70,6 +68,9 @@ struct SourcePage: View {
             }
         }
         .rDialog(isPresented: isAsking) { dialog }
+        #if DEBUG
+        .modifier(SourcePageLaunchAsk(asking: $asking))
+        #endif
     }
 
     @ViewBuilder private func about(_ label: String, _ sentence: String?) -> some View {

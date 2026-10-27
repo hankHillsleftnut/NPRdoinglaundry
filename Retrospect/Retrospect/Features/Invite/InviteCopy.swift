@@ -107,10 +107,10 @@ extension InviteModel {
 
     /// The pill under the caption (board `2ISG-0`): not pressable. On the typed ticket it carries the
     /// resting line (founder, 26 Oct: "type it in" in the pill's small type; "the tear unlocks" is gone);
-    /// a failure's words take its place as the caption.
+    /// whenever the caption has words (a failure, "you're on the list.") they take its place.
     var hint: String? {
         switch phase {
-        case .typed where waitlist != .joined && notice == nil: "the link didn't bring the code? type it in."
+        case .typed where typedCaption == nil: "the link didn't bring the code? type it in."
         case .ready where !keepGoing && notice == nil: "swipe along the line to tear →"
         default: nil
         }

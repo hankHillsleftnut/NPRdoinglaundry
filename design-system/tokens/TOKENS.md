@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**667 tokens** · 591 semantic · 276 marked *to set*
+**668 tokens** · 592 semantic · 277 marked *to set*
 
 ## palette
 
@@ -713,6 +713,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `depth.stroke.inner` | Inner stroke, 1pt inset all round: the lit edge of paper. Paired with the outer stroke, always. | rgba(255,255,255,0.85) | rgba(255,255,255,0.08) | to set: depth recipe (founder, 20 Oct) |
 | `depth.stroke.innerTop` | The top of the inner stroke, 1pt brighter: light from above. | #FFFFFF | rgba(255,255,255,0.14) | to set: depth recipe (founder, 20 Oct) |
 | `depth.stroke.outer` | Outer stroke, 0.5pt outside: the warm hairline that defines the edge on paper. | rgba(40,36,30,0.10) | rgba(255,255,255,0.07) | to set: depth recipe (founder, 20 Oct) |
+| `depth.stroke.rim` | The ticket's outside edge. Light: the outer stroke's warm hairline (same value). Night: a faint light rim, because a dark shadow vanishes on the night canvas and the paper would sink into it. | rgba(40,36,30,0.10) | rgba(255,255,255,0.14) | to set: TEAR.motion lead (founder 27 Oct: dark ticket to look better; Paper draws no dark ticket); question card TEAR-3 |
 | `depth.shadow.contact` | The shallow shadow: 0 1 1.5. Seats the object on the page. Warm, never grey. | rgba(58,44,28,0.10) | rgba(0,0,0,0.40) | to set: depth recipe (founder, 20 Oct) |
 | `depth.shadow.cast` | The warm soft shadow: y and blur grow with height, negative spread keeps it under the object. | rgba(70,52,30,0.16) | rgba(0,0,0,0.55) | to set: depth recipe (founder, 20 Oct) |
 | `depth.shadow.ambient` | A very wide, faint layer for floating things (mini-player, menus, sheets). | rgba(70,52,30,0.05) | rgba(0,0,0,0.25) | to set: depth recipe (founder, 20 Oct) |
