@@ -121,6 +121,17 @@ struct DrawerModelTests {
         #expect(opened == [first.id])
     }
 
+    @Test("with no page to open, a sent row says so; a row that didn't send still retries")
+    func nothingToOpen() async {
+        let drawer = model(.rest)
+        await drawer.load()
+        let rows = sections(drawer).flatMap(\.rows)
+        #expect(rows.filter { $0.status == .rest }.allSatisfy { !drawer.opens($0) })
+        #expect(rows.filter { $0.status == .notSent }.allSatisfy { drawer.opens($0) })
+        drawer.onOpen = { _ in }
+        #expect(rows.allSatisfy { drawer.opens($0) })
+    }
+
     @Test("delivery maps to the row's status")
     func statuses() {
         #expect(DrawerModel.status(.sent) == .rest)

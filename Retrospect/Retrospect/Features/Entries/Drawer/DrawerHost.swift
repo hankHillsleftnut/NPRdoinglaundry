@@ -70,10 +70,9 @@ struct DrawerHost<Drawer: View, Journal: View>: View {
                 card.padding(.top, -insets.top).padding(.bottom, -insets.bottom)
             }
             .background {
-                card.fill(RColor.backgroundCanvas)
-                    .overlay(card.stroke(RColor.depthStrokeOuter, lineWidth: 0.5))
-                    .shadow(color: RColor.shadowOverlay2.opacity(progress), radius: 6, y: 4)
-                    .shadow(color: RColor.shadowOverlay1.opacity(progress), radius: 18, y: 24)
+                // the shared overlay depth (Paper 1FP7-0: outer 0.5, 0 4 12 and 0 24 48 −12), only while pushed
+                Color.clear
+                    .rOverlay(radius)
                     .padding(.top, -insets.top)
                     .padding(.bottom, -insets.bottom)
                     .opacity(progress > 0 ? 1 : 0)
