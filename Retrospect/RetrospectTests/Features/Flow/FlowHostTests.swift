@@ -126,7 +126,7 @@ struct FlowHostTests {
         #expect(model.invite.phase == .typed)
         #expect(model.invite.face == SampleInvite.face)
         #expect(model.invite.waitlistPlace == .foot)
-        model.invite.setCode("BATR4DX9M2QK7")
+        model.invite.setCode(SampleInvite.code)
         await model.invite.submitTyped()
         #expect(model.invite.phase == .ready)
         #expect(model.step == .inviteGate)
