@@ -47,7 +47,7 @@ struct LearnedPage: View {
 
     /// "last changed on sunday"
     static func changed(_ date: Date) -> String {
-        let day = date.formatted(Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX")).weekday(.wide))
+        let day = date.formatted(Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX"), calendar: Calendar(identifier: .gregorian)).weekday(.wide))
         return "last changed on \(day.lowercased())"
     }
 }

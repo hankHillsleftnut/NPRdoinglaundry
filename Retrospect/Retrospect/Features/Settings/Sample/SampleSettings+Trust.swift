@@ -40,7 +40,7 @@ extension SampleSettings {
         }
 
         /// 25 Oct 2026, a Sunday, at noon in the phone's calendar.
-        static let lastSunday = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
+        static let lastSunday = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
 
         init() {}
     }
