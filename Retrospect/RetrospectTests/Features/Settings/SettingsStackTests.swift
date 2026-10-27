@@ -41,13 +41,10 @@ struct SettingsStackTests {
         #expect(data.talkOrRead == .read)
     }
 
-    @Test("ST-1's rows: built pages open, the rest wait for the second half")
+    @Test("ST-1's rows: built pages open (the second half pins its own routes in SettingsTrustTests)")
     func routes() {
         let data = SampleSettings(sleep: Self.instant)
         #expect(SettingsDestinations.isBuilt(.account, data: data))
-        for page in [SettingsRoute.privacy, .howStraight, .voice, .learned] {
-            #expect(!SettingsDestinations.isBuilt(page, data: data))
-        }
     }
 
     @Test("every route has its own row identifier")
