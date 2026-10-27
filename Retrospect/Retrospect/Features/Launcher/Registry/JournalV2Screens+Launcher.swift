@@ -11,6 +11,8 @@
 //
 //  JR-4: `-Screen JR-4 -State rest|voiceNote|nothingTaken|offline` opens one entry pushed from the
 //  drawer (back returns to it), in the app's cut: what has no door yet stays off (EntryCapabilities).
+//  `drawn-rest|drawn-nothingTaken|drawn-offline|drawn-editing|drawn-deleteDialog` open the same page
+//  with the drawn parts on (edit, what i took, not right, delete: J-19), as Paper draws them.
 //
 #if DEBUG
 import SwiftUI
@@ -25,7 +27,8 @@ enum JournalV2Screens: ScreenGroup {
         LaunchableScreen(id: "JR-4", states: EntryScenario.allCases.map(\.rawValue)) { arguments in
             let entry = EntryScenario(rawValue: arguments.state) ?? .rest
             // offline is Paper's offline frame (N9D-0): a retry waits on the phone
-            return AnyView(EntriesLaunch(scenario: entry == .offline ? .offline : .rest, opening: entry.entryID))
+            let offline = entry == .offline || entry == .drawnOffline
+            return AnyView(EntriesLaunch(scenario: offline ? .offline : .rest, opening: entry.entryID, drawn: entry.drawnStart))
         },
     ]
 }
@@ -33,13 +36,28 @@ enum JournalV2Screens: ScreenGroup {
 /// JR-4's launcher states: which entry opens (Paper's 05 frames).
 enum EntryScenario: String, CaseIterable {
     case rest, voiceNote, nothingTaken, offline
+    case drawnRest = "drawn-rest"
+    case drawnNothingTaken = "drawn-nothingTaken"
+    case drawnOffline = "drawn-offline"
+    case drawnEditing = "drawn-editing"
+    case drawnDeleteDialog = "drawn-deleteDialog"
 
     var entryID: String {
         switch self {
-        case .rest: SampleEntries.hereID
+        case .rest, .drawnRest, .drawnEditing, .drawnDeleteDialog: SampleEntries.hereID
         case .voiceNote: SampleEntries.walkID
-        case .nothingTaken: SampleEntries.ranID
-        case .offline: SampleEntries.trainID
+        case .nothingTaken, .drawnNothingTaken: SampleEntries.ranID
+        case .offline, .drawnOffline: SampleEntries.trainID
+        }
+    }
+
+    /// The drawn states open with every drawn part on, in Paper's state; the others are the cut.
+    var drawnStart: EntryDrawnModel.Start? {
+        switch self {
+        case .rest, .voiceNote, .nothingTaken, .offline: nil
+        case .drawnRest, .drawnNothingTaken, .drawnOffline: .rest
+        case .drawnEditing: .editing
+        case .drawnDeleteDialog: .deleteDialog
         }
     }
 }
@@ -53,9 +71,20 @@ struct EntriesLaunch: View {
     @State private var showsSettings = false
     @State private var path: [String]
     @State private var data: SampleEntriesData
+    /// Drawn parts on (J2b `drawn-*`), and the state the first opened entry starts in.
+    private let drawn: EntryDrawnModel.Start?
+    private let openingID: String?
+    /// The opening entry's drawn start is used once; entries opened later start at rest.
+    @State private var startUsed = false
+    /// Deletes so far: the warning haptic plays here, on the stack that outlives the popped page.
+    @State private var deletes = 0
+    /// Saved edits, kept above the pages so a reopened entry shows them.
+    @State private var edits = EntryEdits()
 
-    init(scenario: EntriesScenario, opening entryID: String? = nil) {
+    init(scenario: EntriesScenario, opening entryID: String? = nil, drawn: EntryDrawnModel.Start? = nil) {
         self.scenario = scenario
+        self.drawn = drawn
+        openingID = entryID
         _isOpen = State(initialValue: scenario != .flow)
         _path = State(initialValue: entryID.map { [$0] } ?? [])
         let data = SampleEntriesData(scenario: scenario)
@@ -75,15 +104,35 @@ struct EntriesLaunch: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
-                EntryScreen(id: id, data: data) {
-                    if !path.isEmpty {
-                        path.removeLast()
+                EntryScreen(
+                    id: id,
+                    data: data,
+                    capabilities: drawn == nil ? .cut : .drawn,
+                    claims: SampleTook.claims(for: id),
+                    start: id == openingID && !startUsed ? drawn ?? .rest : .rest,
+                    edits: edits,
+                    onDelete: {
+                        deletes += 1
+                        if !path.isEmpty {
+                            path.removeLast()
+                        }
+                    },
+                    back: {
+                        if !path.isEmpty {
+                            path.removeLast()
+                        }
+                    }
+                )
+                .onAppear {
+                    if id == openingID {
+                        startUsed = true
                     }
                 }
                 .toolbar(.hidden, for: .navigationBar)
             }
         }
         .onAppear { model.onOpen = { path.append($0.id) } }
+        .sensoryFeedback(RHaptic.warning, trigger: deletes)
         .fullScreenCover(isPresented: $showsSettings) {
             AccountPage(flow: SampleSignOutFlow(unsent: 0)) { showsSettings = false }
         }
@@ -93,4 +142,5 @@ struct EntriesLaunch: View {
 #Preview("JR-3 · rest") { EntriesLaunch(scenario: .rest) }
 #Preview("JR-3 · searching") { EntriesLaunch(scenario: .searching) }
 #Preview("JR-4 · rest") { EntriesLaunch(scenario: .rest, opening: SampleEntries.hereID) }
+#Preview("JR-4 · drawn") { EntriesLaunch(scenario: .rest, opening: SampleEntries.hereID, drawn: .rest) }
 #endif
