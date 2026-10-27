@@ -45,23 +45,32 @@ struct SetupRecap: Equatable {
     /// The first sentence, trimmed, ending in a full stop.
     static func sentence(_ words: String) -> String {
         let trimmed = words.trimmingCharacters(in: .whitespacesAndNewlines)
-        let end = trimmed.firstIndex { ".!?\n".contains($0) }
-        var first = end.map { String(trimmed[...$0]) } ?? trimmed
-        first = first.trimmingCharacters(in: .whitespacesAndNewlines)
-        if first.last == "\n" {
-            first.removeLast()
+        let chars = Array(trimmed)
+        // a stop ends the sentence only before a space or the end ("raise $1.5m" stays whole); a newline always does
+        let end = chars.indices.first { index in
+            chars[index] == "\n" || (".!?".contains(chars[index]) && (index + 1 == chars.count || chars[index + 1].isWhitespace))
         }
+        var first = end.map { String(chars[...$0]) } ?? trimmed
+        first = first.trimmingCharacters(in: .whitespacesAndNewlines)
         if let last = first.last, !".!?".contains(last) {
             first += "."
         }
         return first
     }
 
-    /// "sam." / "Sam, in London" → "sam" / "Sam": the first word without its punctuation.
+    /// Words people lead with before their name ("i'm sam", "my name is sam", "hi, sam here").
+    /// Both apostrophes: the iOS keyboard types the curly one.
+    static let leadIns: Set<String> = [
+        "i'm", "i’m", "im", "i", "am", "my", "name", "name's", "name’s", "is", "it's", "it’s", "its",
+        "hi", "hey", "hello", "call", "me",
+    ]
+
+    /// "sam." / "Sam, in London" / "i'm sam" → "sam" / "Sam" / "sam": the first word that isn't a lead-in,
+    /// without its punctuation; nil when nothing is left (the welcome then says "welcome.").
     static func firstWord(_ words: String) -> String? {
-        let word = words.split { $0.isWhitespace || $0 == "," }.first.map(String.init)
-        let bare = word?.trimmingCharacters(in: .punctuationCharacters)
-        return (bare?.isEmpty ?? true) ? nil : bare
+        words.split { $0.isWhitespace || $0 == "," }
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .first { !$0.isEmpty && !leadIns.contains($0.lowercased()) }
     }
 }
 

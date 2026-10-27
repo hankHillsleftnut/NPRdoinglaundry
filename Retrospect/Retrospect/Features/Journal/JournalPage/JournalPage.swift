@@ -37,7 +37,12 @@ struct JournalPageContainer: View {
         if let data {
             // a new data source, a new player or a new day builds a new page and model
             JournalPage(model: model(for: data))
-                .id(PageIdentity(data: ObjectIdentifier(data), player: playback.map { ObjectIdentifier($0) }, today: today))
+                .id(PageIdentity(
+                    data: ObjectIdentifier(data),
+                    player: playback.map { ObjectIdentifier($0) },
+                    today: today,
+                    firstDay: firstDay != nil
+                ))
         } else {
             // outside the app (a preview without the seam): nothing to show yet
             RColor.backgroundCanvas.ignoresSafeArea()
@@ -60,6 +65,8 @@ private struct PageIdentity: Hashable {
     let data: ObjectIdentifier
     let player: ObjectIdentifier?
     let today: String
+    /// First home in or out: the host dropping the first day builds a fresh page (FH.home.b).
+    let firstDay: Bool
 }
 
 struct JournalPage: View {
@@ -128,7 +135,7 @@ struct JournalPage: View {
             RBriefCard(
                 date: "",
                 headline: FirstDay.cardTitle,
-                state: .firstEpisodeReady(line: firstDay.cardLine),
+                state: .firstEpisodeReady(line: firstDay.cardLine, celebrate: firstDay.celebrate),
                 play: firstDay.play
             )
             .padding(.horizontal, margin)

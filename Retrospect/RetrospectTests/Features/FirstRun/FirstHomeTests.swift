@@ -114,4 +114,30 @@ struct FirstHomeTests {
         #expect(!RBriefCard.hasPlay(.firstEpisodeMaking(line: "", progress: 0)))
         #expect(RBriefCard.label(date: "tue 21 oct", length: "2 min", state: .rest) == "tue 21 oct · 2 min")
     }
+
+    @Test("a stop inside a word or number doesn't end the sentence")
+    func sentenceKeepsNumbers() {
+        #expect(SetupRecap.sentence("raise $1.5m, sleep more") == "raise $1.5m, sleep more.")
+        #expect(SetupRecap.sentence("ship v2.0 this week. then rest") == "ship v2.0 this week.")
+    }
+
+    @Test("the name skips what people say before it")
+    func nameSkipsLeadIns() {
+        #expect(SetupRecap.firstWord("i'm sam, in london") == "sam")
+        #expect(SetupRecap.firstWord("I’m Sam") == "Sam")
+        #expect(SetupRecap.firstWord("my name is sam") == "sam")
+        #expect(SetupRecap.firstWord("hi, sam here") == "sam")
+        #expect(SetupRecap.firstWord("hi") == nil)
+    }
+
+    @Test("the first day's celebration reaches the ready card")
+    func celebrateForwarded() {
+        let state = RBriefCard.State.firstEpisodeReady(line: FirstDay.paperCardLine, celebrate: true)
+        guard case let .firstEpisodeReady(_, celebrate) = state else {
+            Issue.record("not the ready state")
+            return
+        }
+        #expect(celebrate)
+        #expect(RBriefCard.State.firstEpisodeReady(line: "") == .firstEpisodeReady(line: "", celebrate: false))
+    }
 }

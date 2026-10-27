@@ -40,7 +40,7 @@ struct RBriefCard: View {
         /// draws the ready content): the 40 well with its play, the headline ("your first episode is
         /// ready") over `line` ("the week you started · 2 min"). The whole row plays. Drawn by
         /// `RBriefCard+FirstEpisode`.
-        case firstEpisodeReady(line: String)
+        case firstEpisodeReady(line: String, celebrate: Bool = false)
     }
 
     /// The date, already worded ("tue 21 oct").
@@ -101,7 +101,7 @@ struct RBriefCard: View {
         case let .error(message): "today's brief, \(message)"
         case .offline: "today's brief, it'll be here when you're back online"
         case let .firstEpisodeMaking(line, _): RFirstEpisodeMakingCard.spoken(title: headline, line: line)
-        case let .firstEpisodeReady(line): RFirstEpisodeReadyCard.spoken(title: headline, line: line)
+        case let .firstEpisodeReady(line, _): RFirstEpisodeReadyCard.spoken(title: headline, line: line)
         }
     }
 
@@ -134,8 +134,8 @@ struct RBriefCard: View {
         if case let .firstEpisodeMaking(line, progress) = state {
             // the first episode's row is its own shape (no panel, no play): one home, its own drawing
             RFirstEpisodeMakingCard(title: headline, line: line, progress: progress)
-        } else if case let .firstEpisodeReady(line) = state {
-            RFirstEpisodeReadyCard(title: headline, line: line, play: play)
+        } else if case let .firstEpisodeReady(line, celebrate) = state {
+            RFirstEpisodeReadyCard(title: headline, line: line, play: play, celebrate: celebrate)
         } else {
             card
         }
