@@ -39,6 +39,15 @@ struct SampleFlowHost: View {
                 )
             case .privacy:
                 FlowPrivacyVisit(flow: flow)
+            case .gettingReady:
+                GettingReadyPageContainer(
+                    firstRun: flow.firstRun,
+                    episode: flow.gettingReadyEpisode(),
+                    listening: flow.listening,
+                    kept: flow.answers[.thisWeek],
+                    onAnswered: { key, words in flow.answered(key, words: words) },
+                    onReady: { flow.send(.episodeReady) }
+                )
             }
         }
         // the same move between pages as the live root's
@@ -69,4 +78,5 @@ private struct FlowPrivacyVisit: View {
 #Preview("flow · from the splash") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .splash)) }
 #Preview("flow · questions") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .questions)) }
 #Preview("flow · privacy") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .privacy)) }
+#Preview("flow · getting ready") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .gettingReady)) }
 #endif

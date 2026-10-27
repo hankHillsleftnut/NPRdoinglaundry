@@ -307,6 +307,59 @@ struct FlowHostTests {
         store.clear()
         #expect(store.load() == nil)
     }
+
+    // MARK: Getting ready (GR.ready)
+
+    @Test("getting ready: the answer is kept on the flow and comes back after a relaunch; made ends the flow there")
+    func gettingReadyKeepsAndEnds() async {
+        let store = MemoryFlowStore(SampleFlowSaved(step: .gettingReady))
+        let model = flow(store)
+        // a relaunch this far on is after the tear: the ticket is spent, shown still
+        #expect(model.invite.phase == .youreIn)
+        let page = GettingReadyModel(
+            firstRun: model.firstRun,
+            episode: SampleFirstEpisode(scenario: .ready),
+            listening: SampleListening(clock: FlowImmediateClock(), ends: false, waits: false),
+            clock: FlowImmediateClock()
+        )
+        page.onAnswered = { key, words in model.answered(key, words: words) }
+        var made = 0
+        page.onReady = {
+            made += 1
+            model.send(.episodeReady)
+        }
+        await page.sendTyped("the investor call on thursday")
+        #expect(model.answers[.thisWeek] == "the investor call on thursday")
+        await page.run()
+        #expect(made == 1)
+        // no row to the tease yet: the flow ends cleanly here
+        #expect(model.step == .gettingReady)
+
+        let again = flow(store)
+        #expect(again.step == .gettingReady)
+        let resumed = GettingReadyModel(
+            firstRun: again.firstRun,
+            episode: again.gettingReadyEpisode(),
+            listening: again.listening,
+            kept: again.answers[.thisWeek],
+            clock: FlowImmediateClock()
+        )
+        #expect(resumed.goingIn == "the investor call on thursday")
+        #expect(resumed.spokenWords == "the investor call on thursday")
+    }
+
+    @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")
+    func episodeStartsWithThePage() {
+        let model = flow(MemoryFlowStore(), start: .splash)
+        let first = model.gettingReadyEpisode()
+        #expect(model.gettingReadyEpisode() === first)
+        guard case let .waiting(since) = first.state else {
+            Issue.record("the sample episode should be waiting")
+            return
+        }
+        // Paper's 55%: 66 s into the wait as the page opens
+        #expect(abs(Date().timeIntervalSince(since) - SampleFirstEpisode.makingElapsed) < 5)
+    }
 }
 
 /// A clock whose sleeps end at once (the sample's pretend save, without waiting).

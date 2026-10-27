@@ -16,9 +16,27 @@ struct FlowStepTests {
         return reached
     }
 
-    @Test("from the splash the table walks every step, in the app's order")
+    /// Steps merged ahead of the screens that lead to them: getting ready (ON-10) is reached from connect
+    /// (ON-6), which isn't a step yet; the walk from the splash ends at privacy (FLOW.edges). Each island
+    /// starts its own walk until the missing screens add their rows; then this list empties.
+    private static let waitingForAnIncomingRow: [FlowStep] = [.gettingReady]
+
+    @Test("from the splash the table walks every step, in the app's order (islands waiting for a row aside)")
     func everyStepReachable() {
-        #expect(walk(from: .splash) == FlowStep.allCases)
+        let walks = [walk(from: .splash)] + Self.waitingForAnIncomingRow.map { walk(from: $0) }
+        #expect(walks.flatMap(\.self) == FlowStep.allCases)
+        // an island really has no row into it yet: when connect adds one, it leaves the list
+        for island in Self.waitingForAnIncomingRow {
+            #expect(FlowEdge.table.contains { $0.to == island } == false, "\(island)")
+        }
+    }
+
+    @Test("getting ready ends the flow: 'made' has no row until the tease (ON-11) adds one")
+    func endsAtGettingReady() {
+        #expect(FlowEdge.table.contains { $0.from == .gettingReady } == false)
+        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == nil)
+        let withTease = FlowEdge.table + [FlowEdge(.gettingReady, .episodeReady, .splash)]
+        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady, table: withTease) == .splash)
     }
 
     @Test("each edge of the table is the move next(from:event:) makes")

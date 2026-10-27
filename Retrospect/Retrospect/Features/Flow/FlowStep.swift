@@ -22,6 +22,9 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     /// ON-5: privacy (#196). Moves on when Retro finishes reading (decision 3); its row to connect (ON-6)
     /// lands with connect, so until then the flow ends here.
     case privacy
+    /// ON-10: getting ready (GR.ready). Reached from connect (ON-6) once connect is a step; until
+    /// then `-FlowStart gettingReady` opens it.
+    case gettingReady
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -40,6 +43,9 @@ enum FlowEvent: String, CaseIterable, Sendable {
     /// A page's own back chevron that leaves the page (ON-5 back to the last question). Back between
     /// questions stays inside ON-3–9.
     case back
+    /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
+    /// with the tease; until then the flow ends at getting ready.
+    case episodeReady
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.

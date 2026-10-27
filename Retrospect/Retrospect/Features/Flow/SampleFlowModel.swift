@@ -28,8 +28,12 @@ final class SampleFlowModel {
     let signIn: SignInModel
     /// PI1 + PI2: one model for the gate and "you're in", so the ticket is one instance.
     let invite: InviteModel
-    /// ON-3–9's seam.
+    /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
+    /// ON-10's simulated listening.
+    let listening: SampleListening
+    /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
+    @ObservationIgnored private var episode: SampleFirstEpisode?
 
     @ObservationIgnored private let store: any SampleFlowStore
     @ObservationIgnored private let table: [FlowEdge]
@@ -56,6 +60,7 @@ final class SampleFlowModel {
         )
         invite = Self.inviteModel(at: saved.step, sleep: sleep)
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
+        listening = SampleListening(clock: clock)
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
         followInvite()
@@ -98,6 +103,17 @@ final class SampleFlowModel {
         if phase == .torn || phase == .youreIn {
             send(.ticketTorn)
         }
+    }
+
+    /// ON-10's sample episode, started when the page first shows (so a walk from the splash opens it
+    /// where Paper draws the line, 66 s into the wait, however long the walk took); the same one after.
+    func gettingReadyEpisode() -> SampleFirstEpisode {
+        if let episode {
+            return episode
+        }
+        let made = SampleFirstEpisode(scenario: .makingThenReady)
+        episode = made
+        return made
     }
 
     /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
