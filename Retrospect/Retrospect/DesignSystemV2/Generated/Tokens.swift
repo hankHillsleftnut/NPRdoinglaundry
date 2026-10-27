@@ -280,6 +280,12 @@ public enum RColor {
     public static let signInGoogleFill = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 0.0745, green: 0.0745, blue: 0.0784, alpha: 1))
     /// Label on the Google button.
     public static let signInGoogleLabel = dynamic(UIColor(red: 0.1216, green: 0.1216, blue: 0.1216, alpha: 1), UIColor(red: 0.8902, green: 0.8902, blue: 0.8902, alpha: 1))
+    /// The ready first episode's artwork well on first home, its base (Paper 1FJP-0 background).
+    public static let firstEpisodeReadyBase = dynamic(UIColor(red: 0.7294, green: 0.7216, blue: 0.7098, alpha: 1), UIColor(red: 0.7294, green: 0.7216, blue: 0.7098, alpha: 1))
+    /// The ready first episode's well, the warm light at its top trailing corner (radial at 85% 10% to 55%, Paper 1FJP-0).
+    public static let firstEpisodeReadyLight = dynamic(UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1), UIColor(red: 1, green: 0.7843, blue: 0.3608, alpha: 1))
+    /// The ready first episode's well, the shade pooling at its bottom leading corner (radial at 0% 100% to 80%, Paper 1FJP-0).
+    public static let firstEpisodeReadyShade = dynamic(UIColor(red: 0.4863, green: 0.4745, blue: 0.4588, alpha: 1), UIColor(red: 0.4863, green: 0.4745, blue: 0.4588, alpha: 1))
     /// Top of the lit gradient.
     public static let glowPrimaryGradientTop = dynamic(UIColor(red: 0.2627, green: 0.7176, blue: 1, alpha: 1), UIColor(red: 0.2275, green: 0.6627, blue: 0.9333, alpha: 1))
     /// Bottom of the lit gradient.
@@ -674,6 +680,8 @@ public enum RDimension {
     public static let sizeSkeletonGap: CGFloat = 9
     /// The raised mark above an empty state line.
     public static let sizeEmptyMark: CGFloat = 52
+    /// The ready first episode's artwork well on first home (with a 16 play inside).
+    public static let sizeFirstEpisodeWell: CGFloat = 40
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
@@ -1182,6 +1190,21 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
+    ]
+    /// The setup recap card on first home: top light, outer hairline, contact, and a cast pulled in by its spread.
+    public static let boxShadowFirstHomeRecap: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 10, blur: 24, spread: -12),
+    ]
+    /// The ready first episode card on first home: top light, inner ring, outer hairline, contact, and one cast pulled in by its spread (no ambient).
+    public static let boxShadowFirstHomeEpisodeCard: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 12, blur: 28, spread: -12),
     ]
     /// The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring).
     public static let boxShadowMiniPlayer: [RShadowLayer] = [
