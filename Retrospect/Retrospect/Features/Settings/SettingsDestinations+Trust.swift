@@ -22,7 +22,7 @@ extension SettingsDestinations {
         case .learned:
             // too early / off are undrawn (ST-D25): the row stays inert rather than open an empty page
             trustData(context).flatMap { data in
-                data.learned.state == .learning ? AnyView(LearnedPage(data: data, back: context.back)) : nil
+                LearnedPage.hasContent(data.learned) ? AnyView(LearnedPage(data: data, back: context.back)) : nil
             }
         case .dailyBrief, .sources, .source:
             // the first half's pages (SettingsDestinations.first)
