@@ -18,7 +18,8 @@ struct GoalsStack: View {
     @State private var path: [GoalsRoute]
     /// Builds an entry (JR-4) for GL-2's "your words" row; nil while there is nowhere to show one.
     let entryPage: ((String) -> AnyView)?
-    /// Which goals have a GL-2 (the host's data knows); the others are plain cards.
+    /// Which goals have a GL-2 (the host's data knows); the others are plain cards. No by default, so a
+    /// caller has to say which goals open (GL-D11).
     let canOpen: (String) -> Bool
     /// Whether a page is pushed (the host hides its tab bar).
     let onDepthChange: (Bool) -> Void
@@ -27,7 +28,7 @@ struct GoalsStack: View {
         model: GoalsModel,
         path: [GoalsRoute] = [],
         entryPage: ((String) -> AnyView)? = nil,
-        canOpen: @escaping (String) -> Bool = { _ in true },
+        canOpen: @escaping (String) -> Bool = { _ in false },
         onDepthChange: @escaping (Bool) -> Void = { _ in }
     ) {
         self.model = model
@@ -49,10 +50,10 @@ struct GoalsStack: View {
                         GoalDestination(
                             id: id,
                             data: model.data,
-                            back: pop,
+                            back: { pop(to: .goal(id: id)) },
                             openEntry: entryPage.map { _ in { path.append(.entry(id: $0)) } },
                             turnedOff: {
-                                pop()
+                                pop(to: .goal(id: id))
                                 Task { await model.refresh() }
                             }
                         )
@@ -66,9 +67,10 @@ struct GoalsStack: View {
         }
     }
 
-    private func pop() {
-        if !path.isEmpty {
-            path.removeLast()
+    /// Back from `route`: removes it and anything pushed above it (a late "gone" never pops another page).
+    private func pop(to route: GoalsRoute) {
+        if let index = path.lastIndex(of: route) {
+            path.removeSubrange(index...)
         }
     }
 }

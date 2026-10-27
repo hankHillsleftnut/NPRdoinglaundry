@@ -80,6 +80,7 @@ struct GoalPage: View {
                 Text(detail.didHeading)
                     .rText(.labelMedium)
                     .foregroundStyle(RColor.textLabel)
+                    .accessibilityAddTraits(.isHeader)
             }
             if let pattern = detail.pattern {
                 GoalGuessCard(guess: pattern, padding: .compact) { accepted in

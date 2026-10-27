@@ -80,3 +80,18 @@ struct GoalModelTests {
         #expect(screen?.states == ["rest"])
     }
 }
+
+/// Review on #219: a second turn-off does nothing.
+@MainActor
+struct GoalPageGuardTests {
+    @Test("a second turn off while the first is on its way does nothing")
+    func doubleTurnOff() async {
+        let data = SampleGoals()
+        let model = GoalModel(goalID: "goal.ship", data: data)
+        await model.load()
+        async let first: Void = model.turnOff()
+        async let second: Void = model.turnOff()
+        _ = await (first, second)
+        #expect(data.state.turnedOff == 3)
+    }
+}

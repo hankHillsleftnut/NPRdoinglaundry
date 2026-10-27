@@ -14,8 +14,8 @@ struct GoalsPage: View {
     @Bindable var model: GoalsModel
     /// Opens a goal (GL-2); nil while there is nowhere to open it.
     var openGoal: ((GoalSummary) -> Void)?
-    /// Which goals have a GL-2 to open; the others are plain cards.
-    var canOpen: (GoalSummary) -> Bool = { _ in true }
+    /// Which goals have a GL-2 to open; the others are plain cards. No by default (GL-D11).
+    var canOpen: (GoalSummary) -> Bool = { _ in false }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

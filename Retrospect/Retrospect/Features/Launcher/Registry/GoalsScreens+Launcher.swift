@@ -31,15 +31,23 @@ struct GoalsLaunch: View {
     let path: [GoalsRoute]
     @State private var model = GoalsModel(data: SampleGoals())
     @State private var tab = RTab.goals
-    @State private var pushed = false
+    @State private var pushed: Bool
+
+    init(path: [GoalsRoute]) {
+        self.path = path
+        // GL-2 opens pushed: no tab bar on the first frame
+        _pushed = State(initialValue: !path.isEmpty)
+    }
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
             ZStack {
-                GoalsStack(model: model, path: path, entryPage: entryPage, canOpen: SampleGoals.drawnDetails.contains) { pushed = $0 }
-                    .opacity(tab == .goals ? 1 : 0)
-                    .allowsHitTesting(tab == .goals)
-                    .accessibilityHidden(tab != .goals)
+                GoalsStack(model: model, path: path, entryPage: entryPage, canOpen: SampleGoals.drawnDetails.contains) { isPushed in
+                    withAnimation(RMotion.settle) { pushed = isPushed }
+                }
+                .opacity(tab == .goals ? 1 : 0)
+                .allowsHitTesting(tab == .goals)
+                .accessibilityHidden(tab != .goals)
                 if tab != .goals {
                     RColor.backgroundCanvas
                 }
@@ -54,6 +62,7 @@ struct GoalsLaunch: View {
     /// JR-4 when a group registers it (pushed on the goals stack); nil (plain rows) until then.
     private var entryPage: ((String) -> AnyView)? {
         guard let jr4 = ScreenRegistry.screen("JR-4") else { return nil }
+        // DEBUG stand-in: the launcher opens JR-4's own sample entry; the entry id reaches JR-4 at wiring
         return { _ in jr4.build(LaunchArguments()) }
     }
 }
