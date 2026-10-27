@@ -24,6 +24,22 @@ struct InviteGateTypedTests {
         #expect(model.offersWaitlist)
     }
 
+    @Test("the waitlist foot gives way to the keyboard and returns when it goes; a refusal never has one")
+    func footGivesWayToTheKeyboard() {
+        #expect(InviteScreen.showsWaitlistFoot(.foot, typing: false))
+        #expect(!InviteScreen.showsWaitlistFoot(.foot, typing: true))
+        #expect(!InviteScreen.showsWaitlistFoot(.link, typing: false))
+        #expect(!InviteScreen.showsWaitlistFoot(nil, typing: false))
+    }
+
+    @Test("a notice with no words of its own never blanks both lines: the pill stays")
+    func pillAndCaptionExclusive() {
+        let model = typed(ScriptedInviteSource())
+        model.applySample(InviteSetup(phase: .typed, face: nil, notice: .signInFailed, hasCode: false))
+        #expect(model.caption == nil)
+        #expect(model.hint == "the link didn't bring the code? type it in.")
+    }
+
     @Test("'the tear unlocks when it's filled' is never shown on the typed ticket")
     func noTearUnlocks() async {
         let source = ScriptedInviteSource()

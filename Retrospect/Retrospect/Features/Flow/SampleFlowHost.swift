@@ -35,6 +35,7 @@ struct SampleFlowHost: View {
                     kept: flow.answers,
                     onAnswered: { key, words in flow.answered(key, words: words) },
                     cameBack: flow.cameBack,
+                    seamFinished: flow.questionsFinished,
                     onDone: { flow.send(.questionsDone) }
                 )
             case .privacy:

@@ -5,9 +5,9 @@ import Testing
 /// where the entry is, as Paper's 05 frames do; a line that didn't send retries; the cut shows no
 /// part whose door isn't live.
 @MainActor
-struct EntryModelTests {
-    private func shown(_ id: String) async -> EntryModel {
-        let model = EntryModel(id: id, data: SampleEntriesData(scenario: .rest, sendBeat: .zero))
+struct EntryPageModelTests {
+    private func shown(_ id: String) async -> EntryPageModel {
+        let model = EntryPageModel(id: id, data: SampleEntriesData(scenario: .rest, sendBeat: .zero))
         await model.load()
         return model
     }
@@ -54,7 +54,7 @@ struct EntryModelTests {
 
     @Test("a retry shows the entry waiting at once, so a second tap sends nothing")
     func retryShowsSendingAtOnce() async {
-        let model = EntryModel(id: SampleEntries.trainID, data: SampleEntriesData(scenario: .offline, sendBeat: .milliseconds(50)))
+        let model = EntryPageModel(id: SampleEntries.trainID, data: SampleEntriesData(scenario: .offline, sendBeat: .milliseconds(50)))
         await model.load()
         async let first: Void = model.retry()
         await Task.yield()
@@ -86,7 +86,7 @@ struct EntryModelTests {
     func capabilities() {
         #expect(EntryCapabilities.cut == EntryCapabilities(edit: true, delete: false, took: false))
         #expect(EntryCapabilities.drawn == EntryCapabilities(edit: true, delete: true, took: true))
-        let model = EntryModel(id: SampleEntries.hereID, data: SampleEntriesData(scenario: .rest))
+        let model = EntryPageModel(id: SampleEntries.hereID, data: SampleEntriesData(scenario: .rest))
         #expect(model.capabilities == .cut)
     }
 

@@ -12,14 +12,8 @@ import SwiftUI
 struct SettingsPrivacyPage: View {
     let data: any Flows.SettingsTrustData
     let back: () -> Void
-    @State private var deleting: Bool
+    @State private var deleting = false
     @State private var status = RDialog.Status.rest
-
-    init(data: any Flows.SettingsTrustData, deleting: Bool = false, back: @escaping () -> Void) {
-        self.data = data
-        self.back = back
-        _deleting = State(initialValue: deleting)
-    }
 
     var body: some View {
         SettingsPageFrame(title: "privacy", back: back) {
@@ -63,6 +57,9 @@ struct SettingsPrivacyPage: View {
                 deleting = false
             }
         }
+        #if DEBUG
+        .modifier(SettingsLaunchDialogOpen(isPresented: $deleting))
+        #endif
     }
 
     /// Paper 1GPU-0. An app string, not a server value: contract 06 has no field for it.

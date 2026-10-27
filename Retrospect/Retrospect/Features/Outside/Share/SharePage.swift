@@ -36,6 +36,8 @@ struct SharePage: View {
                         .frame(minHeight: proxy.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                // the item card's shadow reaches past the column; don't clip it (QA 1, #220)
+                .scrollClipDisabled()
                 .scrollDismissesKeyboard(.interactively)
             }
             RButton(title: "save", status: model.isSaving ? .pending : .rest) {
@@ -44,7 +46,8 @@ struct SharePage: View {
         }
         .padding(.horizontal, RDimension.spaceScreenMargin)
         .padding(.top, RDimension.space2)
-        .padding(.bottom, RDimension.space4)
+        // Paper keeps save 40 above the screen edge, which is mostly the home indicator: 8 above the safe area
+        .padding(.bottom, RDimension.space2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task { await model.load() }
         .accessibilityIdentifier("share")
@@ -68,6 +71,9 @@ struct SharePage: View {
                     .accessibilityHidden(true)
                 RComposer(label: "add why", placeholder: "for the raise, the bit on angels…", text: $model.why)
             }
+            // the field keeps its own height (48 at rest, growing with the words); the gap above takes
+            // the room, not the field (QA 1, #220: it stretched to fill the sheet)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
