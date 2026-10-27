@@ -37,9 +37,13 @@ struct RProgressHairline: View {
 
 // MARK: - S08 · Knows-you track
 
-/// The lit track behind the knows-you meter: a 4pt pill whose fill carries the
-/// primary glow and moves on the move curve (meter fills one step per source).
+/// The track behind the knows-you meter: a 4pt pill filled with ink that moves on the move
+/// curve (meter fills one step per source). Founder, 27 Oct: the meter fills with ink, not blue
+/// (blue sparingly: screen-rules 14); no glow.
 struct RKnowsYouTrack: View {
+    /// The fill (the founder's ink, over Paper 21C4-0's blue gradient).
+    static let fill = RColor.inkDefault
+
     /// 0…1
     let fraction: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -52,14 +56,8 @@ struct RKnowsYouTrack: View {
             ZStack(alignment: .leading) {
                 RShape.pill.fill(RColor.surfaceTrack)
                 RShape.pill
-                    .fill(LinearGradient(
-                        colors: [RColor.glowPrimaryGradientTop, RColor.glowPrimaryGradientBottom],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ))
+                    .fill(Self.fill)
                     .frame(width: geo.size.width * clamped)
-                    // Paper 21C4-0: glow.primary.halo 0 0 6 (a CSS blur of 6 is a SwiftUI radius of 3)
-                    .shadow(color: RColor.glowPrimaryHalo, radius: RDimension.sizeMeter * 0.75) // literal-ok: half of Paper's 6 blur
             }
         }
         .frame(height: RDimension.sizeMeter)

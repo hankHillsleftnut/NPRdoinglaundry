@@ -354,6 +354,8 @@ struct ConnectModelTests {
         #expect(abs(RIconButton.backChevronGlyphScale - RSymbol.defaultGlyphScale * 11.3 / 14) < 0.005)
         #expect(RIconButton(symbol: "mic", label: "talk", role: .inField) {}.glyphScale == RSymbol.defaultGlyphScale)
         #expect(RButton.primaryHalo == false)
+        // founder 27 Oct: the knows-you meter fills with ink, not blue
+        #expect(RKnowsYouTrack.fill == RColor.inkDefault)
     }
 
     @Test("under Paper line boxes a one-line ink title is still 33 tall (214's pitch, not trimmed twice); SF text rounds to Paper's box")
