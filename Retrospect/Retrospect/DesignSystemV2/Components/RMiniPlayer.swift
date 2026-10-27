@@ -71,8 +71,9 @@ struct RMiniPlayer: View {
     let phase: Phase
     /// 0…1 of the episode played.
     let progress: Double
-    /// The body: opens the player sheet.
-    let open: () -> Void
+    /// The body: opens the player sheet. Nil where the body has nowhere to go (the ON-12 paywall,
+    /// PW-Q7): it is then not a button and promises nothing to VoiceOver. Failed, the body still retries.
+    let open: (() -> Void)?
     /// The well: pause, play or retry, by phase.
     let well: () -> Void
 
@@ -80,34 +81,21 @@ struct RMiniPlayer: View {
 
     var body: some View {
         HStack(spacing: RDimension.space3) {
-            // failed, the whole pill retries, so "tap to retry" (Paper GXF-0) is true wherever you tap
-            Button(action: phase == .failed ? well : open) {
-                HStack(spacing: RDimension.space3) {
-                    RArtwork(
-                        recipe: artwork,
-                        width: RDimension.sizeControlDefault,
-                        height: RDimension.sizeControlDefault,
-                        cornerRadius: RDimension.radiusControl
-                    )
-                    .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
-                        Text(title)
-                            .rText(.miniPlayerTitle)
-                            .foregroundStyle(RColor.textPrimary)
-                            .lineLimit(1)
-                        Text(phase == .failed ? Self.failedLine : subline)
-                            .rText(.metaLine)
-                            .foregroundStyle(sublineColor)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let action = bodyAction {
+                // failed, the whole pill retries, so "tap to retry" (Paper GXF-0) is true wherever you tap
+                Button(action: action) {
+                    info.contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(RPressStyle())
+                .accessibilityLabel(title)
+                .accessibilityValue(phase == .failed ? Self.failedLine : subline)
+                .accessibilityHint(phase == .failed ? "tries again" : "opens the player")
+            } else {
+                info
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(title)
+                    .accessibilityValue(subline)
             }
-            .buttonStyle(RPressStyle())
-            .accessibilityLabel(title)
-            .accessibilityValue(phase == .failed ? Self.failedLine : subline)
-            .accessibilityHint(phase == .failed ? "tries again" : "opens the player")
             RMiniPlayerWell(phase: phase, action: well)
         }
         .padding(.horizontal, RDimension.space2)
@@ -128,6 +116,35 @@ struct RMiniPlayer: View {
     }
 
     static let failedLine = "couldn't play · tap to retry"
+
+    /// What a tap on the body does: retry when failed, else open (nil: the body is not a button).
+    private var bodyAction: (() -> Void)? {
+        phase == .failed ? well : open
+    }
+
+    /// The thumb and the two lines.
+    private var info: some View {
+        HStack(spacing: RDimension.space3) {
+            RArtwork(
+                recipe: artwork,
+                width: RDimension.sizeControlDefault,
+                height: RDimension.sizeControlDefault,
+                cornerRadius: RDimension.radiusControl
+            )
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
+                Text(title)
+                    .rText(.miniPlayerTitle)
+                    .foregroundStyle(RColor.textPrimary)
+                    .lineLimit(1)
+                Text(phase == .failed ? Self.failedLine : subline)
+                    .rText(.metaLine)
+                    .foregroundStyle(sublineColor)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
 
     /// Paper's box-shadow stack for the pill (GX0-0 / GXB-0): the same in every phase.
     static let surfaceShadow = RElevation.boxShadowMiniPlayer
