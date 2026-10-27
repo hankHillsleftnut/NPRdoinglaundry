@@ -26,6 +26,9 @@ enum SettingsDestinations {
         let data: any Flows.SettingsData
         let open: (SettingsRoute) -> Void
         let back: () -> Void
+        /// Closes this route only if it is still the top page (an awaited action ending after the
+        /// person already went back must not pop the page under it).
+        var close: (SettingsRoute) -> Void = { _ in }
     }
 
     static func view(for page: SettingsRoute, in context: Context) -> AnyView? {
@@ -46,6 +49,12 @@ enum SettingsDestinations {
         switch page {
         case .dailyBrief:
             AnyView(DailyBriefPage(data: context.data, back: context.back))
+        case .sources:
+            AnyView(SourcesPage(data: context.data, open: context.open, back: context.back))
+        case let .source(id):
+            context.data.source(id)?.hasPage == true
+                ? AnyView(SourcePage(data: context.data, id: id, back: context.back) { context.close(.source(id)) })
+                : nil
         default:
             nil
         }
@@ -58,7 +67,11 @@ struct SettingsStack: View {
     var leave: () -> Void = {}
     @State private var path: [SettingsRoute]
 
-    init(data: any Flows.SettingsData, path: [SettingsRoute] = [], leave: @escaping () -> Void = {}) {
+    init(
+        data: any Flows.SettingsData,
+        path: [SettingsRoute] = [],
+        leave: @escaping () -> Void = {}
+    ) {
         self.data = data
         self.leave = leave
         _path = State(initialValue: path)
@@ -74,12 +87,17 @@ struct SettingsStack: View {
     }
 
     private var context: SettingsDestinations.Context {
-        SettingsDestinations.Context(data: data, open: open, back: back)
+        SettingsDestinations.Context(data: data, open: open, back: back, close: close)
     }
 
     private func open(_ page: SettingsRoute) {
         guard SettingsDestinations.isBuilt(page, data: data) else { return }
         path.append(page)
+    }
+
+    private func close(_ route: SettingsRoute) {
+        guard path.last == route else { return }
+        path.removeLast()
     }
 
     private func back() {

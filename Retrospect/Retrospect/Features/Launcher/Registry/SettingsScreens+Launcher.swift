@@ -19,6 +19,12 @@ enum SettingsScreens: ScreenGroup {
         LaunchableScreen(id: "ST-2", states: ["rest"]) { _ in
             AnyView(SettingsLaunch(path: [.dailyBrief]))
         },
+        LaunchableScreen(id: "ST-3", states: ["rest"]) { _ in
+            AnyView(SettingsLaunch(path: [.sources]))
+        },
+        LaunchableScreen(id: "ST-4", states: SourcePageScenario.allCases.map(\.rawValue)) { arguments in
+            AnyView(SourcePageLaunch(scenario: SourcePageScenario(rawValue: arguments.state) ?? .rest))
+        },
     ]
 }
 
@@ -32,6 +38,38 @@ struct SettingsLaunch: View {
     }
 }
 
+/// ST-4 at rest, or with one of its two questions open (for stills).
+enum SourcePageScenario: String, CaseIterable {
+    case rest, disconnect, delete
+
+    var asking: SourcePage.Asking? {
+        switch self {
+        case .rest: nil
+        case .disconnect: .disconnect
+        case .delete: .delete
+        }
+    }
+}
+
+/// ST-4 (calendar) over ST-3 over ST-1, on the sample.
+struct SourcePageLaunch: View {
+    let scenario: SourcePageScenario
+    @State private var data = SampleSettings()
+    @State private var question: SourcePageLaunchQuestion
+
+    init(scenario: SourcePageScenario) {
+        self.scenario = scenario
+        _question = State(initialValue: SourcePageLaunchQuestion(scenario.asking))
+    }
+
+    var body: some View {
+        SettingsStack(data: data, path: [.sources, .source("calendar")])
+            .environment(\.sourcePageLaunchQuestion, question)
+    }
+}
+
 #Preview("ST-1 settings") { SettingsLaunch(path: []) }
 #Preview("ST-2 daily brief") { SettingsLaunch(path: [.dailyBrief]) }
+#Preview("ST-3 sources") { SettingsLaunch(path: [.sources]) }
+#Preview("ST-4 disconnect") { SourcePageLaunch(scenario: .disconnect) }
 #endif
