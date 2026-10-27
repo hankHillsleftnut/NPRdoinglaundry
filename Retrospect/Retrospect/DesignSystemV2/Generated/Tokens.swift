@@ -1058,4 +1058,12 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
     ]
+    /// The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring).
+    public static let boxShadowMiniPlayer: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
+        RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 10, blur: 30, spread: -10),
+    ]
 }
