@@ -13,8 +13,8 @@ concurrency:
 
 jobs:
   tokens-and-literals:
-    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    # Light job: always on GitHub's runner (free while public), never queued behind the iOS build; see quality.yml.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

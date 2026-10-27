@@ -11,13 +11,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
-# Where CI runs is a repo variable, not a code change: `CI_HOSTED=true` (Settings → Variables)
-# sends every job to GitHub's own runners (free while the repo is public); unset, or anything
-# else, keeps them on the self-hosted Macs. Flip it back when the repo goes private again.
+# The light jobs (api, new-backend-only, changes, and lint/tokens/gitleaks/review in the other
+# workflows) always run on GitHub's ubuntu-latest: free while the repo is public, and they no
+# longer queue behind the iOS build on the Macs. Only the iOS job follows the repo variable
+# `CI_HOSTED` (Settings → Variables): `true` sends it to GitHub's macOS runner, unset or anything
+# else keeps it on the self-hosted Mac. Once the repo goes private, hosted minutes are billed:
+# revisit the light jobs' runners then.
 
 jobs:
   api:
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
@@ -41,7 +44,7 @@ jobs:
     # Founder rule: the new app talks to the new backend only (Backend.Client -> /v2 -> Session). Fails
     # when Platform/ (except Bridges.swift), Features/ or DesignSystemV2/ use the old client, a raw
     # request, or a path outside Backend.PathTemplate.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,7 +57,7 @@ jobs:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
     # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained). Contract
     # fixtures count as app changes: the app's tests decode every one of them.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.changed.outputs.app }}
     steps:
