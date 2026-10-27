@@ -9,12 +9,22 @@ import SwiftUI
 enum YouCopy {
     /// What VoiceOver says for a drawn control with nothing behind it yet.
     static let notAvailableYet = "not available yet"
+
+    /// The VoiceOver value `youInert` adds: the string when inert, nothing otherwise.
+    static func inertValue(_ inert: Bool) -> String? {
+        inert ? notAvailableYet : nil
+    }
 }
 
 extension View {
-    /// Drawn as Paper, inert, "not available yet" to VoiceOver; `false` leaves the view as it is.
-    func youInert(_ inert: Bool = true) -> some View {
-        allowsHitTesting(!inert)
-            .accessibilityValue(inert ? YouCopy.notAvailableYet : "")
+    /// Drawn as Paper, inert, "not available yet" to VoiceOver; `false` leaves the view exactly as it is
+    /// (no hit-testing change, no VoiceOver value).
+    @ViewBuilder func youInert(_ inert: Bool = true) -> some View {
+        if let value = YouCopy.inertValue(inert) {
+            allowsHitTesting(false)
+                .accessibilityValue(value)
+        } else {
+            self
+        }
     }
 }

@@ -173,10 +173,17 @@ struct EpisodeWords {
         "\(max(1, Int((seconds / 60).rounded()))) min"
     }
 
+    /// A Gregorian calendar in the given zone: the page's fixed English day words are Gregorian.
+    static func gregorian(in zone: TimeZone) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        return calendar
+    }
+
     private static func formatter(_ pattern: String, calendar: Calendar) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = calendar
+        formatter.calendar = gregorian(in: calendar.timeZone)
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = pattern
         return formatter
@@ -185,6 +192,8 @@ struct EpisodeWords {
     /// A contract `YYYY-MM-DD` day, at the start of that day in the person's zone. Anything else
     /// (extra or non-numeric parts, an impossible day like 31 feb) is refused, never rolled over.
     static func isoDay(_ text: String, calendar: Calendar) -> Date? {
+        // contract days are Gregorian whatever calendar the person uses; only the zone is theirs
+        let calendar = gregorian(in: calendar.timeZone)
         let parts = text.split(separator: "-", omittingEmptySubsequences: false)
         guard parts.count == 3, parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }) else {
             return nil

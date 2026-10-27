@@ -113,6 +113,16 @@ struct PodcastsModelTests {
         #expect(EpisodeWords.isoDay("2025-13-01", calendar: calendar) == nil)
     }
 
+    @Test("a contract day reads the same under a non-Gregorian calendar, and the words stay Gregorian")
+    func nonGregorianCalendar() throws {
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = SamplePodcastsData.words.calendar.timeZone
+        let parsed = try #require(EpisodeWords.isoDay("2025-10-21", calendar: buddhist))
+        #expect(parsed == EpisodeWords.isoDay("2025-10-21", calendar: SamplePodcastsData.words.calendar))
+        let words = EpisodeWords(now: SamplePodcastsData.now, calendar: buddhist)
+        #expect(words.day(parsed) == "tue 21 oct")
+    }
+
     @Test("a newest weekly older than a week says its day, not \"this week\"")
     func olderHero() {
         let words = SamplePodcastsData.words

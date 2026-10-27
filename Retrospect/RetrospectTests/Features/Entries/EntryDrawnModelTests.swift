@@ -9,9 +9,9 @@ struct EntryDrawnModelTests {
         EntryDrawnModel(claims: SampleTook.claims(for: SampleEntries.hereID), start: start, onDelete: onDelete)
     }
 
-    @Test("the cut has no drawn parts; drawn turns all three on")
+    @Test("the cut has edit only (founder 27 Oct); drawn turns all three on")
     func capabilities() {
-        #expect(EntryCapabilities.cut == EntryCapabilities(edit: false, delete: false, took: false))
+        #expect(EntryCapabilities.cut == EntryCapabilities(edit: true, delete: false, took: false))
         #expect(EntryCapabilities.drawn == EntryCapabilities(edit: true, delete: true, took: true))
     }
 
