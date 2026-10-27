@@ -93,8 +93,21 @@ struct RComposer: View {
     let label: String
     let placeholder: String
     @Binding var text: String
-    /// The mic well: talk instead of typing.
-    var onMic: () -> Void = {}
+    /// The mic well: talk instead of typing. Nil (V2.outside.a, EX-D10): no voice capture here, so the
+    /// mic opens the field and the keyboard's own dictation is the way to talk; never a dead control.
+    var onMic: (() -> Void)?
+
+    /// What the mic well does.
+    enum MicAction: Equatable {
+        /// Hands over to the screen's voice capture (`onMic`).
+        case talk
+        /// Focuses the field, so the keyboard (and its dictation) comes up.
+        case focusField
+    }
+
+    var micAction: MicAction {
+        onMic == nil ? .focusField : .talk
+    }
 
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
@@ -134,7 +147,13 @@ struct RComposer: View {
     }
 
     private var micWell: some View {
-        Button(action: onMic) {
+        Button {
+            if let onMic {
+                onMic()
+            } else {
+                focused = true
+            }
+        } label: {
             // Paper's 18 mic, as the search field matches it (C12)
             RSymbol(name: "mic", weight: .medium, glyphScale: 0.74) // literal-ok: 18 × 0.82 in the 20 frame
                 .frame(width: RDimension.sizeComposerWell, height: RDimension.sizeComposerWell)
@@ -144,7 +163,8 @@ struct RComposer: View {
                 .contentShape(Circle().inset(by: (RDimension.sizeComposerWell - RDimension.sizeTouchTarget) / 2))
         }
         .rPress(small: true)
-        .accessibilityLabel("talk instead")
+        .accessibilityLabel(micAction == .talk ? "talk instead" : "dictate")
+        .accessibilityHint(micAction == .talk ? "" : "opens the keyboard; use its microphone")
     }
 }
 
