@@ -73,9 +73,9 @@ struct PodcastsPage: View {
         return GeometryReader { proxy in
             ScrollView {
                 column
-                .padding(.horizontal, RDimension.spaceScreenMargin)
-                .padding(.top, RDimension.space3)
-                .padding(.bottom, RDimension.space8)
+                    .padding(.horizontal, RDimension.spaceScreenMargin)
+                    .padding(.top, RDimension.space3)
+                    .padding(.bottom, RDimension.space8)
             }
             .contentMargins(.bottom, proxy.safeAreaInsets.bottom, for: .scrollContent)
             // the cards' shadows may spill sideways past the margins, but the cards never draw over
