@@ -16,6 +16,9 @@ enum SettingsScreens: ScreenGroup {
         LaunchableScreen(id: "ST-1", states: ["rest"]) { _ in
             AnyView(SettingsLaunch(path: []))
         },
+        LaunchableScreen(id: "ST-2", states: ["rest"]) { _ in
+            AnyView(SettingsLaunch(path: [.dailyBrief]))
+        },
     ]
 }
 
@@ -30,4 +33,5 @@ struct SettingsLaunch: View {
 }
 
 #Preview("ST-1 settings") { SettingsLaunch(path: []) }
+#Preview("ST-2 daily brief") { SettingsLaunch(path: [.dailyBrief]) }
 #endif

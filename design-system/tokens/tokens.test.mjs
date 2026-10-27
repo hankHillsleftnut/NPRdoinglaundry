@@ -40,6 +40,7 @@ const paper = {
   'D9Z-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 1.5px, var(--color-depth-shadow-cast) 0px 4px 6px -2px',
   'DA6-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 0.5px 1px, var(--color-depth-shadow-cast) 0px 1px 2px -1px',
   'GX0-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 1.5px, var(--color-depth-shadow-cast) 0px 4px 10px -4px, var(--color-depth-shadow-ambient) 0px 10px 30px -10px',
+  'MHK-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 4px 10px -4px',
   // ON-13 first home (1FI8-0), FH.home.a
   '1FJL-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 12px 28px -12px',
   '1FJ6-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 10px 24px -12px',
@@ -80,6 +81,7 @@ const pinned = [
   ['depth.boxShadow.pill.raised.rest', 'D9Z-0', (l) => l],
   ['depth.boxShadow.pill.raised.pressed', 'DA6-0', (l) => l],
   ['depth.boxShadow.miniPlayer', 'GX0-0', (l) => l],
+  ['depth.boxShadow.pill.choice.on', 'MHK-0', (l) => l],
   ['depth.boxShadow.firstHome.recap', '1FJ6-0', (l) => l],
   ['depth.boxShadow.firstHome.episodeCard', '1FJL-0', (l) => l],
   ['depth.boxShadow.stroke.innerTop', '1F7K-0', (l) => l.slice(0, 1)],

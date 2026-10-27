@@ -40,6 +40,9 @@ extension Flows {
 
         let key: QuestionKey
         let text: String
+        /// Likely answers offered as chips under the question (Paper c:onboarding/quick-answers MH9-0);
+        /// none by default. Tapping one adds its words to the composer; nothing is sent until send.
+        var quickAnswers: [String] = []
 
         var id: QuestionKey {
             key
@@ -84,6 +87,9 @@ extension Flows {
         var questions: [FirstRunQuestion] { get }
         /// The keys already answered on this phone (resume starts at the first one not in it).
         var answeredKeys: Set<QuestionKey> { get }
+        /// The ear for one question (QU.followups.a: the questions answer out loud); nil = typed
+        /// only, the default and the live seam until a recogniser lands (VC.1).
+        func listening(for key: QuestionKey) -> (any Listening)?
 
         /// Hands one answer over. `.saved` adds `key` to `answeredKeys`.
         func answer(_ key: QuestionKey, text: String, given: FirstRunQuestion.Given) async -> AnswerOutcome
@@ -106,5 +112,12 @@ extension Flows {
     protocol Listening: AnyObject {
         func listen() -> AsyncStream<Heard>
         func stop()
+    }
+}
+
+extension Flows.FirstRun {
+    /// No ear by default: the questions are typed only.
+    func listening(for _: Flows.QuestionKey) -> (any Flows.Listening)? {
+        nil
     }
 }

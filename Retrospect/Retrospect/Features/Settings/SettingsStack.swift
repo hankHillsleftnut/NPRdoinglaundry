@@ -42,8 +42,13 @@ enum SettingsDestinations {
     }
 
     /// ST-2 … ST-4 (this half).
-    private static func first(_: SettingsRoute, in _: Context) -> AnyView? {
-        nil
+    private static func first(_ page: SettingsRoute, in context: Context) -> AnyView? {
+        switch page {
+        case .dailyBrief:
+            AnyView(DailyBriefPage(data: context.data, back: context.back))
+        default:
+            nil
+        }
     }
 }
 
