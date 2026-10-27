@@ -228,6 +228,12 @@ public enum RColor {
     public static let orbRingEdge = dynamic(UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 0.6), UIColor(red: 0.3137, green: 0.6431, blue: 0.9255, alpha: 0.3))
     /// A purpose page's orb, the light its ring casts below it (sky.500 at 40%; 0 14 34 −10, Paper ON-5 1F83-0).
     public static let orbRingShadow = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 0.4), UIColor(red: 0.0078, green: 0.5529, blue: 0.8196, alpha: 0.38))
+    /// The first episode's artwork well, its base (Paper ON-10 26MR-0 background).
+    public static let firstEpisodeBase = dynamic(UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1), UIColor(red: 0.1843, green: 0.6588, blue: 0.9412, alpha: 1))
+    /// The first episode's artwork well, the warm light at its top trailing corner (radial at 85% 10% to 55%, Paper 26MR-0).
+    public static let firstEpisodeLight = dynamic(UIColor(red: 0.949, green: 0.7216, blue: 0.2941, alpha: 1), UIColor(red: 0.949, green: 0.7216, blue: 0.2941, alpha: 1))
+    /// The first episode's artwork well, the deep sky pooling at its bottom leading corner (radial at 0% 100% to 80%, Paper 26MR-0).
+    public static let firstEpisodeShade = dynamic(UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 1), UIColor(red: 0.0863, green: 0.3686, blue: 0.549, alpha: 1))
     /// How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.)
     public static let playerProgress = dynamic(UIColor(red: 0.1216, green: 0.4902, blue: 0.7294, alpha: 1), UIColor(red: 0.498, green: 0.8039, blue: 1, alpha: 1))
     /// How much has loaded ahead.
@@ -512,6 +518,8 @@ public enum RDimension {
     public static let sizeIconInWell: CGFloat = 18
     /// The › at the end of a row.
     public static let sizeIconChevron: CGFloat = 14
+    /// The check before a chosen quick answer (c:pill/choice/on).
+    public static let sizeIconCheck: CGFloat = 14
     /// Artwork in a list row.
     public static let sizeArtworkRow: CGFloat = 40
     /// Artwork in a card or on the player header.
@@ -1057,6 +1065,13 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
+    /// A quick answer chosen on an onboarding question (c:pill/choice/on): top light, the outer hairline, contact and a small cast pulled in by its spread; no inner ring.
+    public static let boxShadowPillChoiceOn: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
     ]
     /// The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring).
     public static let boxShadowMiniPlayer: [RShadowLayer] = [

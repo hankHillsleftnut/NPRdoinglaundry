@@ -3,13 +3,16 @@
 //  P02.min, ON-3–9: the onboarding questions (Paper "05 · the app in order" `col · ON-3–9`,
 //  frame ON-4a; offline from 05b ON-4a "offline (answer kept)"). The progress hairline under
 //  the status bar (3pt surface.track, ink fill creeping forward each question, never a count;
-//  VoiceOver reads "step 3 of 8"); a quiet back chevron top-left and nothing on the right (no
+//  VoiceOver reads "step 3 of 9"); a quiet back chevron top-left and nothing on the right (no
 //  skip, founder rule; Paper still draws one); Retro's question in the inky title face; your
 //  words under it once sent, inky at 2xl in text.secondary; the offline line under them when a
 //  send wasn't kept; the voice composer pinned at the bottom with no mic (typing only; the
 //  keyboard's own dictation is how a person talks in 0.1). Each question blur-replaces the last
 //  (a cross-fade with Reduce Motion; the M13 type-out is out of scope). Margins 24 (20 on SE).
 //  Data comes only through `Flows.FirstRun`, sample or live; the host hears `onDone` once.
+//  QU.followups.a: with an ear on the seam the composer listens (Paper 1F6E-0: bars, "listening…",
+//  mic off) and your words land under the question as they are heard (#201's HeardWords); a quiet
+//  ends the answer ("thinking…"). Mic off types; the mic listens again. Without an ear: as above.
 //
 import SwiftUI
 
@@ -53,10 +56,9 @@ struct QuestionsPageContainer: View {
 
 struct QuestionsPage: View {
     @State private var model: QuestionsModel
-    /// Always muted: there is no recorder in 0.1, so the composer is a text field with the lit send.
-    @State private var composerMode: RVoiceComposer.Mode = .muted
     @Environment(\.rCompactHeight) private var compactHeight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
     init(model: QuestionsModel) {
         _model = State(initialValue: model)
@@ -98,7 +100,12 @@ struct QuestionsPage: View {
                 AccessibilityNotification.Announcement(announcement).post()
             }
         }
-        .task { await model.appear() }
+        .task {
+            // VoiceOver reads each new question aloud: those users start with the mic, never an open ear
+            model.autoListens = !voiceOver
+            await model.appear()
+        }
+        .onDisappear { model.disappear() }
         .accessibilityIdentifier("screen.ON-3")
     }
 
@@ -155,12 +162,17 @@ struct QuestionsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("questions.question")
-                if let answer = model.answer {
+                if !model.heard.isEmpty {
+                    HeardWords(words: model.heard, identifier: "questions.heard")
+                } else if let answer = model.answer {
                     Text(answer)
                         .rText(.answerWords)
                         .foregroundStyle(RColor.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("questions.answer")
+                }
+                if !model.quickAnswers.isEmpty {
+                    quickAnswers
                 }
                 if model.offline {
                     Text(QuestionsModel.offlineLine)
@@ -180,13 +192,52 @@ struct QuestionsPage: View {
         }
     }
 
+    /// Paper c:onboarding/quick-answers (MH9-0): chips wrapping 8 apart both ways.
+    private let chipFlow = WordFlow(spacing: RDimension.space2, lineSpacing: RDimension.space2)
+
+    private var quickAnswers: some View {
+        chipFlow {
+            ForEach(model.quickAnswers, id: \.self) { chip in
+                RChoicePill(title: chip, isOn: model.isChosen(chip)) {
+                    withAnimation(motion) {
+                        model.toggle(chip)
+                    }
+                }
+                .accessibilityIdentifier("questions.chip.\(chip)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     // MARK: - The composer
+
+    /// The composer's mode is the model's; the corner's taps go back to it (mic off types, the mic listens).
+    private var composerMode: Binding<RVoiceComposer.Mode> {
+        Binding(
+            get: {
+                switch model.composer {
+                case .listening: .listening
+                case .thinking: .thinking
+                case .typing: .muted
+                }
+            },
+            set: { mode in
+                withAnimation(motion) {
+                    if mode == .muted {
+                        model.typeInstead()
+                    } else {
+                        model.talkInstead()
+                    }
+                }
+            }
+        )
+    }
 
     private var composer: some View {
         RVoiceComposer(
-            mode: $composerMode,
+            mode: composerMode,
             text: $model.draft,
-            voice: false,
+            voice: model.canListen,
             placeholder: "type your answer…",
             fieldLabel: "your answer"
         ) { text in

@@ -37,6 +37,9 @@ extension Flows {
 
         let key: QuestionKey
         let text: String
+        /// Likely answers offered as chips under the question (Paper c:onboarding/quick-answers MH9-0);
+        /// none by default. Tapping one adds its words to the composer; nothing is sent until send.
+        var quickAnswers: [String] = []
 
         var id: QuestionKey {
             key
@@ -75,10 +78,37 @@ extension Flows {
         var questions: [FirstRunQuestion] { get }
         /// The keys already answered on this phone (resume starts at the first one not in it).
         var answeredKeys: Set<QuestionKey> { get }
+        /// The ear for one question (QU.followups.a: the questions answer out loud); nil = typed
+        /// only, the default and the live seam until a recogniser lands (VC.1).
+        func listening(for key: QuestionKey) -> (any Listening)?
 
         /// Hands one answer over. `.saved` adds `key` to `answeredKeys`.
         func answer(_ key: QuestionKey, text: String, given: FirstRunQuestion.Given) async -> AnswerOutcome
         /// Every question is answered: the page calls this once, then reports done to its host.
         func finishQuestions() async
+    }
+
+    /// What the phone hears while Retro listens (ON-10 getting ready, GR.ready). The sample plays an
+    /// invented utterance; the recogniser plugs in here later. Never logged: the words are the person's.
+    enum Heard: Equatable, Sendable {
+        /// The words of the utterance so far, in order. The last one may still change (it is pending).
+        case partial([String])
+        /// The utterance ended: every word is final and the answer can go in.
+        case ended
+    }
+
+    /// Listening for one page. `listen()` streams what is heard until the page stops it (or the
+    /// stream ends); `stop()` ends it at once.
+    @MainActor
+    protocol Listening: AnyObject {
+        func listen() -> AsyncStream<Heard>
+        func stop()
+    }
+}
+
+extension Flows.FirstRun {
+    /// No ear by default: the questions are typed only.
+    func listening(for _: Flows.QuestionKey) -> (any Flows.Listening)? {
+        nil
     }
 }
