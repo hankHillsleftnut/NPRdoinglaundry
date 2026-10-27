@@ -5,6 +5,8 @@
 //  `page(for:in:)` / `sheet(for:in:)` (data from the environment, as in the launcher) and remove its kind
 //  from `notBuilt` in the same change. AppRouteTableTests fails a kind that is built and still listed, or
 //  listed nowhere. The pages themselves live in Features/Podcasts and Features/Player.
+//  Features/Player is core (the tease plays there in the release flow), so it may not name the table:
+//  PC-2's transcript line gets its PC-3 opener as a plain closure from the dark wrapper built here.
 //
 import SwiftUI
 
