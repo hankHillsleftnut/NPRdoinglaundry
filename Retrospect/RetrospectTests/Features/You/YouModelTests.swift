@@ -94,4 +94,9 @@ struct YouModelTests {
         #expect(ScreenRegistry.screen("YO-1")?.states == ["rest"])
         #expect(ScreenRegistry.screen("YO-2")?.states == ["found", "nothing"])
     }
+
+    @Test("the title bar carries Paper's 'list' pill, then your picture (1G7Y-0)")
+    func trailing() {
+        #expect(YouPage.trailing == [.list, .picture])
+    }
 }
