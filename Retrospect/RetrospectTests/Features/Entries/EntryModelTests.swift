@@ -61,9 +61,9 @@ struct EntryModelTests {
         }
     }
 
-    @Test("the cut has no part without a door; drawn turns them on")
+    @Test("the cut edits (founder 27 Oct) and has no other part without a door; drawn turns them on")
     func capabilities() {
-        #expect(EntryCapabilities.cut == EntryCapabilities(edit: false, delete: false, took: false))
+        #expect(EntryCapabilities.cut == EntryCapabilities(edit: true, delete: false, took: false))
         #expect(EntryCapabilities.drawn == EntryCapabilities(edit: true, delete: true, took: true))
         let model = EntryModel(id: SampleEntries.hereID, data: SampleEntriesData(scenario: .rest))
         #expect(model.capabilities == .cut)
