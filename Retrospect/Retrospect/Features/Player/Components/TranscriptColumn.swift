@@ -205,7 +205,8 @@ struct TranscriptEdges: Equatable {
             let location = CGFloat(step) / CGFloat(Self.samples)
             let y = line.minY + location * line.height
             let opacity = sharp ? 1 - value : value * (1 - Double(fade(y: y, viewport: viewport)))
-            return Gradient.Stop(color: .black.opacity(opacity), location: location)
+            // a mask reads only alpha: any opaque token colour carries it
+            return Gradient.Stop(color: RColor.textPrimary.opacity(opacity), location: location)
         }
     }
 
