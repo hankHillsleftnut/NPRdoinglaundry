@@ -60,22 +60,31 @@ struct PodcastsPage: View {
         #endif
     }
 
+    /// The library's scroll. It runs to the screen's bottom edge so the progressive blur's band
+    /// covers the home-indicator strip too: the cards dissolve into the canvas instead of being cut
+    /// by a hard line at the safe area (screen-rules 17; QA batch 1). At rest the last card still
+    /// ends above the safe area (the bottom inset is kept as a content margin). In the shell the
+    /// page ends at the tab bar, so the inset there is the bar's business (V2.tabbar-blend).
     private func scroll(@ViewBuilder _ rows: () -> some View) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RDimension.space8) {
-                rows()
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: RDimension.space8) {
+                    rows()
+                }
+                .padding(.horizontal, RDimension.spaceScreenMargin)
+                .padding(.top, RDimension.space3)
+                .padding(.bottom, RDimension.space8)
             }
-            .padding(.horizontal, RDimension.spaceScreenMargin)
-            .padding(.top, RDimension.space3)
-            .padding(.bottom, RDimension.space8)
+            .contentMargins(.bottom, proxy.safeAreaInsets.bottom, for: .scrollContent)
+            .scrollClipDisabled()
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentSize.height > geometry.containerSize.height
+            } action: { _, now in
+                overflows = now
+            }
+            .rProgressiveBlur(.tabEdge, active: overflows)
+            .ignoresSafeArea(.container, edges: .bottom)
         }
-        .scrollClipDisabled()
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentSize.height > geometry.containerSize.height
-        } action: { _, now in
-            overflows = now
-        }
-        .rProgressiveBlur(.tabEdge, active: overflows)
     }
 
     @ViewBuilder private func libraryRows(_ library: PodcastsContent) -> some View {
