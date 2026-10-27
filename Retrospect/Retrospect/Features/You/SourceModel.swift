@@ -29,7 +29,9 @@ final class SourceModel {
         self.startsEditing = startsEditing
     }
 
+    /// Loads once: coming back to the page (after YO-5) keeps what is shown, and words just saved.
     func load() async {
+        guard state == .loading else { return }
         state = await data.source(id: sourceID).map(State.content) ?? .gone
         if startsEditing {
             startsEditing = false

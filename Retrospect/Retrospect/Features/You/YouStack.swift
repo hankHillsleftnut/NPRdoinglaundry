@@ -1,9 +1,9 @@
 //
 //  YouStack.swift
 //  V2.you: the You tab's pushes as typed routes (ios-navigation-and-flows): YO-3 a source and YO-5 what
-//  i know about you push over the tab page; back pops. A screen of another group (a goal, settings) is
-//  pushed only when this build has it: the launcher hands in `elsewhere`, which looks the id up in the
-//  screen registry; without it the control isn't a button (integrator rule, DISCREPANCIES YO-D14).
+//  i know about you push over the tab page; back pops. Another group's screen (a goal, settings) is not
+//  pushed from here: the registry holds those groups' launchers (each with its own stack and tab bar), not
+//  pushable pages, so those controls aren't buttons until the wiring PR connects the groups (YO-D14).
 //  The system bar is hidden: every page draws its own RTopBar; the edge swipe still goes back.
 //
 import SwiftUI
@@ -13,27 +13,15 @@ enum YouRoute: Hashable {
     case whatIKnow
     /// YO-3, by source id.
     case source(String)
-    /// Another group's screen, by its launcher id ("GL-2").
-    case elsewhere(String)
 }
 
 @MainActor
 @Observable
 final class YouNavigator {
     var path: [YouRoute]
-    /// Whether this build has another group's screen, by id (a plain registry lookup, nothing built).
-    let has: (String) -> Bool
-    /// Builds another group's screen by id, only when it is pushed.
-    let elsewhere: (String) -> AnyView?
 
-    init(
-        path: [YouRoute] = [],
-        has: @escaping (String) -> Bool = { _ in false },
-        elsewhere: @escaping (String) -> AnyView? = { _ in nil }
-    ) {
+    init(path: [YouRoute] = []) {
         self.path = path
-        self.has = has
-        self.elsewhere = elsewhere
     }
 
     func push(_ route: YouRoute) {
@@ -44,17 +32,13 @@ final class YouNavigator {
         _ = path.popLast()
     }
 
-    /// The goal screen's launcher id (the goals group, GL-2).
-    static let goalScreenID = "GL-2"
-
-    /// What a "this supports" row opens: YO-5 for an answer; a goal only when GL-2 is in this build.
+    /// What a "this supports" row opens: YO-5 for an answer; a goal (GL-2, another group) nothing yet.
     func opener(for supported: Flows.Supported) -> (() -> Void)? {
         switch supported.kind {
         case .knowledge:
             return { [weak self] in self?.push(.whatIKnow) }
         case .goal:
-            guard has(Self.goalScreenID) else { return nil }
-            return { [weak self] in self?.push(.elsewhere(Self.goalScreenID)) }
+            return nil
         }
     }
 }
@@ -88,8 +72,6 @@ private struct YouDestination: View {
             WhatIKnowDestination(data: data, back: navigator.pop)
         case let .source(id):
             SourceScreen(sourceID: id, data: data, navigator: navigator)
-        case let .elsewhere(id):
-            navigator.elsewhere(id)
         }
     }
 }
