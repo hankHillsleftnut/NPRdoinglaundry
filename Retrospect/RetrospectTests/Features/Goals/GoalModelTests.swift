@@ -84,14 +84,19 @@ struct GoalModelTests {
 /// Review on #219: a second turn-off does nothing.
 @MainActor
 struct GoalPageGuardTests {
-    @Test("a second turn off while the first is on its way does nothing")
+    @Test("a second turn off while the first is on its way does nothing: sent once")
     func doubleTurnOff() async {
-        let data = SampleGoals()
+        let data = SlowGoals()
         let model = GoalModel(goalID: "goal.ship", data: data)
         await model.load()
-        async let first: Void = model.turnOff()
-        async let second: Void = model.turnOff()
-        _ = await (first, second)
-        #expect(data.state.turnedOff == 3)
+        let first = Task { await model.turnOff() }
+        while data.release == nil {
+            await Task.yield()
+        }
+        await model.turnOff()
+        data.release?.resume()
+        await first.value
+        #expect(data.turnOffs == 1)
+        #expect(model.state == .gone)
     }
 }
