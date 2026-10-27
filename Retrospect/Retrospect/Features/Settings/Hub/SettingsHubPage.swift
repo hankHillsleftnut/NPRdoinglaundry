@@ -68,7 +68,7 @@ struct SettingsHubPage: View {
     private var sourcesValue: String {
         let needs = data.sources.filter { $0.status == .needsYou }.count
         let count = "\(data.sources.count)"
-        return needs == 0 ? count : "\(count) · \(needs) needs you"
+        return needs == 0 ? count : "\(count) · \(needs) \(needs == 1 ? "needs" : "need") you"
     }
 
     /// A row that opens a page. While that page isn't built yet the row does nothing and says so.
