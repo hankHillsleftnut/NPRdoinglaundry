@@ -21,11 +21,18 @@ enum YouRoute: Hashable {
 @Observable
 final class YouNavigator {
     var path: [YouRoute]
-    /// Builds another group's screen by id, or nil when this build doesn't have it.
+    /// Whether this build has another group's screen, by id (a plain registry lookup, nothing built).
+    let has: (String) -> Bool
+    /// Builds another group's screen by id, only when it is pushed.
     let elsewhere: (String) -> AnyView?
 
-    init(path: [YouRoute] = [], elsewhere: @escaping (String) -> AnyView? = { _ in nil }) {
+    init(
+        path: [YouRoute] = [],
+        has: @escaping (String) -> Bool = { _ in false },
+        elsewhere: @escaping (String) -> AnyView? = { _ in nil }
+    ) {
         self.path = path
+        self.has = has
         self.elsewhere = elsewhere
     }
 
@@ -55,7 +62,7 @@ final class YouNavigator {
 
     /// Opens another group's screen when this build has it; nil otherwise (so the control isn't a button).
     func opener(elsewhere id: String) -> (() -> Void)? {
-        guard elsewhere(id) != nil else { return nil }
+        guard has(id) else { return nil }
         return { [weak self] in self?.push(.elsewhere(id)) }
     }
 }
