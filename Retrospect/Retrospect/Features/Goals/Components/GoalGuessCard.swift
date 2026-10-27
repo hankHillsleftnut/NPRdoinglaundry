@@ -5,7 +5,9 @@
 //  not the components page's dashed one (RClaim .asked, IYO-0); the mismatch is the founder's to settle.
 //  surface.wash, radius.card, 12 between parts: a 32 well (background.canvas, radius.control, a 0.5
 //  outer line) holding the guess glyph in accent.text, beside "a guess · a goal?"; the question in the
-//  inky card face; then "yes" and "not quite", two equal 44 raised buttons 8 apart, 4 below the question.
+//  inky card face; then "yes" and "not quite" (Paper 1G3A-0 / 1G38-0 copy), 8 apart, 4 below the question,
+//  as the shared raised pill (RPill .raised .medium, the current look: founder 26 Oct), not Paper's two
+//  stretched 44 buttons (consistency audit #8; GL-D12).
 //  GL-1 pads it 16 top / 20 sides and bottom, GL-2 16 all round (`padding`). Answering hands the verdict
 //  up; the page takes the card away (the answered look isn't drawn).
 //
@@ -57,33 +59,11 @@ struct GoalGuessCard: View {
 
     private var answers: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: RDimension.space2))
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: RDimension.space2))
             : AnyLayout(HStackLayout(spacing: RDimension.space2))
         return layout {
-            Button("yes") { answer(true) }
-                .buttonStyle(GoalAnswerStyle())
-            Button("not quite") { answer(false) }
-                .buttonStyle(GoalAnswerStyle())
+            RPill(title: "yes", style: .raised, size: .medium) { answer(true) }
+            RPill(title: "not quite", style: .raised, size: .medium) { answer(false) }
         }
-    }
-}
-
-/// One of a guess's two answers (1G39-0 / 1G37-0): the raised pill's paper look (`rSecondaryPaper`),
-/// stretched to half the row and 44 tall, the words in SF 14 semibold.
-private struct GoalAnswerStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        let pressed = configuration.isPressed
-        return configuration.label
-            .rText(.goalAnswer)
-            .foregroundStyle(RColor.textPrimary)
-            .lineLimit(1)
-            .padding(.horizontal, RDimension.space4)
-            .frame(maxWidth: .infinity, minHeight: RDimension.sizeNavBar)
-            .rSecondaryPaper(pressed: pressed)
-            .scaleEffect(pressed && !reduceMotion ? RNumber.motionScalePressSmall : 1)
-            .animation(RMotion.standard(pressed ? RNumber.motionDurationPressIn : RNumber.motionDurationPressOut), value: pressed)
-            .contentShape(RShape.rect(RDimension.radiusControl))
     }
 }
