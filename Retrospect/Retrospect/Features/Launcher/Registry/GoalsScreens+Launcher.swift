@@ -7,7 +7,8 @@
 //  real RTabBar standing in for the shell's: picking another tab shows the plain canvas, as the shell
 //  does for a tab with nothing built, and picking goals again comes back to the page as it was.
 //  GL-2 `rest`: the same stack with "ship the first version" pushed, so back lands on GL-1. A pushed
-//  page hides the tab bar. Your-words rows open JR-4 only when a group registers it (YO-D14 rule);
+//  page hides the tab bar. Only the goal Paper draws a GL-2 for opens; the other cards are plain. Your-words rows open JR-4 only when a group registers it
+//  (YO-D14 rule);
 //  until then they are plain rows.
 //
 #if DEBUG
@@ -35,7 +36,7 @@ struct GoalsLaunch: View {
     var body: some View {
         VStack(spacing: RDimension.space0) {
             ZStack {
-                GoalsStack(model: model, path: path, entryPage: entryPage) { pushed = $0 }
+                GoalsStack(model: model, path: path, entryPage: entryPage, canOpen: SampleGoals.drawnDetails.contains) { pushed = $0 }
                     .opacity(tab == .goals ? 1 : 0)
                     .allowsHitTesting(tab == .goals)
                     .accessibilityHidden(tab != .goals)

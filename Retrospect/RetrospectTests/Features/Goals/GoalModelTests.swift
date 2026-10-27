@@ -52,13 +52,18 @@ struct GoalModelTests {
         #expect(overview.endedLine == "turned off 3 · merged 1")
     }
 
-    @Test("every GL-1 card opens a GL-2 with its own title")
-    func everyCardOpens() async {
+    @Test("only the goal Paper draws a GL-2 for opens one")
+    func onlyDrawnOpens() async {
+        #expect(SampleGoals.drawnDetails == ["goal.ship"])
         let data = SampleGoals()
         for goal in SampleGoals.paper.goals {
             let model = GoalModel(goalID: goal.id, data: data)
             await model.load()
-            #expect(model.detail?.title == goal.title)
+            if SampleGoals.drawnDetails.contains(goal.id) {
+                #expect(model.detail?.title == goal.title)
+            } else {
+                #expect(model.state == .gone)
+            }
         }
     }
 

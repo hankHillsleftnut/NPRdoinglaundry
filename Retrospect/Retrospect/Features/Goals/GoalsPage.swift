@@ -14,6 +14,8 @@ struct GoalsPage: View {
     @Bindable var model: GoalsModel
     /// Opens a goal (GL-2); nil while there is nowhere to open it.
     var openGoal: ((GoalSummary) -> Void)?
+    /// Which goals have a GL-2 to open; the others are plain cards.
+    var canOpen: (GoalSummary) -> Bool = { _ in true }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -43,7 +45,7 @@ struct GoalsPage: View {
                 .transition(.opacity)
             }
             ForEach(overview.goals) { goal in
-                GoalCard(goal: goal, open: openGoal.map { open in { open(goal) } })
+                GoalCard(goal: goal, open: canOpen(goal) ? openGoal.map { open in { open(goal) } } : nil)
                     .transition(.opacity)
             }
             if let ended = overview.endedLine {

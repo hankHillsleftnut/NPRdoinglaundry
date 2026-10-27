@@ -18,6 +18,8 @@ struct GoalsStack: View {
     @State private var path: [GoalsRoute]
     /// Builds an entry (JR-4) for GL-2's "your words" row; nil while there is nowhere to show one.
     let entryPage: ((String) -> AnyView)?
+    /// Which goals have a GL-2 (the host's data knows); the others are plain cards.
+    let canOpen: (String) -> Bool
     /// Whether a page is pushed (the host hides its tab bar).
     let onDepthChange: (Bool) -> Void
 
@@ -25,37 +27,39 @@ struct GoalsStack: View {
         model: GoalsModel,
         path: [GoalsRoute] = [],
         entryPage: ((String) -> AnyView)? = nil,
+        canOpen: @escaping (String) -> Bool = { _ in true },
         onDepthChange: @escaping (Bool) -> Void = { _ in }
     ) {
         self.model = model
         _path = State(initialValue: path)
         self.entryPage = entryPage
+        self.canOpen = canOpen
         self.onDepthChange = onDepthChange
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            GoalsPage(model: model) { goal in
+            GoalsPage(model: model, openGoal: { goal in
                 path.append(.goal(id: goal.id))
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: GoalsRoute.self) { route in
-                switch route {
-                case let .goal(id):
-                    GoalDestination(
-                        id: id,
-                        data: model.data,
-                        back: pop,
-                        openEntry: entryPage.map { _ in { path.append(.entry(id: $0)) } },
-                        turnedOff: {
-                            pop()
-                            Task { await model.refresh() }
-                        }
-                    )
-                case let .entry(id):
-                    entryPage?(id)
+            }, canOpen: { canOpen($0.id) })
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: GoalsRoute.self) { route in
+                    switch route {
+                    case let .goal(id):
+                        GoalDestination(
+                            id: id,
+                            data: model.data,
+                            back: pop,
+                            openEntry: entryPage.map { _ in { path.append(.entry(id: $0)) } },
+                            turnedOff: {
+                                pop()
+                                Task { await model.refresh() }
+                            }
+                        )
+                    case let .entry(id):
+                        entryPage?(id)
+                    }
                 }
-            }
         }
         .onChange(of: path.isEmpty, initial: true) { _, isEmpty in
             onDepthChange(!isEmpty)
