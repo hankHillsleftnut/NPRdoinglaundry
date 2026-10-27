@@ -4,7 +4,7 @@
 //  about you, opened with `-Screen YO-<n> -State <state> -Data sample`. Dark: listed here and
 //  nowhere in the release root.
 //
-//  States: YO-1 `rest`; YO-2 `found`, `nothing` (c:answer/abstained K24-0); YO-3 `rest`, `editing`;
+//  States: YO-1 `rest`; YO-2 `found`, `nothing` (c:answer/abstained K24-0); YO-3 `rest` (no edit from You, founder 27 Oct);
 //  YO-4 `person` (the map with a node's sheet up); YO-5 `rest`. The tab page sits under a static tab bar
 //  (the shell joins in a wiring PR, integrator 26 Oct). Pages that aren't built yet below a pushed one
 //  open at their stack's root, so back has nowhere to go there (as the account page's launcher).
@@ -28,8 +28,8 @@ enum YouScreens: ScreenGroup {
         LaunchableScreen(id: "YO-5", states: ["rest"]) { _ in
             AnyView(WhatIKnowLaunch())
         },
-        LaunchableScreen(id: "YO-3", states: ["rest", "editing"]) { arguments in
-            AnyView(SourceLaunch(editing: arguments.state == "editing"))
+        LaunchableScreen(id: "YO-3", states: ["rest"]) { _ in
+            AnyView(SourceLaunch())
         },
     ]
 }
@@ -87,13 +87,12 @@ private struct YouTabLaunch: View {
 
 /// YO-3 on the sample, at its stack's root (YO-2 joins below it in V2.you.d).
 private struct SourceLaunch: View {
-    let editing: Bool
     @State private var data = SampleYou()
     @State private var navigator = YouNavigator()
 
     var body: some View {
         YouStack(data: data, navigator: navigator) {
-            SourceScreen(sourceID: SampleYou.sleepEntry.id, data: data, navigator: navigator, editing: editing)
+            YouSourceScreen(sourceID: SampleYou.sleepEntry.id, data: data, navigator: navigator)
         }
     }
 }

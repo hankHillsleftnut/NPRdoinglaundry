@@ -5,9 +5,9 @@
 //  node's kind and name in Geist 14 medium on one line, and a 34 wash chevron-down that closes the sheet
 //  (no mark, no share: the player's header is not reused, YO-D15). 24 down, then 32 between blocks:
 //  - a person: the belief (RClaim stated, 1GDS-0); "what it rests on" over evidence rows (1GCY-0) that
-//    open nothing yet, so they show no › (YO-D10); "linked" chips (1GCR-0, static: YO-D16); and at the
+//    open nothing yet, so they are drawn with their › but inert (YO-D10); "linked" chips (1GCR-0, static: YO-D16); and at the
 //    foot (1GCF-0, 16 above) "still true" and "not right". "still true" keeps it and closes; "not right"
-//    is disabled with a reason, as "correct this part" (corrections are not drawn, YO-D11).
+//    is drawn as Paper but inert, as "correct this part" (corrections are not drawn, YO-D11).
 //  The guess state is not drawn, so not built (founder 27 Oct, YO-D12).
 //
 import SwiftUI
@@ -59,9 +59,10 @@ struct NodeSheet: View {
                                 leading: .kind(symbol: evidence.kind.symbol),
                                 meta: evidence.meta,
                                 words: evidence.words,
-                                onTint: true,
-                                action: nil
-                            )
+                                onTint: true
+                            ) {}
+                                // Paper draws ›; where it leads isn't drawn: inert (YO-D10, DECISIONS 27 Oct)
+                                .youInert()
                         }
                     }
                 }
@@ -77,9 +78,11 @@ struct NodeSheet: View {
 
     private var pills: some View {
         HStack(spacing: RDimension.space2) {
-            RPill(title: "still true", symbol: "checkmark") { answer(.stillTrue) }
-            RPill(title: "not right", symbol: "exclamationmark.bubble", disabledReason: "corrections come later") {}
-                .accessibilityValue("not available yet")
+            RPill(title: "still true", symbol: "checkmark", size: .medium) { answer(.stillTrue) }
+            // Paper's c:icon/correct (1GCI-0): a speech bubble with a line, the same as PC-3's "not right"
+            // (one icon, one size app-wide, DECISIONS 27 Oct). Corrections aren't drawn: inert, not dimmed.
+            RPill(title: "not right", symbol: "text.bubble", size: .medium) {}
+                .youInert()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

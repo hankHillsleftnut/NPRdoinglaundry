@@ -31,7 +31,7 @@ extension Flows {
     /// A journal entry seen as a source (YO-3).
     struct SourceEntry: Identifiable, Hashable, Sendable {
         let id: String
-        var words: String
+        let words: String
         /// "tue 14 oct · 7:40 · written · read"
         let meta: String
         /// Retro has read it: a ✓ after the meta line.

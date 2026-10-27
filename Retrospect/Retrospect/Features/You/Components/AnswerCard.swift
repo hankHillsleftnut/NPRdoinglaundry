@@ -8,7 +8,7 @@
 //    them (unicode, not mono chips: YO-D4); each is a link that scrolls to its row and shows it pressed
 //    for a beat (YO-D21). VoiceOver reads the answer whole and offers the citations in the links rotor.
 //  - Sources: "sources" over one grouped panel of REvidenceRow `.number` rows. A row opens its source's
-//    page only when one is drawn (the journal entry, YO-3); the others show no › (YO-D7).
+//    page only when one is drawn (the journal entry, YO-3); the others are drawn the same but inert (YO-D7).
 //  - "only what's certain": a wash panel (radius.panel, min 56, padding 8 / 16) with a switch; on, the
 //    guess line and the source that only backs it fold away.
 //
@@ -91,12 +91,13 @@ struct SourceList: View {
             RSectionLabel(title: "sources")
             REvidenceGroup {
                 ForEach(sources) { source in
-                    REvidenceRow(
-                        leading: .number(source.id),
-                        meta: source.meta,
-                        words: source.words,
-                        action: source.sourceID.map { id in { open(id) } }
-                    )
+                    // Paper draws › on every source; one with no page yet is drawn the same, inert (YO-D7)
+                    REvidenceRow(leading: .number(source.id), meta: source.meta, words: source.words) {
+                        if let id = source.sourceID {
+                            open(id)
+                        }
+                    }
+                    .youInert(source.sourceID == nil)
                     .background(highlighted == source.id ? RColor.surfaceSubtle : .clear)
                     .id(Self.rowID(source.id))
                 }

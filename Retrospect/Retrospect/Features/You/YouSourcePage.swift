@@ -1,52 +1,42 @@
 //
-//  SourcePage.swift
-//  V2.you · YO-3 "a source" (Paper 1GAS-0, slot 16IW-0), pushed from a search result. The entry bar (back
-//  and "edit", 1GBJ-0; editing: "cancel · edit this entry · save"), then 16 down on the 24 margins and
-//  32 between the two blocks: your words in the inky face (REntryWords, 1GBI-0) 8 above the meta line
-//  with its ✓ (1GBE-0), and "this supports" (1GAU-0): rows in one grouped panel. "show it in the
-//  conversation" (1GBA-0) is hidden until its destination is decided (DISCREPANCIES YO-D9). A row opens
-//  its page when one exists in this build (YO-5 here; a goal only when the goals group has GL-2, YO-D14).
+//  YouSourcePage.swift
+//  V2.you · YO-3 "a source" (Paper 1GAS-0, slot 16IW-0), pushed from a search result. The entry bar with
+//  back only (1GBJ-0 draws "edit", but your words are editable in Journal only, founder 27 Oct), then 16
+//  down on the 24 margins and 32 between the two blocks: your words in the inky face (REntryWords, 1GBI-0)
+//  8 above the meta line with its ✓ (1GBE-0) and "show it in the conversation" (1GBA-0), and "this
+//  supports" (1GAU-0): rows in one grouped panel. Drawn controls with nothing behind them yet (the
+//  conversation link, a goal row) are drawn as Paper but inert, "not available yet" to VoiceOver
+//  (consistency rule 27 Oct; YO-D9, YO-D14).
 //
 import SwiftUI
 
-struct SourcePage: View {
-    @Bindable var model: SourceModel
+struct YouSourcePage: View {
+    let model: YouSourceModel
     let back: () -> Void
-    /// What a "this supports" row opens; nil: nothing yet, so the row isn't a button.
+    /// What a "this supports" row opens; nil: nothing yet, so the row is inert.
     let open: (Flows.Supported) -> (() -> Void)?
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
-            RTopBar(variant: .entry(bar))
+            RTopBar(variant: .entry(.back(back: back)))
             ScrollView {
                 if let entry = model.entry {
                     content(entry)
                 }
             }
-            .scrollDismissesKeyboard(.interactively)
         }
         .background(RColor.backgroundCanvas)
         .task { await model.load() }
         .accessibilityIdentifier("screen.you.source")
     }
 
-    private var bar: RTopBar.Entry {
-        if model.edit.editing {
-            .editing(
-                canSave: model.canSave,
-                cancel: { model.cancelEditing() },
-                save: { Task { await model.save() } }
-            )
-        } else {
-            .rest(back: back, edit: { model.beginEditing() })
-        }
-    }
-
     private func content(_ entry: Flows.SourceEntry) -> some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
             VStack(alignment: .leading, spacing: RDimension.space2) {
-                REntryWords(text: entry.words, draft: $model.edit.draft, editing: model.edit.editing)
+                REntryWords(text: entry.words, draft: .constant(entry.words))
                 MetaLine(meta: entry.meta, read: entry.read)
+                RConversationLink {}
+                    .youInert()
             }
             if !entry.supports.isEmpty {
                 VStack(alignment: .leading, spacing: RDimension.space1) {
