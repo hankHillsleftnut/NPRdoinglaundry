@@ -640,6 +640,12 @@ public enum RDimension {
     public static let sizeGoalRing: CGFloat = 44
     /// The progress ring's thickness.
     public static let sizeGoalRingStroke: CGFloat = 4
+    /// The said and did bars' track on a goal card.
+    public static let sizeGoalTrack: CGFloat = 4
+    /// The said / did words' slot before the bar.
+    public static let sizeGoalLabel: CGFloat = 28
+    /// The count's slot after the bar.
+    public static let sizeGoalCount: CGFloat = 64
     /// A source's app icon in a row.
     public static let sizeSourceIcon: CGFloat = 32
     /// A step dot in onboarding.
@@ -1069,5 +1075,13 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
+    /// The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring).
+    public static let boxShadowMiniPlayer: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
+        RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 10, blur: 30, spread: -10),
     ]
 }
