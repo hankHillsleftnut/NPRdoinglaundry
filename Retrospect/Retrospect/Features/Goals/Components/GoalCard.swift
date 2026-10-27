@@ -75,7 +75,7 @@ struct GoalCard: View {
 }
 
 /// The said and did rows (1G2T-0, gap 8). Each: the word in its 28 slot (a minimum: it grows with Dynamic Type), the 4pt track (surface.track)
-/// with its fill (goal.said / goal.did), the count in a 64 slot, right-aligned, 12 between. Too early:
+/// with its fill (goal.said; did in ink, GL-D13), the count in a 64 slot, right-aligned, 12 between. Too early:
 /// "too early to tell" in the bar's place (1G25-0). At accessibility sizes the fixed slots can't hold
 /// the words, so the word and count sit on one line over a full-width bar.
 struct GoalSaidDid: View {
@@ -88,7 +88,8 @@ struct GoalSaidDid: View {
         VStack(alignment: .leading, spacing: RDimension.space2) {
             row(name: "said", measure: said, fill: RColor.goalSaid)
             if let did {
-                row(name: "did", measure: did, fill: RColor.goalDid)
+                // ink, not goal.did's blue: blue is the active colour only (founder 27 Oct, GL-D13)
+                row(name: "did", measure: did, fill: RColor.textPrimary)
             } else {
                 tooEarly
             }
