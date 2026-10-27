@@ -52,9 +52,21 @@ final class ShellModel {
     private(set) var reselects: [RTab: Int] = [:]
     /// The sheet over the shell (G0b); one at a time, and only one whose page is built.
     private(set) var sheet: AppSheet?
+    /// The last sheet presented, kept after it is dismissed so it doesn't vanish while it slides away.
+    private(set) var presented: AppSheet?
+    /// Counts presentations: each one is its own request to the sheet host.
+    private(set) var presentation = 0
 
     /// Opens on `selection` if it has a page, else on the first tab that does (journal first).
-    init(selection: RTab = .journal, available: Set<RTab> = Set(RTab.allCases)) {
+    /// Whether a sheet has a page (the route table's answer; tests stand in for groups not built yet).
+    private let sheetIsBuilt: (AppSheet) -> Bool
+
+    init(
+        selection: RTab = .journal,
+        available: Set<RTab> = Set(RTab.allCases),
+        sheetIsBuilt: @escaping (AppSheet) -> Bool = { AppRoutes.isBuilt($0) }
+    ) {
+        self.sheetIsBuilt = sheetIsBuilt
         let start = available.contains(selection) ? selection : RTab.allCases.first(where: available.contains) ?? selection
         self.available = available
         self.selection = start
@@ -74,11 +86,17 @@ final class ShellModel {
     /// Shows `sheet` over the shell (tab bar included). A sheet with nothing built, or a second sheet
     /// while one is up, is ignored (never two sheets at once).
     func present(_ sheet: AppSheet) {
-        guard self.sheet == nil, AppRoutes.isBuilt(sheet) else { return }
+        guard self.sheet == nil, sheetIsBuilt(sheet) else { return }
         self.sheet = sheet
+        presented = sheet
+        presentation += 1
     }
 
-    func dismissSheet() {
+    /// Dismisses the sheet up, or only if it is still `presentation` (a late close never takes the next one).
+    func dismissSheet(_ presentation: Int? = nil) {
+        if let presentation, presentation != self.presentation {
+            return
+        }
         sheet = nil
     }
 
@@ -113,8 +131,6 @@ struct ShellPage: View {
     @State private var keyboardUp = false
     /// The mini-player's height, so the pages end above it.
     @State private var miniPlayerHeight: CGFloat = 0
-    /// The last sheet asked for, kept while it slides away so its page doesn't vanish mid-motion.
-    @State private var shownSheet: AppSheet?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -124,25 +140,14 @@ struct ShellPage: View {
             GeometryReader { proxy in
                 shell(bottomInset: proxy.safeAreaInsets.bottom)
             }
-            .rSheet(isPresented: sheetShown, detent: shownSheet.map { AppRoutes.detent(for: $0) } ?? .full) {
-                if let shownSheet {
-                    AppRoutes.sheet(for: shownSheet, in: AppRouteContext(back: { model.dismissSheet() }))
-                }
+            // the shell's own request sits BESIDE the pages, not on them: a preference set on a view
+            // replaces the ones its subtree sent, so on the pages it would hide every page's sheet
+            // (the same reason AccountPage asks from a background). One request per presentation.
+            .background {
+                ShellSheetRequest(model: model, presentation: model.presentation)
+                    .id(model.presentation)
             }
         }
-        .onChange(of: model.sheet, initial: true) { _, sheet in
-            if let sheet {
-                shownSheet = sheet
-            }
-        }
-    }
-
-    private var sheetShown: Binding<Bool> {
-        Binding(get: { model.sheet != nil }, set: { shown in
-            if !shown {
-                model.dismissSheet()
-            }
-        })
     }
 
     private func shell(bottomInset: CGFloat) -> some View {
@@ -209,5 +214,31 @@ struct ShellPage: View {
     /// Rises space3 and fades in (mini-player.md motion); Reduce Motion: the fade only.
     private var miniPlayerArrives: AnyTransition {
         reduceMotion ? .opacity : .opacity.combined(with: .offset(y: RDimension.space3))
+    }
+}
+
+/// The shell's request for one presentation of an AppSheet. Keyed by the presentation, so a sheet asked
+/// for while the last one slides away is a new request (the host opens it once the last has closed), and
+/// the closing one keeps its own page and can only dismiss itself.
+private struct ShellSheetRequest: View {
+    let model: ShellModel
+    let presentation: Int
+
+    var body: some View {
+        let sheet = model.presented
+        Color.clear
+            .rSheet(isPresented: shown, detent: sheet.map { AppRoutes.detent(for: $0) } ?? .full) {
+                if let sheet {
+                    AppRoutes.sheet(for: sheet, in: AppRouteContext(back: { model.dismissSheet(presentation) }))
+                }
+            }
+    }
+
+    private var shown: Binding<Bool> {
+        Binding(get: { model.sheet != nil && model.presentation == presentation }, set: { isShown in
+            if !isShown {
+                model.dismissSheet(presentation)
+            }
+        })
     }
 }
