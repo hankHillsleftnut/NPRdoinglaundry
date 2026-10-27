@@ -17,8 +17,10 @@
 //  G0b (DISC L0-14): in the app shell one host sits above the pages AND the tab bar, so a sheet covers
 //  the bar (SCREEN-MAP §2). The shell marks its pages `rSheetHostAbove`; a page's own host (JR-1's,
 //  the account page's) then passes its content through and the request travels on to the shell's host.
-//  Outside the shell nothing changes. A full-screen cover inside the shell starts a new presentation,
-//  so its content resets the mark (`.environment(\.rSheetHostAbove, false)`) and keeps its own host.
+//  Outside the shell nothing changes. A passed-through host clears the mark for what it holds, so a cover
+//  or system sheet presented from inside a page keeps its own host (a presentation is a new hierarchy:
+//  preferences don't cross it). A cover presented from outside any page host (the launcher's account
+//  cover) clears it by hand. A request that arrives while another sheet is closing waits, then opens.
 //
 import SwiftUI
 
@@ -154,7 +156,9 @@ struct RSheetHost<Content: View>: View {
 
     var body: some View {
         if hostAbove {
+            // the requests travel on up; a cover or system sheet presented from inside starts fresh
             content()
+                .environment(\.rSheetHostAbove, false)
         } else {
             RSheetHostBody(content: content)
         }
@@ -169,6 +173,8 @@ private struct RSheetHostBody<Content: View>: View {
     @State private var progress: Double = 0
     /// The request being shown; kept while it closes so the content doesn't vanish mid-motion.
     @State private var shown: RSheetRequest?
+    /// The request asked for now; one that arrives while another sheet closes opens after it.
+    @State private var waiting: RSheetRequest?
     @State private var frame = RSheetHostFrame()
     @State private var contentAtTop = true
     @State private var dragging = false
@@ -223,14 +229,24 @@ private struct RSheetHostBody<Content: View>: View {
 
     /// A new request opens once the current sheet has closed; the same request is left alone.
     private func take(_ request: RSheetRequest?) {
-        if let request {
-            guard shown?.id != request.id, shown == nil else { return }
-            shown = request
-            progress = 0
-            open()
-        } else if shown != nil {
+        waiting = request
+        guard let shown else {
+            if let request {
+                show(request)
+            }
+            return
+        }
+        // the sheet up is no longer asked for (dismissed, or a new presentation in its place): it closes
+        // first, and the new one, if any, opens when it has gone
+        if request?.id != shown.id {
             close()
         }
+    }
+
+    private func show(_ request: RSheetRequest) {
+        shown = request
+        progress = 0
+        open()
     }
 
     private func open() {
@@ -248,8 +264,13 @@ private struct RSheetHostBody<Content: View>: View {
             progress = 0
         } completion: {
             guard progress == 0 else { return }
-            shown?.isPresented.wrappedValue = false
+            let closed = shown
+            closed?.isPresented.wrappedValue = false
             shown = nil
+            // a request that arrived while this one was closing opens now
+            if let waiting, waiting.id != closed?.id {
+                show(waiting)
+            }
         }
     }
 
