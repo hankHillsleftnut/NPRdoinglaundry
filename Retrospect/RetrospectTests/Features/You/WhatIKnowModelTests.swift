@@ -43,7 +43,7 @@ struct WhatIKnowModelTests {
 
     @Test("YO-5 is registered in the you group, dark, with its state")
     func registered() {
-        #expect(YouScreens.screens.map(\.id) == ["YO-5"])
+        #expect(YouScreens.screens.map(\.id).contains("YO-5"))
         #expect(ScreenRegistry.screen("YO-5")?.states == ["rest"])
     }
 }

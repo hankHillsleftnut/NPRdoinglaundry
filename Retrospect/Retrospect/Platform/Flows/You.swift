@@ -57,4 +57,8 @@ extension Flows {
 protocol YouData: AnyObject {
     /// YO-5's areas and answers.
     func whatIKnow() async -> Flows.WhatIKnow
+    /// YO-3: one source by id; nil when it doesn't exist.
+    func source(id: String) async -> Flows.SourceEntry?
+    /// YO-3's edit in place: keeps the new words.
+    func saveWords(_ words: String, source id: String) async
 }
