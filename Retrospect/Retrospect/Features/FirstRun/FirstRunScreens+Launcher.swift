@@ -1,7 +1,7 @@
 //
 //  FirstRunScreens+Launcher.swift
 //  First run's screens in the launcher (T02): `-Screen first-run -State questions|questions-resume|
-//  questions-offline` opens ON-3–9 on `SampleFirstRunData` in that scenario; `-State privacy` opens
+//  questions-offline|questions-quick` opens ON-3–9 on `SampleFirstRunData` in that scenario; `-State privacy` opens
 //  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on. Nothing is mounted in the
 //  app yet (FR.root): when a page is left it says so in a quiet line.
 //
@@ -83,5 +83,6 @@ struct PrivacyLaunch: View {
 #Preview("questions · fresh") { QuestionsLaunch(scenario: .questions) }
 #Preview("questions · resume") { QuestionsLaunch(scenario: .questionsResume) }
 #Preview("questions · offline") { QuestionsLaunch(scenario: .questionsOffline) }
+#Preview("questions · quick answers") { QuestionsLaunch(scenario: .questionsQuick) }
 #Preview("privacy") { PrivacyLaunch(scenario: .privacy) }
 #endif

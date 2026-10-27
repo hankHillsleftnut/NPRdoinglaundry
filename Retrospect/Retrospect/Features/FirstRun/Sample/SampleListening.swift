@@ -55,7 +55,12 @@ final class SampleListening: Flows.Listening {
     }
 
     private func speak(_ key: Key, into continuation: AsyncStream<Flows.Heard>.Continuation) async {
-        let words = Self.words[key] ?? []
+        guard let words = Self.words[key] else {
+            // nothing scripted (Paper's quick-answers question): the ear stays open, the bars rest,
+            // until the person taps a chip, turns the mic off or leaves
+            await waitUntilCancelled()
+            return
+        }
         var tick = 0
         guard await wait(Self.firstWordAfter) else { return }
         while let next = nextWord(key, of: words) {
@@ -78,6 +83,13 @@ final class SampleListening: Flows.Listening {
         guard words.indices.contains(index) else { return nil }
         spoken[key] = index + 1
         return words[index]
+    }
+
+    /// Suspends until the listen is cancelled (an open stream nobody writes to; no clock, no spin).
+    private func waitUntilCancelled() async {
+        let (open, keep) = AsyncStream.makeStream(of: Void.self)
+        for await _ in open {}
+        keep.finish()
     }
 
     /// Waits on the clock; false once the listen was cancelled.
