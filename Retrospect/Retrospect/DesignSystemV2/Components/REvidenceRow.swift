@@ -7,6 +7,10 @@
 //  in SF 14, and › to open. Rows press like every list row (RListRowStyle: surface.subtle). Rows sit in one grouped panel (REvidenceGroup), 1pt border.subtle
 //  between them, never a stack of cards.
 //
+//  V2.goals.parts (GL-D8, shared with V2.you YO-D7/YO-D10): a row with nowhere to open (`action: nil`)
+//  is the same row without the › and without a button: plain text for VoiceOver, no press. Paper
+//  draws › on rows whose destination isn't drawn yet; no dead controls, so those rows say nothing more.
+//
 import SwiftUI
 
 extension RTextStyle {
@@ -35,27 +39,52 @@ struct REvidenceRow: View {
     let words: String
     /// On a tinted parent (a wash card, a sheet) the well lifts to surface.lifted.
     var onTint = false
-    let action: () -> Void
+    /// Opens the source. Nil: nowhere to open yet, so no ›, no button (V2.goals.parts).
+    var action: (() -> Void)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    /// Whether the row opens something (draws › and is a button).
+    var opens: Bool { action != nil }
+
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: RDimension.space3) {
-                leadingView
-                VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
-                    Text(meta)
-                        .rText(.metaLine)
-                        .foregroundStyle(RColor.textLabel)
-                    Text(words)
-                        .rText(.evidenceWords)
-                        .foregroundStyle(RColor.textPrimary)
-                        // one line, ellipsis; at accessibility sizes two, never clipped mid-glyph
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                        .truncationMode(.tail)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
+        if let action {
+            Button(action: action) {
+                row
+            }
+            .buttonStyle(RListRowStyle())
+            // one element: "14 oct, your words, <the full excerpt>, button"
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityText)
+        } else {
+            row
+                // one element, read as text: "14 oct, your words, <the full excerpt>"
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityText)
+        }
+    }
+
+    private var accessibilityText: String {
+        "\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)"
+    }
+
+    private var row: some View {
+        HStack(spacing: RDimension.space3) {
+            leadingView
+            VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
+                Text(meta)
+                    .rText(.metaLine)
+                    .foregroundStyle(RColor.textLabel)
+                Text(words)
+                    .rText(.evidenceWords)
+                    .foregroundStyle(RColor.textPrimary)
+                    // one line, ellipsis; at accessibility sizes two, never clipped mid-glyph
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .multilineTextAlignment(.leading)
+            if opens {
                 // Paper draws › at size.icon.chevron 14 in RSymbol's 16 frame
                 RSymbol(
                     name: "chevron.right",
@@ -64,15 +93,11 @@ struct REvidenceRow: View {
                     glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconChevron / RDimension.sizeIconSmall
                 )
             }
-            .padding(.vertical, RDimension.space3)
-            .padding(.horizontal, RDimension.space4)
-            .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(RListRowStyle())
-        // one element: "14 oct, your words, <the full excerpt>, button"
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)")
+        .padding(.vertical, RDimension.space3)
+        .padding(.horizontal, RDimension.space4)
+        .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder private var leadingView: some View {
@@ -138,6 +163,13 @@ struct REvidenceRowGallery: View {
                             meta: "16 oct · your words",
                             words: "\"felt sharp before anyone was online, then the afternoon went to meetings again\""
                         ) {}
+                    }
+                }
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    caption("nowhere to open yet: no ›, not a button")
+                    REvidenceGroup {
+                        REvidenceRow(leading: .kind(symbol: "calendar"), meta: "tue 14 oct · calendar", words: "2 hours of deep work")
+                        REvidenceRow(leading: .kind(symbol: "doc.text"), meta: "fri 17 oct · your words", words: "\"finally fixed the sync bug\"") {}
                     }
                 }
                 VStack(alignment: .leading, spacing: RDimension.space2) {
