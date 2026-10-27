@@ -104,7 +104,7 @@ struct PrivacyPage: View {
     /// right (screen-rules 6).
     private var topBar: some View {
         HStack(spacing: RDimension.space0) {
-            RIconButton(symbol: "chevron.left", label: "back", role: .inField) { model.back() }
+            RIconButton.onboardingBack { model.back() }
                 .accessibilityIdentifier("privacy.back")
             Spacer(minLength: RDimension.space0)
         }

@@ -40,15 +40,29 @@ final class SampleListening: Flows.Listening {
     static let endAfter: Duration = .milliseconds(900)
 
     private let clock: any Clock<Duration>
+    /// The words this listen hears (ON-10: Paper's; the questions: the sample person's answer).
+    private let words: [String]
     private let ends: Bool
+    /// With nothing (more) to say, the listen ends after the usual pause instead of staying open.
+    private let quietEnds: Bool
     private let waits: Bool
     private var hasSpoken = false
     private var continuation: AsyncStream<Flows.Heard>.Continuation?
 
     /// `ends`: the utterance ends and goes in (live); false holds it on the last, pending word.
     /// `waits`: false hands the whole utterance over at once (Paper's still, and tests).
-    init(clock: any Clock<Duration> = ContinuousClock(), ends: Bool = true, waits: Bool = true) {
+    /// `utterance`: what is heard (QU.followups.a gives each question its own); empty hears nothing
+    /// and leaves the ear open until it is stopped.
+    init(
+        clock: any Clock<Duration> = ContinuousClock(),
+        ends: Bool = true,
+        waits: Bool = true,
+        utterance: [String] = SampleListening.utterance,
+        quietEnds: Bool = false
+    ) {
+        self.quietEnds = quietEnds
         self.clock = clock
+        words = utterance
         self.ends = ends
         self.waits = waits
     }
@@ -57,18 +71,23 @@ final class SampleListening: Flows.Listening {
         stop()
         let (stream, continuation) = AsyncStream<Flows.Heard>.makeStream()
         self.continuation = continuation
-        guard !hasSpoken else { return stream }
+        guard !hasSpoken, !words.isEmpty else {
+            if quietEnds {
+                endAfterQuiet(continuation)
+            }
+            return stream
+        }
         hasSpoken = true
-        let task = Task { [clock, ends, waits] in
+        let task = Task { [clock, ends, waits, words] in
             if waits {
                 try? await clock.sleep(for: Self.firstWordAfter)
             }
-            for count in 1 ... Self.utterance.count {
+            for count in 1 ... words.count {
                 guard !Task.isCancelled else { return }
-                if waits || count == Self.utterance.count {
-                    continuation.yield(.partial(Array(Self.utterance.prefix(count))))
+                if waits || count == words.count {
+                    continuation.yield(.partial(Array(words.prefix(count))))
                 }
-                if waits, count < Self.utterance.count {
+                if waits, count < words.count {
                     try? await clock.sleep(for: Self.wordGap)
                 }
             }
@@ -82,6 +101,17 @@ final class SampleListening: Flows.Listening {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+
+    /// The questions' mic on an answer already heard: a pause, then the listen ends.
+    private func endAfterQuiet(_ continuation: AsyncStream<Flows.Heard>.Continuation) {
+        let quiet = Task { [clock] in
+            try? await clock.sleep(for: Self.endAfter)
+            guard !Task.isCancelled else { return }
+            continuation.yield(.ended)
+            continuation.finish()
+        }
+        continuation.onTermination = { _ in quiet.cancel() }
     }
 
     func stop() {
