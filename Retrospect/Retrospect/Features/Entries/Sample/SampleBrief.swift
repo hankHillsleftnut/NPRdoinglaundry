@@ -3,6 +3,7 @@
 //  V2.journal J3: JR-2's sample brief, Paper's own invented lines (1FMG-0, GNY-0, GQ9-0), not anyone's
 //  words. The audio side (headline, timing, part names) is `SamplePlayback`'s `briefPaper*` scenarios.
 //
+#if DEBUG
 import Foundation
 
 enum SampleBrief {
@@ -31,3 +32,4 @@ enum SampleBrief {
         note: "a short brief today · 40 seconds"
     ))
 }
+#endif
