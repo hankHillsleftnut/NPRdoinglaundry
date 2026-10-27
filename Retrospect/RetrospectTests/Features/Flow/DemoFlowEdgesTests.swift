@@ -66,14 +66,31 @@ struct DemoFlowEdgesTests {
         }
     }
 
-    /// G0's `AppRoute.Kind` and `AppSheet.Kind` raw values (loop/G0.destinations). When G0 is on the base this
-    /// list becomes `AppRoute.Kind.allCases.map(\.rawValue) + AppSheet.Kind.allCases.map(\.rawValue)`.
-    static let g0Kinds: Set<String> = [
-        "entry", "goal", "youSource", "whatIKnow", "whyThisIsHere",
-        "settingsHub", "settingsDailyBrief", "settingsSources", "settingsSource", "settingsPrivacy",
-        "settingsHowStraight", "settingsVoice", "settingsLearned", "settingsAccount",
-        "brief", "episode", "node", "share", "signOut",
-    ]
+    /// G0's `AppRoute.Kind` and `AppSheet.Kind` raw values: the real names, from the table itself.
+    static let g0Kinds = Set(AppRoute.Kind.allCases.map(\.rawValue) + AppSheet.Kind.allCases.map(\.rawValue))
+
+    /// The demo PRs whose rows work in the demo's walk (DEMO.app a, b, c).
+    static let demoPRs: Set<Int> = [248, 252, 253]
+
+    @Test("a cross-group row that works (main or a demo PR) is built by its owner in G0's table")
+    func workingRoutesAreBuilt() {
+        for edge in edges {
+            guard case let .route(name) = edge.via else { continue }
+            let works = switch edge.status {
+            case .main: true
+            case let .pr(number): Self.demoPRs.contains(number)
+            default: false
+            }
+            guard works else { continue }
+            if let kind = AppRoute.Kind(rawValue: name) {
+                #expect(AppRoutes.isBuilt(AppRouteTableTests.sample(kind)), "\(edge.id): \(name) is not built")
+            } else if let kind = AppSheet.Kind(rawValue: name) {
+                #expect(AppRoutes.isBuilt(AppRouteTableTests.sample(kind)), "\(edge.id): sheet \(name) is not built")
+            } else {
+                Issue.record("\(edge.id) names \(name), not a G0 route or sheet")
+            }
+        }
+    }
 
     @Test("what nobody plans yet is pinned: adding a missing row (or fixing one) is a visible change")
     func missingPinned() {
@@ -84,7 +101,7 @@ struct DemoFlowEdgesTests {
                 false
             }
         }.map(\.id)
-        #expect(missing == ["F04", "S02", "S03", "P08", "T13", "T14"], "flow-coverage.md §6 lists these")
+        #expect(missing == ["F04", "S02", "S03", "P08", "T13", "T14", "X05a"], "flow-coverage.md §6 lists these")
     }
 
     // MARK: against the app's navigation model
