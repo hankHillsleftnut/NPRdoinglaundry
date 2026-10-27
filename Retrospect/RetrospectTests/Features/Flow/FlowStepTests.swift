@@ -19,7 +19,7 @@ struct FlowStepTests {
     /// Steps merged ahead of the screens that lead to them: getting ready (ON-10) is reached from connect
     /// (ON-6), which isn't a step yet (privacy, #196, isn't either). Each starts its own walk until the
     /// missing screens add their rows; then this list empties.
-    private static let waitingForAnIncomingRow: [FlowStep] = [.gettingReady]
+    private static let waitingForAnIncomingRow: [FlowStep] = [.connect]
 
     @Test("from the splash the table walks every step, in the app's order (islands waiting for a row aside)")
     func everyStepReachable() {
@@ -41,13 +41,21 @@ struct FlowStepTests {
 
     @Test("each edge of the table is the move next(from:event:) makes")
     func eachEdgeMoves() {
-        #expect(FlowEdge.table.count == 3)
+        #expect(FlowEdge.table.count == 4)
         for edge in FlowEdge.table {
             #expect(FlowStep.next(from: edge.from, event: edge.event) == edge.to, "\(edge.from) \(edge.event)")
         }
         #expect(FlowStep.next(from: .splash, event: .signedIn) == .inviteGate)
         #expect(FlowStep.next(from: .inviteGate, event: .ticketTorn) == .youreIn)
         #expect(FlowStep.next(from: .youreIn, event: .begin) == .questions)
+        #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
+    }
+
+    @Test("connect (ON-6): continue and later both go on to getting ready; back waits for privacy's step")
+    func connectEdges() {
+        #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
+        #expect(FlowStep.next(from: .connect, event: .connectBack) == nil)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "connect"]).start == .connect)
     }
 
     @Test("an event with no row moves nothing: no skipping ahead, no going back through the host")

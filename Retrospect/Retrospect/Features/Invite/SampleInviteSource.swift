@@ -99,7 +99,9 @@ struct InviteSetup {
         table[scenario] ?? Self()
     }
 
-    private static let typed = Self(phase: .typed, face: nil, hasCode: false)
+    /// The typed ticket shows Paper's header (who, the number, the date) before the check: sample data only
+    /// (founder, 26 Oct). The live page learns them from the check, so it keeps them blank until then.
+    private static let typed = Self(phase: .typed, hasCode: false)
     private static let stuck = Self(hasCode: true)
 
     private static let table: [InviteScenario: Self] = [
@@ -108,11 +110,11 @@ struct InviteSetup {
         .signingIn: Self(phase: .signingIn, hasCode: false),
         .signInFailed: Self(phase: .promise, notice: .signInFailed, hasCode: false),
         .typed: typed,
-        .typedWrong: Self(phase: .typed, face: nil, notice: .wrongCode, hasCode: false),
-        .typedFilled: Self(phase: .typed, face: nil, tiles: String(SampleInvite.code.prefix(7)), hasCode: false),
-        .rateLimited: Self(phase: .typed, face: nil, notice: .rateLimited, locked: true, hasCode: false),
-        .waitlistSheet: Self(phase: .typed, face: nil, waitlist: .sheet, hasCode: false),
-        .waitlisted: Self(phase: .typed, face: nil, waitlist: .joined, hasCode: false),
+        .typedWrong: Self(phase: .typed, notice: .wrongCode, hasCode: false),
+        .typedFilled: Self(phase: .typed, tiles: String(SampleInvite.code.prefix(7)), hasCode: false),
+        .rateLimited: Self(phase: .typed, notice: .rateLimited, locked: true, hasCode: false),
+        .waitlistSheet: Self(phase: .typed, waitlist: .sheet, hasCode: false),
+        .waitlisted: Self(phase: .typed, waitlist: .joined, hasCode: false),
         .used: Self(phase: .refused(.used)),
         .expired: Self(phase: .refused(.expired)),
         .offline: Self(phase: .waiting(.offline), hasCode: false),
