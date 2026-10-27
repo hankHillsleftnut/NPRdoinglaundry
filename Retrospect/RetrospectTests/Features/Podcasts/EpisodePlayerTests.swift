@@ -97,4 +97,44 @@ struct EpisodePlayerTests {
             #expect(SamplePlayback.weeklyScenarios.contains(scenario.playback))
         }
     }
+
+    // Paper 1FV9-0's column is 513 tall; its lines' middles sit at 53, 131, 238, 345 and 423 (QA batch 4).
+    private static let column: CGFloat = 513
+    private static let middles: [CGFloat] = [53, 131, 238, 345, 423]
+
+    @Test("at rest, as Paper draws it: the first and last lines blur under the bands, the middle three stay sharp")
+    func edgesBlurTheFirstAndLastLine() {
+        let edges = TranscriptEdges()
+        let strengths = Self.middles.map { edges.strength(mid: $0, viewport: Self.column) }
+        #expect(strengths[0] > 0.5)
+        #expect(strengths[4] > 0.5)
+        #expect(strengths[1 ... 3].allSatisfy { $0 == 0 })
+        // the radius peaks at the token's 8 and never goes past it
+        #expect(edges.radius(line: CGRect(x: 0, y: 0, width: 10, height: 10), viewport: Self.column) == RDimension.blurTranscriptTopMax)
+        #expect(edges.radius(line: CGRect(x: 0, y: 505, width: 10, height: 8), viewport: Self.column) == RDimension.blurTranscriptBottomMax)
+    }
+
+    @Test("the blur eases: full only near the edge, sharp at each band's inner edge")
+    func edgesEase() {
+        let edges = TranscriptEdges()
+        #expect(edges.strength(mid: 10, viewport: Self.column) == 1)
+        #expect(edges.strength(mid: RDimension.blurTranscriptTopBand, viewport: Self.column) == 0)
+        #expect(edges.strength(mid: Self.column - RDimension.blurTranscriptBottomBand, viewport: Self.column) == 0)
+        #expect(edges.strength(mid: Self.column - 5, viewport: Self.column) == 1)
+        #expect(edges.radius(line: .zero, viewport: nil) == 0)
+    }
+
+    @Test("Reduce Transparency: no line blurs (the sheet tint carries the edges)")
+    func reduceTransparencyBlursNothing() {
+        let edges = TranscriptEdges(reduceTransparency: true)
+        #expect(Self.middles.allSatisfy { edges.strength(mid: $0, viewport: Self.column) == 0 })
+    }
+
+    @Test("on a short phone the smaller bands blur less of the column")
+    func compactBands() {
+        let regular = TranscriptEdges()
+        let compact = TranscriptEdges(compact: true)
+        #expect(compact.strength(mid: 70, viewport: Self.column) == 0)
+        #expect(regular.strength(mid: 70, viewport: Self.column) > 0)
+    }
 }
