@@ -69,11 +69,13 @@ private struct Arriving: ViewModifier {
 /// carries its own leading), aligned to the leading edge. Paper's flex-wrap with a column gap.
 struct WordFlow: SwiftUI.Layout {
     var spacing: CGFloat
+    /// Between lines (none for words, whose lines touch; the questions' quick answers use 8, MH9-0).
+    var lineSpacing: CGFloat = RDimension.space0
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
         let rows = rows(width: proposal.width ?? .infinity, subviews: subviews)
         let width = rows.map(\.width).max() ?? 0
-        let height = rows.reduce(0) { $0 + $1.height }
+        let height = rows.reduce(0) { $0 + $1.height } + lineSpacing * CGFloat(max(rows.count - 1, 0))
         return CGSize(width: proposal.width.map { min($0, width) } ?? width, height: height)
     }
 
@@ -86,7 +88,7 @@ struct WordFlow: SwiftUI.Layout {
                 subviews[index].place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
                 x += size.width + spacing
             }
-            y += row.height
+            y += row.height + lineSpacing
         }
     }
 

@@ -105,6 +105,69 @@ private struct RPillBody: ViewModifier {
     }
 }
 
+/// A quick answer on an onboarding question (Paper c:pill/choice/off MHE-0 and c:pill/choice/on MHK-0,
+/// ON-4a quick answers MGZ-0; build notes c-6gtmpz). 36 tall, a true pill, in a 44 hit area. Off: a
+/// surface.wash pill, 16 each side. On: lifted to background.raised with Paper's choice shadow, a 14
+/// check 4 before the words, 12 on the check side and 16 on the other; no ink fill. Toggling
+/// cross-fades over 200 ms with the select haptic; Reduce Motion keeps the cross-fade, no press scale.
+struct RChoicePill: View {
+    let title: String
+    let isOn: Bool
+    let action: () -> Void
+    /// Taps on this pill: the select haptic follows a tap, never `isOn` changing for another reason
+    /// (typing the chip's words by hand).
+    @State private var taps = 0
+
+    var body: some View {
+        Button {
+            taps += 1
+            action()
+        } label: {
+            HStack(spacing: RDimension.space1) {
+                if isOn {
+                    RSymbol(name: "checkmark", size: .check)
+                        .transition(.opacity)
+                }
+                Text(title)
+                    .rText(.pill)
+                    .foregroundStyle(RColor.textPrimary)
+                    .lineLimit(1)
+            }
+            .padding(.leading, isOn ? RDimension.space3 : RDimension.space4)
+            .padding(.trailing, RDimension.space4)
+            .frame(minHeight: RDimension.sizeControlMedium)
+            .background {
+                ZStack {
+                    RShape.pill.fill(RColor.surfaceWash)
+                        .opacity(isOn ? 0 : 1)
+                    RShape.pill.fill(RColor.backgroundRaised)
+                        .rBoxShadows(RElevation.boxShadowPillChoiceOn, radius: RDimension.radiusControl)
+                        .opacity(isOn ? 1 : 0)
+                }
+            }
+            // the 36 pill keeps Paper's 8 gaps; its tap area reaches 44 tall beyond the edge (as the
+            // composer's corner does), so rows of chips are not spread apart by their hit areas
+            .contentShape(RShape.pill.inset(by: (RDimension.sizeControlMedium - RDimension.sizeTouchTarget) / 2))
+        }
+        .buttonStyle(RChoicePressStyle())
+        .animation(RMotion.standard(RNumber.motionDurationBase), value: isOn)
+        .sensoryFeedback(RHaptic.select, trigger: taps)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+/// The choice pill's press: the weighted small press scale (craft 1.9), none with Reduce Motion.
+private struct RChoicePressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        return configuration.label
+            .scaleEffect(pressed && !reduceMotion ? RNumber.motionScalePressSmall : 1)
+            .animation(RMotion.standard(pressed ? RNumber.motionDurationPressIn : RNumber.motionDurationPressOut), value: pressed)
+    }
+}
+
 #if DEBUG
 struct RPillGallery: View {
     var body: some View {
@@ -118,6 +181,10 @@ struct RPillGallery: View {
                 RPill(title: "add a source", symbol: "plus", style: .raised) {}
                 RPill(title: "connect", style: .action) {}
                 RPill(title: "play", style: .action) {}
+            }
+            HStack(spacing: RDimension.space2) {
+                RChoicePill(title: "tech", isOn: true) {}
+                RChoicePill(title: "football", isOn: false) {}
             }
             HStack(spacing: RDimension.space2) {
                 RPill(title: "export", style: .action, disabledReason: "nothing to export yet") {}

@@ -518,6 +518,8 @@ public enum RDimension {
     public static let sizeIconInWell: CGFloat = 18
     /// The › at the end of a row.
     public static let sizeIconChevron: CGFloat = 14
+    /// The check before a chosen quick answer (c:pill/choice/on).
+    public static let sizeIconCheck: CGFloat = 14
     /// Artwork in a list row.
     public static let sizeArtworkRow: CGFloat = 40
     /// Artwork in a card or on the player header.
@@ -1063,5 +1065,12 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
+    /// A quick answer chosen on an onboarding question (c:pill/choice/on): top light, the outer hairline, contact and a small cast pulled in by its spread; no inner ring.
+    public static let boxShadowPillChoiceOn: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
     ]
 }

@@ -11,6 +11,7 @@
 //  answered out loud: the composer listens, the words land under the question one by one, a quiet
 //  ends the answer (thinking), and the words go to the seam as `.voice`. Mic off moves the words
 //  heard so far into the field and keeps typing on (QC-3 lead); the mic listens again.
+//  QU.followups.b: a question may offer quick answers; a chip tap puts its words in the field.
 //
 import Foundation
 import Observation
@@ -167,6 +168,29 @@ final class QuestionsModel {
         question.flatMap { data.listening(for: $0.key) } != nil
     }
 
+    /// The question's likely answers, as chips (Paper c:onboarding/quick-answers); usually none.
+    var quickAnswers: [String] {
+        question?.quickAnswers ?? []
+    }
+
+    /// A chip is chosen while its words are one of the field's comma-separated parts, so the field is
+    /// the one truth: editing the words by hand chooses or clears chips too.
+    func isChosen(_ chip: String) -> Bool {
+        Self.parts(of: draft).contains { Self.same($0, chip) }
+    }
+
+    /// A chip's words and a part of the field match whatever their case ("Tech" from the keyboard).
+    static func same(_ part: String, _ chip: String) -> Bool {
+        part.caseInsensitiveCompare(chip) == .orderedSame
+    }
+
+    /// The field's answer split at commas, trimmed, empty parts dropped.
+    static func parts(of text: String) -> [String] {
+        text.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
     /// The words heard so far, as one answer.
     var heardText: String {
         heard.map(\.text).joined(separator: " ")
@@ -263,6 +287,24 @@ final class QuestionsModel {
     func back() {
         guard canGoBack else { return }
         move(to: index - 1)
+    }
+
+    /// A chip tap (Paper MGZ-0, build notes "quick answers"): adds or removes its words in the field
+    /// ("tech, markets"), and the composer types with the lit send. The ear closes (what it heard
+    /// stays in the field, first). Never sends by itself.
+    func toggle(_ chip: String) {
+        // never while an answer is on its way: the words would land on a question being answered
+        guard !isFinished, !isSending, question?.quickAnswers.contains(chip) == true else { return }
+        if composer != .typing {
+            stopHearing()
+        }
+        var parts = Self.parts(of: draft)
+        if let at = parts.firstIndex(where: { Self.same($0, chip) }) {
+            parts.remove(at: at)
+        } else {
+            parts.append(chip)
+        }
+        draft = parts.joined(separator: ", ")
     }
 
     // MARK: - Private

@@ -18,6 +18,19 @@ enum FirstRunScenario: String, CaseIterable {
     case questionsResume = "questions-resume"
     /// Every answer fails as if offline: the words stay on screen.
     case questionsOffline = "questions-offline"
+    /// Paper's quick-answers frame (05 MGZ-0): its one question with its five chips. Launcher only:
+    /// no question in the flow carries chips until the founder names them (QC-1).
+    case questionsQuick = "questions-quick"
+}
+
+extension Flows.FirstRunQuestion {
+    /// Paper ON-4a quick answers (MGZ-0): the question MHO-0 and the chips MHK-0…MHA-0, word for word.
+    /// `reading.watching` is contract 01's key for this question.
+    static let paperQuickAnswers = Self(
+        key: .readingWatching,
+        text: "what news do you actually follow?",
+        quickAnswers: ["tech", "markets", "football", "climate", "not really any"]
+    )
 }
 
 @MainActor
@@ -44,7 +57,7 @@ final class SampleFirstRunData: Flows.FirstRun {
         questions: [Flows.FirstRunQuestion] = Flows.FirstRunQuestion.core,
         clock: any Clock<Duration> = ContinuousClock()
     ) {
-        self.questions = questions
+        self.questions = scenario == .questionsQuick ? [.paperQuickAnswers] : questions
         self.clock = clock
         isOffline = scenario == .questionsOffline
         answeredKeys = scenario == .questionsResume ? Set(questions.prefix(3).map(\.key)) : []
