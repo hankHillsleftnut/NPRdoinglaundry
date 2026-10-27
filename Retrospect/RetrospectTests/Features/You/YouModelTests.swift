@@ -116,6 +116,14 @@ struct YouModelTests {
         #expect(ScreenRegistry.screen("YO-4")?.states == ["person"])
     }
 
+    @Test("VoiceOver reads each citation as 'source n', never a bare superscript")
+    func spokenCitations() {
+        let answer = SampleYou.sleepAnswer
+        #expect(AnswerCard.spoken(answer.headline, answer.secondLine) ==
+            "what i found. after days you run, source 1, and when work stops before 9, source 2. a guess: weekends help less than you think, source 3.")
+        #expect(AnswerCard.spoken(answer.headline, nil) == "what i found. after days you run, source 1, and when work stops before 9, source 2.")
+    }
+
     @Test("the title bar carries Paper's 'list' pill, then your picture (1G7Y-0)")
     func trailing() {
         #expect(YouPage.trailing == [.list, .picture])
