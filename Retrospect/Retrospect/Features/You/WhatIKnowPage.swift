@@ -55,9 +55,11 @@ private struct MovedThisWeekRow: View {
                 .rText(.metaLine)
                 .foregroundStyle(RColor.textLabel)
         }
-        .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault, alignment: .leading)
+        // padding first, then the 56 minimum, so the row is 56 overall as Paper draws it (not 56 + 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, RDimension.space2)
         .padding(.horizontal, RDimension.space4)
+        .frame(minHeight: RDimension.sizeRowDefault)
         .background(RColor.surfaceWash, in: RShape.rect(RDimension.radiusPanel))
         .accessibilityElement(children: .combine)
     }
