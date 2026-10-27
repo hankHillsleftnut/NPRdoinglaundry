@@ -27,6 +27,9 @@ final class SampleFlowModel {
     let invite: InviteModel
     /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
+    /// ON-6's sample sources: one for the whole flow, so a connection made there is still made on a
+    /// later visit.
+    let connect: SampleConnect
     /// ON-10's simulated listening.
     let listening: SampleListening
     /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
@@ -57,6 +60,7 @@ final class SampleFlowModel {
         invite = Self.inviteModel(at: saved.step, sleep: sleep)
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
         listening = SampleListening(clock: clock)
+        connect = SampleConnect()
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
         followInvite()

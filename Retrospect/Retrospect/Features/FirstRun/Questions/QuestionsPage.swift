@@ -3,7 +3,7 @@
 //  P02.min, ON-3–9: the onboarding questions (Paper "05 · the app in order" `col · ON-3–9`,
 //  frame ON-4a; offline from 05b ON-4a "offline (answer kept)"). The progress hairline under
 //  the status bar (3pt surface.track, ink fill creeping forward each question, never a count;
-//  VoiceOver reads "step 3 of 8"); a quiet back chevron top-left and nothing on the right (no
+//  VoiceOver reads "step 3 of 9"); a quiet back chevron top-left and nothing on the right (no
 //  skip, founder rule; Paper still draws one); Retro's question in the inky title face; your
 //  words under it once sent, inky at 2xl in text.secondary; the offline line under them when a
 //  send wasn't kept; the voice composer pinned at the bottom with no mic (typing only; the
@@ -126,7 +126,7 @@ struct QuestionsPage: View {
     private var topBar: some View {
         HStack(spacing: RDimension.space0) {
             // Paper c:top-bar/onboarding: the chevron in a 32 wash circle inside a 44 hit area
-            RIconButton(symbol: "chevron.left", label: "back", role: .inField) {
+            RIconButton.onboardingBack {
                 withAnimation(motion) {
                     model.back()
                 }
