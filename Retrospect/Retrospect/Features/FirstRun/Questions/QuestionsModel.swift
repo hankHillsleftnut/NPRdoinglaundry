@@ -50,21 +50,26 @@ final class QuestionsModel {
     @ObservationIgnored var onAnswered: (Key, String) -> Void = { _, _ in }
     /// Opened by the next page's back (see `init`).
     @ObservationIgnored private let cameBack: Bool
+    /// The seam's `finishQuestions()` already ran on an earlier pass of this first run (the host knows).
+    @ObservationIgnored private let seamFinished: Bool
 
     /// `kept`: words sent for these questions before this page opened (a host resuming after a relaunch):
     /// they count as answered, and going back shows them, exactly as this session's answers do.
     /// `cameBack`: the page opens because the next page's back chevron left it (ON-5 privacy, FLOW.edges):
     /// it opens on the last question with its words in the composer, as back between questions does, and
-    /// does not finish at once on appearing (sent unchanged, the words move on again).
+    /// does not finish at once on appearing (sent unchanged, the words move on again). `seamFinished`: the
+    /// seam's `finishQuestions()` already ran for this first run, so finishing again only hands on.
     init(
         data: any Flows.FirstRun,
         flowRange: ClosedRange<Double> = QuestionsModel.flowProgress,
         kept: [Key: String] = [:],
-        cameBack: Bool = false
+        cameBack: Bool = false,
+        seamFinished: Bool = false
     ) {
         self.data = data
         self.flowRange = flowRange
         self.cameBack = cameBack
+        self.seamFinished = seamFinished
         questions = Self.asked(data.questions)
         answers = kept
         let last = max(questions.count - 1, 0)
@@ -233,8 +238,8 @@ final class QuestionsModel {
     private func finish() async {
         guard !isFinished else { return }
         isFinished = true
-        // came back from the next page: the seam was finished on the way out; only hand on again
-        if !cameBack {
+        // the seam was finished on an earlier pass (back from the next page): only hand on again
+        if !seamFinished {
             await data.finishQuestions()
         }
         onDone()
