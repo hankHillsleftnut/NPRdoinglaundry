@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**617 tokens** · 541 semantic · 276 marked *to set*
+**620 tokens** · 544 semantic · 276 marked *to set*
 
 ## palette
 
