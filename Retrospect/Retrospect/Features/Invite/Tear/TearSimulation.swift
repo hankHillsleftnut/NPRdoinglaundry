@@ -43,6 +43,8 @@ struct TearSimulation {
 
     /// The model's own step: 240 a second, so a display's frame rate never changes a result.
     static let step = 1.0 / 240
+    /// The most time the app replays in one frame (`advance(to:catchUp:)`).
+    static let catchUp = 0.25 // literal-ok: a quarter second
 
     let p: TearParameters
     let perforation: TearPerforation
@@ -89,6 +91,11 @@ struct TearSimulation {
             return true
         }
         return false
+    }
+
+    /// The redeem answered mid-run: the last bridge snaps when the front reaches it.
+    var ripIsPending: Bool {
+        ripPending
     }
 
     var isRunning: Bool {
@@ -187,11 +194,16 @@ struct TearSimulation {
 
     // MARK: The clock
 
-    /// Advance to `now` in exact steps. At rest nothing moves, so the clock simply jumps.
-    mutating func advance(to now: Double) {
+    /// Advance to `now` in exact steps. At rest nothing moves, so the clock simply jumps. With
+    /// `catchUp`, at most that much time is replayed: back from a pause (the app in the background, a
+    /// long hitch) the paper carries on from there rather than replaying time it wasn't on screen.
+    mutating func advance(to now: Double, catchUp: Double? = nil) {
         if phase == .idle {
             time = max(time, now)
             return
+        }
+        if let catchUp {
+            time = max(time, now - catchUp)
         }
         while time + Self.step <= now {
             tick(Self.step)
@@ -258,7 +270,8 @@ struct TearSimulation {
 
     private mutating func stepFlap(_ dt: Double) {
         let length = Double(front / perforation.width)
-        let droop = p.droopMax * pow(length, p.droopExponent) + p.pullMax * Double(pull / TearMath.wander) * length
+        // the founder's 11°: a pull below the line droops a short flap sooner, never the tip past droopMax
+        let droop = min(p.droopMax * pow(length, p.droopExponent) + p.pullMax * Double(pull / TearMath.wander) * length, p.droopMax)
         let target = phase == .springingBack ? 0 : -(phase == .sealing ? p.droopMax : droop)
         let spring = phase == .springingBack ? p.tensionSpring : p.flapSpring
         spring.step(&angle, &angleVelocity, toward: target, dt: dt)
@@ -297,9 +310,14 @@ struct TearSimulation {
 
     /// The frame the ticket draws.
     var frame: TearFrame {
-        TearFrame(
+        var apart = 0.0
+        if case let .separated(at) = phase, let separation {
+            apart = separation.apart(at: time - at)
+        }
+        return TearFrame(
             stub: stub, body: body, lean: phase == .dragging ? p.leanMax * tension : 0,
-            hiddenHoles: isSeparated ? TearPerforation.holeCount : passed, separated: isSeparated
+            hiddenHoles: isSeparated ? TearPerforation.holeCount : passed, separated: isSeparated,
+            apart: apart, whole: phase == .idle
         )
     }
 

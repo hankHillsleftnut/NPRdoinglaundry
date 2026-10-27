@@ -75,23 +75,44 @@ extension View {
                     .clipShape(shape)
                     .mask(alignment: .top) { Rectangle().frame(height: RDimension.sizeBorderDefault) }
             }
-            .overlay(shape.stroke(RColor.depthStrokeOuter, lineWidth: RDimension.sizeBorderHairline))
-            .modifier(RTicketShadow(enabled: shadowed))
+            // the rim: light mode's warm hairline; on night a faint light edge, so the paper never sinks
+            // into the canvas where its shadow can't show (TEAR.motion, founder 27 Oct)
+            .overlay(shape.stroke(RTicketRim.color, lineWidth: RDimension.sizeBorderHairline))
+            .modifier(RTicketShadow(amount: shadowed ? 1 : 0))
     }
 
     func rTicketShadow(enabled: Bool) -> some View {
-        modifier(RTicketShadow(enabled: enabled))
+        modifier(RTicketShadow(amount: enabled ? 1 : 0))
+    }
+
+    /// The same shadow at a share of its strength (0…1), for a hand-over between two shadows that
+    /// must never pop (the tear's stub leaving the body).
+    func rTicketShadow(amount: Double) -> some View {
+        modifier(RTicketShadow(amount: min(max(amount, 0), 1)))
     }
 }
 
 /// Contact `0 1 1` and cast `0 10 14` (no ambient, no spread), as drawn. SwiftUI's radius is half
-/// the CSS blur. Off, the colour is clear, so the view's identity never changes.
+/// the CSS blur. Off (amount 0) the colours are transparent, so the view's identity never changes.
 private struct RTicketShadow: ViewModifier {
-    let enabled: Bool
+    let amount: Double
 
     func body(content: Content) -> some View {
         content
-            .shadow(color: enabled ? RColor.depthShadowContact : .clear, radius: 0.5, y: 1) // literal-ok: board 2IV3-0
-            .shadow(color: enabled ? RColor.depthShadowCast : .clear, radius: 7, y: 10) // literal-ok: board 2IV3-0
+            .shadow(color: RColor.depthShadowContact.opacity(amount), radius: 0.5, y: 1) // literal-ok: board 2IV3-0
+            .shadow(color: RColor.depthShadowCast.opacity(amount), radius: 7, y: 10) // literal-ok: board 2IV3-0
+    }
+}
+
+/// The ticket's outside edge (`depth.stroke.rim`). Debug builds can draw it as before the rim
+/// (`-TicketRim off`), for the dark-mode question card's side-by-side; release always draws the rim.
+enum RTicketRim {
+    static var color: Color {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "TicketRim") == "off" {
+            return RColor.depthStrokeOuter
+        }
+        #endif
+        return RColor.depthStrokeRim
     }
 }
