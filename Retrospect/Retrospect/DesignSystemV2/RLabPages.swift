@@ -21,6 +21,7 @@ struct RLabPage: Identifiable {
     static let all: [RLabPage] = [
         RLabPage("artwork") { RArtworkLab() },
         RLabPage("brief") { RBriefCardGallery() },
+        RLabPage("claim") { RClaimGallery() },
         RLabPage("composer") { RComposerLooksGallery() },
         RLabPage("dialog") { RDialogGallery() },
         RLabPage("empty") { REmptyLineGallery() },
@@ -42,6 +43,7 @@ struct RLabPage: Identifiable {
         RLabPage("scrubber") { RScrubberGallery() },
         RLabPage("sheet") { RSheetHostGallery() },
         RLabPage("skeleton") { RSkeletonGallery() },
+        RLabPage("tabbar") { RTabBarGallery() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
         RLabPage("transport") { RTransportGallery() },

@@ -6,6 +6,12 @@
 //  The journal's inky title shrinks into a small centred name once the page scrolls or the
 //  composer is focused; the page decides that and passes `collapsed`.
 //
+//  V2 lane 0 · components gap #2: `.title`, the tab pages' bar (c:top-bar/title/rest on PC-1 FZM-0,
+//  GL-1 1G3J-0, YO-1 1G7X-0, the 02 · components variant H0D-0): no leading button, the inky title from
+//  the screen margin (24), and an optional trailing slot. Paper's insets follow the trailing part: none
+//  or a 44 icon button keep 16 on the trailing side (the button's 36 sits 20 in, like the drawer
+//  button opposite); 36-tall content (YO-1's "list" pill and picture, 12 apart) sits 24 in.
+//
 import SwiftUI
 
 extension RTextStyle {
@@ -41,6 +47,18 @@ struct RTopBar: View {
         case settings(title: String, back: () -> Void)
         /// JR-4 (and other single-item pages): back and a trailing action; never a title.
         case entry(Entry)
+        /// Tab pages (podcasts, goals, you): the inky title with no leading button, and a trailing part.
+        case title(title: String, trailing: TitleTrailing)
+    }
+
+    /// What sits at a tab page's trailing edge (Paper draws three).
+    enum TitleTrailing {
+        /// PC-1: nothing.
+        case none
+        /// GL-1: one wash icon button in its 44 frame ("+", add).
+        case iconButton(symbol: String, label: String, action: () -> Void)
+        /// YO-1: 36-tall parts the page builds ("list", the picture), laid 12 apart by the bar, 24 from the edge.
+        case content([AnyView])
     }
 
     enum Entry {
@@ -109,6 +127,39 @@ struct RTopBar: View {
             }
             .padding(.horizontal, RDimension.space6)
             .rBlurReplace()
+        case let .title(title, trailing):
+            HStack(spacing: RDimension.space2) {
+                Text(title)
+                    .rText(.inkTitle)
+                    .foregroundStyle(RColor.textPrimary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                titleTrailing(trailing)
+            }
+            .padding(.leading, RDimension.spaceScreenMargin)
+            .padding(.trailing, Self.trailingInset(trailing))
+        }
+    }
+
+    @ViewBuilder private func titleTrailing(_ trailing: TitleTrailing) -> some View {
+        switch trailing {
+        case .none:
+            EmptyView()
+        case let .iconButton(symbol, label, action):
+            RIconButton(symbol: symbol, label: label, action: action)
+        case let .content(parts):
+            HStack(spacing: RDimension.space3) {
+                ForEach(parts.indices, id: \.self) { parts[$0] }
+            }
+        }
+    }
+
+    /// 16 beside nothing or a 44-framed button; 24 beside 36-tall content (FZM-0, 1G3J-0, 1G7X-0).
+    static func trailingInset(_ trailing: TitleTrailing) -> CGFloat {
+        switch trailing {
+        case .none, .iconButton: RDimension.space4
+        case .content: RDimension.spaceScreenMargin
         }
     }
 
@@ -270,6 +321,19 @@ struct RTopBarGallery: View {
                 }
                 section("entry · editing, changed") {
                     RTopBar(variant: .entry(.editing(canSave: true, cancel: {}, save: {})))
+                }
+                section("title · podcasts") { RTopBar(variant: .title(title: "podcasts", trailing: .none)) }
+                section("title · goals, add") {
+                    RTopBar(variant: .title(title: "goals", trailing: .iconButton(symbol: "plus", label: "add a goal") {}))
+                }
+                section("title · you, content") {
+                    RTopBar(variant: .title(title: "you", trailing: .content([
+                        AnyView(RPill(title: "list", style: .neutral) {}),
+                        // stands in for YO-1's 36 picture (1G80-0) so the gap and inset show
+                        AnyView(Circle().fill(RColor.surfaceWash)
+                            .frame(width: RDimension.sizeControlIcon, height: RDimension.sizeControlIcon)
+                            .accessibilityHidden(true)),
+                    ])))
                 }
             }
             .padding(.vertical, RDimension.space6)

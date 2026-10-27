@@ -239,10 +239,6 @@ private struct RGuessSurface: ViewModifier {
     /// Increase Contrast: the dash thickens to size.inference.edgeIncreased.
     let increasedContrast: Bool
 
-    private var line: CGFloat {
-        increasedContrast ? RDimension.sizeInferenceEdgeIncreased : RDimension.sizeBorderDefault
-    }
-
     func body(content: Content) -> some View {
         // both surfaces stay in place and cross-fade, so confirming never re-creates the card
         content.background {
@@ -250,19 +246,7 @@ private struct RGuessSurface: ViewModifier {
                 Color.clear
                     .rRaised(RDimension.radiusCard)
                     .opacity(confirmed ? 1 : 0)
-                RShape.rect(RDimension.radiusCard)
-                    .fill(RColor.inferenceSurface)
-                    .overlay {
-                        GeometryReader { proxy in
-                            RShape.rect(RDimension.radiusCard).strokeBorder(
-                                RColor.inferenceBorder,
-                                style: StrokeStyle(
-                                    lineWidth: line,
-                                    dash: [RInferenceEdge.dash(around: proxy.size, cornerRadius: RDimension.radiusCard, line: line)]
-                                )
-                            )
-                        }
-                    }
+                RInferenceSurface(increasedContrast: increasedContrast)
                     .opacity(confirmed ? 0 : 1)
             }
         }
