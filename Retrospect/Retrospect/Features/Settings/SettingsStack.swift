@@ -26,6 +26,8 @@ enum SettingsDestinations {
         let data: any Flows.SettingsData
         let open: (SettingsRoute) -> Void
         let back: () -> Void
+        /// Launcher stills only: ST-4 opens with this question already asked.
+        var asking: SourcePage.Asking?
     }
 
     static func view(for page: SettingsRoute, in context: Context) -> AnyView? {
@@ -46,6 +48,12 @@ enum SettingsDestinations {
         switch page {
         case .dailyBrief:
             AnyView(DailyBriefPage(data: context.data, back: context.back))
+        case .sources:
+            AnyView(SourcesPage(data: context.data, open: context.open, back: context.back))
+        case let .source(id):
+            context.data.source(id)?.hasPage == true
+                ? AnyView(SourcePage(data: context.data, id: id, asking: context.asking, back: context.back))
+                : nil
         default:
             nil
         }
@@ -56,11 +64,19 @@ struct SettingsStack: View {
     let data: any Flows.SettingsData
     /// ST-1's back: where settings was opened from.
     var leave: () -> Void = {}
+    /// Launcher stills only: ST-4 opens with this question already asked.
+    var asking: SourcePage.Asking?
     @State private var path: [SettingsRoute]
 
-    init(data: any Flows.SettingsData, path: [SettingsRoute] = [], leave: @escaping () -> Void = {}) {
+    init(
+        data: any Flows.SettingsData,
+        path: [SettingsRoute] = [],
+        asking: SourcePage.Asking? = nil,
+        leave: @escaping () -> Void = {}
+    ) {
         self.data = data
         self.leave = leave
+        self.asking = asking
         _path = State(initialValue: path)
     }
 
@@ -74,7 +90,7 @@ struct SettingsStack: View {
     }
 
     private var context: SettingsDestinations.Context {
-        SettingsDestinations.Context(data: data, open: open, back: back)
+        SettingsDestinations.Context(data: data, open: open, back: back, asking: asking)
     }
 
     private func open(_ page: SettingsRoute) {
