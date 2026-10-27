@@ -70,7 +70,7 @@ struct SourceModelTests {
         #expect(bare.path == [.whatIKnow])
         #expect(bare.opener(for: entry.supports[1]) == nil)
 
-        let withGoals = YouNavigator { $0 == YouNavigator.goalScreenID ? AnyView(EmptyView()) : nil }
+        let withGoals = YouNavigator(has: { $0 == YouNavigator.goalScreenID }, elsewhere: { _ in AnyView(EmptyView()) })
         withGoals.opener(for: entry.supports[1])?()
         #expect(withGoals.path == [.elsewhere(YouNavigator.goalScreenID)])
         withGoals.pop()

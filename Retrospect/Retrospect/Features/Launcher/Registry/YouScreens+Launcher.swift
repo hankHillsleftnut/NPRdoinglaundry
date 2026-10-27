@@ -22,6 +22,11 @@ enum YouScreens: ScreenGroup {
         },
     ]
 
+    /// This build registers that screen id (a lookup, nothing built).
+    static func has(_ id: String) -> Bool {
+        ScreenRegistry.screen(id) != nil
+    }
+
     /// Another group's screen by its launcher id, in its first state, when this build registers it.
     static func elsewhere(_ id: String) -> AnyView? {
         guard let screen = ScreenRegistry.screen(id), let state = screen.states.first else { return nil }
@@ -33,7 +38,7 @@ enum YouScreens: ScreenGroup {
 private struct SourceLaunch: View {
     let editing: Bool
     @State private var data = SampleYou()
-    @State private var navigator = YouNavigator(elsewhere: YouScreens.elsewhere)
+    @State private var navigator = YouNavigator(has: YouScreens.has, elsewhere: YouScreens.elsewhere)
 
     var body: some View {
         YouStack(data: data, navigator: navigator) {
