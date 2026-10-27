@@ -16,9 +16,9 @@ struct SettingsTrustTests {
         #expect(Flows.Settings.Straightness.allCases.map(\.subline) == [
             "no reading between the lines", "i ask, i don't tell", "i say what i see, kindly", "i say it plainly",
         ])
-        #expect(data.straightness == .honestObservations)
-        #expect(data.retroPick == .honestObservations)
-        #expect(data.retroReason.hasPrefix("i picked honest observations because"))
+        #expect(data.straightness.level == .honestObservations)
+        #expect(data.straightness.source == .picked)
+        #expect(data.straightness.why?.hasPrefix("i picked honest observations because") == true)
     }
 
     @Test("choosing applies at once and ST-1's value follows")
@@ -26,10 +26,13 @@ struct SettingsTrustTests {
         let data = SampleSettings(sleep: Self.instant)
         #expect(data.straightnessName == "honest")
         data.setStraightness(.gentleQuestions)
-        #expect(data.straightness == .gentleQuestions)
+        #expect(data.straightness == Flows.Settings.StraightnessSetting(level: .gentleQuestions, source: .yours, why: nil))
         #expect(data.straightnessName == "gentle")
-        // retro's own pick (and its note) doesn't move when you choose
-        #expect(data.retroPick == .honestObservations)
+        // handing it back to retro restores retro's pick and its reason
+        data.setStraightness(nil)
+        #expect(data.straightness.source == .picked)
+        #expect(data.straightness.level == .honestObservations)
+        #expect(data.straightness.why != nil)
     }
 
     @Test("every choice has its own short value for ST-1")
@@ -41,9 +44,19 @@ struct SettingsTrustTests {
     @Test("ST-8 reads Paper's three lines")
     func learned() {
         let learned = SampleSettings(sleep: Self.instant).learned
-        #expect(learned?.headline == "you answer questions about work most, 8 of 10.")
-        #expect(learned?.detail == "you skip ones about family (1 of 5), so i ask those less, and only when you bring it up first.")
-        #expect(learned?.changed == "last changed on sunday")
+        #expect(learned.state == .learning)
+        #expect(learned.headline == "you answer questions about work most, 8 of 10.")
+        #expect(learned.detail == "you skip ones about family (1 of 5), so i ask those less, and only when you bring it up first.")
+        #expect(learned.changedAt.map(LearnedPage.changed) == "last changed on sunday")
+    }
+
+    @Test("what i've learned opens nothing while it's too early or off (undrawn)")
+    func learnedNotYet() {
+        let data = SampleSettings(sleep: Self.instant)
+        for state in [Flows.Settings.Learned.State.tooEarly, .off, .unknown] {
+            data.trust.learned = Flows.Settings.Learned(state: state, headline: nil, detail: nil, changedAt: nil)
+            #expect(!SettingsDestinations.isBuilt(.learned, data: data))
+        }
     }
 
     @Test("ST-1's how straight and what i've learned rows open their pages")

@@ -13,46 +13,47 @@ extension SampleSettings {
         typealias Settings = Flows.Settings
 
         var voiceName = "warm"
-        /// Starts on retro's own pick.
-        var straightness: Settings.Straightness = .honestObservations
-        let retroPick: Settings.Straightness = .honestObservations
-        /// Paper 1GQR-0.
-        let retroReason =
-            "i picked honest observations because you answer the hard questions, and say \"not quite\" when i'm wrong. choose another and yours wins."
-        /// Paper 1GTM-0, 1GTL-0, 1GTK-0.
-        var learned: Settings.Learned? = Settings.Learned(
+        /// Retro's own pick, with Paper's reason (1GQR-0).
+        static let retroPick = Settings.StraightnessSetting(
+            level: .honestObservations,
+            source: .picked,
+            why: "i picked honest observations because you answer the hard questions, and say \"not quite\" when i'm wrong. choose another and yours wins."
+        )
+        var straightness = Trust.retroPick
+        /// Paper 1GTM-0, 1GTL-0, 1GTK-0 ("last changed on sunday": the Sunday before the sample's Tuesday).
+        var learned = Settings.Learned(
+            state: .learning,
             headline: "you answer questions about work most, 8 of 10.",
             detail: "you skip ones about family (1 of 5), so i ask those less, and only when you bring it up first.",
-            changed: "last changed on sunday"
+            changedAt: Trust.lastSunday
         )
 
         /// ST-1's "how straight i am with you" value.
         var straightnessName: String {
-            straightness.shortName
+            straightness.level?.shortName ?? ""
         }
+
+        /// 25 Oct 2026, a Sunday, at noon in the phone's calendar.
+        static let lastSunday = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
 
         init() {}
     }
 }
 
 extension SampleSettings: Flows.SettingsTrustData {
-    var straightness: Settings.Straightness {
+    var straightness: Settings.StraightnessSetting {
         trust.straightness
     }
 
-    var retroPick: Settings.Straightness {
-        trust.retroPick
-    }
-
-    var retroReason: String {
-        trust.retroReason
-    }
-
-    var learned: Settings.Learned? {
+    var learned: Settings.Learned {
         trust.learned
     }
 
-    func setStraightness(_ value: Settings.Straightness) {
-        trust.straightness = value
+    func setStraightness(_ level: Settings.Straightness?) {
+        if let level {
+            trust.straightness = Settings.StraightnessSetting(level: level, source: .yours, why: nil)
+        } else {
+            trust.straightness = Trust.retroPick
+        }
     }
 }

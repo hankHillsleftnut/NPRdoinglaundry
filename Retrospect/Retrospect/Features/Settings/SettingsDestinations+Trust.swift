@@ -16,7 +16,10 @@ extension SettingsDestinations {
         case .howStraight:
             trustData(context).map { AnyView(HowStraightPage(data: $0, back: context.back)) }
         case .learned:
-            trustData(context).map { AnyView(LearnedPage(data: $0, back: context.back)) }
+            // too early / off are undrawn (ST-D25): the row stays inert rather than open an empty page
+            trustData(context).flatMap { data in
+                data.learned.state == .learning ? AnyView(LearnedPage(data: data, back: context.back)) : nil
+            }
         default:
             nil
         }
