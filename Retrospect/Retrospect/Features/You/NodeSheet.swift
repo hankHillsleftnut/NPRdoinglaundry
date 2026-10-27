@@ -12,6 +12,19 @@
 //
 import SwiftUI
 
+extension RTextStyle {
+    /// YO-4's belief (Paper 1GDU-0): the inky title face (ink-title exposure, tracking-title, leading-tight)
+    /// at text-2xl, one step under the claim part's 3xl, so its lines break where Paper's do (QA batch 7).
+    static let inkNodeBelief = RTextStyle(
+        family: .inky(axis: -20),
+        size: RDimension.fontSize2xl,
+        weight: .regular,
+        tracking: RNumber.fontTrackingTitle,
+        leading: 1.1,
+        relativeTo: .title
+    )
+}
+
 struct NodeSheet: View {
     let node: Flows.Node
     let answer: (Flows.NodeAnswer) -> Void
@@ -38,7 +51,8 @@ struct NodeSheet: View {
     /// 6 on a phone with a home indicator, 40 on one without (QA batch 5: it was 38 too high).
     @MainActor static var footInset: CGFloat {
         let indicator = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom ?? 0
-        return max(RDimension.space1, RDimension.space10 - indicator)
+        // the pill draws 36 inside its 44 target, so 4 of the 40 are already the target's own margin
+        return max(RDimension.space0, RDimension.space10 - RDimension.space1 - indicator)
     }
 
     private var header: some View {
@@ -57,7 +71,7 @@ struct NodeSheet: View {
 
     private var belief: some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
-            RClaim(kind: .stated, text: node.belief, meta: node.meta)
+            RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief)
             if !node.restsOn.isEmpty {
                 VStack(alignment: .leading, spacing: RDimension.space1) {
                     RSectionLabel(title: "what it rests on")
