@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**655 tokens** · 579 semantic · 276 marked *to set*
+**658 tokens** · 582 semantic · 276 marked *to set*
 
 ## palette
 
@@ -753,3 +753,6 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `gradient.meshQuiet` | Episode artwork: a quiet week. Paper with a breath of sky. | base #EFECE7; blob #B3E1FF at 80% 10% r 60% alpha .8→0; blob #E4DBCE at 10% 90% r 70%; blob #FFFFFF at 30% 20% r 35% alpha .7→0; softness .7; grain multi 12% size 1.5 |  | to set: gradient recipes (founder, 20 Oct) |
 | `gradient.meshSheetGlow` | The faint sky light at the top of the player sheet, behind the header. | radial 120% 80% at 20% 0%: rgba(127,205,255,.22) → 0 at 60% |  | to set: gradient recipes (founder, 20 Oct) |
 | `gradient.meshWeekly` | Episode artwork: the weekly episode. Night with low amber and a red ember, as drawn on the approved mini-player (ON-11, PC-1). | base #3A3834; blob #FFC85C at 88% 8% r 90%; blob #F0645E at 30% 30% r 75% alpha .55→0; blob #B7791F at 70% 80% r 90% alpha .75→0; blob #165E8C at 0% 100% r 85%; blob #FBF0DA at 78% 16% r 33% alpha .75→0; softness .7; grain multi 12% size 1.5 |  | Paper OEM artwork · mesh · weekly, 21 Oct |
+| `gradient.meshBrief` | Episode artwork: a past brief, as a square in the podcasts library. Sky deepening to the lower corners, a warm glow in the top corner. | base #2FA8F0; blob #7FCDFF at 10% 10% r 90%; blob #1F7DBA at 90% 100% r 95%; blob #0F3F5E at 0% 100% r 80% alpha .8→0; blob #D9F0FF at 40% 28% r 37% alpha .55→0; blob #FFC85C at 92% 0% r 60%; softness .7; grain multi 12% size 1.5 |  | Paper 1FUI-0 artwork · mesh · brief (PC-1 1FSA-0, 21 Oct) |
+| `gradient.meshFirst` | Episode artwork: the first episode, the same sky everywhere it appears (ON-10's first-episode well, first home, the podcasts library): sky with amber light top right and deep sky pooling bottom left. | base #2FA8F0; blob #F2B84B at 85% 10% r 68%; blob #165E8C at 0% 100% r 100%; softness .7; grain multi 12% size 1.5 |  | founder 27 Oct: the first episode looks the same everywhere (#201 color.firstEpisode.*: sky.500, amber.300, sky.800); Paper 1FUD-0 (moss green) to be updated |
+| `gradient.meshCalls` | Episode artwork: an earlier weekly episode about calls, as a square in the podcasts library. Soft stone with paper light, a faint ember low down and a warm top corner. | base #A9A59E; blob #F9F7F5 at 14% 12% r 90% alpha .75→0; blob #4E4B46 at 0% 100% r 95%; blob #F0645E at 100% 100% r 80% alpha .3→0; blob #FBF0DA at 52% 36% r 37% alpha .45→0; blob #FFC85C at 92% 0% r 60%; softness .7; grain multi 12% size 1.5 |  | Paper 1FU8-0 artwork · mesh · calls (PC-1 1FSA-0, 21 Oct) |
