@@ -35,7 +35,7 @@ struct EntryDrawnModelTests {
         model.notRight("took-monday")
         model.notRight("took-monday")
         model.notRight("took-dread")
-        #expect(model.claims.allSatisfy { $0.noted })
+        #expect(model.claims.allSatisfy(\.noted))
         #expect(model.notedCount == 1)
     }
 
@@ -67,10 +67,14 @@ struct EntryDrawnModelTests {
     func delete() {
         var pops = 0
         let model = drawn { pops += 1 }
+        #expect(!model.hidesPageFromVoiceOver)
         model.askDelete()
         #expect(model.showsDelete)
+        // the dialog is modal for VoiceOver: the page behind it is hidden while it asks
+        #expect(model.hidesPageFromVoiceOver)
         model.keep()
         #expect(!model.showsDelete)
+        #expect(!model.hidesPageFromVoiceOver)
         #expect(pops == 0)
         model.askDelete()
         model.confirmDelete()

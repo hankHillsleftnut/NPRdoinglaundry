@@ -135,6 +135,11 @@ final class EntryDrawnModel {
 
     // MARK: delete
 
+    /// While the dialog asks, the page behind it is out of VoiceOver's reach (the dialog is modal).
+    var hidesPageFromVoiceOver: Bool {
+        showsDelete
+    }
+
     func askDelete() {
         showsDelete = true
     }
