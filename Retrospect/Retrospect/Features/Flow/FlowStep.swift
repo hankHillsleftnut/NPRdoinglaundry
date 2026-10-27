@@ -19,8 +19,10 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case youreIn
     /// ON-3–9: the questions (#190).
     case questions
-    /// ON-10: getting ready (GR.ready). Reached from connect (ON-6) once connect is a step; until
-    /// then `-FlowStart gettingReady` opens it.
+    /// ON-6: connect (CN.connect). Reached from privacy (ON-5) once privacy is a step; until then
+    /// `-FlowStart connect` opens it.
+    case connect
+    /// ON-10: getting ready (GR.ready), after connect.
     case gettingReady
 }
 
@@ -35,6 +37,11 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case begin
     /// ON-3–9: every question answered.
     case questionsDone
+    /// ON-6: "continue" or "later" (both go on to getting ready, founder decision 5).
+    case connectDone
+    /// ON-6: the back chevron. Its row to privacy (ON-5) lands with privacy's step; until then it
+    /// moves nothing.
+    case connectBack
     /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
     /// with the tease; until then the flow ends at getting ready.
     case episodeReady
@@ -58,6 +65,7 @@ struct FlowEdge: Equatable, Sendable {
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
         Self(.youreIn, .begin, .questions), // 13
+        Self(.connect, .connectDone, .gettingReady), // 29 (continue) and 30 (later)
     ]
 }
 
