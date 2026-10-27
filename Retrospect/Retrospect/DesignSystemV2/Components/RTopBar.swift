@@ -184,8 +184,17 @@ struct RTopBar: View {
         RIconButton(symbol: "sidebar.left", label: "all journals", action: action)
     }
 
+    /// The back chevron at Paper's size, the same 11.3pt glyph as onboarding's back (ST-1 1GJ7-0, JR-4 1FRX-0
+    /// and ON-6 21CA-0 draw one path in a 20 frame; founder, 27 Oct). Only the circle differs: 36 here.
+    static let backGlyphScale = RIconButton.backChevronGlyphScale
+
+    /// The bar's back button: the top-bar circle with the chevron at `backGlyphScale`.
+    static func back(_ action: @escaping () -> Void) -> RIconButton {
+        RIconButton(symbol: "chevron.left", label: "back", glyphScale: backGlyphScale, action: action)
+    }
+
     private func backButton(_ action: @escaping () -> Void) -> some View {
-        RIconButton(symbol: "chevron.left", label: "back", action: action)
+        Self.back(action)
     }
 
     /// The 44 slot opposite the leading button, so the centred name sits on the bar's centre.
