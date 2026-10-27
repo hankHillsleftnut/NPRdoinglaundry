@@ -90,4 +90,21 @@ extension Flows {
         /// Every question is answered: the page calls this once, then reports done to its host.
         func finishQuestions() async
     }
+
+    /// What the phone hears while Retro listens (ON-10 getting ready, GR.ready). The sample plays an
+    /// invented utterance; the recogniser plugs in here later. Never logged: the words are the person's.
+    enum Heard: Equatable, Sendable {
+        /// The words of the utterance so far, in order. The last one may still change (it is pending).
+        case partial([String])
+        /// The utterance ended: every word is final and the answer can go in.
+        case ended
+    }
+
+    /// Listening for one page. `listen()` streams what is heard until the page stops it (or the
+    /// stream ends); `stop()` ends it at once.
+    @MainActor
+    protocol Listening: AnyObject {
+        func listen() -> AsyncStream<Heard>
+        func stop()
+    }
 }
