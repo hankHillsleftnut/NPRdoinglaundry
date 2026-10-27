@@ -44,15 +44,20 @@ struct GoalsModelTests {
         #expect(overview.goals.count == 4)
     }
 
-    @Test("a second yes while the first is on its way does nothing: one new goal")
+    @Test("a second yes while the first is on its way does nothing: the answer is sent once")
     func doubleYes() async throws {
-        let model = GoalsModel(data: SampleGoals())
+        let data = SlowGoals()
+        let model = GoalsModel(data: data)
         await model.load()
         let guess = try #require(model.overview?.guess)
-        async let first: Void = model.answer(guess, accepted: true)
-        async let second: Void = model.answer(guess, accepted: true)
-        _ = await (first, second)
-        #expect(model.overview?.goals.count == 4)
+        let first = Task { await model.answer(guess, accepted: true) }
+        while data.release == nil {
+            await Task.yield()
+        }
+        await model.answer(guess, accepted: true)
+        data.release?.resume()
+        await first.value
+        #expect(data.answers == 1)
     }
 
     @Test("not quite: the guess leaves, the goals stay as they were")
@@ -102,5 +107,34 @@ struct GoalsModelTests {
     func registered() {
         let screen = GoalsScreens.screens.first { $0.id == "GL-1" }
         #expect(screen?.states == ["rest"])
+    }
+}
+
+/// A GoalsData whose answer waits until the test lets it go, and counts how often it was asked.
+@MainActor
+final class SlowGoals: GoalsData {
+    private let sample = SampleGoals()
+    var release: CheckedContinuation<Void, Never>?
+    private(set) var answers = 0
+    private(set) var turnOffs = 0
+
+    func overview() async -> GoalsOverview {
+        await sample.overview()
+    }
+
+    func detail(_ goalID: String) async -> GoalDetail? {
+        await sample.detail(goalID)
+    }
+
+    func answer(guess guessID: String, accepted: Bool) async -> GoalsOverview {
+        answers += 1
+        await withCheckedContinuation { release = $0 }
+        return await sample.answer(guess: guessID, accepted: accepted)
+    }
+
+    func turnOff(_ goalID: String) async -> GoalsOverview {
+        turnOffs += 1
+        await withCheckedContinuation { release = $0 }
+        return await sample.turnOff(goalID)
     }
 }
