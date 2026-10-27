@@ -11,6 +11,27 @@
 //
 import SwiftUI
 
+extension RTextStyle {
+    /// Paper 1GUL-0: --font-label, --text-body, medium, --tracking-card, --leading-snug.
+    static let signOutLabel = RTextStyle(
+        family: .label,
+        size: RDimension.fontSizeBody,
+        weight: .medium,
+        tracking: RNumber.fontTrackingCard,
+        leading: 1.3,
+        relativeTo: .body
+    )
+    /// Paper 1GUJ-0: --font-text, --text-sm, --leading-snug.
+    static let signOutCaption = RTextStyle(
+        family: .text,
+        size: RDimension.fontSizeSm,
+        weight: .regular,
+        tracking: RNumber.fontTrackingNone,
+        leading: 1.3,
+        relativeTo: .caption
+    )
+}
+
 struct AccountSettingsPage: View {
     let data: any Flows.SettingsTrustData
     let flow: any SignOutFlowing
@@ -41,13 +62,11 @@ struct AccountSettingsPage: View {
                         if let plan = data.plan {
                             // information only: Paper draws no trailing part, so it isn't a button
                             SettingsControlFrame(title: plan.name, subline: Self.renewal(plan)) { EmptyView() }
-                            RSettingsRow(title: "manage subscription", subline: "in apple settings", trailing: .external)
-                                .accessibilityHint("not available yet")
+                            SettingsInertRow(title: "manage subscription", subline: "in apple settings", leavesApp: true)
                                 .accessibilityIdentifier("account.manage")
                         }
                         // always there: whoever sees no plan here is who needs it (the no-plan look is undrawn, ST-D26)
-                        RSettingsRow(title: "restore purchases", trailing: .none)
-                            .accessibilityHint("not available yet")
+                        SettingsInertRow(title: "restore purchases")
                             .accessibilityIdentifier("account.restore")
                     }
                 }
@@ -89,14 +108,15 @@ struct AccountSettingsPage: View {
         .accessibilityIdentifier("screen.settings.account")
     }
 
-    /// Paper 1GUK-0 / 1GUJ-0: the full-width raised sign-out button and its caption (as AccountPage draws it).
+    /// Paper 1GUK-0 / 1GUJ-0: the full-width raised sign-out button and its caption. Fonts as Paper draws them
+    /// (Geist label, SF caption); the shipping AccountPage has them the other way round (logged, ST-D43).
     private var signOutBlock: some View {
         VStack(spacing: RDimension.space2) {
             Button { signingOut = true } label: {
                 HStack(spacing: RDimension.space2) {
                     RSymbol(name: "rectangle.portrait.and.arrow.right", tint: RColor.iconDefault)
                     Text("sign out")
-                        .rText(.bodyMedium)
+                        .rText(.signOutLabel)
                         .foregroundStyle(RColor.textPrimary)
                 }
                 .frame(maxWidth: .infinity, minHeight: RDimension.sizeRowDefault)
@@ -106,7 +126,7 @@ struct AccountSettingsPage: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("account.signout")
             Text("signed in with \(provider). your entries stay; sign back in any time.")
-                .rText(.label)
+                .rText(.signOutCaption)
                 .foregroundStyle(RColor.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

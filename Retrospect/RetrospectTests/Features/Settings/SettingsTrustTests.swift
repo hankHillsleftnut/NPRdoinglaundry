@@ -112,6 +112,16 @@ struct SettingsTrustTests {
         #expect(data.plan == plan)
     }
 
+    @Test("ST-9's undrawn rows are inert: not buttons, no press style, value 'not available yet'")
+    func inertRows() {
+        #expect(SettingsInertRow.unavailable == "not available yet")
+        for row in [SettingsInertRow(title: "restore purchases"), SettingsInertRow(title: "manage subscription", leavesApp: true)] {
+            let shape = String(describing: type(of: row.body))
+            #expect(!shape.contains("Button"))
+            #expect(!shape.contains("RListRowStyle"))
+        }
+    }
+
     @Test("the trust group registers ST-5 … ST-8 in the launcher")
     func registered() {
         #expect(ScreenRegistry.screen("ST-5")?.states == ["rest", "delete"])
