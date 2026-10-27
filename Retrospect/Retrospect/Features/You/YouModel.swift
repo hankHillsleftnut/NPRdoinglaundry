@@ -51,7 +51,8 @@ final class YouModel {
 
     /// "still true": kept, and the sheet closes.
     func answer(_ answer: Flows.NodeAnswer) async {
-        guard let node else { return }
+        // once: the sheet stays tappable while it closes, so a second tap must not send it again
+        guard let node, sheetOpen else { return }
         sheetOpen = false
         await data.answer(answer, node: node.id)
     }

@@ -107,6 +107,8 @@ struct YouModelTests {
         #expect(!model.sheetOpen)
         #expect(model.node == SampleYou.priya)
         #expect(data.answered[SampleYou.priya.id] == .stillTrue)
+        await model.answer(.stillTrue)
+        #expect(data.answerCount == 1)
     }
 
     @Test("YO-4 is registered with its drawn state")

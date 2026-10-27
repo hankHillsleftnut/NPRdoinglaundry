@@ -25,7 +25,11 @@ final class SampleYou: YouData {
 
     func answer(_ answer: Flows.NodeAnswer, node id: String) async {
         answered[id] = answer
+        answerCount += 1
     }
+
+    /// How many answers were sent (sample memory only).
+    private(set) var answerCount = 0
 
     /// What you answered, by node (sample memory only).
     private(set) var answered: [String: Flows.NodeAnswer] = [:]
