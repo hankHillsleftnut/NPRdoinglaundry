@@ -244,6 +244,18 @@ struct QuestionsListeningTests {
         #expect(Flows.FirstRunQuestion.core.allSatisfy { !(SampleFirstRunData.spoken[$0.key] ?? []).isEmpty })
     }
 
+    @Test("the held still is Paper's frame: Q1's words at once, 'london' soft, never ending")
+    func heldStill() async {
+        let model = QuestionsModel(data: SampleFirstRunData(scenario: .questionsStill, clock: NoWaitClock()))
+        await model.appear()
+        for _ in 0 ..< 5000 where model.heard.count < 3 {
+            await Task.yield()
+        }
+        #expect(model.heard.map(\.text) == ["sam.", "i'm in", "london"])
+        #expect(model.heard.map(\.isPending) == [false, false, true])
+        #expect(model.composer == .listening)
+    }
+
     @Test("the page shows the last word soft while it is still being heard, sharp once the answer ends")
     func pendingLastWord() async {
         let ear = ScriptedEar()
