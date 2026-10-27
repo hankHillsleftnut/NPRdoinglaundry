@@ -259,7 +259,8 @@ struct FlowHostTests {
 
         // the host mounts a new questions page on the same seam with the kept words, as the host does
         let last = try #require(page.questions.last)
-        let again = QuestionsModel(data: model.firstRun, kept: model.answers, cameBack: model.cameBack)
+        #expect(model.questionsFinished)
+        let again = QuestionsModel(data: model.firstRun, kept: model.answers, cameBack: model.cameBack, seamFinished: model.questionsFinished)
         var done = 0
         again.onDone = {
             done += 1
@@ -299,6 +300,21 @@ struct FlowHostTests {
         model.send(.questionsDone)
         #expect(store.saved?.cameBack == nil)
         #expect(flow(store).cameBack == false)
+    }
+
+    @Test("started at privacy, back, then every question answered: the seam is finished once, not skipped")
+    func startedAtPrivacyStillFinishesTheSeam() async {
+        let model = flow(MemoryFlowStore(), start: .privacy)
+        model.makePrivacy(clock: FlowImmediateClock()).back()
+        #expect(model.step == .questions)
+        #expect(model.questionsFinished == false)
+        let page = QuestionsModel(data: model.firstRun, kept: model.answers, cameBack: model.cameBack, seamFinished: model.questionsFinished)
+        page.onDone = { model.send(.questionsDone) }
+        for question in page.questions {
+            await page.send("an answer for \(question.key.rawValue).")
+        }
+        #expect(model.firstRun.finishCount == 1)
+        #expect(model.step == .privacy)
     }
 
     @Test("a relaunch at privacy comes back to privacy, after the tear, with the answers kept")

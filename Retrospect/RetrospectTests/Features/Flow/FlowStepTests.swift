@@ -17,8 +17,8 @@ struct FlowStepTests {
     }
 
     /// Steps merged ahead of the screens that lead to them: getting ready (ON-10) is reached from connect
-    /// (ON-6), which isn't a step yet (privacy, #196, isn't either). Each starts its own walk until the
-    /// missing screens add their rows; then this list empties.
+    /// (ON-6), which isn't a step yet; the walk from the splash ends at privacy (FLOW.edges). Each island
+    /// starts its own walk until the missing screens add their rows; then this list empties.
     private static let waitingForAnIncomingRow: [FlowStep] = [.gettingReady]
 
     @Test("from the splash the table walks every step, in the app's order (islands waiting for a row aside)")
