@@ -35,7 +35,7 @@ struct EntryDrawnModelTests {
         model.notRight("took-monday")
         model.notRight("took-monday")
         model.notRight("took-dread")
-        #expect(model.claims.allSatisfy(\.noted))
+        #expect(model.claims.allSatisfy { $0.noted })
         #expect(model.notedCount == 1)
     }
 
