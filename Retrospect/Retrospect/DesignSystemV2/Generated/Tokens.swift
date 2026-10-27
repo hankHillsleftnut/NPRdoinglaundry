@@ -680,6 +680,14 @@ public enum RDimension {
     public static let sizeSkeletonGap: CGFloat = 9
     /// The raised mark above an empty state line.
     public static let sizeEmptyMark: CGFloat = 52
+    /// A plan button on the paywall (monthly / yearly), the price is the button.
+    public static let sizePlanButton: CGFloat = 52
+    /// The "save" badge straddling the top edge of the lit yearly plan.
+    public static let sizeSaveBadgeWidth: CGFloat = 76
+    /// The "save" badge height (it sits half above the plan button).
+    public static let sizeSaveBadgeHeight: CGFloat = 22
+    /// The small raised art tile at the start of a paywall benefit row.
+    public static let sizeBenefitTile: CGFloat = 56
     /// The ready first episode's artwork well on first home (with a 16 play inside).
     public static let sizeFirstEpisodeWell: CGFloat = 40
     /// Small marks and tags.
@@ -962,6 +970,8 @@ public enum RNumber {
     public static let motionScalePopoverFrom: Double = 0.86
     /// Press scale for small controls (pills, icon buttons); large things use press (0.98).
     public static let motionScalePressSmall: Double = 0.94
+    /// The barely visible nudge of the lit plan when the paywall mini-player's play is tapped (1.0 → nudge → 1.0, settles on snappy). Founder 26 Oct night: "very, very subtle".
+    public static let motionScaleNudge: Double = 1.02
     /// Delay between elements arriving in sequence.
     public static let motionStagger: Double = 0.06
     /// Points per second that count as a flick down.
@@ -1221,5 +1231,47 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
         RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 10, blur: 30, spread: -10),
+    ]
+    /// A paywall benefit tile: top light, outer hairline, contact, and a cast pulled in by its spread.
+    public static let boxShadowPaywallTile: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 6, blur: 14, spread: -6),
+    ]
+    /// The raised monthly plan button: top light, outer hairline, contact.
+    public static let boxShadowPaywallPlanMonthly: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+    ]
+    /// The lit yearly plan button: rim, edge and bloom inside, the ring, and the halo pulled in by its spread (Paper keeps the halo on this screen: founder 26 Oct night, PW-Q4 A).
+    public static let boxShadowPaywallPlanYearly: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryRim, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryEdge, x: 0, y: -1, blur: 1.5, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryBloom, x: 0, y: 0, blur: 6, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryRing, x: 0, y: 0, blur: 0, spread: 1),
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 6, blur: 14, spread: -6),
+    ]
+    /// The "save" badge on the lit plan: a primary ring hairline and contact.
+    public static let boxShadowPaywallSaveBadge: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryRing, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+    ]
+    /// The tiny sunken search field drawn in the "ask" tile.
+    public static let boxShadowPaywallTileField: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowSunken, x: 0, y: 1, blur: 2, spread: 0, inset: true),
+    ]
+    /// The halo round the lit sun in the "brief" tile.
+    public static let boxShadowPaywallTileGlowSun: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 0, blur: 10, spread: 0),
+    ]
+    /// The halo round the lit "you" node in the "map" tile.
+    public static let boxShadowPaywallTileGlowYou: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 0, blur: 8, spread: 0),
+    ]
+    /// The halo under the lit play in the "podcast" tile.
+    public static let boxShadowPaywallTileGlowPlay: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 2, blur: 8, spread: 0),
     ]
 }
