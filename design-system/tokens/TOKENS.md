@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**661 tokens** · 585 semantic · 276 marked *to set*
+**667 tokens** · 591 semantic · 276 marked *to set*
 
 ## palette
 
@@ -414,6 +414,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.artwork.card` | Artwork in a card or on the player header. | 64pt |  | to set |
 | `size.artwork.player` | A show or episode page. | 120pt |  | to set |
 | `size.artwork.hero` | A full-bleed moment. | 240pt |  | to set |
+| `size.artwork.shareItem` | The shared thing's artwork in the share sheet. | 56pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
 | `size.mark` | The Retrospect mark disc. | 38pt |  | paywall |
 | `size.miniPlayer` | Height of the mini-player. | 42pt |  | paywall |
 | `size.progress` | Thickness of progress and scrubber tracks. | 3pt |  | paywall |
@@ -486,6 +487,11 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.skeleton.bar` | Height of one skeleton bar. | 18pt |  | Paper 20M-0 (bars 20P-0, 20Q-0: 18 tall) |
 | `size.skeleton.gap` | Space between skeleton bars: an 18 bar on a 27 line pitch. | 9pt |  | Paper 20O-0 (gap 9) |
 | `size.emptyMark` | The raised mark above an empty state line. | 52pt |  | Paper G7Y-0 / G8F-0 (52 × 52, radius.control) |
+| `size.widget.mark` | The mark at the top of a home-screen widget. | 16pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.markGlyph` | The brush glyph's width inside the widget mark. | 9pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.small` | A small home-screen widget's side, for the preview (the system sets the real size). | 164pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
+| `size.widget.mediumWidth` | A medium home-screen widget's width, for the preview (the system sets the real size). | 344pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
+| `size.share.headerSlot` | The share sheet header's side slots (cancel, and the empty one opposite). | 72pt |  | Paper EX-1 1H2G-0 / 1H2E-0 (V2.outside, 26 Oct) |
 
 ## radius
 
