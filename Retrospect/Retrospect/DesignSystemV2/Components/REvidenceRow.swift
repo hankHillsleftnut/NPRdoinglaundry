@@ -45,7 +45,9 @@ struct REvidenceRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Whether the row opens something (draws › and is a button).
-    var opens: Bool { action != nil }
+    var opens: Bool {
+        action != nil
+    }
 
     var body: some View {
         if let action {
