@@ -323,6 +323,8 @@ private struct RTextModifier: ViewModifier {
     /// Only a bare `Text` draws at Paper's pitch: the line maths needs one text and nothing else.
     var paperPitch = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.rPaperLineBoxes) private var paperLineBoxes
+    @Environment(\.displayScale) private var displayScale
 
     func body(content: Content) -> some View {
         // tracking and leading are proportions of the size, so they follow the scaled size too
@@ -335,12 +337,20 @@ private struct RTextModifier: ViewModifier {
         let leading = dynamicTypeSize.isAccessibilitySize ? min(style.leading, style.accessibilityLeading) : style.leading
         let natural = style.naturalLineHeight(scaledSize: size)
         let extra = max(0, leading * size - natural)
+        // an ink title that 214 draws at Paper's pitch is already in Paper's box: it never takes
+        // the Paper line-box trim too (that would trim it twice); everything else may
+        let atPitch = paperPitch && style.drawsAtPaperPitch(leading: leading, scaledSize: size)
         let styled = content
             .font(style.font(scaledSize: size))
             .tracking(style.tracking * size)
             .lineSpacing(extra)
-            .padding(.vertical, extra / 2)
-        if paperPitch, style.drawsAtPaperPitch(leading: leading, scaledSize: size) {
+            .padding(
+                .vertical,
+                paperLineBoxes && !atPitch
+                    ? RPaperLineBox.halfLeading(box: leading * size, natural: natural, scale: displayScale)
+                    : extra / 2
+            )
+        if atPitch {
             let pitch = RPaperPitch(pitch: leading * size, naturalLineHeight: natural)
             RPaperPitchLayout(pitch: pitch) {
                 styled.textRenderer(pitch)
@@ -352,6 +362,38 @@ private struct RTextModifier: ViewModifier {
             styled
         }
     }
+}
+
+/// Paper's line boxes for SwiftUI text (used under `rPaperLineBoxes`).
+enum RPaperLineBox {
+    /// Half the difference between Paper's line box and the line SwiftUI draws, above the first line
+    /// and below the last. Paper lays text out as CSS does and rounds each text box up to a whole
+    /// point (17 × 1.3 = 22.1 draws 23 tall); a box tighter than the font (the inky titles at
+    /// leading-tight) trims the font's line instead of growing to it. Negative trims.
+    static func halfLeading(box: CGFloat, natural: CGFloat, scale: CGFloat) -> CGFloat {
+        // a hair under a whole point stays that point (floating-point products like 30 × 1.1)
+        let rounded = (box - RNumber.paperLineBoxSlack).rounded(.up)
+        return (rounded - onPixels(natural, scale: scale)) / 2
+    }
+
+    /// SwiftUI lays a line out on whole device pixels, rounding the font's height up (SF 14's 16.71
+    /// is 17 on a 3x screen), so Paper's box is measured against that height, not the raw one.
+    static func onPixels(_ height: CGFloat, scale: CGFloat) -> CGFloat {
+        guard scale > 0 else { return height }
+        return (height * scale - RNumber.paperLineBoxSlack).rounded(.up) / scale
+    }
+}
+
+extension RNumber {
+    /// How far under a whole point a line box may fall and still round to it (30 × 1.1 = 33.000…04).
+    static let paperLineBoxSlack: CGFloat = 0.001 // literal-ok: floating-point slack, not a size
+}
+
+extension EnvironmentValues {
+    /// Text below lays its line boxes out as Paper draws them (`RPaperLineBox`):
+    /// rounded up to whole points, tight leading trimmed. Opted in per screen as each one is
+    /// matched to Paper (ON-6 first), so screens already approved don't move.
+    @Entry var rPaperLineBoxes = false
 }
 
 extension View {
