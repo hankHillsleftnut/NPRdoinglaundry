@@ -25,6 +25,8 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case connect
     /// ON-10: getting ready (GR.ready), after connect.
     case gettingReady
+    /// ON-11: the tease, the player sheet risen over getting ready (PS.sheet), playing on its own.
+    case tease
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -46,9 +48,11 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case connectDone
     /// ON-6: the back chevron, back to privacy (ON-5).
     case connectBack
-    /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
-    /// with the tease; until then the flow ends at getting ready.
+    /// ON-10: the first episode is made: the tease rises and plays (row 34, decision 11).
     case episodeReady
+    /// ON-11: the tease reached its end (the 10 s mark, decision 11) or its collapse was tapped. Its row
+    /// to the paywall (row 38) lands with the paywall; until then the walk ends here.
+    case teaseEnded
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.
@@ -64,7 +68,7 @@ struct FlowEdge: Equatable, Sendable {
     }
 
     /// Every edge between merged screens, with its SCREEN-MAP §3.1 row (`FlowPlan.edges` is the whole
-    /// first run). `gettingReady` has no forward row yet: the flow ends there (the tease adds the next one).
+    /// first run). `tease` has no forward row yet: the flow ends there (the paywall adds the next one).
     static let table: [Self] = [
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
@@ -74,6 +78,7 @@ struct FlowEdge: Equatable, Sendable {
         Self(.privacy, .back, .questions), // 23
         Self(.connect, .connectDone, .gettingReady), // 29 (continue) and 30 (later)
         Self(.connect, .connectBack, .privacy), // 32
+        Self(.gettingReady, .episodeReady, .tease), // 34
     ]
 }
 

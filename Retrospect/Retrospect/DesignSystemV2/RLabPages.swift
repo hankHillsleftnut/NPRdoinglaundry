@@ -46,6 +46,7 @@ struct RLabPage: Identifiable {
         RLabPage("sheet") { RSheetHostGallery() },
         RLabPage("skeleton") { RSkeletonGallery() },
         RLabPage("tabbar") { RTabBarGallery() },
+        RLabPage("tear") { TearLab() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
         RLabPage("transport") { RTransportGallery() },

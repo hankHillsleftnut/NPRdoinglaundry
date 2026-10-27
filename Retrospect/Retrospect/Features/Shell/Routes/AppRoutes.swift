@@ -77,6 +77,14 @@ protocol AppDestinationGroup {
     static var notBuilt: Set<AppRoute.Kind> { get }
     /// The sheets this group owns and hasn't built yet.
     static var sheetsNotBuilt: Set<AppSheet.Kind> { get }
+    /// How tall one of its sheets opens (G0b). Full unless the group says otherwise (AC-2 is short).
+    static func detent(for sheet: AppSheet) -> RSheetDetent
+}
+
+extension AppDestinationGroup {
+    static func detent(for _: AppSheet) -> RSheetDetent {
+        .full
+    }
 }
 
 /// Namespace for the groups' destinations (one file each), so no name meets a group's own types
@@ -110,6 +118,11 @@ enum AppRoutes {
     static func sheet(for sheet: AppSheet, in context: AppRouteContext) -> AnyView? {
         guard isBuilt(sheet) else { return nil }
         return destinations(sheet.owner)?.sheet(for: sheet, in: context)
+    }
+
+    /// The detent the sheet's owner asks for.
+    static func detent(for sheet: AppSheet) -> RSheetDetent {
+        destinations(sheet.owner)?.detent(for: sheet) ?? .full
     }
 
     /// Whether the owner has built the page (cheap: nothing is built to ask).

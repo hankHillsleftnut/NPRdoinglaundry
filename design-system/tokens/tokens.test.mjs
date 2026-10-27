@@ -50,6 +50,9 @@ const paper = {
   '22S8-0': 'var(--color-glow-primary-halo) 0px 0px 10px',
   '22RS-0': 'var(--color-glow-primary-halo) 0px 0px 8px',
   '22QS-0': 'var(--color-glow-primary-halo) 0px 2px 8px',
+  // ON-13 first home (1FI8-0), FH.home.a
+  '1FJL-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 12px 28px -12px',
+  '1FJ6-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 10px 24px -12px',
 };
 // Paper's colour variables and mixes → the token each new layer must reference.
 const colourToken = {
@@ -101,6 +104,8 @@ const pinned = [
   ['depth.boxShadow.paywall.tileGlowSun', '22S8-0', (l) => l],
   ['depth.boxShadow.paywall.tileGlowYou', '22RS-0', (l) => l],
   ['depth.boxShadow.paywall.tileGlowPlay', '22QS-0', (l) => l],
+  ['depth.boxShadow.firstHome.recap', '1FJ6-0', (l) => l],
+  ['depth.boxShadow.firstHome.episodeCard', '1FJL-0', (l) => l],
   ['depth.boxShadow.stroke.innerTop', '1F7K-0', (l) => l.slice(0, 1)],
   ['depth.boxShadow.stroke.inner', '1F7K-0', (l) => l.slice(1, 2)],
   ['depth.boxShadow.stroke.outer', '1F7K-0', (l) => l.slice(2, 3)],

@@ -31,17 +31,18 @@ struct FlowStepTests {
         }
     }
 
-    @Test("getting ready ends the flow: 'made' has no row until the tease (ON-11) adds one")
-    func endsAtGettingReady() {
-        #expect(FlowEdge.table.contains { $0.from == .gettingReady } == false)
-        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == nil)
-        let withTease = FlowEdge.table + [FlowEdge(.gettingReady, .episodeReady, .splash)]
-        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady, table: withTease) == .splash)
+    @Test("the tease ends the flow: its end has no row until the paywall (ON-12) adds one")
+    func endsAtTease() {
+        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
+        #expect(FlowEdge.table.contains { $0.from == .tease } == false)
+        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == nil)
+        let withPaywall = FlowEdge.table + [FlowEdge(.tease, .teaseEnded, .splash)]
+        #expect(FlowStep.next(from: .tease, event: .teaseEnded, table: withPaywall) == .splash)
     }
 
     @Test("each edge of the table is the move next(from:event:) makes")
     func eachEdgeMoves() {
-        #expect(FlowEdge.table.count == 8)
+        #expect(FlowEdge.table.count == 9)
         for edge in FlowEdge.table {
             #expect(FlowStep.next(from: edge.from, event: edge.event) == edge.to, "\(edge.from) \(edge.event)")
         }
@@ -53,6 +54,7 @@ struct FlowStepTests {
         #expect(FlowStep.next(from: .privacy, event: .back) == .questions)
         #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
         #expect(FlowStep.next(from: .connect, event: .connectBack) == .privacy)
+        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
     }
 
     @Test("connect (ON-6): continue and later both go on to getting ready; back returns to privacy")
