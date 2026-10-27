@@ -28,16 +28,6 @@ extension RTextStyle {
         leading: RTextStyle.textMd.leading,
         relativeTo: .caption2
     )
-
-    /// A guess's two answers: SF 14 semibold, leading snug (1G3A-0).
-    static let goalAnswer = RTextStyle(
-        family: .text,
-        size: RDimension.fontSizeMd,
-        weight: .semibold,
-        tracking: RNumber.fontTrackingNone,
-        leading: RTextStyle.textMd.leading,
-        relativeTo: .subheadline
-    )
 }
 
 struct GoalCard: View {
