@@ -520,6 +520,8 @@ public enum RDimension {
     public static let sizeArtworkPlayer: CGFloat = 120
     /// A full-bleed moment.
     public static let sizeArtworkHero: CGFloat = 240
+    /// The shared thing's artwork in the share sheet.
+    public static let sizeArtworkShareItem: CGFloat = 56
     /// The Retrospect mark disc.
     public static let sizeMark: CGFloat = 38
     /// Height of the mini-player.
@@ -658,6 +660,12 @@ public enum RDimension {
     public static let sizeSkeletonGap: CGFloat = 9
     /// The raised mark above an empty state line.
     public static let sizeEmptyMark: CGFloat = 52
+    /// The mark at the top of a home-screen widget.
+    public static let sizeWidgetMark: CGFloat = 16
+    /// The brush glyph's width inside the widget mark.
+    public static let sizeWidgetMarkGlyph: CGFloat = 9
+    /// The share sheet header's side slots (cancel, and the empty one opposite).
+    public static let sizeShareHeaderSlot: CGFloat = 72
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
