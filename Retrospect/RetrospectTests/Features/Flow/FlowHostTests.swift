@@ -258,7 +258,7 @@ struct FlowHostTests {
         #expect(model.endedAt == .tease)
         #expect(model.isAtEnd)
         // a relaunch at the end shows the pill at once
-        #expect(store.saved?.endedAt == .gettingReady)
+        #expect(store.saved?.endedAt == .tease)
         #expect(flow(store).isAtEnd)
 
         let fresh = model.startedOver()
