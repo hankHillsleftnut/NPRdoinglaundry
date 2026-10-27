@@ -76,7 +76,10 @@ struct PodcastsPage: View {
                 .padding(.bottom, RDimension.space8)
             }
             .contentMargins(.bottom, proxy.safeAreaInsets.bottom, for: .scrollContent)
+            // the cards' shadows may spill sideways past the margins, but the cards never draw over
+            // the title bar while they scroll
             .scrollClipDisabled()
+            .mask { Rectangle().padding(.horizontal, -RDimension.spaceScreenMargin) }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentSize.height > geometry.containerSize.height
             } action: { _, now in
