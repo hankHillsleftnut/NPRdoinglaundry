@@ -44,6 +44,17 @@ struct GoalsModelTests {
         #expect(overview.goals.count == 4)
     }
 
+    @Test("a second yes while the first is on its way does nothing: one new goal")
+    func doubleYes() async throws {
+        let model = GoalsModel(data: SampleGoals())
+        await model.load()
+        let guess = try #require(model.overview?.guess)
+        async let first: Void = model.answer(guess, accepted: true)
+        async let second: Void = model.answer(guess, accepted: true)
+        _ = await (first, second)
+        #expect(model.overview?.goals.count == 4)
+    }
+
     @Test("not quite: the guess leaves, the goals stay as they were")
     func notQuite() async throws {
         let model = GoalsModel(data: SampleGoals())
