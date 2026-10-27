@@ -25,8 +25,12 @@ final class SampleFlowModel {
     let signIn: SignInModel
     /// PI1 + PI2: one model for the gate and "you're in", so the ticket is one instance.
     let invite: InviteModel
-    /// ON-3–9's seam.
+    /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
+    /// ON-10's simulated listening.
+    let listening: SampleListening
+    /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
+    @ObservationIgnored private var episode: SampleFirstEpisode?
 
     @ObservationIgnored private let store: any SampleFlowStore
     @ObservationIgnored private let table: [FlowEdge]
@@ -52,6 +56,7 @@ final class SampleFlowModel {
         )
         invite = Self.inviteModel(at: saved.step, sleep: sleep)
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
+        listening = SampleListening(clock: clock)
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
         followInvite()
@@ -95,6 +100,17 @@ final class SampleFlowModel {
         }
     }
 
+    /// ON-10's sample episode, started when the page first shows (so a walk from the splash opens it
+    /// where Paper draws the line, 66 s into the wait, however long the walk took); the same one after.
+    func gettingReadyEpisode() -> SampleFirstEpisode {
+        if let episode {
+            return episode
+        }
+        let made = SampleFirstEpisode(scenario: .makingThenReady)
+        episode = made
+        return made
+    }
+
     /// An answer the questions page's seam kept.
     func answered(_ key: Key, words: String) {
         answers[key] = words
@@ -119,13 +135,19 @@ final class SampleFlowModel {
         return answers
     }
 
+    /// A step's place in the app's order (`FlowStep` lists them in order).
+    private static func order(of step: FlowStep) -> Int {
+        FlowStep.allCases.firstIndex(of: step) ?? 0
+    }
+
     /// The gate opens at the typed ticket (signed in, no code), as the live root does; a relaunch after the
     /// tear comes back at "you're in" (the ticket is already spent, `InviteModel.relaunched`).
     private static func inviteModel(at step: FlowStep, sleep: @escaping Sleep) -> InviteModel {
         var script = SampleInviteSource.Script()
         script.acceptsAnyCode = true
         let source = SampleInviteSource(script: script, sleep: sleep)
-        let torn = step == .youreIn || step == .questions
+        // every step from "you're in" on comes after the tear
+        let torn = Self.order(of: step) >= Self.order(of: .youreIn)
         // already torn on an earlier launch: shown still, not replayed
         let sample = SampleInvite.youreIn
         let stub = Session.YoureIn(invitedBy: sample.invitedBy, serial: sample.serial, redeemedOn: sample.redeemedOn, animate: false)
