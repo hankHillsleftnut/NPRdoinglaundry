@@ -14,6 +14,7 @@ import SwiftUI
 
 struct SampleFlowHost: View {
     @State private var flow: SampleFlowModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(launch: FlowLaunch = .current) {
         _flow = State(initialValue: SampleFlowModel(store: UserDefaultsFlowStore(), start: launch.start))
@@ -47,7 +48,9 @@ struct SampleFlowHost: View {
                     onDone: { _ in flow.send(.connectDone) },
                     onBack: { flow.send(.connectBack) }
                 )
-            case .gettingReady:
+            case .gettingReady, .tease:
+                // one identity for both steps: getting ready stays mounted under the tease, so nothing
+                // typed there is lost when the sheet rises (review-201 m6)
                 GettingReadyPageContainer(
                     firstRun: flow.firstRun,
                     episode: flow.gettingReadyEpisode(),
@@ -58,6 +61,16 @@ struct SampleFlowHost: View {
                 )
             }
         }
+        // ON-11: the tease rises over getting ready as the player sheet, exactly as `-Screen player` shows it
+        .overlay {
+            if flow.step == .tease {
+                PlayerSheetScreen {
+                    PlayerSheet(model: flow.teaseSheet())
+                }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom))
+            }
+        }
+        .animation(RMotion.sheet, value: flow.step == .tease)
         // the end of what's built (sample flow only): a small pill to walk it again, so a page that handed on
         // to a screen not built yet never looks frozen
         .overlay(alignment: .top) {
@@ -117,5 +130,6 @@ private struct FlowEndPill: View {
 #Preview("flow · questions") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .questions)) }
 #Preview("flow · privacy") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .privacy)) }
 #Preview("flow · connect") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .connect)) }
+#Preview("flow · the tease") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .tease)) }
 #Preview("flow · getting ready") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .gettingReady)) }
 #endif

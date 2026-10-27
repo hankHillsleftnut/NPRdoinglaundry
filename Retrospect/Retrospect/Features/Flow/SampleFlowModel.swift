@@ -40,6 +40,8 @@ final class SampleFlowModel {
     let listening: SampleListening
     /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
     @ObservationIgnored private var episode: SampleFirstEpisode?
+    /// ON-11's sheet for this visit (see `teaseSheet()`).
+    @ObservationIgnored private var tease: PlayerSheetModel?
 
     /// The step whose page handed on to a screen that isn't built yet: the end of what's built. The host
     /// shows its "start over" pill while the flow is still there.
@@ -156,6 +158,40 @@ final class SampleFlowModel {
         let made = SampleFirstEpisode(scenario: .makingThenReady)
         episode = made
         return made
+    }
+
+    /// ON-11's sheet: the 10-second sample tease (PS.sheet Q5 = B), playing from 0:00 as it rises, made
+    /// the first time the host asks and kept for the visit. Its end (or its collapse) sends `teaseEnded`;
+    /// the end is watched here, not in a view, like the tear.
+    func teaseSheet() -> PlayerSheetModel {
+        if let tease {
+            return tease
+        }
+        let playback = SamplePlayback(scenario: .tease, clock: clock)
+        let made = PlayerSheetModel(
+            playback: playback,
+            transcript: SampleTranscript.tease,
+            onCollapse: { [weak self] in self?.send(.teaseEnded) }
+        )
+        tease = made
+        followTease(playback)
+        return made
+    }
+
+    /// Hands `teaseEnded` on once the sample tease reaches its end.
+    private func followTease(_ playback: SamplePlayback) {
+        withObservationTracking {
+            _ = playback.state
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if playback.state == .ended {
+                    send(.teaseEnded)
+                } else {
+                    followTease(playback)
+                }
+            }
+        }
     }
 
     /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
