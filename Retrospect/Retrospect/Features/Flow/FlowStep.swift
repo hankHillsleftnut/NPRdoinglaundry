@@ -3,8 +3,8 @@
 //  FLOW.host (PR 0 of the screens loop): the sample flow's steps and the one table that says where each
 //  hand-off goes (pipeline/screens/SCREEN-MAP.md §3.1). Only merged screens are steps; a step with no row
 //  for an event stays where it is, so the flow simply ends at the last merged screen. Each later screen PR
-//  adds its case here and ONE row to `FlowEdge.table` (privacy, #196: `FlowEdge(.questions, .questionsDone,
-//  .privacy)`), and the flow test walks it. Debug builds only.
+//  adds its case here and its rows to `FlowEdge.table`, exactly as `FlowPlan.edges` (FLOW.edges) lists them;
+//  the flow tests fail a merged screen whose planned edges are missing. Debug builds only.
 //
 #if DEBUG
 import Foundation
@@ -19,6 +19,12 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case youreIn
     /// ON-3–9: the questions (#190).
     case questions
+    /// ON-5: privacy (#196). Moves on when Retro finishes reading (decision 3).
+    case privacy
+    /// ON-6: connect (CN.connect, #199), after privacy.
+    case connect
+    /// ON-10: getting ready (GR.ready), after connect.
+    case gettingReady
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -32,6 +38,17 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case begin
     /// ON-3–9: every question answered.
     case questionsDone
+    /// ON-5: Retro finished reading, or a tap moved on early (decision 3).
+    case privacyDone
+    /// ON-5's back chevron, back to the last question. Back between questions stays inside ON-3–9.
+    case back
+    /// ON-6: "continue" or "later" (both go on to getting ready, founder decision 5).
+    case connectDone
+    /// ON-6: the back chevron, back to privacy (ON-5).
+    case connectBack
+    /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
+    /// with the tease; until then the flow ends at getting ready.
+    case episodeReady
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.
@@ -46,12 +63,17 @@ struct FlowEdge: Equatable, Sendable {
         self.to = to
     }
 
-    /// Every edge between merged screens, with its SCREEN-MAP §3.1 row. `questions` has no forward row yet:
-    /// the flow ends there (privacy adds the next one).
+    /// Every edge between merged screens, with its SCREEN-MAP §3.1 row (`FlowPlan.edges` is the whole
+    /// first run). `gettingReady` has no forward row yet: the flow ends there (the tease adds the next one).
     static let table: [Self] = [
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
         Self(.youreIn, .begin, .questions), // 13
+        Self(.questions, .questionsDone, .privacy), // 19
+        Self(.privacy, .privacyDone, .connect), // 20
+        Self(.privacy, .back, .questions), // 23
+        Self(.connect, .connectDone, .gettingReady), // 29 (continue) and 30 (later)
+        Self(.connect, .connectBack, .privacy), // 32
     ]
 }
 

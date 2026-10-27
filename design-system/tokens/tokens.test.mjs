@@ -39,6 +39,8 @@ const paper = {
   '26LI-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-glow-primary-ring) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, color-mix(var(--color-sky-400) 45%, transparent) -64px 10px 34px -16px, color-mix(var(--color-sky-200) 60%, transparent) 72px -6px 30px -14px, color-mix(var(--color-sky-500) 38%, transparent) 18px 20px 36px -18px, color-mix(var(--color-amber-200) 26%, transparent) -10px -12px 26px -16px',
   'D9Z-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 1.5px, var(--color-depth-shadow-cast) 0px 4px 6px -2px',
   'DA6-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-inner) 0px 0px 0px 1px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 0.5px 1px, var(--color-depth-shadow-cast) 0px 1px 2px -1px',
+  'GX0-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 1.5px, var(--color-depth-shadow-cast) 0px 4px 10px -4px, var(--color-depth-shadow-ambient) 0px 10px 30px -10px',
+  'MHK-0': 'var(--color-depth-stroke-inner-top) 0px 1px 0px inset, var(--color-depth-stroke-outer) 0px 0px 0px 0.5px, var(--color-depth-shadow-contact) 0px 1px 2px, var(--color-depth-shadow-cast) 0px 4px 10px -4px',
 };
 // Paper's colour variables and mixes → the token each new layer must reference.
 const colourToken = {
@@ -75,6 +77,8 @@ const pinned = [
   ['depth.boxShadow.composer.listening', '26LI-0', (l) => l],
   ['depth.boxShadow.pill.raised.rest', 'D9Z-0', (l) => l],
   ['depth.boxShadow.pill.raised.pressed', 'DA6-0', (l) => l],
+  ['depth.boxShadow.miniPlayer', 'GX0-0', (l) => l],
+  ['depth.boxShadow.pill.choice.on', 'MHK-0', (l) => l],
   ['depth.boxShadow.stroke.innerTop', '1F7K-0', (l) => l.slice(0, 1)],
   ['depth.boxShadow.stroke.inner', '1F7K-0', (l) => l.slice(1, 2)],
   ['depth.boxShadow.stroke.outer', '1F7K-0', (l) => l.slice(2, 3)],

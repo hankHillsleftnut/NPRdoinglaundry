@@ -2,11 +2,13 @@
 //  SampleSettings.swift
 //  V2.settings: the settings on invented data (Paper ST-1 … ST-4's words), so every page opens from the
 //  launcher and every control does what Paper draws. Nothing is sent or saved. A sync or a connect
-//  turns for a moment on an injected clock, then settles.
+//  turns for a moment on an injected clock, then settles. Debug builds only (the founder's sandbox
+//  rule): the launcher and the tests use it; release code knows only `Flows.SettingsData`.
 //
 import Foundation
 import Observation
 
+#if DEBUG
 @MainActor @Observable
 final class SampleSettings: Flows.SettingsData {
     typealias Settings = Flows.Settings
@@ -121,3 +123,4 @@ final class SampleSettings: Flows.SettingsData {
         Settings.Source(id: "health", name: "health", purpose: "how you slept, how you moved", symbol: "sun.horizon", status: .syncing),
     ]
 }
+#endif

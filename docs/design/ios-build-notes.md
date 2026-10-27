@@ -215,3 +215,11 @@ Your Paper comments are also instructions for how the iOS app should be built. E
 - **Tests:**
   - `design-system/tokens/tokens.test.mjs` freezes every pre-existing token and the existing generated Swift, and pins each new stack to Paper's CSS.
   - `RVoiceComposerPaperTests` pins the Swift stacks and checks, rendered, that nothing is drawn under the shape and that the top light is the crescent.
+## Ink titles · line height (TYPE.leading, founder 26 Oct: "fix it once, everywhere")
+- **Cause:** Exposure's line box is 1.2 × size; Paper's ink titles are 1.1 × size (--leading-tight). SwiftUI can't set a line below the font's own height with `.lineSpacing`, so each line after the first drifted 3pt lower at 30pt (12pt by line 4 on ON-10's question; review-201 Q7).
+- **Fix:** `RTextModifier` wraps every ink style tighter than the font in `RPaperPitchLayout` + the `RPaperPitch` text renderer: lines are drawn exactly leading × size apart, then half the font's extra height is trimmed above and below (CSS line box; founder 26 Oct "fit the lines to Paper"), so the box is n × Paper's line height and line 1 sits where Paper draws it (1.5pt higher than before at 30). No token values changed; non-ink styles untouched.
+- **Effect on open comparisons:** the questions (#190), privacy (#196), connect (#199) and getting ready (#201) bundles all improve: every title line lands within a fraction of a point of Paper, and everything below a title moves up by 3pt per line (at 30).
+- Only a bare `Text(…).rText(.ink…)` draws at Paper's pitch (a `Text` overload of `rText`); `rText` on any other view keeps `.lineSpacing`, so style each `Text` itself.
+- The text's own frame hangs (n − 1) × (font line − pitch) below the reported height (9pt on a four-line title at 30): the ink is inside, but the VoiceOver focus ring and a tap area on the text itself follow the taller frame. Add `.contentShape(Rectangle())` outside if a title becomes tappable.
+- Don't combine an ink title with `.minimumScaleFactor` that can actually shrink it: the line maths assumes the full-size font (the ticket title has one, but `fixedSize(vertical:)` keeps it at full size).
+- Don't use a `TextRenderer` that reports a smaller size to shorten text: SwiftUI then lays the text out in that height and drops the last lines. Shorten the frame with a `Layout` around the text instead.

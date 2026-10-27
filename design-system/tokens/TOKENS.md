@@ -1,8 +1,6 @@
 # Retrospect tokens
 
-Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
-
-**614 tokens** · 538 semantic · 276 marked *to set*
+Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the counts (total, semantic, marked *to set*) run the validator; it prints them.
 
 ## palette
 
@@ -199,6 +197,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.orb.glow` | A purpose page's orb, the wide light around the wash (sky.400 at 32%; 0 0 70 −10, Paper ON-5 1F82-0). | rgba(67,183,255,0.32) | rgba(35,154,222,0.32) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow pool night value, FOUNDER to confirm |
 | `color.orb.ringEdge` | A purpose page's orb, the 0.5 inner edge of its ring (sky.300 at 60%, Paper ON-5 1F83-0). | rgba(127,205,255,0.60) | rgba(80,164,236,0.30) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: glow.primary.ring's night value, FOUNDER to confirm |
 | `color.orb.ringShadow` | A purpose page's orb, the light its ring casts below it (sky.500 at 40%; 0 14 34 −10, Paper ON-5 1F83-0). | rgba(47,168,240,0.40) | rgba(2,141,209,0.38) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow under night value, FOUNDER to confirm |
+| `color.firstEpisode.base` | The first episode's artwork well, its base (Paper ON-10 26MR-0 background). | {palette.sky.500} | {palette.sky.500} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
+| `color.firstEpisode.light` | The first episode's artwork well, the warm light at its top trailing corner (radial at 85% 10% to 55%, Paper 26MR-0). | {palette.amber.300} | {palette.amber.300} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
+| `color.firstEpisode.shade` | The first episode's artwork well, the deep sky pooling at its bottom leading corner (radial at 0% 100% to 80%, Paper 26MR-0). | {palette.sky.800} | {palette.sky.800} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
 | `color.player.progress` | How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.) | {palette.sky.700} | {palette.sky.300} | to set: app need |
 | `color.player.buffered` | How much has loaded ahead. | {color.surface.trackFill} | {color.surface.trackFill} | to set: app need |
 | `color.player.chapterMark` | A chapter tick on the progress bar. | {palette.paper.0} | {palette.night.900} | to set: app need |
@@ -406,6 +407,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.icon.large` | Transport and primary icons. | 24pt |  | paywall |
 | `size.icon.inWell` | A glyph inside a 32 icon well (evidence and source rows). | 18pt |  | Paper 1FYW-0 (evidence row glyph 18) |
 | `size.icon.chevron` | The › at the end of a row. | 14pt |  | Paper 1FYW-0 (chevron 14) |
+| `size.icon.check` | The check before a chosen quick answer (c:pill/choice/on). | 14pt |  | Paper MHM-0 / MHI-0 (check 14) on ON-4a quick answers MGZ-0 |
 | `size.artwork.row` | Artwork in a list row. | 40pt |  | to set |
 | `size.artwork.card` | Artwork in a card or on the player header. | 64pt |  | to set |
 | `size.artwork.player` | A show or episode page. | 120pt |  | to set |
@@ -467,6 +469,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.composer.well` | The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24). | 40pt |  | Paper c:composer/compact (everything · latest, EX-1 share sheet; dark file), 21 Oct |
 | `size.goal.ring` | The progress ring on a goal. | 44pt |  | to set: app need |
 | `size.goal.ringStroke` | The progress ring's thickness. | 4pt |  | to set: app need |
+| `size.goal.track` | The said and did bars' track on a goal card. | 4pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
+| `size.goal.label` | The said / did words' slot before the bar. | 28pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
+| `size.goal.count` | The count's slot after the bar. | 64pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
 | `size.sourceIcon` | A source's app icon in a row. | 32pt |  | to set: app need |
 | `size.stepDot` | A step dot in onboarding. | 6pt |  | to set: app need |
 | `size.stepDotActive` | The current step (a short pill). | 18pt |  | to set: app need |
@@ -689,6 +694,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `depth.boxShadow.composer.listening` | The voice composer listening (and thinking, which Paper does not draw): top light, the primary ring hairline outside, contact, and four offset sky/amber glows. | [{"offsetX":"0pt","offsetY":"1pt","blur":"0pt","spread":"0pt","color":"{depth.stroke.innerTop}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"0.5pt","color":"{glow.primary.ring}"},{"offsetX":"0pt","offsetY":"1pt","blur":"2pt","spread":"0pt","color":"{depth.shadow.contact}"},{"offsetX":"-64pt","offsetY":"10pt","blur":"34pt","spread":"-16pt","color":"{color.voice.glowPool}"},{"offsetX":"72pt","offsetY":"-6pt","blur":"30pt","spread":"-14pt","color":"{color.voice.glowLift}"},{"offsetX":"18pt","offsetY":"20pt","blur":"36pt","spread":"-18pt","color":"{color.voice.glowUnder}"},{"offsetX":"-10pt","offsetY":"-12pt","blur":"26pt","spread":"-16pt","color":"{color.voice.glowTop}"}] |  | Paper c:voice-composer/listening 1F6E-0 on ON-3..9, 26LI-0 on ON-10, components GEG-0 |
 | `depth.boxShadow.pill.raised.rest` | The cream raised pill at rest (+ connect, add a source). | [{"offsetX":"0pt","offsetY":"1pt","blur":"0pt","spread":"0pt","color":"{depth.stroke.innerTop}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"1pt","color":"{depth.stroke.inner}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"0.5pt","color":"{depth.stroke.outer}"},{"offsetX":"0pt","offsetY":"1pt","blur":"1.5pt","spread":"0pt","color":"{depth.shadow.contact}"},{"offsetX":"0pt","offsetY":"4pt","blur":"6pt","spread":"-2pt","color":"{depth.shadow.cast}"}] |  | Paper c:pill/raised/rest D9Z-0 (components), 219H-0 on ON-6 2190-0 |
 | `depth.boxShadow.pill.raised.pressed` | The cream raised pill pressed: the shadow collapses toward the page. | [{"offsetX":"0pt","offsetY":"1pt","blur":"0pt","spread":"0pt","color":"{depth.stroke.innerTop}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"1pt","color":"{depth.stroke.inner}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"0.5pt","color":"{depth.stroke.outer}"},{"offsetX":"0pt","offsetY":"0.5pt","blur":"1pt","spread":"0pt","color":"{depth.shadow.contact}"},{"offsetX":"0pt","offsetY":"1pt","blur":"2pt","spread":"-1pt","color":"{depth.shadow.cast}"}] |  | Paper c:pill/raised/pressed DA6-0 (components) |
+| `depth.boxShadow.pill.choice.on` | A quick answer chosen on an onboarding question (c:pill/choice/on): top light, the outer hairline, contact and a small cast pulled in by its spread; no inner ring. | [{"offsetX":"0pt","offsetY":"1pt","blur":"0pt","spread":"0pt","color":"{depth.stroke.innerTop}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"0.5pt","color":"{depth.stroke.outer}"},{"offsetX":"0pt","offsetY":"1pt","blur":"2pt","spread":"0pt","color":"{depth.shadow.contact}"},{"offsetX":"0pt","offsetY":"4pt","blur":"10pt","spread":"-4pt","color":"{depth.shadow.cast}"}] |  | Paper c:pill/choice/on MHK-0 / MHG-0 on ON-4a quick answers MGZ-0 (05 col · ON-3–9) |
+| `depth.boxShadow.miniPlayer` | The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring). | [{"offsetX":"0pt","offsetY":"1pt","blur":"0pt","spread":"0pt","color":"{depth.stroke.innerTop}","inset":true},{"offsetX":"0pt","offsetY":"0pt","blur":"0pt","spread":"0.5pt","color":"{depth.stroke.outer}"},{"offsetX":"0pt","offsetY":"1pt","blur":"1.5pt","spread":"0pt","color":"{depth.shadow.contact}"},{"offsetX":"0pt","offsetY":"4pt","blur":"10pt","spread":"-4pt","color":"{depth.shadow.cast}"},{"offsetX":"0pt","offsetY":"10pt","blur":"30pt","spread":"-10pt","color":"{depth.shadow.ambient}"}] |  | Paper c:mini-player/playing GX0-0, /failed GXB-0 (02 · components part 45) |
 | `depth.z.sunken` | Things you put something into: text fields, the composer, search, tracks, the transport tray, the segmented track. | −1 · inset · background.sunken + inner shade (inset 0 1 2 warm 8%, inset 0 0 0 0.5 warm 6%) |  | to set: surface ladder (founder, 20 Oct) |
 | `depth.z.page` | Content itself: text, transcripts, rows. Never raised; reading text never floats. | 0 · flat · background.canvas, no stroke |  | to set: surface ladder (founder, 20 Oct) |
 | `depth.z.wash` | Quiet, low-commitment things: tags, status, bubbles (icon actions), pills like "chapters", selected-row highlights. They tint the page instead of sitting on it. | 0.5 · flat translucent · surface.wash, no shadow |  | to set: surface ladder (founder, 20 Oct) |
