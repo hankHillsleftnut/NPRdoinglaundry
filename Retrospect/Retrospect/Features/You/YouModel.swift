@@ -22,6 +22,10 @@ final class YouModel {
     var query = ""
     /// "only what's certain": hides the guess line and the sources that only back it.
     var onlyCertain = false
+    /// The node in the sheet (YO-4); kept while the sheet closes so its content doesn't vanish mid-motion.
+    private(set) var node: Flows.Node?
+    /// The sheet is up.
+    var sheetOpen = false
     /// Counts submissions (and clears): only the answer to the latest one may land, even when the same
     /// words were asked twice.
     private var submission = 0
@@ -33,6 +37,25 @@ final class YouModel {
 
     func load() async {
         atRest = await data.atRest()
+    }
+
+    /// A named orb was tapped: its sheet.
+    func openNode(named name: String) async {
+        await show(data.node(named: name))
+    }
+
+    private func show(_ node: Flows.Node?) {
+        guard let node else { return }
+        self.node = node
+        sheetOpen = true
+    }
+
+    /// "still true": kept, and the sheet closes.
+    func answer(_ answer: Flows.NodeAnswer) async {
+        // once: the sheet stays tappable while it closes, so a second tap must not send it again
+        guard let node, sheetOpen else { return }
+        sheetOpen = false
+        await data.answer(answer, node: node.id)
     }
 
     /// Asks the field's words; an empty field asks nothing.

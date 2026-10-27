@@ -33,4 +33,10 @@ final class SteppedYou: YouData {
     func source(id _: String) async -> Flows.SourceEntry? {
         nil
     }
+
+    func node(named _: String) async -> Flows.Node? {
+        nil
+    }
+
+    func answer(_: Flows.NodeAnswer, node _: String) async {}
 }
