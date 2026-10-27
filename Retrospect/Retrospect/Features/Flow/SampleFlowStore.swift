@@ -14,6 +14,8 @@ struct SampleFlowSaved: Codable, Equatable, Sendable {
     var answers: [String: String] = [:]
     /// The step was reached by a page's back (FLOW.edges); nil otherwise, so older saves still decode.
     var cameBack: Bool?
+    /// The walk reached the end of what's built at this step (the start-over pill); nil otherwise.
+    var endedAt: FlowStep?
 }
 
 @MainActor
