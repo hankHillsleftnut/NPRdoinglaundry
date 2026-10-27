@@ -13,21 +13,40 @@ struct RTopBarBackTests {
         #expect(RTopBar.backGlyphScale < RSymbol.defaultGlyphScale)
     }
 
-    @Test("the chevron's ink is Paper's 11.3pt (±0.5) at the top bar's 20 frame")
-    func inkHeight() throws {
-        let points = RIconButton.Role.topBar.glyph.points * RTopBar.backGlyphScale
+    /// The chevron's inked height in points: the glyph drawn at `scale` of the 20 frame, rows with any ink counted.
+    private func inkHeight(scale: CGFloat) throws -> CGFloat {
+        let points = RIconButton.Role.topBar.glyph.points * scale
         let image = try #require(UIImage(
             systemName: "chevron.left",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: points, weight: .regular)
+        )?.withTintColor(.black, renderingMode: .alwaysOriginal))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 4
+        let size = image.size
+        let cg = try #require(UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(at: .zero)
+        }.cgImage)
+        let width = cg.width
+        let height = cg.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try #require(CGContext(
+            data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ))
-        let ink = image.size.height - image.alignmentRectInsets.top - image.alignmentRectInsets.bottom
-        #expect(abs(ink - 11.3) <= 0.5, "ink \(ink)")
-        // the default scale would draw it larger than Paper (the bug)
-        let big = try #require(UIImage(
-            systemName: "chevron.left",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: RIconButton.Role.topBar.glyph.points * RSymbol.defaultGlyphScale, weight: .regular)
-        ))
-        #expect(big.size.height - big.alignmentRectInsets.top - big.alignmentRectInsets.bottom > ink + 1)
+        context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let inked = (0 ..< height).filter { row in
+            (0 ..< width).contains { pixels[(row * width + $0) * 4 + 3] > 127 }
+        }
+        let rows = try #require(inked.last.map { $0 - inked[0] + 1 })
+        return CGFloat(rows) / format.scale
+    }
+
+    @Test("the chevron's ink is Paper's 11.3pt (±0.6) at the top bar's 20 frame; the old default was larger")
+    func chevronInk() throws {
+        let ink = try inkHeight(scale: RTopBar.backGlyphScale)
+        #expect(abs(ink - 11.3) <= 0.6, "ink \(ink)")
+        let old = try inkHeight(scale: RSymbol.defaultGlyphScale)
+        #expect(old > ink + 1, "old \(old) vs \(ink)")
     }
 
     @Test("the circle stays the top bar's 36 (only the glyph changed)")
