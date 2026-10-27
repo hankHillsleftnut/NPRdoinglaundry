@@ -46,9 +46,17 @@ final class YouNavigator {
         case .knowledge:
             return { [weak self] in self?.push(.whatIKnow) }
         case .goal:
-            guard elsewhere(Self.goalScreenID) != nil else { return nil }
-            return { [weak self] in self?.push(.elsewhere(Self.goalScreenID)) }
+            return opener(elsewhere: Self.goalScreenID)
         }
+    }
+
+    /// The settings screen's launcher id (ST-1, settings group), which your picture opens.
+    static let settingsScreenID = "ST-1"
+
+    /// Opens another group's screen when this build has it; nil otherwise (so the control isn't a button).
+    func opener(elsewhere id: String) -> (() -> Void)? {
+        guard elsewhere(id) != nil else { return nil }
+        return { [weak self] in self?.push(.elsewhere(id)) }
     }
 }
 

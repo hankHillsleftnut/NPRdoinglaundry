@@ -1,12 +1,54 @@
 //
 //  SampleYou.swift
-//  V2.you: the You tab's sample, word for word as Paper draws it (YO-5 1SZX-0, YO-3 1GAS-0). Dark: only the launcher
+//  V2.you: the You tab's sample, word for word as Paper draws it (YO-1 1G5Y-0, YO-2 1G8E-0 and K24-0, YO-3 1GAS-0, YO-5 1SZX-0). Dark: only the launcher
 //  reads it. The live answers come from the brain later (the attach phase); nothing here persists.
 //
 import Foundation
 
 @MainActor
 final class SampleYou: YouData {
+    func atRest() async -> Flows.YouAtRest {
+        Flows.YouAtRest(questionAbout: "sam")
+    }
+
+    /// "when do i sleep best?" (any case, with or without the ?) finds Paper's answer; anything else
+    /// finds nothing, as K24-0 draws it.
+    func ask(_ question: String) async -> Flows.Answer {
+        Self.asksSleep(question) ? Self.sleepAnswer : Self.nothingFound
+    }
+
+    static let sleepQuestion = "when do i sleep best?"
+    /// A question nothing answers, for the launcher's `nothing` state (sample words, not drawn).
+    static let unansweredQuestion = "how is my sister doing?"
+
+    static func asksSleep(_ question: String) -> Bool {
+        let plain = question.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.init(charactersIn: "?")))
+        return plain == "when do i sleep best"
+    }
+
+    /// YO-2 as drawn (1G9Y-0, 1G97-0): two cited findings, one guess, three sources; only the journal
+    /// source has a page (YO-3).
+    static let sleepAnswer = Flows.Answer(
+        kind: .found,
+        headline: [.init("after days you run", source: 1), .init(", and when work stops before 9", source: 2), .init(".")],
+        secondLine: [.init("a guess: weekends help less than you think", source: 3), .init(".")],
+        secondLineIsGuess: true,
+        sources: [
+            .init(id: 1, meta: "apple health · 14 nights", words: "you slept 40 min longer after a run", backsGuessOnly: false, sourceID: nil),
+            .init(id: 2, meta: "journal · 3 entries", words: "\"stopped at 8, slept like a rock\"", backsGuessOnly: false, sourceID: sleepEntry.id),
+            .init(id: 3, meta: "calendar · 4 weekends", words: "no early events, no better sleep", backsGuessOnly: true, sourceID: nil),
+        ]
+    )
+
+    /// c:answer/abstained (K24-0): it says so and doesn't guess, then the closest thing.
+    static let nothingFound = Flows.Answer(
+        kind: .abstained,
+        headline: [.init("nothing you've said answers this yet.")],
+        secondLine: [.init("the closest: you mentioned your sister twice in october, both about the move.")],
+        secondLineIsGuess: false,
+        sources: []
+    )
+
     private var sources: [String: Flows.SourceEntry] = [SampleYou.sleepEntry.id: SampleYou.sleepEntry]
 
     func source(id: String) async -> Flows.SourceEntry? {

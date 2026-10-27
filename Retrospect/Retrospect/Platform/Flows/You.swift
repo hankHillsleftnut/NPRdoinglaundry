@@ -55,6 +55,10 @@ extension Flows {
 /// The You tab's seam: the pages ask only this.
 @MainActor
 protocol YouData: AnyObject {
+    /// YO-1 at rest: the question waiting, if any.
+    func atRest() async -> Flows.YouAtRest
+    /// YO-2: what asking about yourself finds (or that nothing answers it).
+    func ask(_ question: String) async -> Flows.Answer
     /// YO-5's areas and answers.
     func whatIKnow() async -> Flows.WhatIKnow
     /// YO-3: one source by id; nil when it doesn't exist.
