@@ -6,7 +6,7 @@
 //
 //  V2.you.a: YO-5 `rest`. V2.you.b: YO-3 `rest`, `editing`. Until YO-1 and YO-2 are built (V2.you.c, d)
 //  each page opens at its stack's root, so back has nowhere to go in the launcher (as the account page's
-//  launcher). V2.you.c: YO-1 `rest` and YO-2 `found`, `certain` (only what's certain on), `nothing`: the tab
+//  launcher). V2.you.c: YO-1 `rest` and YO-2 `found`, `nothing` (c:answer/abstained K24-0): the tab
 //  page under a static tab bar (the shell joins in a wiring PR, integrator 26 Oct). Another group's screen opens only when the registry has it (integrator
 //  rule, YO-D14).
 //
@@ -39,7 +39,7 @@ enum YouScreens: ScreenGroup {
 
 /// YO-2's launcher states.
 enum YouSearchState: String, CaseIterable {
-    case found, certain, nothing
+    case found, nothing
 }
 
 /// The You tab on the sample: the page under a static tab bar (you selected; the other tabs are drawn
@@ -73,7 +73,6 @@ private struct YouTabLaunch: View {
         guard let asking else { return model }
         model.query = asking == .nothing ? SampleYou.unansweredQuestion : SampleYou.sleepQuestion
         await model.ask()
-        model.onlyCertain = asking == .certain
         return model
     }
 }

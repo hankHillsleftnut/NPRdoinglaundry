@@ -89,6 +89,6 @@ struct YouModelTests {
     @Test("YO-1 and YO-2 are registered with their states")
     func registered() {
         #expect(ScreenRegistry.screen("YO-1")?.states == ["rest"])
-        #expect(ScreenRegistry.screen("YO-2")?.states == ["found", "certain", "nothing"])
+        #expect(ScreenRegistry.screen("YO-2")?.states == ["found", "nothing"])
     }
 }

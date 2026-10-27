@@ -14,8 +14,6 @@ struct YouPage: View {
     let navigator: YouNavigator
     /// Opens a named node's sheet (YO-4); nil until the sheet is in this build.
     var openNode: ((String) -> Void)?
-    /// Opens the waiting question (YO-4's guess); nil until the sheet is in this build.
-    var openQuestion: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -74,7 +72,8 @@ struct YouPage: View {
                     action: { navigator.push(.whatIKnow) }
                 )
                 if let about = model.atRest.questionAbout {
-                    YouNavRow(title: "one question waiting", subline: "about \(about)", action: openQuestion)
+                    // where it lands (YO-4's guess) is not drawn: not a button (founder 27 Oct, YO-D12)
+                    YouNavRow(title: "one question waiting", subline: "about \(about)")
                 }
             }
         }
