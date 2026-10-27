@@ -4,30 +4,25 @@
 //  Paper names them c:settings-row/nav, but draws them in a panel, not on the page like RSettingsRow
 //  (part 22): min 56, padding 12 / 16, 12 between parts, the title SF 14 medium over a Geist 12 subline
 //  2 apart, and a 14 › in icon.muted (DISCREPANCIES YO-D22). They sit in an `REvidenceGroup` panel.
-//  With an action the row is a button and shows ›; without one (what it opens isn't drawn, YO-D10)
-//  it is plain text with no ›. Pressed: surface.subtle, as every list row.
+//  Paper draws the › on every one; with no action yet the row is drawn the same but inert (consistency
+//  rule 27 Oct). Pressed: surface.subtle, as every list row.
 //
 import SwiftUI
 
 struct YouNavRow: View {
     let title: String
     let subline: String
-    /// nil: the row opens nothing yet, so it isn't a button and shows no ›.
+    /// nil: what the row opens isn't there yet, so it is drawn as Paper but inert.
     var action: (() -> Void)?
 
     var body: some View {
-        if let action {
-            Button(action: action) { label(chevron: true) }
-                .buttonStyle(RListRowStyle())
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isButton)
-        } else {
-            label(chevron: false)
-                .accessibilityElement(children: .combine)
-        }
+        Button { action?() } label: { label }
+            .buttonStyle(RListRowStyle())
+            .accessibilityElement(children: .combine)
+            .youInert(action == nil)
     }
 
-    private func label(chevron: Bool) -> some View {
+    private var label: some View {
         HStack(spacing: RDimension.space3) {
             VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
                 Text(title)
@@ -39,15 +34,13 @@ struct YouNavRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .multilineTextAlignment(.leading)
-            if chevron {
-                // Paper draws › at size.icon.chevron 14 in RSymbol's 16 frame (as REvidenceRow)
-                RSymbol(
-                    name: "chevron.right",
-                    size: .small,
-                    tint: RColor.iconMuted,
-                    glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconChevron / RDimension.sizeIconSmall
-                )
-            }
+            // Paper draws › at size.icon.chevron 14 in RSymbol's 16 frame (as REvidenceRow)
+            RSymbol(
+                name: "chevron.right",
+                size: .small,
+                tint: RColor.iconMuted,
+                glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconChevron / RDimension.sizeIconSmall
+            )
         }
         .padding(.vertical, RDimension.space3)
         .padding(.horizontal, RDimension.space4)

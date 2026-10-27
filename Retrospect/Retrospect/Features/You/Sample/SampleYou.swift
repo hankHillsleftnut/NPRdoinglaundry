@@ -49,14 +49,8 @@ final class SampleYou: YouData {
         sources: []
     )
 
-    private var sources: [String: Flows.SourceEntry] = [SampleYou.sleepEntry.id: SampleYou.sleepEntry]
-
     func source(id: String) async -> Flows.SourceEntry? {
-        sources[id]
-    }
-
-    func saveWords(_ words: String, source id: String) async {
-        sources[id]?.words = words
+        id == Self.sleepEntry.id ? Self.sleepEntry : nil
     }
 
     /// YO-3 as drawn (1GAS-0): the journal entry behind source 2 of "when do i sleep best?".

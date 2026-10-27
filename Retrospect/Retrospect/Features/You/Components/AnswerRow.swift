@@ -6,7 +6,8 @@
 //  text.secondary, unlit surface.track, 2 apart) and "· from n things". Padding 12 / 16, 4 between lines.
 //  Rows sit in one grouped panel (REvidenceGroup: canvas, radius.panel, the 0.5 edge, 1pt lines).
 //  Paper draws a ›, but what a row opens is not drawn (SCREEN-MAP row 91, DISCREPANCIES YO-D10): the row
-//  is not a button and shows no › until its page exists. VoiceOver reads it as one line.
+//  is drawn as Paper, ›  included, but inert, "not available yet" to VoiceOver (DECISIONS 27 Oct).
+//  VoiceOver reads it as one line.
 //
 import SwiftUI
 
@@ -15,6 +16,18 @@ struct AnswerRow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        HStack(spacing: RDimension.space3) {
+            words
+            YouChevron()
+        }
+        .padding(.vertical, RDimension.space3)
+        .padding(.horizontal, RDimension.space4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.spoken(answer))
+        .youInert()
+    }
+
+    private var words: some View {
         VStack(alignment: .leading, spacing: RDimension.space1) {
             Text(answer.question)
                 .rText(.metaLine)
@@ -36,10 +49,6 @@ struct AnswerRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .multilineTextAlignment(.leading)
-        .padding(.vertical, RDimension.space3)
-        .padding(.horizontal, RDimension.space4)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.spoken(answer))
     }
 
     private var sureLayout: AnyLayout {
@@ -56,6 +65,19 @@ struct AnswerRow: View {
     /// "1 thing" / "9 things".
     static func things(_ count: Int) -> String {
         count == 1 ? "1 thing" : "\(count) things"
+    }
+}
+
+/// The panel rows' › (Paper: size.icon.chevron 14 in RSymbol's 16 frame, icon.muted).
+struct YouChevron: View {
+    var body: some View {
+        RSymbol(
+            name: "chevron.right",
+            size: .small,
+            tint: RColor.iconMuted,
+            glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconChevron / RDimension.sizeIconSmall
+        )
+        .accessibilityHidden(true)
     }
 }
 

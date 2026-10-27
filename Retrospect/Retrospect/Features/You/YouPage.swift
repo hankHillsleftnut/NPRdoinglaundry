@@ -4,8 +4,9 @@
 //  the title bar ("you" + your picture, 1G7X-0), then 20 down on the 24 margins, the search field, and
 //  either the map (1G6Z-0) and the two rows (1G6L-0), 24 apart, or, once you ask, what was found, its
 //  sources and "only what's certain" (1G9Y-0, 1G97-0, 1G91-0), 32 apart. The change is in place: the map
-//  gives way with the blur replace (Reduce Motion: a cross-fade). "list" (1G81-0) is hidden: its view is
-//  not drawn (DISCREPANCIES YO-D2). The page ends at the tab bar with the tab edge's progressive blur.
+//  gives way with the blur replace (Reduce Motion: a cross-fade). "list" (1G81-0) and your picture are
+//  drawn as Paper but inert: the list view isn't drawn and settings is another group's screen (YO-D2, YO-D14;
+//  DECISIONS 27 Oct consistency rule). The page ends at the tab bar with the tab edge's progressive blur.
 //
 import SwiftUI
 
@@ -103,12 +104,31 @@ struct YouPage: View {
     }
 }
 
+/// "list" (1G81-0): a 36 wash capsule, 12 in, Geist 14 medium. Its view isn't drawn: inert (YO-D2).
+private struct ListPill: View {
+    var body: some View {
+        Text("list")
+            .rText(.textMdMedium)
+            .foregroundStyle(RColor.textPrimary)
+            .padding(.horizontal, RDimension.space3)
+            .frame(height: RDimension.sizeControlIcon)
+            .background(RColor.surfaceWash, in: RShape.pill)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .youInert()
+    }
+}
+
 /// Your picture (1G7Z-0): a 36 sky disc with a warm light at its top right, a rim and a hairline. Paper
-/// says it opens settings (ST-1, another group); until the wiring PR connects the groups it is a picture,
-/// not a button (YO-D14).
+/// says it opens settings (ST-1, another group); until the wiring PR connects the groups it is drawn as
+/// Paper but inert (YO-D14).
 private struct YouPicture: View {
     var body: some View {
-        disc.accessibilityHidden(true)
+        disc
+            .accessibilityElement()
+            .accessibilityLabel("settings")
+            .accessibilityAddTraits(.isButton)
+            .youInert()
     }
 
     private var disc: some View {
