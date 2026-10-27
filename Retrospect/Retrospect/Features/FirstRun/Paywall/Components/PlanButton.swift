@@ -35,7 +35,7 @@ struct PlanButton: View {
                 // the badge's middle sits on the button's top edge (Paper top −11 on a 22 badge)
                 if let saving, lit {
                     SaveBadge(text: saving)
-                        .alignmentGuide(.top) { $0[VerticalAlignment.center] }
+                        .offset(y: -RDimension.sizeSaveBadgeHeight / 2)
                 }
             }
             .contentShape(RShape.pill)

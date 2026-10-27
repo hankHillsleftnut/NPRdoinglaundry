@@ -12,6 +12,11 @@ enum PaywallScenario: String, CaseIterable {
     case paywall
     /// The same frame, held for the 1:1 comparison with Paper (nothing leaves the page).
     case paywallStill = "paywall-still"
+    /// The still, with play pressed on a script: once, then three quick (the nudge film for the founder).
+    case paywallNudge = "paywall-nudge"
+
+    /// The waits before each scripted play in `paywall-nudge`.
+    static let nudgeFilm: [Duration] = [.seconds(2), .seconds(2), .milliseconds(300), .milliseconds(300)]
 }
 
 @MainActor

@@ -86,10 +86,12 @@ struct PrivacyLaunch: View {
 }
 
 /// ON-12 on the sample plans. `paywall`: a plan moves on (a quiet line stands in for first home until
-/// the flow step lands); `paywall-still`: the same frame, held for the 1:1 comparison (taps stay put).
+/// the flow step lands); `paywall-still`: the same frame, held for the 1:1 comparison (taps stay put);
+/// `paywall-nudge`: the still, with the mini-player's play pressed for the nudge film (once, then three quick).
 struct PaywallLaunch: View {
     let scenario: PaywallScenario
     @State private var left: PaywallModel.Choice?
+    @State private var model: PaywallModel?
 
     var body: some View {
         if let left {
@@ -99,12 +101,25 @@ struct PaywallLaunch: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(RColor.backgroundCanvas)
                 .accessibilityIdentifier("paywall.left")
-        } else {
-            PaywallPage(model: PaywallModel(paywall: SamplePaywall()) { choice in
-                if scenario == .paywall {
-                    left = choice
+        } else if let model {
+            PaywallPage(model: model)
+                .task {
+                    guard scenario == .paywallNudge else { return }
+                    for wait in PaywallScenario.nudgeFilm {
+                        try? await Task.sleep(for: wait)
+                        model.nudge()
+                    }
                 }
-            })
+        } else {
+            RColor.backgroundCanvas
+                .ignoresSafeArea()
+                .onAppear {
+                    model = PaywallModel(paywall: SamplePaywall()) { choice in
+                        if scenario == .paywall {
+                            left = choice
+                        }
+                    }
+                }
         }
     }
 }

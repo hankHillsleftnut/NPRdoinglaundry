@@ -157,6 +157,6 @@ struct PaywallModelTests {
 
     @Test("the launcher's paywall states exist")
     func launcherStates() {
-        #expect(PaywallScenario.allCases.map(\.rawValue) == ["paywall", "paywall-still"])
+        #expect(PaywallScenario.allCases.map(\.rawValue) == ["paywall", "paywall-still", "paywall-nudge"])
     }
 }
