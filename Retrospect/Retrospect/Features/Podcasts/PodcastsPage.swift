@@ -6,8 +6,8 @@
 //  12 apart. Where the scroll meets the bottom it dissolves through the tab edge's progressive blur
 //  (screen-rules 17; Paper's blurred copy 1FSW-0 is how Paper fakes it and is not built). At
 //  accessibility sizes the squares go one to a row.
-//  States Paper doesn't draw (founder-review lean, listed in the PR): loading (the skeleton),
-//  empty, error (try again) and offline (the offline line over what's saved).
+//  States Paper doesn't draw (loading, empty, error, offline) are debug-only scenarios
+//  (`Debug/PodcastsUndrawnStates.swift`, founder 27 Oct: state screens live in the sandbox).
 //  Dark: reachable only from the launcher; the tab bar is the shell's, mounted by a wiring PR.
 //
 import SwiftUI
@@ -31,30 +31,33 @@ struct PodcastsPage: View {
         .accessibilityIdentifier("podcasts")
     }
 
+    /// Paper draws the library only. The other states (loading, empty, error, offline) are not drawn:
+    /// the shipped page shows the canvas for them, and the debug launcher shows the founder-review
+    /// lean (`PodcastsUndrawnStates`, debug builds only).
     @ViewBuilder private var content: some View {
         switch model.viewState {
-        case .loading:
-            loading
         case let .content(library):
             scroll { libraryRows(library) }
-        case .empty:
-            REmptyLine(line: PodcastsModel.emptyLine, symbol: RTab.podcasts.symbol)
-                .padding(.horizontal, RDimension.spaceScreenMargin)
-                .frame(maxHeight: .infinity)
-        case let .offline(library):
-            scroll {
-                ROfflineLine(copy: .page)
-                if let library {
-                    libraryRows(library)
-                }
-            }
-        case .failed:
-            RErrorState(message: PodcastsModel.errorLine) {
-                Task { await model.retry() }
-            }
-            .padding(.horizontal, RDimension.spaceScreenMargin)
-            .frame(maxHeight: .infinity)
+        case let .offline(saved?):
+            // what's saved stays on screen; the offline line over it is undrawn (debug only)
+            #if DEBUG
+            undrawn
+            #else
+            scroll { libraryRows(saved) }
+            #endif
+        case .loading, .empty, .offline, .failed:
+            undrawn
         }
+    }
+
+    @ViewBuilder private var undrawn: some View {
+        #if DEBUG
+        PodcastsUndrawnStates(state: model.viewState, retry: { Task { await model.retry() } }, library: { library in
+            scroll { libraryRows(library) }
+        })
+        #else
+        Color.clear
+        #endif
     }
 
     private func scroll(@ViewBuilder _ rows: () -> some View) -> some View {
@@ -95,18 +98,5 @@ struct PodcastsPage: View {
     private var columns: [GridItem] {
         let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
         return Array(repeating: GridItem(.flexible(), spacing: RDimension.space3, alignment: .top), count: count)
-    }
-
-    /// The hero and two squares in skeleton bars, while the first load is out.
-    private var loading: some View {
-        VStack(alignment: .leading, spacing: RDimension.space8) {
-            RSkeleton(bars: [nil, nil, nil, nil, nil, nil, RDimension.layoutReadingWidth * 0.6]) // literal-ok: the hero's shape
-            RSkeleton(bars: [nil, nil, nil, nil])
-        }
-        .padding(.horizontal, RDimension.spaceScreenMargin)
-        .padding(.top, RDimension.space3)
-        .accessibilityElement()
-        .accessibilityLabel("loading your podcasts")
-        .accessibilityIdentifier("podcasts.loading")
     }
 }

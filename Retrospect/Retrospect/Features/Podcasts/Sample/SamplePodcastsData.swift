@@ -5,7 +5,9 @@
 //  (12 min, "mornings, the standup, sleep") and four squares under "earlier". Sample "today" is
 //  tue 21 oct 2025, the day Paper draws, so the brief squares read "today's brief" and
 //  "monday's brief".
+//  Debug builds only: it feeds the launcher and the tests, never the product.
 //
+#if DEBUG
 import Foundation
 import Observation
 
@@ -124,3 +126,4 @@ final class SamplePodcastsData: Flows.PodcastsData {
         return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute)) ?? .distantPast
     }
 }
+#endif

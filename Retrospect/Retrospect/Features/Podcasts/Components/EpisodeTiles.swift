@@ -74,16 +74,34 @@ struct EpisodeHeroTile: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RDimension.space3) {
-            panel
-            words
+        VStack(alignment: .leading, spacing: RDimension.space0) {
+            // the card's words are one element; the play stays its own, so VoiceOver reaches it
+            // and hears that it isn't available yet
+            VStack(alignment: .leading, spacing: RDimension.space3) {
+                panel
+                words
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(spoken)
+            .accessibilityIdentifier("podcasts.hero")
+            if accessibilitySize {
+                // at accessibility sizes the play moves under the words, as the brief card's does
+                EpisodePlayPlaceholder()
+                    .padding(.leading, RDimension.space2)
+                    .padding(.vertical, RDimension.space2)
+            }
         }
         .padding(RDimension.space2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .rRaised(RDimension.radiusCard)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(spoken)
-        .accessibilityIdentifier("podcasts.hero")
+        .overlay(alignment: .topTrailing) {
+            // on the seam: half of it hangs below the panel (Paper 1FUQ-0: bottom −22, right 16)
+            if !accessibilitySize {
+                EpisodePlayPlaceholder()
+                    .padding(.trailing, RDimension.space2 + RDimension.space4)
+                    .offset(y: RDimension.space2 + panelHeight - RDimension.sizeControlDefault / 2)
+            }
+        }
     }
 
     private var spoken: String {
@@ -102,14 +120,6 @@ struct EpisodeHeroTile: View {
                     .padding(.leading, RDimension.space4)
                     .padding(.top, RDimension.space3)
             }
-            .overlay(alignment: .bottomTrailing) {
-                // on the seam: half of it hangs below the panel (Paper 1FUQ-0: bottom −22, right 16)
-                if !accessibilitySize {
-                    EpisodePlayPlaceholder()
-                        .padding(.trailing, RDimension.space4)
-                        .offset(y: RDimension.sizeControlDefault / 2)
-                }
-            }
     }
 
     private var words: some View {
@@ -126,11 +136,6 @@ struct EpisodeHeroTile: View {
                     .rText(.textMd)
                     .foregroundStyle(RColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            if accessibilitySize {
-                // at accessibility sizes the play moves under the words, as the brief card's does
-                EpisodePlayPlaceholder()
-                    .padding(.top, RDimension.space2)
             }
         }
         .padding(RDimension.space2)
