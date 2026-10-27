@@ -14,7 +14,7 @@ struct EntryPage: View {
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
-            RTopBar(variant: .entry(.readOnly(back: back)))
+            RTopBar(variant: .entry(.back(back: back)))
             ScrollView {
                 content
                     .padding(.top, RDimension.space4)

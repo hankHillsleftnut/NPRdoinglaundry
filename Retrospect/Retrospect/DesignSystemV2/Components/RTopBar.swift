@@ -63,8 +63,6 @@ struct RTopBar: View {
 
     enum Entry {
         case rest(back: () -> Void, edit: () -> Void)
-        /// Back only, for an entry that can't be edited yet (V2.journal: the edit door isn't live).
-        case readOnly(back: () -> Void)
         /// "cancel · edit this entry · save"; save is plain ink, dimmed until there's a change.
         case editing(canSave: Bool, cancel: () -> Void, save: () -> Void)
     }
@@ -108,13 +106,6 @@ struct RTopBar: View {
                 Button("edit", action: edit)
                     .buttonStyle(RBarTextStyle(style: .barTitle, color: RColor.textPrimary))
                     .padding(.horizontal, RDimension.space2)
-            }
-            .padding(.horizontal, RDimension.space4)
-            .rBlurReplace()
-        case let .entry(.readOnly(back)):
-            HStack(spacing: RDimension.space2) {
-                backButton(back)
-                Spacer(minLength: RDimension.space0)
             }
             .padding(.horizontal, RDimension.space4)
             .rBlurReplace()
