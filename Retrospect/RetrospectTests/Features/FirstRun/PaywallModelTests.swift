@@ -159,6 +159,15 @@ struct PaywallModelTests {
     func launcherStates() {
         #expect(PaywallScenario.allCases.map(\.rawValue) == ["paywall", "paywall-still", "paywall-nudge"])
     }
+
+    @Test("the held launcher states keep the plans after a stray tap")
+    func heldStatesKeepPlans() async {
+        let (model, exits) = make(SamplePaywall(answer: .cancelled))
+        await model.load()
+        await model.choose(.yearly)
+        #expect(exits.choices.isEmpty)
+        #expect(model.offer == SamplePaywall.offer)
+    }
 }
 
 struct NudgeRulesTests {

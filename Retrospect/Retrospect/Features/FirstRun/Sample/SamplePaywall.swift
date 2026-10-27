@@ -6,7 +6,7 @@
 //
 import Foundation
 
-/// The launcher's ON-12 states (`-Screen first-run -State paywall|paywall-still`).
+/// The launcher's ON-12 states (`-Screen first-run -State paywall|paywall-still|paywall-nudge`).
 enum PaywallScenario: String, CaseIterable {
     /// The paywall as the flow shows it after the tease.
     case paywall
@@ -29,6 +29,13 @@ final class SamplePaywall: Flows.Paywall {
 
     /// How many plans were chosen (tests only read it; nothing is kept between launches).
     private(set) var choices = 0
+    /// What a choice answers: `.subscribed` in the flow; `.cancelled` for the held launcher states, so a
+    /// stray tap during the 1:1 comparison or the nudge film keeps the plans on screen.
+    private let answer: Flows.Purchase
+
+    init(answer: Flows.Purchase = .subscribed) {
+        self.answer = answer
+    }
 
     func offer() async -> Result<Flows.Offer, Flows.Failure> {
         .success(Self.offer)
@@ -36,6 +43,6 @@ final class SamplePaywall: Flows.Paywall {
 
     func choose(_: Flows.Plan) async -> Flows.Purchase {
         choices += 1
-        return .subscribed
+        return answer
     }
 }

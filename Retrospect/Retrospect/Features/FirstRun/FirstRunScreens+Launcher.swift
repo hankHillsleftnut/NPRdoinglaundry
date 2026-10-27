@@ -118,10 +118,10 @@ struct PaywallLaunch: View {
             RColor.backgroundCanvas
                 .ignoresSafeArea()
                 .onAppear {
-                    model = PaywallModel(paywall: SamplePaywall()) { choice in
-                        if scenario == .paywall {
-                            left = choice
-                        }
+                    // the held states answer "cancelled", so a stray tap keeps the plans on screen
+                    let paywall = SamplePaywall(answer: scenario == .paywall ? .subscribed : .cancelled)
+                    model = PaywallModel(paywall: paywall) { choice in
+                        left = choice
                     }
                 }
         }
