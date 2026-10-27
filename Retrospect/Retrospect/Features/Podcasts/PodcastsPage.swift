@@ -83,7 +83,8 @@ struct PodcastsPage: View {
             EpisodeHeroTile(hero: hero)
         }
         if !library.earlier.isEmpty {
-            VStack(alignment: .leading, spacing: RDimension.space3) {
+            // Paper 1FTX-0: 12 from "earlier" to the squares; RSectionLabel brings 4 of it
+            VStack(alignment: .leading, spacing: RDimension.space2) {
                 RSectionLabel(title: "earlier")
                 LazyVGrid(columns: columns, alignment: .leading, spacing: RDimension.space3) {
                     ForEach(library.earlier) { square in
