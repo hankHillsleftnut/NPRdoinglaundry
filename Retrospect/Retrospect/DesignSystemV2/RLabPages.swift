@@ -42,6 +42,7 @@ struct RLabPage: Identifiable {
         RLabPage("scrubber") { RScrubberGallery() },
         RLabPage("sheet") { RSheetHostGallery() },
         RLabPage("skeleton") { RSkeletonGallery() },
+        RLabPage("tear") { TearLab() },
         RLabPage("toast") { RToastGallery() },
         RLabPage("topbar") { RTopBarGallery() },
         RLabPage("transport") { RTransportGallery() },

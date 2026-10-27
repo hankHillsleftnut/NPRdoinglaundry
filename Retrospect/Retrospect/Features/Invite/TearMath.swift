@@ -14,15 +14,16 @@ struct TearMath: Equatable {
     /// 21 holes between the notches (C41.3).
     static let holeCount = 21
     /// Release past this share of the line commits (`motion.tear.threshold`).
-    static let threshold: CGFloat = 0.62
+    static let threshold = CGFloat(RNumber.motionTearThreshold)
     /// A rightward flick faster than this commits (`motion.tear.flickVelocity`), in points a second.
-    static let flickVelocity: CGFloat = 800
-    /// The stub's torn length droops up to this many degrees (`motion.tear.droop`).
-    static let droopDegrees: Double = 11
+    static let flickVelocity = CGFloat(RNumber.motionTearFlickVelocity)
+    /// The stub's torn length droops up to this many degrees (`motion.tear.droopMax`; under TEAR.motion the
+    /// flap's tip reaches it along a curve, TearCurve).
+    static let droopDegrees = RNumber.motionTearDroopMax
     /// The finger may wander this far above or below the line before the drag ends as a release.
-    static let wander: CGFloat = 44
-    /// At most one tick per this long on a fast drag (the board's rule).
-    static let tickGap: Duration = .milliseconds(40)
+    static let wander = RDimension.motionTearWander
+    /// At most one tick per this long on a fast drag (the board's rule, `motion.tear.tickGap`).
+    static let tickGap: Duration = .milliseconds(Int((RNumber.motionTearTickGap * 1000).rounded())) // literal-ok: seconds to milliseconds
 
     /// The tear point's share of the line for a finger at `x` (0 is the left notch). Past either
     /// end the movement scales by `motion.gesture.rubberBand`.

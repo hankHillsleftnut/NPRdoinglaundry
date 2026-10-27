@@ -20,6 +20,17 @@ final class InviteStageController {
     private(set) var holdProgress: CGFloat = 0
     /// A settle tick when the print lands.
     private(set) var landings = 0
+    /// TEAR.motion: the frame the ticket draws while the tear moves (nil when whole, and always under
+    /// Reduce Motion, where the two-state drawing stays).
+    var tearFrame: TearFrame?
+    /// One paper click per hole the front snaps through (`haptic.tearTick`).
+    var clicks = 0
+    /// The last bridge snapped (`haptic.rip`): the simulation's snap frame, or the torn phase without one.
+    var rips = 0
+    /// The torn stub landed on its rest pose (`haptic.tearLand`).
+    var stubLandings = 0
+    /// Whether the tear's clock must keep running.
+    var moving = false
 
     let model: InviteModel
     @ObservationIgnored private var ticker = HoleTicker()
@@ -35,6 +46,14 @@ final class InviteStageController {
     /// A still for proof (the launcher holds mid-print or mid-tear): nothing moves it on.
     @ObservationIgnored private let frozen: Bool
     @ObservationIgnored private let sleep: @Sendable (Duration) async -> Void
+    /// TEAR.motion: the tear's physics, once the ticket is laid out with motion on.
+    @ObservationIgnored var tear: TearSimulation?
+    /// How many of the simulation's events have fired their haptics.
+    @ObservationIgnored var heard = 0
+    /// The launcher's mid-tear still, if any (0 = none).
+    @ObservationIgnored let stillTear: CGFloat
+    /// Seconds on the tear's clock (injectable for tests).
+    @ObservationIgnored let clock: () -> Double
 
     /// The print's own curve: starts gently, ends flat (`motion.curve.print` over `motion.duration.print`, FR0.1).
     static let printCurve = Animation.timingCurve(0.3, 0, 0.2, 1, duration: 1.8) // literal-ok: FR0.1 token, not yet generated
@@ -43,11 +62,15 @@ final class InviteStageController {
 
     init(
         model: InviteModel, printStill: CGFloat? = nil, tear: CGFloat = 0,
-        sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+        sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) },
+        clock: (() -> Double)? = nil
     ) {
         self.model = model
         self.sleep = sleep
         tearProgress = tear
+        stillTear = tear
+        let origin = ContinuousClock.now
+        self.clock = clock ?? { InviteStageController.seconds(.now - origin) }
         frozen = printStill != nil || tear > 0
         if let printStill {
             printProgress = printStill
@@ -84,6 +107,7 @@ final class InviteStageController {
         default:
             break
         }
+        tearPhaseChanged()
     }
 
     private var isCommitted: Bool {
@@ -150,7 +174,9 @@ final class InviteStageController {
         let math = TearMath(width: width)
         let progress = math.progress(x: x)
         tearProgress = progress
-        if ticker.tick(progress: progress, at: .now - start) {
+        if tear != nil {
+            tearTouched(x: x, dy: dy) // the clicks come from the paper's own steps
+        } else if ticker.tick(progress: progress, at: .now - start) {
             ticks += 1
         }
         if progress > 0, TearMath.hiddenHoles(progress: progress) >= 1 {
@@ -165,6 +191,7 @@ final class InviteStageController {
         held = false
         let progress = TearMath(width: width).progress(x: x)
         if model.phase == .ready, TearMath.commits(progress: progress, velocity: velocity) {
+            tearReleased(velocity: velocity)
             commit()
         } else {
             springBack()
@@ -188,6 +215,7 @@ final class InviteStageController {
     }
 
     func springBack() {
+        tearSprangBack()
         withAnimation(RMotion.snappy) {
             tearProgress = 0
             holdProgress = 0 // a failed hold's fill empties too, so the next hold is seen filling
@@ -204,6 +232,7 @@ final class InviteStageController {
     func tearByAction() async {
         guard canTear else { return }
         model.tearTouchedDown()
+        tearRunsByItself()
         withAnimation(RMotion.snappy) { tearProgress = 1 }
         await model.commitTear()
     }

@@ -31,6 +31,9 @@ struct TicketStage: View {
     var printProgress: CGFloat = 1
     /// Reduce Motion: no tilt, no rise.
     var reduceMotion = false
+    /// TEAR.motion: the tear's frame from its simulation. When set (never under Reduce Motion) the stub
+    /// is one sheet that peels, snaps and falls (TearTicket); otherwise the two-state drawing below.
+    var tear: TearFrame?
 
     /// How far below the body the stub lands, and at what angle (board `2II6-0`, T4).
     static func dropGap(compact: Bool) -> CGFloat { compact ? 56 : 72 } // literal-ok: board T4 gap 72, SE 56
@@ -46,6 +49,17 @@ struct TicketStage: View {
         case .joined: geometry.height
         case .fallen: geometry.height + Self.dropGap(compact: geometry.compact)
         }
+    }
+
+    /// The simulation's frame, when it draws the tear.
+    private var physical: TearFrame? {
+        reduceMotion ? nil : tear
+    }
+
+    /// The lip's mask: a fully printed ticket is unclipped, with room below for the peeling, falling stub.
+    private var lipBottom: CGFloat {
+        guard printProgress >= 1 else { return RDimension.space0 }
+        return -RDimension.space16 - (physical == nil ? RDimension.space0 : TearTicket.room)
     }
 
     private var tearX: CGFloat {
@@ -71,7 +85,7 @@ struct TicketStage: View {
                 Rectangle()
                     .padding(.horizontal, -RDimension.space10)
                     .padding(.top, -RDimension.space16)
-                    .padding(.bottom, printProgress >= 1 ? -RDimension.space16 : RDimension.space0) // literal-ok: a fully printed ticket is unclipped
+                    .padding(.bottom, lipBottom)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
@@ -79,7 +93,17 @@ struct TicketStage: View {
             .accessibilityIdentifier(stub == .fallen ? "ticket.torn" : "ticket.whole")
     }
 
-    private var ticket: some View {
+    @ViewBuilder private var ticket: some View {
+        if let physical {
+            TearTicket(geometry: geometry, frame: physical, face: face, tiles: tiles, date: date, label: label)
+                .compositingGroup()
+                .rTicketShadow(enabled: !physical.separated)
+        } else {
+            drawnTicket
+        }
+    }
+
+    private var drawnTicket: some View {
         let joined = stub == .joined
         return ZStack(alignment: .topLeading) {
             stubLayers
