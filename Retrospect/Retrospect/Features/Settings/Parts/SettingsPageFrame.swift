@@ -29,8 +29,11 @@ struct SettingsPageFrame<Content: View, Danger: View>: View {
                         VStack(alignment: .leading, spacing: spacing) {
                             content
                         }
-                        Spacer(minLength: spacing)
-                        danger
+                        // the gap above the danger block only when there is one (else Paper's 40 at the foot)
+                        if Danger.self != EmptyView.self {
+                            Spacer(minLength: spacing)
+                            danger
+                        }
                     }
                     .padding(.top, topPadding)
                     .padding(.bottom, RDimension.space10)
