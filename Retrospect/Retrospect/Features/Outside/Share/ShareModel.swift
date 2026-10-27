@@ -35,7 +35,7 @@ final class ShareModel {
     }
 
     func load() async {
-        state = .ready(await data.item())
+        state = await .ready(data.item())
     }
 
     func save() async {
