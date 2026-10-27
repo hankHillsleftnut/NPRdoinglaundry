@@ -31,7 +31,9 @@ final class YouSourceModel {
     }
 
     var entry: Flows.SourceEntry? {
-        if case let .content(entry) = state { return entry }
+        if case let .content(entry) = state {
+            return entry
+        }
         return nil
     }
 }
