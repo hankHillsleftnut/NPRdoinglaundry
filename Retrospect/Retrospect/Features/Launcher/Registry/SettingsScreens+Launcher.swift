@@ -4,13 +4,30 @@
 //  source, opened with `-Screen ST-<n> -State <state> -Data sample`. Dark: listed here and nowhere
 //  in the release root. ST-5…ST-9 are the second half's, in `SettingsTrustScreens+Launcher.swift`,
 //  so the two settings builders never edit the same file.
+//  Each screen opens inside the settings stack on the sample, so its back and its rows work: ST-2
+//  opens over ST-1, and its back returns there.
 //
 #if DEBUG
 import SwiftUI
 
 enum SettingsScreens: ScreenGroup {
     static let name = "settings"
-    /// Empty until lane 4's first screen PR adds one.
-    static let screens: [LaunchableScreen] = []
+    static let screens: [LaunchableScreen] = [
+        LaunchableScreen(id: "ST-1", states: ["rest"]) { _ in
+            AnyView(SettingsLaunch(path: []))
+        },
+    ]
 }
+
+/// The settings stack on sample data, opened at `path`.
+struct SettingsLaunch: View {
+    let path: [SettingsRoute]
+    @State private var data = SampleSettings()
+
+    var body: some View {
+        SettingsStack(data: data, path: path)
+    }
+}
+
+#Preview("ST-1 settings") { SettingsLaunch(path: []) }
 #endif
