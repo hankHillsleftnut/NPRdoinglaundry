@@ -59,6 +59,17 @@ struct SettingsTrustTests {
         }
     }
 
+    @Test("learning without a sentence yet opens nothing either")
+    func learnedWithoutHeadline() {
+        let data = SampleSettings(sleep: Self.instant)
+        for headline in [nil, ""] as [String?] {
+            data.trust.learned = Flows.Settings.Learned(state: .learning, headline: headline, detail: "a detail", changedAt: .now)
+            #expect(!SettingsDestinations.isBuilt(.learned, data: data))
+        }
+        data.trust.learned = Flows.Settings.Learned(state: .learning, headline: "a sentence.", detail: nil, changedAt: nil)
+        #expect(SettingsDestinations.isBuilt(.learned, data: data))
+    }
+
     @Test("ST-5 starts as Paper draws it and its switch applies at once")
     func privacy() async throws {
         let data = SampleSettings(sleep: Self.instant)
