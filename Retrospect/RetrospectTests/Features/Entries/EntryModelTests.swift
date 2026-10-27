@@ -52,6 +52,27 @@ struct EntryModelTests {
         ))
     }
 
+    @Test("a retry shows the entry waiting at once, so a second tap sends nothing")
+    func retryShowsSendingAtOnce() async {
+        let model = EntryModel(id: SampleEntries.trainID, data: SampleEntriesData(scenario: .offline, sendBeat: .milliseconds(50)))
+        await model.load()
+        async let first: Void = model.retry()
+        await Task.yield()
+        #expect(model.state == .shown(
+            words: "the train is stuck again, writing this underground",
+            meta: "today · 9:40 · waiting to send",
+            standing: .waiting
+        ))
+        await model.retry()
+        await first
+        // offline: it stays waiting on the phone
+        #expect(model.state == .shown(
+            words: "the train is stuck again, writing this underground",
+            meta: "today · 9:40 · waiting to send",
+            standing: .waiting
+        ))
+    }
+
     @Test("an entry that isn't there says so instead of a blank page")
     func missing() async {
         let model = await shown("nope")

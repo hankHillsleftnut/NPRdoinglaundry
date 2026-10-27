@@ -23,7 +23,8 @@ enum JournalV2Screens: ScreenGroup {
         },
         LaunchableScreen(id: "JR-4", states: EntryScenario.allCases.map(\.rawValue)) { arguments in
             let entry = EntryScenario(rawValue: arguments.state) ?? .rest
-            return AnyView(EntriesLaunch(scenario: .rest, opening: entry.entryID))
+            // offline is Paper's offline frame (N9D-0): a retry waits on the phone
+            return AnyView(EntriesLaunch(scenario: entry == .offline ? .offline : .rest, opening: entry.entryID))
         },
     ]
 }
@@ -73,8 +74,12 @@ struct EntriesLaunch: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
-                EntryScreen(id: id, data: data) { path.removeLast() }
-                    .toolbar(.hidden, for: .navigationBar)
+                EntryScreen(id: id, data: data) {
+                    if !path.isEmpty {
+                        path.removeLast()
+                    }
+                }
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
         .onAppear { model.onOpen = { path.append($0.id) } }

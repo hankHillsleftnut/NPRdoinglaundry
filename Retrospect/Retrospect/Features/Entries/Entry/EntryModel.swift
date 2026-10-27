@@ -66,13 +66,23 @@ final class EntryModel {
             entry = found
             state = .shown(words: found.text, meta: meta(found), standing: Self.standing(found))
         case let .failure(failure):
+            // a reload that fails keeps the last entry on screen; only the first load fails the page
+            if let entry {
+                state = .shown(words: entry.text, meta: meta(entry), standing: Self.standing(entry))
+                return
+            }
             state = .failed(failure.message ?? "couldn't open this entry. try again in a moment.")
         }
     }
 
     /// The meta line's tap: retries an entry that didn't send.
     func retry() async {
-        guard let client = entry?.clientEntryId, case .shown(_, _, .notSent) = state else { return }
+        guard let found = entry, let client = found.clientEntryId, case .shown(_, _, .notSent) = state else { return }
+        // show it sending at once, so a second tap can't send it twice
+        var sending = found
+        sending.delivery = .sending
+        entry = sending
+        state = .shown(words: sending.text, meta: meta(sending), standing: Self.standing(sending))
         await data.retry(clientEntryId: client)
         await load()
     }
