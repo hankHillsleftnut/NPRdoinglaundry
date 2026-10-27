@@ -12,6 +12,9 @@
 //  or a 44 icon button keep 16 on the trailing side (the button's 36 sits 20 in, like the drawer
 //  button opposite); 36-tall content (YO-1's "list" pill and picture, 12 apart) sits 24 in.
 //
+//  V2.goals.parts (GL-D9): `.entry(.back(back:))`, the entry bar with back only, for pages whose "edit" has
+//  nothing drawn behind it yet (GL-2's rename mode). The same bar as `.rest` without the word.
+//
 import SwiftUI
 
 extension RTextStyle {
@@ -63,6 +66,8 @@ struct RTopBar: View {
 
     enum Entry {
         case rest(back: () -> Void, edit: () -> Void)
+        /// Back only: "edit" has no drawn destination yet (GL-2), so it isn't there at all.
+        case back(back: () -> Void)
         /// "cancel · edit this entry · save"; save is plain ink, dimmed until there's a change.
         case editing(canSave: Bool, cancel: () -> Void, save: () -> Void)
     }
@@ -106,6 +111,13 @@ struct RTopBar: View {
                 Button("edit", action: edit)
                     .buttonStyle(RBarTextStyle(style: .barTitle, color: RColor.textPrimary))
                     .padding(.horizontal, RDimension.space2)
+            }
+            .padding(.horizontal, RDimension.space4)
+            .rBlurReplace()
+        case let .entry(.back(back)):
+            HStack(spacing: RDimension.space2) {
+                backButton(back)
+                Spacer(minLength: RDimension.space0)
             }
             .padding(.horizontal, RDimension.space4)
             .rBlurReplace()
@@ -323,6 +335,7 @@ struct RTopBarGallery: View {
                             ? .editing(canSave: changed, cancel: { editing = false }, save: { editing = false })
                             : .rest(back: {}, edit: { editing = true })))
                 }
+                section("entry · back only") { RTopBar(variant: .entry(.back {})) }
                 section("entry · editing, changed") {
                     RTopBar(variant: .entry(.editing(canSave: true, cancel: {}, save: {})))
                 }
