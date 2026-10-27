@@ -8,6 +8,11 @@
 //  The surface (background.raised, radius.widget) is the system's container in a target; the preview
 //  page draws it. Taps open the app (journey map rows 96p/96q): the views carry where to as a value
 //  (`WidgetDestination`) for the target's links; nothing in them is a button.
+//  For the target (review on #221, logged with EX-D9): call `.contentMarginsDisabled()` on the
+//  configuration (iOS 17 adds its own ~16 margins on top of this padding), give it
+//  `.containerBackground(RColor.backgroundRaised, for: .widget)` in place of WidgetPreviewSurface, and
+//  once "play" / "talk" become `Link`s, drop the medium's `children: .ignore` so each is reachable.
+//  Both views cap Dynamic Type at xxLarge: a fixed-height widget can't grow past it.
 //
 import SwiftUI
 
@@ -48,6 +53,7 @@ struct BriefWidgetSmall: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(RDimension.layoutWidgetPadding)
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("retrospect, tell me…, talk to retro")
     }
@@ -81,6 +87,7 @@ struct BriefWidgetMedium: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(RDimension.layoutWidgetPadding)
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("retrospect, \(brief.label.replacingOccurrences(of: " · ", with: ", ")), \(brief.line), play or talk")
     }

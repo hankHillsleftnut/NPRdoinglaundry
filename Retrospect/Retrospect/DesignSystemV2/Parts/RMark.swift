@@ -39,13 +39,28 @@ struct RMark: View {
             .overlay(Circle().strokeBorder(RColor.depthStrokeInnerTop, lineWidth: RDimension.sizeBorderDefault))
             .overlay(Circle().stroke(RColor.borderSecondaryRing, lineWidth: RDimension.sizeBorderDefault))
             .overlay {
-                if style != .disc {
+                if hasGlyph {
                     glyph
                 }
             }
             .frame(width: size, height: size)
             .modifier(MarkShadow(style: style))
             .accessibilityHidden(true)
+    }
+
+    /// Which marks carry the glyph (a switch, so a new style has to choose).
+    private var hasGlyph: Bool {
+        switch style {
+        case .disc: false
+        case .header, .widget: true
+        }
+    }
+
+    private var glyphWidth: CGFloat {
+        switch style {
+        case .widget: RDimension.sizeWidgetMarkGlyph
+        case .header, .disc: RDimension.sizePlayerHeaderMarkGlyph
+        }
     }
 
     /// The Retrospect glyph (the same drawing as the loading mark, 112 × 86), tinted `icon.mark`.
@@ -55,7 +70,7 @@ struct RMark: View {
             .resizable()
             .scaledToFit()
             .foregroundStyle(RColor.iconMark)
-            .frame(width: style == .widget ? RDimension.sizeWidgetMarkGlyph : RDimension.sizePlayerHeaderMarkGlyph)
+            .frame(width: glyphWidth)
     }
 }
 
