@@ -76,6 +76,19 @@ struct DemoModelTests {
         #expect(model.session == 1)
     }
 
+    @Test("a first run already at its hand-off step hands over as soon as the demo starts")
+    func handOffAtStart() {
+        let model = demo(flowStart: .privacy, handOff: .privacy)
+        #expect(model.stage == .app)
+    }
+
+    @Test("-FlowStart opens the first run at that step even when the app stage was saved")
+    func flowStartWinsOverSavedApp() {
+        let model = demo(MemoryDemoStore(.app), flowStart: .questions)
+        #expect(model.stage == .firstRun)
+        #expect(model.flow.step == .questions)
+    }
+
     @Test("with no hand-off step built, the first run ends where the core flow ends: no bridge to the app")
     func noHandOffYet() async {
         let model = demo(flowStart: .questions, handOff: nil)
