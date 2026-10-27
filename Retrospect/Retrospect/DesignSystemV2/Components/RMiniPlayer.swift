@@ -78,7 +78,7 @@ struct RMiniPlayer: View {
     let well: () -> Void
     /// What VoiceOver hears after the well's label, where a tap does more than the label says (the
     /// ON-12 paywall, PW-Q9: play nudges the plan instead of playing). Nil: no hint; additive.
-    var wellHint: String? = nil
+    var wellHint: String?
     /// The well's press haptic. Nil where the tap's answer carries its own haptic (the paywall's nudge
     /// fires one selection haptic at its peak), so one tap never gives two; additive.
     var wellHaptic: SensoryFeedback? = RHaptic.press
