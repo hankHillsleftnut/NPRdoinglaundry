@@ -96,12 +96,13 @@ struct SharePage: View {
     }
 }
 
-/// "cancel": SF 17 in text.link, dimming while held, a 44 hit area.
+/// "cancel": SF 17 in ink (Paper: text.link; blue is only for links inside text, founder 27 Oct, EX-D15),
+/// dimming while held, a 44 hit area.
 private struct ShareTextButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .rText(.body)
-            .foregroundStyle(RColor.textLink)
+            .foregroundStyle(RColor.textPrimary)
             .opacity(configuration.isPressed ? RNumber.opacityPressed : 1)
             .animation(
                 RMotion.standard(configuration.isPressed ? RNumber.motionDurationPressIn : RNumber.motionDurationPressOut),
