@@ -36,6 +36,11 @@ struct RBriefCard: View {
         /// the 44 artwork well, the headline ("your first episode"), `line`, and a 2pt accent line
         /// along the bottom at `progress` (0…1). No play, no date. Drawn by `RBriefCard+FirstEpisode`.
         case firstEpisodeMaking(line: String, progress: Double)
+        /// The first episode made, on first home (Paper ON-13 c:brief-card/artwork/making 1FJL-0, which
+        /// draws the ready content): the 40 well with its play, the headline ("your first episode is
+        /// ready") over `line` ("the week you started · 2 min"). The whole row plays. Drawn by
+        /// `RBriefCard+FirstEpisode`.
+        case firstEpisodeReady(line: String)
     }
 
     /// The date, already worded ("tue 21 oct").
@@ -74,14 +79,14 @@ struct RBriefCard: View {
         switch state {
         case .played: "\(date) · played"
         case .rest, .starting: length.map { "\(date) · \($0)" } ?? date
-        case .quiet, .making, .error, .offline, .firstEpisodeMaking: date
+        case .quiet, .making, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: date
         }
     }
 
     /// Whether the card has a play (lit, starting, or the replay well).
     static func hasPlay(_ state: State) -> Bool {
         switch state {
-        case .rest, .starting, .played: true
+        case .rest, .starting, .played, .firstEpisodeReady: true
         case .quiet, .making, .error, .offline, .firstEpisodeMaking: false
         }
     }
@@ -96,6 +101,7 @@ struct RBriefCard: View {
         case let .error(message): "today's brief, \(message)"
         case .offline: "today's brief, it'll be here when you're back online"
         case let .firstEpisodeMaking(line, _): RFirstEpisodeMakingCard.spoken(title: headline, line: line)
+        case let .firstEpisodeReady(line): RFirstEpisodeReadyCard.spoken(title: headline, line: line)
         }
     }
 
@@ -128,6 +134,8 @@ struct RBriefCard: View {
         if case let .firstEpisodeMaking(line, progress) = state {
             // the first episode's row is its own shape (no panel, no play): one home, its own drawing
             RFirstEpisodeMakingCard(title: headline, line: line, progress: progress)
+        } else if case let .firstEpisodeReady(line) = state {
+            RFirstEpisodeReadyCard(title: headline, line: line, play: play)
         } else {
             card
         }
@@ -217,14 +225,14 @@ struct RBriefCard: View {
     private var showsArtwork: Bool {
         switch state {
         case .rest, .starting, .played: true
-        case .quiet, .making, .error, .offline, .firstEpisodeMaking: false
+        case .quiet, .making, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: false
         }
     }
 
     private var panelFill: Color {
         switch state {
         case .making: RColor.surfaceSkeleton
-        case .rest, .starting, .played, .quiet, .error, .offline, .firstEpisodeMaking: RColor.surfaceWash
+        case .rest, .starting, .played, .quiet, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: RColor.surfaceWash
         }
     }
 
@@ -246,8 +254,8 @@ struct RBriefCard: View {
                 headlineText(message, colour: RColor.statusDangerText, style: .briefLabel)
             case .offline:
                 headlineText("it'll be here when you're back online", colour: RColor.textLabel, style: .briefLabel)
-            case .firstEpisodeMaking:
-                // drawn by RFirstEpisodeMakingCard; the card never reaches here in this state
+            case .firstEpisodeMaking, .firstEpisodeReady:
+                // drawn by RBriefCard+FirstEpisode; the card never reaches here in this state
                 EmptyView()
             case .rest, .starting, .played, .quiet:
                 headlineText(headline, colour: state == .played ? RColor.textSecondary : RColor.textPrimary, style: collapsed ? .inkRow : .inkCard)

@@ -3,7 +3,8 @@
 //  First run's screens in the launcher (T02): `-Screen first-run -State questions|questions-resume|
 //  questions-offline` opens ON-3–9 on `SampleFirstRunData` in that scenario; `-State privacy` opens
 //  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on; `-State getting-ready|
-//  getting-ready-still` opens ON-10 on the sample listening and episode. Nothing is mounted in the
+//  getting-ready-still` opens ON-10 on the sample listening and episode; `-State first-home|
+//  first-home-still` opens ON-13 (the journal's first day) on the day-one sample and Paper's recap. Nothing is mounted in the
 //  app yet (FR.root): when a page is left it says so in a quiet line.
 //
 #if DEBUG
@@ -14,8 +15,11 @@ extension ScreenRegistry {
         LaunchableScreen(
             id: "first-run",
             states: FirstRunScenario.allCases.map(\.rawValue) + PrivacyScenario.allCases.map(\.rawValue)
-                + GettingReadyScenario.allCases.map(\.rawValue)
+                + GettingReadyScenario.allCases.map(\.rawValue) + FirstHomeScenario.allCases.map(\.rawValue)
         ) { arguments in
+            if let firstHome = FirstHomeScenario(rawValue: arguments.state) {
+                return AnyView(FirstHomeLaunch(scenario: firstHome))
+            }
             if let privacy = PrivacyScenario(rawValue: arguments.state) {
                 return AnyView(PrivacyLaunch(scenario: privacy))
             }
@@ -105,8 +109,38 @@ struct GettingReadyLaunch: View {
     }
 }
 
+/// The launcher's ON-13 states.
+enum FirstHomeScenario: String, CaseIterable {
+    /// First home as the flow shows it: the card pops once, and plays the tease in the player sheet.
+    case firstHome = "first-home"
+    /// The same frame, still, for the 1:1 comparison with Paper (no pop).
+    case firstHomeStill = "first-home-still"
+}
+
+/// ON-13 on the journal's day-one sample, with Paper's recap words (the flow passes the person's own).
+struct FirstHomeLaunch: View {
+    let scenario: FirstHomeScenario
+    @State private var data = SampleJournalData(scenario: .dayOne)
+
+    var body: some View {
+        FirstHomePage(
+            recap: .paper,
+            celebrate: scenario == .firstHome,
+            today: SampleJournalContent.today
+        ) { onCollapse in
+            PlayerSheetModel(
+                playback: SamplePlayback(scenario: .tease, clock: ContinuousClock()),
+                transcript: SampleTranscript.tease,
+                onCollapse: onCollapse
+            )
+        }
+        .environment(\.journalData, data)
+    }
+}
+
 #Preview("questions · fresh") { QuestionsLaunch(scenario: .questions) }
 #Preview("questions · resume") { QuestionsLaunch(scenario: .questionsResume) }
 #Preview("questions · offline") { QuestionsLaunch(scenario: .questionsOffline) }
 #Preview("privacy") { PrivacyLaunch(scenario: .privacy) }
+#Preview("first home") { FirstHomeLaunch(scenario: .firstHomeStill) }
 #endif

@@ -176,3 +176,113 @@ struct RFirstEpisodeWell: View {
         return (dx * dx + dy * dy).squareRoot()
     }
 }
+
+// MARK: - Ready, on first home (FH.home, Paper ON-13 1FJL-0)
+
+/// RBriefCard's `.firstEpisodeReady`: the first episode, made, at the top of first home (Paper ON-13
+/// c:brief-card/artwork/making 1FJL-0, which draws the ready content). The same raised row as the making
+/// card (radius.card, padded 12 / 16 trailing, 12 between): a 40 well (radius.panel, paper.450 with
+/// amber.200 light top right and paper.700 pooling bottom left) holding a 16 play in text.inverse, then
+/// "your first episode is ready" over "the week you started · 2 min". The whole row is one button that
+/// plays (founder, 26 Oct night, FH-Q3 A: the player sheet). Pressed: 0.98 (cards). It pops once when it
+/// first shows (`celebrate`; motion-system §8 "your first episode is ready": `pop` with `reveal`).
+struct RFirstEpisodeReadyCard: View {
+    let title: String
+    let line: String
+    let play: () -> Void
+    /// Pop once on appear (the first time a person sees it; the host decides).
+    var celebrate = false
+
+    @State private var popped = 0
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    /// What VoiceOver reads: the title, then the line with " · " as a pause and "min" said in full.
+    static func spoken(title: String, line: String) -> String {
+        let said = line
+            .replacingOccurrences(of: " · ", with: ", ")
+            .replacingOccurrences(of: " min", with: " minutes")
+        return "\(title), \(said)"
+    }
+
+    private var shape: RoundedRectangle {
+        RShape.rect(RDimension.radiusCard)
+    }
+
+    var body: some View {
+        Button(action: play) {
+            HStack(alignment: .center, spacing: RDimension.space3) {
+                RFirstEpisodeReadyWell()
+                VStack(alignment: .leading, spacing: RDimension.space1) {
+                    Text(title)
+                        .rText(.briefRowTitle)
+                        .foregroundStyle(RColor.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(line)
+                        .rText(.metaLine)
+                        .foregroundStyle(RColor.textLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.vertical, RDimension.space3)
+            .padding(.leading, RDimension.space3)
+            .padding(.trailing, RDimension.space4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .rRaised(RDimension.radiusCard)
+            .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
+            .contentShape(shape)
+        }
+        .buttonStyle(RPressStyle())
+        .rPop(trigger: popped, haptic: RHaptic.reveal)
+        .onAppear {
+            if celebrate {
+                popped += 1
+            }
+        }
+        .accessibilityLabel(Self.spoken(title: title, line: line))
+        .accessibilityHint("plays it")
+        .accessibilityIdentifier("brief.firstEpisodeReady")
+    }
+}
+
+/// The 40 well with its play (Paper 1FJP-0): two radials over the base, like the making well, no rings.
+private struct RFirstEpisodeReadyWell: View {
+    private static let size = RDimension.sizeFirstEpisodeWell
+
+    var body: some View {
+        let shape = RShape.rect(RDimension.radiusPanel)
+        ZStack {
+            shape.fill(RColor.firstEpisodeReadyBase)
+            // radial-gradient(circle farthest-corner at 85% 10%, amber.200 0%, transparent 55%)
+            shape.fill(RadialGradient(
+                stops: [
+                    .init(color: RColor.firstEpisodeReadyLight, location: 0),
+                    .init(color: RColor.firstEpisodeReadyLight.opacity(0), location: 1),
+                ],
+                center: UnitPoint(x: 0.85, y: 0.1), // literal-ok: Paper gradient centre
+                startRadius: 0,
+                endRadius: Self.size * 0.55 * Self.farthest(0.85, 0.1) // literal-ok: Paper stop 55%
+            ))
+            // radial-gradient(circle farthest-corner at 0% 100%, paper.700 0%, transparent 80%)
+            shape.fill(RadialGradient(
+                stops: [
+                    .init(color: RColor.firstEpisodeReadyShade, location: 0),
+                    .init(color: RColor.firstEpisodeReadyShade.opacity(0), location: 1),
+                ],
+                center: .bottomLeading,
+                startRadius: 0,
+                endRadius: Self.size * 0.8 * Self.farthest(0, 1) // literal-ok: Paper stop 80%
+            ))
+            RSymbol(name: "play.fill", size: .small, tint: RColor.textInverse)
+        }
+        .frame(width: Self.size, height: Self.size)
+        .accessibilityHidden(true)
+    }
+
+    /// CSS `farthest-corner` from a centre at (x, y) in a unit square.
+    private static func farthest(_ x: Double, _ y: Double) -> Double {
+        let dx = max(x, 1 - x)
+        let dy = max(y, 1 - y)
+        return (dx * dx + dy * dy).squareRoot()
+    }
+}

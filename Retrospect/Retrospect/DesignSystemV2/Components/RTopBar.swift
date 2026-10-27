@@ -39,8 +39,9 @@ extension RTextStyle {
 
 struct RTopBar: View {
     enum Variant {
-        /// JR-1: the drawer button, then the inky title; collapsed, a small centred name.
-        case journal(title: String, collapsed: Bool, openDrawer: () -> Void)
+        /// JR-1: the drawer button, then the inky title; collapsed, a small centred name. A nil
+        /// `openDrawer` draws the button inert ("not available yet": ON-13 first home, FH-Q6 A).
+        case journal(title: String, collapsed: Bool, openDrawer: (() -> Void)?)
         /// JR-3: the drawer button and a small centred name.
         case label(title: String, openDrawer: () -> Void)
         /// Settings pages: back and a small centred name.
@@ -168,8 +169,17 @@ struct RTopBar: View {
         RBarSmallTitle(title: title)
     }
 
-    private func drawerButton(_ action: @escaping () -> Void) -> some View {
-        RIconButton(symbol: "sidebar.left", label: "all journals", action: action)
+    @ViewBuilder
+    private func drawerButton(_ action: (() -> Void)?) -> some View {
+        if let action {
+            RIconButton(symbol: "sidebar.left", label: "all journals", action: action)
+        } else {
+            // drawn as Paper draws it, but nothing to open yet: no press, no button trait
+            RIconButton(symbol: "sidebar.left", label: "all journals") {}
+                .allowsHitTesting(false)
+                .accessibilityRemoveTraits(.isButton)
+                .accessibilityValue("not available yet")
+        }
     }
 
     private func backButton(_ action: @escaping () -> Void) -> some View {

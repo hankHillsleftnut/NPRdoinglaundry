@@ -22,7 +22,10 @@ struct JournalPageContainer: View {
     /// The person's local day, `YYYY-MM-DD`.
     let today: String
     /// The drawer button's action (JR-3 is not mounted yet: the app root points it at the account page).
-    var openDrawer: () -> Void = {}
+    /// Nil draws it inert (first home in the sample flow, FH-Q6 A).
+    var openDrawer: (() -> Void)? = {}
+    /// ON-13 first home (FH.home): the welcome, the setup recap and the ready first episode.
+    var firstDay: FirstDay?
     /// The composer's mic. Off by default: nothing records yet, and a mic that keeps nothing
     /// would lose spoken words (decision 4, no dead controls).
     var voice = false
@@ -46,6 +49,7 @@ extension JournalPageContainer {
     private func model(for data: any Flows.JournalData) -> JournalViewModel {
         let model = JournalViewModel(data: data, today: today)
         model.openDrawer = openDrawer
+        model.firstDay = firstDay
         model.voice = voice
         model.playback = playback
         return model
@@ -118,7 +122,21 @@ struct JournalPage: View {
 
     @ViewBuilder
     private var briefCard: some View {
-        if let card = model.briefCard {
+        if let firstDay = model.firstDay {
+            // ON-13 1FJK-0: the ready first episode in the brief's place, then the welcome (1FJH-0)
+            RBriefCard(
+                date: "",
+                headline: FirstDay.cardTitle,
+                state: .firstEpisodeReady(line: firstDay.cardLine),
+                play: firstDay.play
+            )
+            .padding(.horizontal, margin)
+            .padding(.top, RDimension.space3)
+            .accessibilityIdentifier("journal.brief")
+            FirstDayWelcome(name: firstDay.recap.name)
+                .padding(.horizontal, margin)
+                .padding(.top, RDimension.space6)
+        } else if let card = model.briefCard {
             RBriefCard(
                 date: card.date,
                 length: card.length,
@@ -186,34 +204,44 @@ struct JournalPage: View {
                 Task { await model.load() }
             }
             .accessibilityIdentifier("journal.error")
+        } else if let firstDay = model.firstDay {
+            // ON-13 1FIZ-0: the recap at the bottom of the first day, today's entries after it (FH-Q4 A)
+            VStack(spacing: RDimension.space5) {
+                SetupRecapCard(recap: firstDay.recap)
+                threadItems
+            }
         } else if model.thread.isEmpty {
             REmptyLine(line: "nothing yet. say anything.", subline: "what you say shows up here, by day", symbol: "bubble.left")
                 .accessibilityIdentifier("journal.empty")
         } else {
-            VStack(spacing: RDimension.space6) {
-                ForEach(model.thread) { item in
-                    switch item {
-                    case let .day(label):
-                        Text(label)
-                            .rText(.labelMedium)
-                            .foregroundStyle(RColor.textLabel)
-                            .frame(maxWidth: .infinity)
-                            .padding(.bottom, RDimension.space2 - RDimension.space6)
-                            .accessibilityAddTraits(.isHeader)
-                    case let .mine(entry):
-                        JournalMessageRow(entry: entry, model: model)
-                    case let .retro(entryId, line):
-                        RRetroLine(lines: [.init(id: entryId, text: line)])
-                    case let .guess(guess):
-                        RGuessCard(
-                            question: guess.question,
-                            from: JournalViewModel.sourceLine(count: guess.restsOn.count),
-                            sureness: guess.framework.name,
-                            phase: JournalViewModel.phase(guess),
-                            answer: { verdict in await model.answer(guess, verdict) }
-                        )
-                        .accessibilityIdentifier("journal.guess")
-                    }
+            threadItems
+        }
+    }
+
+    private var threadItems: some View {
+        VStack(spacing: RDimension.space6) {
+            ForEach(model.thread) { item in
+                switch item {
+                case let .day(label):
+                    Text(label)
+                        .rText(.labelMedium)
+                        .foregroundStyle(RColor.textLabel)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, RDimension.space2 - RDimension.space6)
+                        .accessibilityAddTraits(.isHeader)
+                case let .mine(entry):
+                    JournalMessageRow(entry: entry, model: model)
+                case let .retro(entryId, line):
+                    RRetroLine(lines: [.init(id: entryId, text: line)])
+                case let .guess(guess):
+                    RGuessCard(
+                        question: guess.question,
+                        from: JournalViewModel.sourceLine(count: guess.restsOn.count),
+                        sureness: guess.framework.name,
+                        phase: JournalViewModel.phase(guess),
+                        answer: { verdict in await model.answer(guess, verdict) }
+                    )
+                    .accessibilityIdentifier("journal.guess")
                 }
             }
         }
