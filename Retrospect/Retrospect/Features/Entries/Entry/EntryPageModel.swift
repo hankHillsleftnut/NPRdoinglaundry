@@ -1,5 +1,5 @@
 //
-//  EntryModel.swift
+//  EntryPageModel.swift
 //  V2.journal (dark) · JR-4 one entry: the page's state. Your words, and one meta line that says
 //  when, how (written, voice) and where it is ("read", "sent", "waiting to send", or "didn't send ·
 //  tap to retry"), as Paper draws them (05: rest N51-0, voice note N6E-0, nothing taken yet N7R-0,
@@ -26,7 +26,7 @@ struct EntryCapabilities: Equatable {
 
 @MainActor
 @Observable
-final class EntryModel {
+final class EntryPageModel {
     typealias Entry = Flows.Journal.Entry
 
     /// How the meta line ends.

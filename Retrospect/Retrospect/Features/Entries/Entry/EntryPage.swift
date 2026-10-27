@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct EntryPage: View {
-    let model: EntryModel
+    let model: EntryPageModel
     let back: () -> Void
 
     var body: some View {
@@ -44,7 +44,7 @@ struct EntryPage: View {
     }
 
     @ViewBuilder
-    private func metaLine(_ meta: String, standing: EntryModel.Standing) -> some View {
+    private func metaLine(_ meta: String, standing: EntryPageModel.Standing) -> some View {
         switch standing {
         case .notSent:
             // Paper N9D-0: the retry glyph and the line in danger text; the line retries
@@ -94,11 +94,11 @@ struct EntryPage: View {
 
 /// JR-4 as a pushed page: owns its model, so the page keeps its state while the stack redraws.
 struct EntryScreen: View {
-    @State private var model: EntryModel
+    @State private var model: EntryPageModel
     let back: () -> Void
 
     init(id: String, data: any EntriesData, capabilities: EntryCapabilities = .cut, back: @escaping () -> Void) {
-        _model = State(initialValue: EntryModel(id: id, data: data, capabilities: capabilities))
+        _model = State(initialValue: EntryPageModel(id: id, data: data, capabilities: capabilities))
         self.back = back
     }
 
