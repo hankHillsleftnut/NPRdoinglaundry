@@ -29,6 +29,20 @@ struct QuestionsModelTests {
         #expect(data.flatMap { try? JSONDecoder().decode([Key].self, from: $0) } == [.struggle])
     }
 
+    @Test("every core key is one the answers door knows (struggle is pending the attach phase)")
+    func coreKeysAreSendable() {
+        // fails loudly once the endpoint learns `struggle` (then drop the known issue), and
+        // records the gap until then: a live seam must not ask a key the door refuses
+        withKnownIssue("struggle is pending the attach phase") {
+            for question in Flows.FirstRunQuestion.core {
+                #expect(
+                    Backend.Endpoints.OnboardingAnswer.QuestionKey(rawValue: question.key.rawValue) != nil,
+                    "\(question.key.rawValue)"
+                )
+            }
+        }
+    }
+
     @Test("fresh starts at the first question; resume starts at the first key not answered")
     func resume() {
         #expect(QuestionsModel(data: ScriptedFirstRun()).question?.key == .namePlace)
