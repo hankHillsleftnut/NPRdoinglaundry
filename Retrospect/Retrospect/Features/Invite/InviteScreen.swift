@@ -513,6 +513,8 @@ extension InviteScreen {
 
     var waitlistFoot: some View {
         RButton(title: InviteModel.waitlistAction, variant: .secondary) { model.openWaitlist() }
+            // the shared pill holds one line: at the largest text sizes the words shrink to fit, never cut ("join t…" at AX3)
+            .minimumScaleFactor(0.6) // literal-ok: the smallest the label may shrink, accessibility sizes only
             .padding(.horizontal, margin)
             .padding(.bottom, bottomPadding)
             .transition(.blurReplace)
