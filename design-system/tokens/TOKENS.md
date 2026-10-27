@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**617 tokens** · 541 semantic · 276 marked *to set*
+**620 tokens** · 544 semantic · 276 marked *to set*
 
 ## palette
 
@@ -470,6 +470,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.composer.well` | The mic well inside the compact composer: lifted, round, 4pt inside the 48 field (concentric corner 20 + 4 = 24). | 40pt |  | Paper c:composer/compact (everything · latest, EX-1 share sheet; dark file), 21 Oct |
 | `size.goal.ring` | The progress ring on a goal. | 44pt |  | to set: app need |
 | `size.goal.ringStroke` | The progress ring's thickness. | 4pt |  | to set: app need |
+| `size.goal.track` | The said and did bars' track on a goal card. | 4pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
+| `size.goal.label` | The said / did words' slot before the bar. | 28pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
+| `size.goal.count` | The count's slot after the bar. | 64pt |  | Paper part 48 ITY-0 / GL-1 1G2T-0 (V2.goals, 26 Oct) |
 | `size.sourceIcon` | A source's app icon in a row. | 32pt |  | to set: app need |
 | `size.stepDot` | A step dot in onboarding. | 6pt |  | to set: app need |
 | `size.stepDotActive` | The current step (a short pill). | 18pt |  | to set: app need |

@@ -118,6 +118,20 @@ struct FlowHostTests {
         #expect(await source.type(code: SampleInvite.code) == .printing(SampleInvite.face))
     }
 
+    // MARK: SI.gate.b
+
+    @Test("the typed gate wears the sample header before the check; the code still prints, the edge is unchanged")
+    func typedGateHeader() async {
+        let model = flow(MemoryFlowStore(), start: .inviteGate)
+        #expect(model.invite.phase == .typed)
+        #expect(model.invite.face == SampleInvite.face)
+        #expect(model.invite.waitlistPlace == .foot)
+        model.invite.setCode(SampleInvite.code)
+        await model.invite.submitTyped()
+        #expect(model.invite.phase == .ready)
+        #expect(model.step == .inviteGate)
+    }
+
     // MARK: Resume (decision 9)
 
     @Test("a relaunch lands on the exact step it left")
@@ -253,6 +267,25 @@ struct FlowHostTests {
         )
         #expect(resumed.goingIn == "the investor call on thursday")
         #expect(resumed.spokenWords == "the investor call on thursday")
+    }
+
+    @Test("connect: continue or later moves on to getting ready and is kept; back stays; a connection lasts the flow")
+    func connectMovesOnToGettingReady() async {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .connect)
+        #expect(model.step == .connect)
+        await ConnectModel(data: model.connect, onDone: { _ in }, onBack: {}).connect("apple_health")
+        #expect(model.connect.knowsYou.filled == 2)
+        model.send(.connectBack)
+        #expect(model.step == .connect)
+        model.send(.connectDone)
+        #expect(model.step == .gettingReady)
+        #expect(store.saved?.step == .gettingReady)
+        // the page's own exits are the flow's one event: later goes on too
+        let later = flow(MemoryFlowStore(), start: .connect)
+        let page = ConnectModel(data: later.connect, onDone: { _ in later.send(.connectDone) }, onBack: { later.send(.connectBack) })
+        page.later()
+        #expect(later.step == .gettingReady)
     }
 
     @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")
