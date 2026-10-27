@@ -400,6 +400,8 @@ public enum RColor {
     public static let depthStrokeInnerTop = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.14))
     /// Outer stroke, 0.5pt outside: the warm hairline that defines the edge on paper.
     public static let depthStrokeOuter = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.07))
+    /// The ticket's outside edge. Light: the outer stroke's warm hairline (same value). Night: a faint light rim, because a dark shadow vanishes on the night canvas and the paper would sink into it.
+    public static let depthStrokeRim = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.14))
     /// The shallow shadow: 0 1 1.5. Seats the object on the page. Warm, never grey.
     public static let depthShadowContact = dynamic(UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.1), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
     /// The warm soft shadow: y and blur grow with height, negative spread keeps it under the object.

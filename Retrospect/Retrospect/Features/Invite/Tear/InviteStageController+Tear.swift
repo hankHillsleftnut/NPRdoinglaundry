@@ -15,6 +15,7 @@ extension InviteStageController {
         guard !reduceMotion else {
             tear = nil
             tearFrame = nil
+            handleFinger = nil
             moving = false
             return
         }
@@ -31,8 +32,10 @@ extension InviteStageController {
             tear = still
             tearFrame = still.frame
         } else {
-            tear = TearSimulation(width: geometry.width, perforationY: geometry.perforationY, stubHeight: stubHeight, dropGap: dropGap)
-            tearFrame = nil
+            let fresh = TearSimulation(width: geometry.width, perforationY: geometry.perforationY, stubHeight: stubHeight, dropGap: dropGap)
+            tear = fresh
+            tearFrame = fresh.frame
+            handleFinger = nil
         }
         heard = tear?.events.count ?? 0
         moving = false
@@ -41,14 +44,14 @@ extension InviteStageController {
     /// One display frame: the paper catches up with the clock.
     func advanceTear() {
         guard stillTear == 0, var sim = tear else { return }
-        sim.advance(to: clock())
+        sim.advance(to: clock(), catchUp: TearSimulation.catchUp)
         publish(sim)
     }
 
     /// Where the handle sits: under the finger while it drags (1:1), riding the run once committed.
     func handleX(width: CGFloat) -> CGFloat {
-        if let tear, tear.isRunning || tear.phase == .sealing {
-            return min(max(tear.finger, 0), width)
+        if let handleFinger {
+            return min(max(handleFinger, 0), width)
         }
         return tearProgress * width
     }
@@ -98,13 +101,14 @@ extension InviteStageController {
         let fresh = TearSimulation(width: tear.perforation.width, perforationY: tear.perforationY, stubHeight: tear.stubHeight, dropGap: tear.dropGap)
         self.tear = fresh
         heard = 0
-        tearFrame = nil
+        tearFrame = fresh.frame
+        handleFinger = nil
         moving = false
     }
 
     private func update(_ change: (inout TearSimulation) -> Void) {
         guard stillTear == 0, var sim = tear else { return }
-        sim.advance(to: clock())
+        sim.advance(to: clock(), catchUp: TearSimulation.catchUp)
         change(&sim)
         publish(sim)
     }
@@ -121,7 +125,8 @@ extension InviteStageController {
         }
         heard = sim.events.count
         tear = sim
-        tearFrame = sim.phase == .idle ? nil : sim.frame
+        tearFrame = sim.frame
+        handleFinger = sim.isRunning || sim.phase == .sealing ? sim.finger : nil
         moving = !sim.isAtRest
     }
 

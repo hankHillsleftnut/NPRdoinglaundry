@@ -51,9 +51,12 @@ struct TicketStage: View {
         }
     }
 
-    /// The simulation's frame, when it draws the tear.
+    /// The simulation's frame, when it draws the tear: from the first touch-down on, whole or torn,
+    /// so the paper never swaps drawings mid-tear. A ticket that was already torn when the page
+    /// opened (a relaunch at "you're in") keeps the two-state drawing.
     private var physical: TearFrame? {
-        reduceMotion ? nil : tear
+        guard !reduceMotion, let tear, !(tear.whole && stub == .fallen) else { return nil }
+        return tear
     }
 
     /// The lip's mask: a fully printed ticket is unclipped, with room below for the peeling, falling stub.
@@ -95,9 +98,9 @@ struct TicketStage: View {
 
     @ViewBuilder private var ticket: some View {
         if let physical {
-            TearTicket(geometry: geometry, frame: physical, face: face, tiles: tiles, date: date, label: label)
-                .compositingGroup()
-                .rTicketShadow(enabled: !physical.separated)
+            TearTicket(
+                geometry: geometry, frame: physical, face: face, tiles: tiles, date: date, label: label, typed: typed, caretOn: caretOn
+            )
         } else {
             drawnTicket
         }

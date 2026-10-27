@@ -65,19 +65,20 @@ struct TearPerforation: Equatable {
     static let notch: CGFloat = 10 // literal-ok: board 2HXP-0
     static let firstHole: CGFloat = 23 // literal-ok: 20 padding + half a 6pt hole
 
-    var holes: [CGFloat] {
-        let span = width - 2 * Self.firstHole
-        return (0 ..< Self.holeCount).map { Self.firstHole + span * CGFloat($0) / CGFloat(Self.holeCount - 1) }
-    }
-
+    /// The holes' centres (built once: the model reads them 240 times a second).
+    let holes: [CGFloat]
     /// The bridges' ends: notch edge, each hole, notch edge (22 bridges).
-    var stops: [CGFloat] {
-        [Self.notch] + holes + [width - Self.notch]
+    let stops: [CGFloat]
+
+    init(width: CGFloat) {
+        self.width = width
+        let span = width - 2 * Self.firstHole
+        holes = (0 ..< Self.holeCount).map { Self.firstHole + span * CGFloat($0) / CGFloat(Self.holeCount - 1) }
+        stops = [Self.notch] + holes + [width - Self.notch]
     }
 
     /// The front for a finger at `u` (points from the left notch), and how hard the bridge is holding (0…1).
     func front(finger u: CGFloat, _ p: TearParameters) -> (front: CGFloat, tension: Double) {
-        let stops = stops
         guard u > stops[0] else { return (0, 0) }
         guard u < stops[stops.count - 1] else { return (width, 0) }
         var index = 0
@@ -105,13 +106,16 @@ struct TearPerforation: Equatable {
 
     /// The finger position where the last bridge holds (the commit run stops here, sealing).
     func lastHold(_ p: TearParameters) -> CGFloat {
-        let stops = stops
         let start = stops[stops.count - 2]
         let end = stops[stops.count - 1]
         return start + CGFloat(p.catchShare) * (end - start) * 0.98 // literal-ok: just short of the slip
     }
 
     func holesPassed(front: CGFloat) -> Int {
-        holes.filter { $0 <= front }.count
+        var count = 0
+        for hole in holes where hole <= front {
+            count += 1
+        }
+        return count
     }
 }

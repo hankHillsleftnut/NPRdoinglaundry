@@ -54,7 +54,7 @@ struct InviteStageTearTests {
     func committedTear() async {
         let hands = Hands()
         let (stage, model, _) = make(hands)
-        #expect(stage.tearFrame == nil) // whole: the two-state drawing, identical at rest
+        #expect(stage.tearFrame?.whole == true) // whole: the same paper as before the touch
         drag(stage, hands, to: 0.74)
         #expect(stage.clicks >= 8)
         #expect(stage.tearFrame?.separated == false)
@@ -83,7 +83,7 @@ struct InviteStageTearTests {
         drag(stage, hands, to: 0.4)
         stage.dragEnded(x: 0.4 * geometry.width, velocity: 0, width: geometry.width)
         play(stage, hands, to: hands.now + 1.5)
-        #expect(stage.tearFrame == nil)
+        #expect(stage.tearFrame?.whole == true)
         #expect(!stage.moving)
         #expect(source.tearCalls == 0)
     }
@@ -94,8 +94,10 @@ struct InviteStageTearTests {
         let (stage, _, _) = make(hands)
         drag(stage, hands, to: 0.5)
         #expect(abs(stage.handleX(width: geometry.width) - 0.5 * geometry.width) < 0.001)
+        #expect(stage.handleFinger == nil) // dragging: the finger itself; observed once the run takes over
         stage.dragEnded(x: 0.5 * geometry.width, velocity: 900, width: geometry.width)
         play(stage, hands, to: hands.now + 0.05)
+        #expect(stage.handleFinger != nil)
         #expect(stage.handleX(width: geometry.width) > 0.5 * geometry.width)
     }
 
