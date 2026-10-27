@@ -51,6 +51,9 @@ struct RSearchField: View {
     var onSubmit: () -> Void = {}
     /// The mic well: talk instead of typing.
     var onMic: () -> Void = {}
+    /// With no listening of its own yet, the mic well opens the field (its keyboard carries the system's
+    /// dictation) before calling `onMic`; additive, off by default (V2.you YO-1, DISCREPANCIES YO-D6).
+    var micFocusesField = false
     var look: Look = .standard
 
     @FocusState private var focused: Bool
@@ -64,7 +67,12 @@ struct RSearchField: View {
 
     private var standard: some View {
         RSunkenField {
-            Button(action: onMic) {
+            Button {
+                if micFocusesField {
+                    focused = true
+                }
+                onMic()
+            } label: {
                 // Paper's mark sits in an 18 box at a medium weight
                 RSymbol(name: "mic", weight: .medium, glyphScale: 0.74) // literal-ok: 18 × 0.82 in the 20 frame
                     .frame(width: RDimension.sizeFieldWell, height: RDimension.sizeFieldWell)
