@@ -5,6 +5,8 @@
 //
 import SwiftUI
 
+#if DEBUG
+
 struct RFoundationGallery: View {
     private let roles: [(String, RTextStyle)] = [
         ("inkTitle", .inkTitle), ("inkCard", .inkCard), ("displayTitle", .displayTitle),
@@ -42,3 +44,4 @@ struct RFoundationGallery: View {
 
 #Preview("light") { RFoundationGallery().preferredColorScheme(.light) }
 #Preview("dark (later: light ships first)") { RFoundationGallery().preferredColorScheme(.dark) }
+#endif
