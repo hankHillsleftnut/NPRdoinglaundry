@@ -48,10 +48,11 @@ extension Flows {
             key
         }
 
-        /// The 9 core questions, in the order they are asked (docs/second-brain/
-        /// brief-onboarding-questions.md v2; founder may change the words: founder-review
-        /// "RELEASE 0.1" Q2). The first is Paper ON-3–9's frame. The struggle question (founder,
-        /// 26 Oct) is the founder's words lowercased; its wording is to be adjusted later.
+        /// The 9 core questions, in the order they are asked: the 8 of docs/second-brain/
+        /// brief-onboarding-questions.md v2 (founder may change the words: founder-review "RELEASE
+        /// 0.1" Q2) plus the struggle question the founder added on 26 Oct (pipeline screens/
+        /// DECISIONS.md "new onboarding question"; the brief predates it), in the founder's words
+        /// lowercased, wording to be adjusted later. The first is Paper ON-3–9's frame.
         static let core: [Self] = [
             Self(key: .namePlace, text: "first, what should i call you, and where are you based?"),
             Self(
