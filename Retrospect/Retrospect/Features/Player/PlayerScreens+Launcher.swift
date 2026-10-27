@@ -26,6 +26,14 @@ enum PlayerScenario: String, CaseIterable {
     }
 }
 
+/// The player sheet's launcher group (V2.registry: declared here, next to its list).
+enum PlayerScreenGroup: ScreenGroup {
+    static let name = "player"
+    static var screens: [LaunchableScreen] {
+        ScreenRegistry.playerScreens
+    }
+}
+
 extension ScreenRegistry {
     static let playerScreens: [LaunchableScreen] = [
         LaunchableScreen(id: "player", states: PlayerScenario.allCases.map(\.rawValue)) { arguments in
