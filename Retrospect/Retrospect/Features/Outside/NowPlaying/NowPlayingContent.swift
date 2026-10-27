@@ -35,15 +35,15 @@ struct NowPlayingContent: Equatable, Sendable {
     }
 
     /// One part of a brief, as the lock screen names it.
-    static func briefPart(title: String, day: String, part: Int, of parts: Int, duration: TimeInterval, elapsed: TimeInterval) -> Self {
+    static func briefPart(title: String, day: String, part: (index: Int, of: Int), duration: TimeInterval, elapsed: TimeInterval) -> Self {
         NowPlayingContent(
             title: title,
-            subtitle: "retrospect · \(day)'s brief · part \(part) of \(parts)",
+            subtitle: "retrospect · \(day)'s brief · part \(part.index) of \(part.of)",
             duration: duration,
             elapsed: elapsed
         )
     }
 
     /// Paper's lock screen: part 2 of tuesday's brief, 1:12 in, 2:48 to go.
-    static let paper = briefPart(title: "the fundraise article you sent", day: "tuesday", part: 2, of: 3, duration: 240, elapsed: 72)
+    static let paper = briefPart(title: "the fundraise article you sent", day: "tuesday", part: (2, 3), duration: 240, elapsed: 72)
 }

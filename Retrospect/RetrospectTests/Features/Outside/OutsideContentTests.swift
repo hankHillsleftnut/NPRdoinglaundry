@@ -1,5 +1,5 @@
-@testable import Retrospect
 import Foundation
+@testable import Retrospect
 import Testing
 
 /// V2.outside · EX-2 and EX-3 content: Paper's words, the skips, and the notification rules.
@@ -38,12 +38,12 @@ struct OutsideContentTests {
             try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute)))
         }
         let policy = NotificationPolicy()
-        #expect(policy.allows(at: try at(26, 8, 30), lastSent: nil, calendar: calendar))
-        #expect(policy.allows(at: try at(26, 18, 10), lastSent: nil, calendar: calendar))
-        #expect(!policy.allows(at: try at(26, 18, 10), lastSent: try at(26, 8, 30), calendar: calendar))
-        #expect(policy.allows(at: try at(27, 9), lastSent: try at(26, 18, 10), calendar: calendar))
-        #expect(!policy.allows(at: try at(26, 21), lastSent: nil, calendar: calendar))
-        #expect(!policy.allows(at: try at(27, 7, 59), lastSent: nil, calendar: calendar))
-        #expect(policy.allows(at: try at(27, 8), lastSent: nil, calendar: calendar))
+        #expect(try policy.allows(at: at(26, 8, 30), lastSent: nil, calendar: calendar))
+        #expect(try policy.allows(at: at(26, 18, 10), lastSent: nil, calendar: calendar))
+        #expect(try !policy.allows(at: at(26, 18, 10), lastSent: at(26, 8, 30), calendar: calendar))
+        #expect(try policy.allows(at: at(27, 9), lastSent: at(26, 18, 10), calendar: calendar))
+        #expect(try !policy.allows(at: at(26, 21), lastSent: nil, calendar: calendar))
+        #expect(try !policy.allows(at: at(27, 7, 59), lastSent: nil, calendar: calendar))
+        #expect(try policy.allows(at: at(27, 8), lastSent: nil, calendar: calendar))
     }
 }
