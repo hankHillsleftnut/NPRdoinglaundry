@@ -23,6 +23,9 @@ final class SampleFlowModel {
     /// The step on screen was reached by a page's back (ON-5 back to the questions), not forward: the
     /// questions then open on the last one instead of finishing at once. Saved, so a relaunch keeps it.
     private(set) var cameBack = false
+    /// The questions page finished `firstRun` (its `finishQuestions()` ran) in this launch: a later pass
+    /// after back only hands on. In memory, like the seam it describes.
+    private(set) var questionsFinished = false
 
     /// PI0 on the sample sign-in: the first tap signs in (no scripted failure in the flow).
     let signIn: SignInModel
@@ -93,6 +96,9 @@ final class SampleFlowModel {
     /// A screen handed off: move where the table says, or stay (no edge: the flow ends here).
     func send(_ event: FlowEvent) {
         guard let next = FlowStep.next(from: step, event: event, table: table) else { return }
+        if step == .questions, event == .questionsDone {
+            questionsFinished = true
+        }
         cameBack = event == .back
         step = next
         save()

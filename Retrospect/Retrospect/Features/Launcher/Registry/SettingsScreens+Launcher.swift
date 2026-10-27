@@ -55,9 +55,16 @@ enum SourcePageScenario: String, CaseIterable {
 struct SourcePageLaunch: View {
     let scenario: SourcePageScenario
     @State private var data = SampleSettings()
+    @State private var question: SourcePageLaunchQuestion
+
+    init(scenario: SourcePageScenario) {
+        self.scenario = scenario
+        _question = State(initialValue: SourcePageLaunchQuestion(scenario.asking))
+    }
 
     var body: some View {
-        SettingsStack(data: data, path: [.sources, .source("calendar")], asking: scenario.asking)
+        SettingsStack(data: data, path: [.sources, .source("calendar")])
+            .environment(\.sourcePageLaunchQuestion, question)
     }
 }
 

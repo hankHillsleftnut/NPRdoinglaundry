@@ -193,6 +193,47 @@ struct QuestionsListeningTests {
         #expect(model.question?.key == .namePlace)
     }
 
+    @Test("the mic, then a quiet with nothing new: the carried words go back in the field, nothing is sent")
+    func nothingNewHeard() async {
+        let ear = ScriptedEar()
+        let data = EaredFirstRun(ear: ear)
+        let model = QuestionsModel(data: data)
+        await model.appear()
+        model.typeInstead()
+        model.draft = "sam, half typed"
+        model.talkInstead()
+        ear.say(.ended)
+        for _ in 0 ..< 5000 where model.composer != .typing {
+            await Task.yield()
+        }
+        #expect(model.composer == .typing)
+        #expect(model.draft == "sam, half typed")
+        #expect(data.sent.isEmpty)
+        #expect(ear.stops >= 1)
+    }
+
+    @Test("mic off while thinking is ignored: the answer on its way decides what comes next")
+    func micOffWhileThinking() async {
+        let ear = ScriptedEar()
+        let data = EaredFirstRun(ear: ear)
+        data.holds = true
+        let model = QuestionsModel(data: data)
+        await model.appear()
+        ear.word("sam.")
+        ear.say(.ended)
+        for _ in 0 ..< 5000 where !data.isHolding {
+            await Task.yield()
+        }
+        model.typeInstead()
+        #expect(model.composer == .thinking)
+        data.release()
+        for _ in 0 ..< 5000 where model.question?.key == .namePlace {
+            await Task.yield()
+        }
+        #expect(model.question?.key == .yearFromNow)
+        #expect(model.composer == .listening)
+    }
+
     @Test("under VoiceOver a new question never opens the ear by itself; the mic still listens")
     func voiceOverStartsTyped() async {
         let ear = ScriptedEar()
@@ -232,8 +273,28 @@ struct QuestionsListeningTests {
         #expect(events.dropLast().last == .partial(["sam.", "i'm in", "london"]))
         // the same ear for the question, so a second listen hears nothing new
         #expect(data.listening(for: .namePlace) === ear)
-        // every question the flow asks has words, but Paper's quick-answers question (none scripted)
+        // ...and ends after a pause, so the mic on an answer already heard never hangs on "listening…"
+        var again: [Flows.Heard] = []
+        if let ear {
+            for await event in ear.listen() {
+                again.append(event)
+            }
+        }
+        #expect(again == [.ended])
+        // every question the flow asks has words (the struggle question too); Paper's quick-answers one has none
         #expect(Flows.FirstRunQuestion.core.allSatisfy { !(SampleFirstRunData.spoken[$0.key] ?? []).isEmpty })
+    }
+
+    @Test("the held still is Paper's frame: Q1's words at once, 'london' soft, never ending")
+    func heldStill() async {
+        let model = QuestionsModel(data: SampleFirstRunData(scenario: .questionsStill, clock: NoWaitClock()))
+        await model.appear()
+        for _ in 0 ..< 5000 where model.heard.count < 3 {
+            await Task.yield()
+        }
+        #expect(model.heard.map(\.text) == ["sam.", "i'm in", "london"])
+        #expect(model.heard.map(\.isPending) == [false, false, true])
+        #expect(model.composer == .listening)
     }
 
     @Test("the page shows the last word soft while it is still being heard, sharp once the answer ends")

@@ -21,6 +21,8 @@ struct QuestionsQuickAnswersTests {
         #expect(model.quickAnswers == ["tech", "markets", "football", "climate", "not really any"])
         #expect(model.question?.key == .readingWatching)
         // the flow's questions carry no chips until the founder names them (QC-1)
+        // a key path here doesn't compile inside #expect (rethrows), so a closure
+        // swiftformat:disable:next preferKeyPath
         #expect(Flows.FirstRunQuestion.core.allSatisfy { $0.quickAnswers.isEmpty })
     }
 
@@ -123,6 +125,11 @@ struct QuestionsQuickAnswersTests {
         #expect(model.isChosen("tech"))
         model.toggle("tech")
         #expect(model.draft.isEmpty)
+        // typed twice by hand: one tap clears every spelling, so the chip really turns off
+        model.draft = "tech, Tech"
+        model.toggle("tech")
+        #expect(model.draft.isEmpty)
+        #expect(!model.isChosen("tech"))
     }
 
     @Test("a word that isn't one of the question's chips does nothing")
