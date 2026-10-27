@@ -83,6 +83,8 @@ extension Flows {
         var questions: [FirstRunQuestion] { get }
         /// The keys already answered on this phone (resume starts at the first one not in it).
         var answeredKeys: Set<QuestionKey> { get }
+        /// The ear, when there is one (Listening.swift); nil = typed only (the default).
+        var listening: (any Listening)? { get }
 
         /// Hands one answer over. `.saved` adds `key` to `answeredKeys`.
         func answer(_ key: QuestionKey, text: String, given: FirstRunQuestion.Given) async -> AnswerOutcome

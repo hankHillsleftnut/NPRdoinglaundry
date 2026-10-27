@@ -2,7 +2,8 @@
 //  SampleFirstRunData.swift
 //  P02.min: first run's questions on sample data, in memory. It conforms to `Flows.FirstRun`
 //  exactly as the live seam will (PL3.3a.min), so mounting swaps one line and nothing on screen
-//  changes. Deterministic: the pretend save waits on the injected clock, nothing is random,
+//  changes. It also carries the simulated ear (SampleListening): the page listens on its own.
+//  Deterministic: the pretend save waits on the injected clock, nothing is random,
 //  and the words are never kept beyond the answer count (nothing is logged).
 //
 import Foundation
@@ -29,6 +30,8 @@ final class SampleFirstRunData: Flows.FirstRun {
     private(set) var finishCount = 0
     /// Whether answers fail as if offline. Tests and the offline scenario set it.
     var isOffline: Bool
+    /// The simulated ear (founder decision 4): sam answers out loud, on the same clock.
+    let listening: (any Flows.Listening)?
 
     @ObservationIgnored private let clock: any Clock<Duration>
 
@@ -42,6 +45,7 @@ final class SampleFirstRunData: Flows.FirstRun {
     ) {
         self.questions = questions
         self.clock = clock
+        listening = SampleListening(clock: clock)
         isOffline = scenario == .questionsOffline
         answeredKeys = scenario == .questionsResume ? Set(questions.prefix(3).map(\.key)) : []
     }
