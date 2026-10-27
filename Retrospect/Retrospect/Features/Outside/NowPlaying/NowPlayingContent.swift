@@ -19,7 +19,8 @@ struct NowPlayingContent: Equatable, Sendable {
     var skipBack: TimeInterval = 15
     var skipForward: TimeInterval = 30
 
-    /// What the system's scrubber shows on the left: "1:12".
+    /// "1:12": what Paper's scrubber shows on the left. The system draws its own from the elapsed time and
+    /// duration; these labels pin Paper's values in tests and serve any in-app use (review on #222).
     var elapsedLabel: String {
         Self.clock(elapsed)
     }
@@ -30,7 +31,8 @@ struct NowPlayingContent: Equatable, Sendable {
     }
 
     static func clock(_ seconds: TimeInterval) -> String {
-        let whole = Int(seconds.rounded(.down))
+        // AVPlayer reports NaN for an unknown length; a seek can go below zero: both read 0:00
+        let whole = seconds.isFinite ? max(Int(seconds.rounded(.down)), 0) : 0
         return "\(whole / 60):" + String(format: "%02d", whole % 60)
     }
 

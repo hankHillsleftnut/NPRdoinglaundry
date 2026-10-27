@@ -12,13 +12,13 @@ struct NotificationPolicy: Equatable, Sendable {
     var quietFrom = 21
     /// The first hour they may come again (8 = from 08:00).
     var quietUntil = 8
-    var perDay = 1
 
     /// Whether one may go out at `date`, given when the last one did.
     func allows(at date: Date, lastSent: Date?, calendar: Calendar) -> Bool {
         guard !isQuiet(date, calendar: calendar) else { return false }
         guard let lastSent else { return true }
-        return !calendar.isDate(lastSent, inSameDayAs: date) || perDay > 1
+        // at most one a day (handoff): another may go out only on a later day
+        return !calendar.isDate(lastSent, inSameDayAs: date)
     }
 
     func isQuiet(_ date: Date, calendar: Calendar) -> Bool {

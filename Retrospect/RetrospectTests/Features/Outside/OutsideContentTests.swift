@@ -21,6 +21,24 @@ struct OutsideContentTests {
         #expect(content.remainingLabel == "\u{2212}0:00")
     }
 
+    @Test("an unknown or negative time reads 0:00, never crashes")
+    func clockGuards() {
+        #expect(NowPlayingContent.clock(.nan) == "0:00")
+        #expect(NowPlayingContent.clock(.infinity) == "0:00")
+        #expect(NowPlayingContent.clock(-5) == "0:00")
+    }
+
+    @Test("quiet hours that don't wrap midnight (a daytime window) are honoured too")
+    func daytimeQuiet() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Europe/London"))
+        let noon = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 12)))
+        let evening = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 18)))
+        let policy = NotificationPolicy(quietFrom: 9, quietUntil: 17)
+        #expect(policy.isQuiet(noon, calendar: calendar))
+        #expect(!policy.isQuiet(evening, calendar: calendar))
+    }
+
     @Test("notifications: Paper's three kinds and where each lands")
     func kinds() {
         #expect(NotificationKind.episode.body() == "this week's episode is here.")
