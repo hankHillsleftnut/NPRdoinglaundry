@@ -1,4 +1,5 @@
 @testable import Retrospect
+import SwiftUI
 import Testing
 
 /// V2.settings: the sample's values are Paper's, ST-1 follows what the pages change, and every ST-1 row
@@ -46,6 +47,12 @@ struct SettingsStackTests {
         let data = SampleSettings(sleep: Self.instant)
         #expect(SettingsDestinations.isBuilt(.account, data: data))
         #expect(SettingsDestinations.isBuilt(.dailyBrief, data: data))
+    }
+
+    @Test("every settings page hosts its own menu, so a quick pick (↕) opens on the page it's on")
+    func pagesHostTheirMenus() {
+        let frame = SettingsPageFrame(title: "settings", back: {}) { EmptyView() }
+        #expect(String(describing: type(of: frame.body)).contains("RMenuHost"))
     }
 
     @Test("every route has its own row identifier")

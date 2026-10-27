@@ -31,7 +31,7 @@ extension Flows.Settings {
             }
         }
 
-        /// ST-1's value. Paper draws only "honest"; the other three are provisional (ST-D30).
+        /// ST-1's value. Paper draws only "honest"; the other three are provisional (ST-D40).
         var shortName: String {
             switch self {
             case .justWhatHappened: "what happened"

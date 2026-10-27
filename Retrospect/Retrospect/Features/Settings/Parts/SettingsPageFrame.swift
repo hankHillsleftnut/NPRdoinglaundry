@@ -4,6 +4,8 @@
 //  groups; ios-handoff M9): the settings bar, the groups 32 apart (24 on a short screen), and an
 //  optional danger block that sits last, at the bottom, in the thumb zone (ST-4, ST-5, ST-9). The
 //  canvas runs under the status bar and home indicator; content stays inside the safe area.
+//  Each page installs its own `rMenuHost()`, so a quick pick (↕, RSettingsRow `.pick`) opens its
+//  menu on whichever page is pushed (a host outside the NavigationStack wouldn't hear pushed pages).
 //
 import SwiftUI
 
@@ -38,7 +40,7 @@ struct SettingsPageFrame<Content: View, Danger: View>: View {
             }
         }
         .background(RColor.backgroundCanvas)
-        .toolbar(.hidden, for: .navigationBar)
+        .settingsPageChrome()
     }
 
     /// Short screens (SE) tighten the rhythm instead of shrinking anything.
@@ -58,6 +60,14 @@ extension SettingsPageFrame where Danger == EmptyView {
         self.init(title: title, topPadding: topPadding, groupSpacing: groupSpacing, back: back, content: content) {
             EmptyView()
         }
+    }
+}
+
+extension View {
+    /// What every settings page wears: the page's own menu host (quick picks) and no system bar.
+    func settingsPageChrome() -> some View {
+        rMenuHost()
+            .toolbar(.hidden, for: .navigationBar)
     }
 }
 

@@ -7,19 +7,6 @@
 //
 import SwiftUI
 
-extension RTextStyle {
-    /// ST-8's display sentence (Paper 1GTM-0: --font-display-inky, --text-2xl, ink card, --tracking-card,
-    /// --leading-tight).
-    static let learnedHeadline = RTextStyle(
-        family: .inky(axis: -10),
-        size: RDimension.fontSize2xl,
-        weight: .regular,
-        tracking: RNumber.fontTrackingCard,
-        leading: 1.1,
-        relativeTo: .title
-    )
-}
-
 struct LearnedPage: View {
     let data: any Flows.SettingsTrustData
     let back: () -> Void
@@ -30,7 +17,7 @@ struct LearnedPage: View {
                 // Paper 1GTJ-0: three lines 12 apart inside the margin
                 VStack(alignment: .leading, spacing: RDimension.space3) {
                     Text(learned.headline)
-                        .rText(.learnedHeadline)
+                        .rText(.inkClaimAsked) // Paper 1GTM-0: inky 2xl, ink card, tracking card, leading tight
                         .foregroundStyle(RColor.textPrimary)
                         .accessibilityAddTraits(.isHeader)
                     Text(learned.detail)
