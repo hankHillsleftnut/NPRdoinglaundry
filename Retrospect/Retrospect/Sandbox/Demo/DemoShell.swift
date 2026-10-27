@@ -11,6 +11,8 @@
 import SwiftUI
 
 struct DemoShell: View {
+    /// How the system opened the app (`-DemoOutside`), asked once when the shell first shows.
+    var opened: () -> DemoOutside? = { nil }
     /// ST-9's sign-out reached its end: the demo shows AC-1 welcome back.
     var signedOut: () -> Void = {}
     @State private var model = ShellModel(selection: .journal, available: Set(RTab.allCases))
@@ -27,10 +29,23 @@ struct DemoShell: View {
             }
         }
         .demoSamples(samples)
+        .onAppear { open(opened()) }
         .onChange(of: samples.signOut.state) { _, state in
             if state == .done {
                 signedOut()
             }
+        }
+    }
+}
+
+extension DemoShell {
+    /// What the system's way in shows: EX-1 or JR-2 over the shell, or the journal.
+    private func open(_ way: DemoOutside?) {
+        switch way {
+        case .share: model.present(.share)
+        case .brief: model.present(.brief(id: nil))
+        case .talk: model.select(.journal)
+        case nil: break
         }
     }
 }

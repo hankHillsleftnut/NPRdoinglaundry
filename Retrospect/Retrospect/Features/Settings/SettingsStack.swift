@@ -33,6 +33,8 @@ enum SettingsDestinations {
         var asking: SourcePage.Asking?
         /// ST-9's sign-out flow, when the host owns one (the demo hears it end); nil: the page's own sample.
         var signOut: (any SignOutFlowing)?
+        /// Raises a sheet over the shell (ST-2 "play today's" → JR-2), when the host can; nil: inert.
+        var present: ((AppSheet) -> Void)?
     }
 
     static func view(for page: SettingsRoute, in context: Context) -> AnyView? {
@@ -48,11 +50,17 @@ enum SettingsDestinations {
         view(for: page, in: Context(data: data, open: { _ in }, back: {})) != nil
     }
 
+    /// ST-2's "play today's": today's brief over the shell (JR-2), when it is built and the host can raise it.
+    private static func playToday(_ context: Context) -> (() -> Void)? {
+        guard let present = context.present, AppRoutes.isBuilt(.brief(id: nil)) else { return nil }
+        return { present(.brief(id: nil)) }
+    }
+
     /// ST-2 … ST-4 (this half).
     private static func first(_ page: SettingsRoute, in context: Context) -> AnyView? {
         switch page {
         case .dailyBrief:
-            AnyView(DailyBriefPage(data: context.data, back: context.back))
+            AnyView(DailyBriefPage(data: context.data, back: context.back, playToday: playToday(context)))
         case .sources:
             AnyView(SourcesPage(data: context.data, open: context.open, back: context.back))
         case let .source(id):

@@ -27,6 +27,8 @@ final class DemoModel {
     private(set) var returning: SignInModel?
     /// Counts signed-in sessions: the app's pages are rebuilt for each, so nothing from the last one shows.
     private(set) var session = 0
+    /// How the system opened the app (`-DemoOutside`), until the app has acted on it once.
+    private(set) var outside: DemoOutside?
 
     @ObservationIgnored private let store: any DemoStageStore
     @ObservationIgnored private let flowStore: any SampleFlowStore
@@ -47,7 +49,8 @@ final class DemoModel {
         clock: any Clock<Duration> = ContinuousClock()
     ) {
         // reads only: SwiftUI may build (and drop) this model more than once, so nothing is written here
-        let stage = launch.start ?? store.load() ?? .firstRun
+        // the system opens the signed-in app (`-DemoOutside`), unless a stage is asked for
+        let stage = launch.start ?? (launch.outside == nil ? nil : .app) ?? store.load() ?? .firstRun
         // a fresh first run (`-DemoStart firstRun`) begins at the splash with nothing kept
         let start = flowStart ?? (launch.start == .firstRun ? FlowStep.splash : nil)
         self.store = store
@@ -56,6 +59,7 @@ final class DemoModel {
         self.sleep = sleep
         self.clock = clock
         self.stage = stage
+        outside = stage == .app ? launch.outside : nil
         flow = SampleFlowModel(store: flowStore, start: start, sleep: sleep, clock: clock)
         if stage == .returning {
             returning = makeReturning()
@@ -78,6 +82,12 @@ final class DemoModel {
     func flowMoved(to step: FlowStep) {
         guard stage == .firstRun, let handOff, step == handOff else { return }
         enterApp()
+    }
+
+    /// The app acts on how it was opened once: later calls return nil.
+    func takeOutside() -> DemoOutside? {
+        defer { outside = nil }
+        return outside
     }
 
     /// Signed out (ST-9 → AC-2 done): welcome back. The app's pages go with the session.

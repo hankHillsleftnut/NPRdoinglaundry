@@ -36,7 +36,7 @@ struct DemoAppHost: View {
                     // a fresh first run is a new model: the host takes it, not the last one's
                     .id(ObjectIdentifier(demo.flow))
             case .app:
-                DemoShell { demo.signedOut() }
+                DemoShell(opened: { demo.takeOutside() }, signedOut: { demo.signedOut() })
                     // a new session builds every page again on fresh samples
                     .id(demo.session)
             case .returning:

@@ -6,7 +6,15 @@
 //  the same change. AppRouteTableTests fails a kind that is built and still listed, or listed nowhere. The
 //  pages themselves live in Features/Outside.
 //
+//  DEMO.app.c: EX-1 rises over the shell on `\.shareData` (the system's share sheet stands in for the
+//  extension's until W7); save or cancel closes it.
+//
 import SwiftUI
+
+extension EnvironmentValues {
+    /// EX-1's item and save, when the host has them (the demo's sample).
+    @Entry var shareData: (any ShareData)?
+}
 
 extension AppDestinations {
     enum Outside: AppDestinationGroup {
@@ -16,11 +24,34 @@ extension AppDestinations {
             nil
         }
 
-        static func sheet(for _: AppSheet, in _: AppRouteContext) -> AnyView? {
-            nil
+        static func sheet(for sheet: AppSheet, in context: AppRouteContext) -> AnyView? {
+            guard case .share = sheet else { return nil }
+            return AnyView(ShareRouteSheet(context: context))
         }
 
         static let notBuilt: Set<AppRoute.Kind> = []
-        static let sheetsNotBuilt: Set<AppSheet.Kind> = [.share]
+        static let sheetsNotBuilt: Set<AppSheet.Kind> = []
+    }
+}
+
+/// EX-1 on the environment's share data, built once per rise; it closes the sheet when it is done.
+private struct ShareRouteSheet: View {
+    let context: AppRouteContext
+    @Environment(\.shareData) private var data
+    @State private var model: ShareModel?
+
+    var body: some View {
+        if let model {
+            SharePage(model: model)
+                .onChange(of: model.state) { _, state in
+                    if case .closed = state {
+                        context.back()
+                    }
+                }
+        } else if let data {
+            RColor.backgroundCanvas.onAppear { model = ShareModel(data: data) }
+        } else {
+            RColor.backgroundCanvas
+        }
     }
 }

@@ -19,19 +19,40 @@ enum DemoStage: String, CaseIterable, Codable, Sendable {
     case returning
 }
 
+/// How the system opened the app (`-DemoOutside <way>`), standing in for the outside-the-app entries
+/// until their targets exist (W7): the share extension, a notification, a widget. No control is drawn
+/// for them in the app; the system is the way in.
+enum DemoOutside: String, CaseIterable, Sendable {
+    /// EX-1: something shared to retrospect from another app; the share sheet rises over the shell.
+    case share
+    /// EX-3 "your brief is ready" / EX-4 medium "play": today's brief (JR-2) rises over the shell.
+    case brief
+    /// EX-4 small "tell me…" / medium "talk": the journal (JR-1), where the composer is.
+    case talk
+}
+
 /// What the command line asked of the demo (the arguments only, never UserDefaults).
 struct DemoLaunch: Equatable {
     /// `-DemoStart <stage>`: open there with nothing kept. Nil resumes (or starts at the first run).
     var start: DemoStage?
+    /// `-DemoOutside <way>`: the system opened the signed-in app this way.
+    var outside: DemoOutside?
 
     static let current = parse(ProcessInfo.processInfo.arguments)
 
-    /// An unknown stage is ignored: the demo resumes.
+    /// An unknown stage or way is ignored.
     static func parse(_ arguments: [String]) -> Self {
         var launch = Self()
-        for (index, flag) in arguments.enumerated() where flag == "-DemoStart" {
+        for (index, flag) in arguments.enumerated() {
             let value = index + 1 < arguments.endIndex ? arguments[index + 1] : nil
-            launch.start = value.flatMap(DemoStage.init(rawValue:))
+            switch flag {
+            case "-DemoStart":
+                launch.start = value.flatMap(DemoStage.init(rawValue:))
+            case "-DemoOutside":
+                launch.outside = value.flatMap(DemoOutside.init(rawValue:))
+            default:
+                continue
+            }
         }
         return launch
     }
