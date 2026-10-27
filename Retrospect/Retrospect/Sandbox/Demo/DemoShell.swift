@@ -116,7 +116,7 @@ private struct DemoYouTab: View {
     @State private var model: YouModel?
 
     var body: some View {
-        YouStack(data: samples.you, navigator: navigator) {
+        YouStack(data: samples.you, navigator: navigator, joinsApp: true) {
             RSheetHost {
                 if let model {
                     YouPage(model: model, navigator: navigator)
