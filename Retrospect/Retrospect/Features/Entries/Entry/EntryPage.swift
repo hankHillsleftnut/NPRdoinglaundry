@@ -121,13 +121,20 @@ struct EntryScreen: View {
         capabilities: EntryCapabilities = .cut,
         claims: [TookClaim] = [],
         start: EntryDrawnModel.Start = .rest,
+        edits: EntryEdits? = nil,
         onDelete: (() -> Void)? = nil,
         back: @escaping () -> Void
     ) {
         _model = State(initialValue: EntryPageModel(id: id, data: data, capabilities: capabilities))
-        // the drawn parts exist only when a capability is on (all off = the app's cut)
-        // the edit and the drawn parts live here; nil only when every capability is off
-        _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))
+        // the edit and the drawn parts live here; nil only when every capability is off. A save goes to
+        // `edits` (owned above the page), so a reopened entry keeps it
+        _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(
+            claims: claims,
+            start: start,
+            savedWords: edits?.saved(for: id),
+            onSave: { edits?.save($0, for: id) },
+            onDelete: onDelete ?? back
+        ))
         self.back = back
     }
 

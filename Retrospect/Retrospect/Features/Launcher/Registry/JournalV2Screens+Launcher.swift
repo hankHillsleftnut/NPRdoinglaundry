@@ -78,6 +78,8 @@ struct EntriesLaunch: View {
     @State private var startUsed = false
     /// Deletes so far: the warning haptic plays here, on the stack that outlives the popped page.
     @State private var deletes = 0
+    /// Saved edits, kept above the pages so a reopened entry shows them.
+    @State private var edits = EntryEdits()
 
     init(scenario: EntriesScenario, opening entryID: String? = nil, drawn: EntryDrawnModel.Start? = nil) {
         self.scenario = scenario
@@ -108,6 +110,7 @@ struct EntriesLaunch: View {
                     capabilities: drawn == nil ? .cut : .drawn,
                     claims: SampleTook.claims(for: id),
                     start: id == openingID && !startUsed ? drawn ?? .rest : .rest,
+                    edits: edits,
                     onDelete: {
                         deletes += 1
                         if !path.isEmpty {
