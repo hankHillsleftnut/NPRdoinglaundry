@@ -25,4 +25,11 @@ The bigger the type, the tighter it sits, so a title reads as one dark shape.
 - Labels are **Geist** (founder's call, 20 Oct). Mono is kept only for figures that count or tick: times, durations, prices, citation numbers. Hierarchy comes from size and weight (Geist 500 over 400), and from ink (primary → secondary → label), never from switching to mono.
 - Never below 11pt.
 
+## Line height of the ink titles (TYPE.leading, 26 Oct)
+Paper sets the ink faces at --leading-tight: 1.1 × size, so 33 at --text-3xl, 30.8 at 2xl, 24.2 at xl, 70.4 at the hero. Exposure's own line box is 1.2 × size (ascent 0.95 + descent 0.25, no line gap), and SwiftUI never sets a line shorter than the font's box (`.lineSpacing` only adds). Before this fix every line after the first sat 0.1 × size lower than Paper: 3pt a line at 30, 9pt by the fourth line, and a four-line title stood 12pt taller.
+- **The fix lives in one place.** `RTextModifier` (RType.swift) draws any ink style whose Paper leading is tighter than the font (`RTextStyle.drawsAtPaperPitch`) with `RPaperPitch`: each later line is one Paper pitch below the one before, `RPaperPitchLayout` reports the shorter height so what sits below moves up with it, and a trim of half the font's extra height above and below gives Paper's line box.
+- **No token changed.** --leading-tight, the sizes and every other style are as they were; the leading values were right, the way they were applied wasn't. Every other face (Hedvig, SF, Geist, mono) keeps `.lineSpacing`.
+- Dynamic Type: the pitch is leading × the scaled size, so it scales with the text; at accessibility sizes the ax3 leading still caps it. Glyphs are never clipped: the ascender of line 1 stays inside the font's box and the last line's descender stays inside the reported height.
+- **Line 1 fits Paper too** (founder 26 Oct, "fit the lines to Paper"): CSS centres the glyphs in Paper's 33 box, so half of (36 − 33) comes off above the first line and below the last. A title's box is n × Paper's line height (33, 66, 99, 132 at 30), and every line lands within a fraction of a point of Paper. One-line ink titles move up 1.5pt and are 3pt shorter than before.
+
 Drawn in Paper: f3b · type: tracking and ink.
