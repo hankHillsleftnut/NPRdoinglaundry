@@ -7,6 +7,8 @@
 //
 import Foundation
 
+// Sample data is sandbox only (founder 27 Oct; SandboxFenceTests): never in a Release build.
+#if DEBUG
 @MainActor
 final class SampleGoals: GoalsData {
     private(set) var state: GoalsOverview
@@ -125,3 +127,4 @@ final class SampleGoals: GoalsData {
         )
     }
 }
+#endif
