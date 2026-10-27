@@ -121,6 +121,8 @@ struct ReleaseRouteTableTests {
             mounts += named.sorted().map { "\(file.path) names \($0)" }
         }
         #expect(mounts.isEmpty, "a dark V2 screen is reachable outside the launcher/lab (wiring PR only):\n\(mounts.joined(separator: "\n"))")
+        let unnamed = Self.unnamedBackDoors(in: darkFiles.map(\.text))
+        #expect(unnamed.isEmpty, "a dark folder adds an init/subscript to an outside type (release code could reach a dark screen through it):\n\(unnamed.joined(separator: "\n"))")
     }
 
     @Test("the fence itself works: mounts and back doors are caught; comments, strings and private helpers are not")
@@ -166,6 +168,15 @@ struct ReleaseRouteTableTests {
         struct TabsHost {
             enum Tab {}
         }
+        nonisolated(unsafe) var sharedRow = 1
+        extension RSheet where Content == PodcastsPage {
+            init() { self.init(content: PodcastsPage()) }
+            public subscript(row: Int) -> Int { row }
+            private init(hidden: Int) {}
+        }
+        extension PodcastsPage {
+            init(sample: Int) {}
+        }
         private extension JournalScreen {
             var fileOnly: Int { 1 }
         }
@@ -182,6 +193,11 @@ struct ReleaseRouteTableTests {
         // ... and when the opener wraps, so its `{` comes on a later line; a type nested in such an extension too
         #expect(dark.isSuperset(of: ["wrappedRow", "whereRow", "NestedRowView"]))
         #expect(!dark.contains("Tab"))
+        // a modifier with arguments on a top-level value
+        #expect(dark.contains("sharedRow"))
+        // an init or subscript added to an outside type has no name to fence: it fails on its own;
+        // a private one, and one on a dark type, do not
+        #expect(Self.unnamedBackDoors(in: [darkFile]) == ["init() { self.init(content: PodcastsPage()) }", "public subscript(row: Int) -> Int { row }"])
         // private(set) limits the setter only: the getter is reachable, so it is fenced
         #expect(dark.isSuperset(of: ["settableRow", "publicRow"]))
         // a private extension's members can't be reached from another file
@@ -230,7 +246,7 @@ struct ReleaseRouteTableTests {
 
     /// Declaration modifiers and attributes (with or without arguments) before a declaration keyword.
     private static let modifiers =
-        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:(?:public|internal|package|open|private|fileprivate)\(set\)|public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
+        #"((?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:(?:public|internal|package|open|private|fileprivate)\(set\)|nonisolated\(unsafe\)|public|internal|package|open|final|private|fileprivate|nonisolated|indirect|static|class|override|mutating|nonmutating|dynamic|lazy|weak|unowned|convenience|required)\s+)*)"#
 
     /// The modifiers make the declaration private to its file (`private(set)` only limits the setter).
     static func isPrivate(_ modifiers: Substring) -> Bool {
@@ -265,6 +281,17 @@ struct ReleaseRouteTableTests {
     /// Members of its own types stay out (their type is already fenced, and names like `body` would match
     /// everywhere).
     static func darkNames(in texts: [String]) -> Set<String> {
+        scanDark(texts).names
+    }
+
+    /// What a dark folder adds to an outside type that has no name of its own to look for: a non-private
+    /// `init` or `subscript` (`extension RSheet where Content == PodcastsPage { init() { … } }` would let
+    /// release code write `RSheet()` and show a dark screen). Each is a failure, by its line.
+    static func unnamedBackDoors(in texts: [String]) -> [String] {
+        scanDark(texts).unnamed
+    }
+
+    private static func scanDark(_ texts: [String]) -> (names: Set<String>, unnamed: [String]) {
         let code = texts.map(stripped)
         let types = code.reduce(into: Set<String>()) { $0.formUnion(declaredTypes(in: $1)) }
         let member = try? NSRegularExpression(
@@ -272,10 +299,17 @@ struct ReleaseRouteTableTests {
         )
         // attributes with arguments too (`@available(iOS 18, *) extension …`), and any access modifier
         let opener = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"extension\s+([A-Z]\w*)[^{\n]*\{?"#)
+        let unnamedMember = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"(?:init|subscript)\b"#)
         var names = types
-        func collect(_ line: Substring) {
+        var unnamed: [String] = []
+        func collect(_ line: Substring, outside: Bool = true) {
             let line = String(line)
             let range = NSRange(line.startIndex..., in: line)
+            if outside, let decl = unnamedMember?.firstMatch(in: line, range: range),
+               let mods = Range(decl.range(at: 1), in: line), !isPrivate(line[mods]) {
+                unnamed.append(line.trimmingCharacters(in: .whitespaces))
+                return
+            }
             guard let decl = member?.firstMatch(in: line, range: range),
                   let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
                   !isPrivate(line[mods]) else { return }
@@ -307,7 +341,7 @@ struct ReleaseRouteTableTests {
                         if outside { collect(line[line.index(after: brace)...]) }
                     }
                 } else if depth == 0 || (depth == 1 && outsideExtension) {
-                    collect(line[...])
+                    collect(line[...], outside: depth == 1)
                 }
                 depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
                 if depth == 0, pending == nil {
@@ -315,7 +349,7 @@ struct ReleaseRouteTableTests {
                 }
             }
         }
-        return names
+        return (names, unnamed)
     }
 
     /// The code with comments and string literals blanked out (a `//` inside a string is not a comment),
