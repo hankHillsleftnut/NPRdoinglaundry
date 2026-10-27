@@ -47,7 +47,8 @@ final class DemoModel {
         clock: any Clock<Duration> = ContinuousClock()
     ) {
         // reads only: SwiftUI may build (and drop) this model more than once, so nothing is written here
-        let stage = launch.start ?? store.load() ?? .firstRun
+        // `-FlowStart` asks for a first-run step, so it opens the first run whatever stage was saved
+        let stage = launch.start ?? (flowStart == nil ? nil : .firstRun) ?? store.load() ?? .firstRun
         // a fresh first run (`-DemoStart firstRun`) begins at the splash with nothing kept
         let start = flowStart ?? (launch.start == .firstRun ? FlowStep.splash : nil)
         self.store = store
@@ -70,6 +71,8 @@ final class DemoModel {
         guard !hasStarted else { return }
         hasStarted = true
         store.save(stage)
+        // already at the hand-off step (a relaunch there, or `-FlowStart` on it): hand over now
+        flowMoved(to: flow.step)
         followFlow()
         followReturning()
     }

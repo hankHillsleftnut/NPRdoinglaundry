@@ -145,10 +145,14 @@ struct ReleaseRouteTableTests {
         #expect(!Self.isDebugOnly("struct Shipped {}\n"))
         #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#endif\nstruct Shipped {}\n#if os(iOS)\n#endif\n"))
         #expect(Self.isDebugOnly("#if DEBUG\n#if os(iOS)\nstruct Demo {}\n#endif\n#endif\n"))
+        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#else\nstruct Shipped {}\n#endif\n"))
+        #expect(!Self.isDebugOnly("#if DEBUG\nstruct Demo {}\n#elseif os(iOS)\nstruct Shipped {}\n#endif\n"))
+        // a nested #else stays inside DEBUG: fine
+        #expect(Self.isDebugOnly("#if DEBUG\n#if os(iOS)\nstruct A {}\n#else\nstruct B {}\n#endif\n#endif\n"))
     }
 
-    /// The file's only code is one `#if DEBUG` block: before it only comments and blank lines, after its
-    /// closing `#endif` nothing at all.
+    /// The file's only code is one `#if DEBUG` block with no `#else`/`#elseif` of its own (that branch would
+    /// compile in release): before it only comments and blank lines, after its closing `#endif` nothing.
     static func isDebugOnly(_ text: String) -> Bool {
         let lines = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
         let code = lines.filter { !$0.isEmpty && !$0.hasPrefix("//") }
@@ -158,6 +162,9 @@ struct ReleaseRouteTableTests {
         for (index, line) in code.enumerated() {
             if line.hasPrefix("#if") {
                 depth += 1
+            } else if depth == 1, line.hasPrefix("#else") || line.hasPrefix("#elseif") {
+                // the DEBUG block's other branch is release code
+                return false
             } else if line.hasPrefix("#endif") {
                 depth -= 1
                 if depth == 0 {
