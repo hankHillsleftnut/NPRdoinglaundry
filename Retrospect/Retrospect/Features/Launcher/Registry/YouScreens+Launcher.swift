@@ -4,7 +4,7 @@
 //  about you, opened with `-Screen YO-<n> -State <state> -Data sample`. Dark: listed here and
 //  nowhere in the release root.
 //
-//  V2.you.a: YO-5 `rest`. V2.you.b: YO-3 `rest`, `editing`. Until YO-1 and YO-2 are built (V2.you.c, d)
+//  V2.you.a: YO-5 `rest`. V2.you.b: YO-3 `rest` (no edit from You, founder 27 Oct). Until YO-1 and YO-2 are built (V2.you.c, d)
 //  each page opens at its stack's root, so back has nowhere to go in the launcher (as the account page's
 //  launcher). Another group's screens (a goal, settings) are not opened from here until the wiring PR (YO-D14).
 //
@@ -17,21 +17,20 @@ enum YouScreens: ScreenGroup {
         LaunchableScreen(id: "YO-5", states: ["rest"]) { _ in
             AnyView(WhatIKnowLaunch())
         },
-        LaunchableScreen(id: "YO-3", states: ["rest", "editing"]) { arguments in
-            AnyView(SourceLaunch(editing: arguments.state == "editing"))
+        LaunchableScreen(id: "YO-3", states: ["rest"]) { _ in
+            AnyView(SourceLaunch())
         },
     ]
 }
 
 /// YO-3 on the sample, at its stack's root (YO-2 joins below it in V2.you.d).
 private struct SourceLaunch: View {
-    let editing: Bool
     @State private var data = SampleYou()
     @State private var navigator = YouNavigator()
 
     var body: some View {
         YouStack(data: data, navigator: navigator) {
-            SourceScreen(sourceID: SampleYou.sleepEntry.id, data: data, navigator: navigator, editing: editing)
+            YouSourceScreen(sourceID: SampleYou.sleepEntry.id, data: data, navigator: navigator)
         }
     }
 }

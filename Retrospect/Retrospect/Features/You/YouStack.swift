@@ -71,7 +71,7 @@ private struct YouDestination: View {
         case .whatIKnow:
             WhatIKnowDestination(data: data, back: navigator.pop)
         case let .source(id):
-            SourceScreen(sourceID: id, data: data, navigator: navigator)
+            YouSourceScreen(sourceID: id, data: data, navigator: navigator)
         }
     }
 }
@@ -91,16 +91,16 @@ private struct WhatIKnowDestination: View {
 }
 
 /// YO-3 with its own model, pushed or (in the launcher) at the stack's root.
-struct SourceScreen: View {
-    @State private var model: SourceModel
+struct YouSourceScreen: View {
+    @State private var model: YouSourceModel
     let navigator: YouNavigator
 
-    init(sourceID: String, data: any YouData, navigator: YouNavigator, editing: Bool = false) {
-        _model = State(initialValue: SourceModel(sourceID: sourceID, data: data, startsEditing: editing))
+    init(sourceID: String, data: any YouData, navigator: YouNavigator) {
+        _model = State(initialValue: YouSourceModel(sourceID: sourceID, data: data))
         self.navigator = navigator
     }
 
     var body: some View {
-        SourcePage(model: model, back: navigator.pop, open: navigator.opener(for:))
+        YouSourcePage(model: model, back: navigator.pop, open: navigator.opener(for:))
     }
 }

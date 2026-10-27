@@ -42,19 +42,23 @@ struct WhatIKnowPage: View {
     }
 }
 
-/// "moved this week" (1T1E-0): a wash row, radius.panel, min 56, padding 8 / 16. What it opens is not
-/// drawn, so it shows no › and isn't a button (YO-D10).
+/// "moved this week" (1T1E-0): a wash row, radius.panel, min 56, padding 8 / 16, ›. What it opens is not
+/// drawn, so it is drawn as Paper but inert (YO-D10, DECISIONS 27 Oct).
 private struct MovedThisWeekRow: View {
     let subline: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
-            Text("moved this week")
-                .rText(.textMdMedium)
-                .foregroundStyle(RColor.textPrimary)
-            Text(subline)
-                .rText(.metaLine)
-                .foregroundStyle(RColor.textLabel)
+        HStack(spacing: RDimension.space3) {
+            VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
+                Text("moved this week")
+                    .rText(.textMdMedium)
+                    .foregroundStyle(RColor.textPrimary)
+                Text(subline)
+                    .rText(.metaLine)
+                    .foregroundStyle(RColor.textLabel)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            YouChevron()
         }
         // padding first, then the 56 minimum, so the row is 56 overall as Paper draws it (not 56 + 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,6 +67,7 @@ private struct MovedThisWeekRow: View {
         .frame(minHeight: RDimension.sizeRowDefault)
         .background(RColor.surfaceWash, in: RShape.rect(RDimension.radiusPanel))
         .accessibilityElement(children: .combine)
+        .youInert()
     }
 }
 
