@@ -1,9 +1,10 @@
 import ActivityKit
-import WidgetKit
-import SwiftUI
 import AppIntents
+import SwiftUI
+import WidgetKit
 
 // MARK: - Live Activity Widget (minimal, non-intrusive)
+
 @available(iOS 16.2, *)
 struct VoiceRecordingLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
@@ -64,6 +65,7 @@ struct VoiceRecordingLiveActivityWidget: Widget {
 }
 
 // MARK: - Lock Screen View (simple one line + Stop)
+
 @available(iOS 16.2, *)
 struct VoiceRecordingLockScreenView: View {
     let context: ActivityViewContext<VoiceRecordingAttributes>
@@ -100,6 +102,7 @@ struct VoiceRecordingLockScreenView: View {
 }
 
 // MARK: - Helper
+
 private func formatTime(_ timeInterval: TimeInterval) -> String {
     let minutes = Int(timeInterval) / 60
     let seconds = Int(timeInterval) % 60

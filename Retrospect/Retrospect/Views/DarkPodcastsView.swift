@@ -10,9 +10,9 @@ import SwiftUI
 struct DarkPodcastsView: View {
     @ObservedObject var viewModel: TranscriptViewModel
     @ObservedObject var audioManager: DarkAudioManager
-    @ObservedObject var entryManager: EntryManager = EntryManager.shared
-    @ObservedObject var goalsManager: GoalsManager = GoalsManager.shared
-    
+    @ObservedObject var entryManager: EntryManager = .shared
+    @ObservedObject var goalsManager: GoalsManager = .shared
+
     @AppStorage("devMode") private var devMode: Bool = false
     @AppStorage("mockAPICalls") private var mockAPICalls: Bool = false
     @State private var headerOpacity: Double = 0
@@ -21,15 +21,15 @@ struct DarkPodcastsView: View {
     @State private var generationError: String?
     @State private var showErrorAlert: Bool = false
     @State private var mockTranscript: TranscriptModel?
-    
-    // Header styling
+
+    /// Header styling
     private let headerHeight: CGFloat = 50
-    
-    // Show all saved podcasts
+
+    /// Show all saved podcasts
     private var podcasts: [TranscriptModel] {
         return viewModel.savedPodcasts
     }
-    
+
     var body: some View {
         FigmaLightPageScaffold(title: "Episodes") {
             VStack(spacing: 8) {
@@ -71,7 +71,7 @@ struct DarkPodcastsView: View {
                                     .init(color: .clear, location: 0),
                                     .init(color: .black.opacity(0.3), location: 0.3),
                                     .init(color: .black.opacity(0.7), location: 0.6),
-                                    .init(color: .black, location: 1.0)
+                                    .init(color: .black, location: 1.0),
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -93,7 +93,7 @@ struct DarkPodcastsView: View {
         }
         .onChange(of: viewModel.transcript) { _, newTranscript in
             // When transcript is generated and we were waiting for it, show arrival view
-            if isGenerating && newTranscript != nil {
+            if isGenerating, newTranscript != nil {
                 isGenerating = false
                 HapticManager.shared.playSuccessNotification()
                 showPodcastArrival = true
@@ -101,7 +101,7 @@ struct DarkPodcastsView: View {
         }
         .onChange(of: viewModel.errorMessage) { _, newError in
             // Handle generation errors
-            if isGenerating && newError != nil {
+            if isGenerating, newError != nil {
                 isGenerating = false
                 generationError = newError
                 showErrorAlert = true
@@ -137,8 +137,9 @@ struct DarkPodcastsView: View {
             Text(generationError ?? "An unknown error occurred.")
         }
     }
-    
+
     // MARK: - Dev rows (rendered below scaffold header in dev mode only)
+
     @ViewBuilder private var devRows: some View {
         if viewModel.isProcessing {
             HStack(spacing: 8) {
@@ -193,11 +194,11 @@ struct DarkPodcastsView: View {
             )
         }
     }
-    
+
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
-            
+
             if isGenerating {
                 // Show generation progress
                 VStack(spacing: 24) {
@@ -206,12 +207,12 @@ struct DarkPodcastsView: View {
                         Circle()
                             .fill(LinearColors.Minimal.accent.opacity(0.15))
                             .frame(width: 120, height: 120)
-                        
+
                         HStack(spacing: 6) {
-                            ForEach(0..<5, id: \.self) { index in
+                            ForEach(0 ..< 5, id: \.self) { index in
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(LinearColors.Minimal.accent)
-                                    .frame(width: 8, height: CGFloat.random(in: 20...50))
+                                    .frame(width: 8, height: CGFloat.random(in: 20 ... 50))
                                     .animation(
                                         Animation.easeInOut(duration: 0.5)
                                             .repeatForever()
@@ -221,17 +222,17 @@ struct DarkPodcastsView: View {
                             }
                         }
                     }
-                    
+
                     VStack(spacing: 12) {
                         Text(mockAPICalls ? "Creating Mock Podcast" : "Generating Your Podcast")
                             .font(FigmaLightTheme.title(30))
                             .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
-                        
+
                         Text(mockAPICalls ? "Using sample data..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
                             .font(FigmaLightTheme.mono(15))
                             .foregroundColor(FigmaLightTheme.mutedText)
                             .animation(.easeInOut, value: viewModel.processingStatus)
-                        
+
                         // Progress bar (only show for real API calls)
                         if !mockAPICalls {
                             GeometryReader { geometry in
@@ -239,7 +240,7 @@ struct DarkPodcastsView: View {
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(LinearColors.Minimal.backgroundCard)
                                         .frame(height: 8)
-                                    
+
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(LinearColors.Minimal.accent)
                                         .frame(width: geometry.size.width * viewModel.currentProgress, height: 8)
@@ -248,7 +249,7 @@ struct DarkPodcastsView: View {
                             }
                             .frame(height: 8)
                             .padding(.horizontal, 40)
-                            
+
                             Text("\(Int(viewModel.currentProgress * 100))%")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
@@ -261,23 +262,23 @@ struct DarkPodcastsView: View {
                     Circle()
                         .fill(FigmaLightTheme.rowSurface)
                         .frame(width: 100, height: 100)
-                    
+
                     Image(systemName: "waveform")
                         .font(.system(size: 40, weight: .light))
                         .foregroundColor(FigmaLightTheme.mutedText)
                 }
-                
+
                 VStack(spacing: 8) {
                     Text("No Podcasts Yet")
                         .font(FigmaLightTheme.title(30))
                         .foregroundColor(FigmaLightTheme.primaryText.opacity(0.72))
-                    
+
                     Text("Write in your journal and generate\nyour first personalized podcast")
                         .font(FigmaLightTheme.body(15))
                         .foregroundColor(FigmaLightTheme.mutedText)
                         .multilineTextAlignment(.center)
                 }
-                
+
                 // Dev mode: Generate Test Podcast button
                 if devMode {
                     Button(action: generateTestPodcast) {
@@ -301,36 +302,37 @@ struct DarkPodcastsView: View {
                         .shadow(color: LinearColors.Minimal.accent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                     .padding(.top, 12)
-                    
+
                     // Info text
                     VStack(spacing: 4) {
                         Text("Dev Mode")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
-                        Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
+
+                        Text(mockAPICalls ? "Uses sample data (no API calls)" :
+                            "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
                             .font(.system(size: 11, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textTertiary.opacity(0.7))
                     }
                     .padding(.top, 4)
                 }
             }
-            
+
             Spacer()
             Spacer()
         }
         .padding(.horizontal, 40)
     }
-    
+
     private func generateTestPodcast() {
         HapticManager.shared.playMediumImpact()
         isGenerating = true
         generationError = nil
-        
+
         // If Mock API Calls is enabled, use sample data without real API calls
         if mockAPICalls {
             print("🔧 Mock API Calls enabled - using sample data")
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 let sampleTranscript = TranscriptModel(
                     id: UUID(),
@@ -338,15 +340,15 @@ struct DarkPodcastsView: View {
                     goals: ["Personal growth", "Work-life balance", "Self-reflection"],
                     processedTranscript: """
                     This week has been quite a journey for you. Looking at everything you've shared, there's a clear pattern emerging—one that speaks to your growth and the challenges you're facing.
-                    
+
                     Let's start with what's been on your mind the most. You've been thinking a lot about balance—between work and personal life, between ambition and contentment. And here's the thing: that tension isn't a bug, it's a feature. It means you care about both sides.
-                    
+
                     What I noticed in your entries is a shift in how you're talking about your goals. Early in the week, there was hesitation. By Thursday, something clicked. You started writing with more certainty, more ownership of your direction.
-                    
+
                     The pattern I want to highlight: every time you wrote about feeling stuck, it was followed within 24 hours by a breakthrough insight. Your brain is working on these problems even when you think you're not making progress.
-                    
+
                     For next week, consider this: what if the uncertainty you're feeling isn't a problem to solve, but information to listen to? Sometimes our discomfort is pointing us exactly where we need to look.
-                    
+
                     Until next time, keep writing. Keep reflecting. The clarity is coming.
                     """,
                     audioFileURL: nil,
@@ -358,23 +360,23 @@ struct DarkPodcastsView: View {
                     researchQueries: nil,
                     createdAt: Date()
                 )
-                
-                self.mockTranscript = sampleTranscript
-                self.viewModel.transcript = sampleTranscript
-                self.isGenerating = false
+
+                mockTranscript = sampleTranscript
+                viewModel.transcript = sampleTranscript
+                isGenerating = false
                 HapticManager.shared.playSuccessNotification()
-                self.showPodcastArrival = true
+                showPodcastArrival = true
             }
             return
         }
-        
+
         // Real API calls - Get real entries from the past week
         let weekEntries = entryManager.getEntriesForWeek()
         let goals = goalsManager.goalContextForGeneration
-        
+
         // Build combined text from entries
         var combinedText = ""
-        
+
         if weekEntries.isEmpty {
             // If no entries, use sample data for testing
             combinedText = """
@@ -386,12 +388,12 @@ struct DarkPodcastsView: View {
         } else {
             // Combine all entries from the week
             let sortedEntries = weekEntries.sorted { $0.date < $1.date }
-            
+
             for entry in sortedEntries {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateStyle = .medium
                 dateFormatter.timeStyle = .short
-                
+
                 let entryHeader = "[\(dateFormatter.string(from: entry.date)) - \(entry.type.rawValue.capitalized)]"
                 combinedText += "\(entryHeader)\n\(entry.content)\n\n"
             }
@@ -399,10 +401,10 @@ struct DarkPodcastsView: View {
 
         // Use default goals if none exist
         let finalGoals = goals.isEmpty ? ["Personal growth", "Self-reflection", "Well-being"] : goals
-        
+
         print("🎙️ Generating podcast with \(weekEntries.count) entries and \(finalGoals.count) goals")
         print("📝 Combined text length: \(combinedText.count) characters")
-        
+
         // Call the actual transcript generation
         viewModel.generateTranscript(
             text: combinedText,
@@ -413,20 +415,21 @@ struct DarkPodcastsView: View {
 }
 
 // MARK: - Podcast Card
+
 struct DarkPodcastCard: View {
     let transcript: TranscriptModel
     @ObservedObject var audioManager: DarkAudioManager
     let isCurrentlyPlaying: Bool
-    
+
     private var hasAudio: Bool {
         transcript.audioFileURL != nil
     }
-    
+
     private var podcastMood: PodcastMood {
         guard let moodString = transcript.mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-    
+
     private var moodColors: [Color] {
         switch podcastMood {
         case .positive: return LinearColors.Minimal.Mood.positive
@@ -439,7 +442,7 @@ struct DarkPodcastCard: View {
         case .melancholic: return LinearColors.Minimal.Mood.melancholic
         }
     }
-    
+
     var body: some View {
         Button(action: {
             HapticManager.shared.playMediumImpact()
@@ -447,7 +450,7 @@ struct DarkPodcastCard: View {
             print("   - Transcript ID: \(transcript.id)")
             print("   - Has audio: \(hasAudio)")
             print("   - Has transcript text: \(transcript.processedTranscript != nil)")
-            
+
             // Use showTranscript which handles both audio and no-audio cases
             audioManager.showTranscript(transcript: transcript)
         }) {
@@ -457,10 +460,10 @@ struct DarkPodcastCard: View {
                         .fill(FigmaLightTheme.controlSurface)
                         .frame(width: 42, height: 42)
                         .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
-                    
+
                     if isCurrentlyPlaying {
                         HStack(spacing: 3) {
-                            ForEach(0..<3, id: \.self) { index in
+                            ForEach(0 ..< 3, id: \.self) { index in
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(FigmaLightTheme.mutedText)
                                     .frame(width: 3, height: CGFloat(12 + index * 4))
@@ -476,13 +479,13 @@ struct DarkPodcastCard: View {
                             .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("Weekly Insights")
                             .font(FigmaLightTheme.body(18, weight: .semibold))
                             .foregroundColor(FigmaLightTheme.primaryText)
-                        
+
                         if !hasAudio {
                             Text("Text")
                                 .font(FigmaLightTheme.mono(10, weight: .semibold))
@@ -495,15 +498,15 @@ struct DarkPodcastCard: View {
                                 )
                         }
                     }
-                    
+
                     Text("\(podcastMood.displayName.lowercased()) • \(formatDate(transcript.createdAt))")
                         .font(FigmaLightTheme.mono(14))
                         .foregroundColor(FigmaLightTheme.mutedText)
                         .lineLimit(1)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: isCurrentlyPlaying ? "speaker.wave.2.fill" : (hasAudio ? "play.fill" : "chevron.right"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(FigmaLightTheme.faintText)
@@ -522,7 +525,7 @@ struct DarkPodcastCard: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -535,7 +538,7 @@ struct DarkPodcastCard: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         DarkPodcastsView(
             viewModel: TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared),
             audioManager: DarkAudioManager.shared

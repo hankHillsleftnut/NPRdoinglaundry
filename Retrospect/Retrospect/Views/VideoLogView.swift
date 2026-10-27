@@ -1,5 +1,5 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 // Define the data model for a video journal entry
 // struct VideoJournalEntry: Identifiable, Codable {
@@ -18,7 +18,7 @@ struct VideoLogView: View {
     @State private var showingPlayer = false
     @State private var showingError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         VStack(spacing: 0) {
             if journalManager.entries.isEmpty {
@@ -58,12 +58,12 @@ struct VideoLogView: View {
             }
         }
         .alert("Video Playback Error", isPresented: $showingError) {
-            Button("OK") { }
+            Button("OK") {}
         } message: {
             Text(errorMessage)
         }
     }
-    
+
     private func playVideo(entry: VideoJournalEntry) {
         // Check if video file exists
         guard FileManager.default.fileExists(atPath: entry.videoURL.path) else {
@@ -71,15 +71,15 @@ struct VideoLogView: View {
             showingError = true
             return
         }
-        
+
         // Create player - don't check status immediately as it loads asynchronously
         let player = AVPlayer(url: entry.videoURL)
-        
+
         // Set the selected entry and player immediately
         selectedEntry = entry
         avPlayer = player
         showingPlayer = true
-        
+
         // Optional: Add observer for player item status if needed for error handling
         if let playerItem = player.currentItem {
             NotificationCenter.default.addObserver(
@@ -87,13 +87,13 @@ struct VideoLogView: View {
                 object: playerItem,
                 queue: .main
             ) { _ in
-                self.errorMessage = "Video playback failed. The file may be corrupted."
-                self.showingError = true
-                self.showingPlayer = false
+                errorMessage = "Video playback failed. The file may be corrupted."
+                showingError = true
+                showingPlayer = false
             }
         }
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -116,7 +116,7 @@ struct VideoLogView: View {
 struct VideoLogEntryCard: View {
     let entry: VideoJournalEntry
     @ObservedObject private var journalManager = VideoJournalManager.shared
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -129,9 +129,9 @@ struct VideoLogEntryCard: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(LinearColors.secondaryText)
                 }
-                
+
                 Spacer()
-                
+
                 // Video status indicator
                 HStack(spacing: 8) {
                     if FileManager.default.fileExists(atPath: entry.videoURL.path) {
@@ -141,10 +141,10 @@ struct VideoLogEntryCard: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(LinearColors.Minimal.warning)
                     }
-                    
+
                     Toggle("Include in Insights", isOn: Binding(
                         get: { entry.isIncludedInInsights },
-                        set: { newValue in
+                        set: { _ in
                             journalManager.toggleInclusionStatus(for: entry.id)
                         }
                     ))
@@ -152,12 +152,12 @@ struct VideoLogEntryCard: View {
                     .tint(LinearColors.accent)
                 }
             }
-            
+
             // Divider
             Rectangle()
                 .fill(LinearColors.border.opacity(0.5))
                 .frame(height: 1)
-            
+
             // Transcription
             if !entry.transcription.isEmpty {
                 Text(entry.transcription)
@@ -171,15 +171,15 @@ struct VideoLogEntryCard: View {
                     .foregroundColor(LinearColors.secondaryText)
                     .italic()
             }
-            
+
             // Video file info
             HStack {
                 Text("Video File: \(entry.videoURL.lastPathComponent)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(LinearColors.secondaryText)
-                
+
                 Spacer()
-                
+
                 if FileManager.default.fileExists(atPath: entry.videoURL.path) {
                     Text("Available")
                         .font(.system(size: 12, weight: .medium))
@@ -202,4 +202,4 @@ struct VideoLogView_Previews: PreviewProvider {
             VideoLogView()
         }
     }
-} 
+}

@@ -14,16 +14,16 @@ struct EnhancedTextField: View {
     let field: InputField
     var showSendButton: Bool = false
     var isSendEnabled: Bool = false
-    var onSend: (() -> Void)? = nil
-    
+    var onSend: (() -> Void)?
+
     private var isActive: Bool {
         isFocused == field
     }
-    
+
     private var isOtherFieldActive: Bool {
         isFocused != nil && isFocused != field
     }
-    
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: BorderRadius.input)
@@ -34,7 +34,7 @@ struct EnhancedTextField: View {
                     x: Shadows.inputShadow.x,
                     y: Shadows.inputShadow.y
                 )
-            
+
             // Separate stroke layer
             RoundedRectangle(cornerRadius: BorderRadius.input)
                 .strokeBorder(
@@ -42,7 +42,7 @@ struct EnhancedTextField: View {
                         (isOtherFieldActive ? LinearColors.inputBorder.opacity(0.5) : LinearColors.inputBorder),
                     lineWidth: isActive ? 2.0 : 1.0
                 )
-            
+
             Group {
                 if text.isEmpty {
                     Text(placeholder)
@@ -55,7 +55,7 @@ struct EnhancedTextField: View {
                         .animation(Animations.focusTransition, value: isFocused)
                 }
             }
-            
+
             TextEditor(text: $text)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
@@ -67,14 +67,14 @@ struct EnhancedTextField: View {
                 .padding(.trailing, showSendButton ? 52 : 0) // Make room for send button
                 .focused($isFocused, equals: field)
                 .lineSpacing(TypographySpacing.bodyLineSpacing)
-            
+
             // Send Button - Bottom Right (overlaid inside text field)
             if showSendButton {
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
-                        
+
                         Button(action: {
                             HapticManager.shared.playMediumImpact()
                             onSend?()
@@ -86,23 +86,23 @@ struct EnhancedTextField: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(
-                                            isSendEnabled 
-                                            ? LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    LinearColors.accent,
-                                                    LinearColors.accent.opacity(0.9)
-                                                ]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                            : LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    LinearColors.cardBackground,
-                                                    LinearColors.cardBackground
-                                                ]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
+                                            isSendEnabled
+                                                ? LinearGradient(
+                                                    gradient: Gradient(colors: [
+                                                        LinearColors.accent,
+                                                        LinearColors.accent.opacity(0.9),
+                                                    ]),
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                                : LinearGradient(
+                                                    gradient: Gradient(colors: [
+                                                        LinearColors.cardBackground,
+                                                        LinearColors.cardBackground,
+                                                    ]),
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
                                         )
                                         .shadow(
                                             color: isSendEnabled ? LinearColors.accent.opacity(0.3) : Color.black.opacity(0.05),
@@ -133,7 +133,7 @@ struct EnhancedTextField: View {
         .gesture(
             DragGesture(minimumDistance: 20)
                 .onEnded { gesture in
-                    if gesture.translation.height > 0 && gesture.translation.width < 100 {
+                    if gesture.translation.height > 0, gesture.translation.width < 100 {
                         isFocused = nil
                         HapticManager.shared.playLightImpact()
                     }

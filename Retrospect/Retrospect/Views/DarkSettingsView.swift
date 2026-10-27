@@ -5,8 +5,8 @@
 //  Settings hub in dark UI
 //
 
-import SwiftUI
 import LocalAuthentication
+import SwiftUI
 
 struct DarkSettingsView: View {
     @State private var showProfilePersonalization = false
@@ -34,7 +34,9 @@ struct DarkSettingsView: View {
         FigmaLightPageScaffold(title: "Settings") {
             ScrollView {
                 VStack(spacing: 20) {
+
                     // MARK: Account
+
                     FigmaLightSectionLabel(text: "Account")
                         .padding(.horizontal, 4)
                         .padding(.top, 4)
@@ -50,6 +52,7 @@ struct DarkSettingsView: View {
                     }
 
                     // MARK: Integrations
+
                     FigmaLightSectionLabel(text: "Integrations")
                         .padding(.horizontal, 4)
 
@@ -64,6 +67,7 @@ struct DarkSettingsView: View {
                     }
 
                     // MARK: Security
+
                     FigmaLightSectionLabel(text: "Security")
                         .padding(.horizontal, 4)
 
@@ -76,7 +80,9 @@ struct DarkSettingsView: View {
                                 get: { faceIDEnabled },
                                 set: { on in
                                     faceIDEnabled = on
-                                    if on { checkBiometricAvailability() }
+                                    if on {
+                                        checkBiometricAvailability()
+                                    }
                                 }
                             ),
                             isLoading: false
@@ -84,6 +90,7 @@ struct DarkSettingsView: View {
                     }
 
                     // MARK: Appearance
+
                     FigmaLightSectionLabel(text: "Appearance")
                         .padding(.horizontal, 4)
 
@@ -98,6 +105,7 @@ struct DarkSettingsView: View {
                     }
 
                     // MARK: Advanced
+
                     FigmaLightRowCard {
                         lightSettingsRow(
                             title: "Advanced",
@@ -109,6 +117,7 @@ struct DarkSettingsView: View {
                     }
 
                     // MARK: Log Out
+
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         if devMode {
@@ -161,7 +170,9 @@ struct DarkSettingsView: View {
             Button("Wipe & Log Out", role: .destructive) { fullSignOut(wipeOnboarding: true) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Wipe all your onboarding data and start fresh? Next sign-in runs the full onboarding and regenerates your first podcast. Your journal entries and existing podcasts are kept.")
+            Text(
+                "Wipe all your onboarding data and start fresh? Next sign-in runs the full onboarding and regenerates your first podcast. Your journal entries and existing podcasts are kept."
+            )
         }
         .alert("Face ID Unavailable", isPresented: $showBiometricUnavailableAlert) {
             Button("OK", role: .cancel) { faceIDEnabled = false }
@@ -175,7 +186,9 @@ struct DarkSettingsView: View {
         }
         .alert("Apple Health", isPresented: $showHealthError) {
             Button("Open Health App") {
-                if let url = URL(string: "x-apple-health://") { UIApplication.shared.open(url) }
+                if let url = URL(string: "x-apple-health://") {
+                    UIApplication.shared.open(url)
+                }
             }
             Button("OK", role: .cancel) {}
         } message: {
@@ -185,7 +198,6 @@ struct DarkSettingsView: View {
 
     // MARK: - Light-themed row helpers
 
-    @ViewBuilder
     private func lightSettingsRow(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: { HapticManager.shared.playLightImpact(); action() }) {
             HStack(spacing: 14) {
@@ -216,7 +228,6 @@ struct DarkSettingsView: View {
         .buttonStyle(PlainButtonStyle())
     }
 
-    @ViewBuilder
     private func lightToggleRow(title: String, subtitle: String, icon: String, isOn: Binding<Bool>, isLoading: Bool) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
@@ -335,9 +346,10 @@ struct DarkSettingsView: View {
 }
 
 // MARK: - Grouped Settings Container
+
 struct GroupedSettingsContainer<Content: View>: View {
     @ViewBuilder let content: Content
-    
+
     var body: some View {
         VStack(spacing: 0) {
             content
@@ -354,6 +366,7 @@ struct GroupedSettingsContainer<Content: View>: View {
 }
 
 // MARK: - Settings Divider
+
 struct SettingsDivider: View {
     var body: some View {
         HStack {
@@ -367,13 +380,14 @@ struct SettingsDivider: View {
 }
 
 // MARK: - Grouped Settings Row
+
 struct GroupedSettingsRow: View {
     let title: String
     let subtitle: String
     let icon: String
     let iconColor: Color
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -385,25 +399,25 @@ struct GroupedSettingsRow: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(iconColor.opacity(0.15))
                         .frame(width: 40, height: 40)
-                    
+
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(iconColor)
                 }
-                
+
                 // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
-                    
+
                     Text(subtitle)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .medium))
@@ -418,13 +432,14 @@ struct GroupedSettingsRow: View {
 }
 
 // MARK: - Settings Card
+
 struct DarkSettingsCard: View {
     let title: String
     let subtitle: String
     let icon: String
     let iconColor: Color
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -436,25 +451,25 @@ struct DarkSettingsCard: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(iconColor.opacity(0.15))
                         .frame(width: 44, height: 44)
-                    
+
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(iconColor)
                 }
-                
+
                 // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
-                    
+
                     Text(subtitle)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .medium))
@@ -477,13 +492,14 @@ struct DarkSettingsCard: View {
 // MARK: - Dark Settings Sub-Views (Simplified versions)
 
 // MARK: - Podcast Cadence Options
+
 enum PodcastCadence: String, CaseIterable {
     case daily = "Daily"
     case everyOtherDay = "Every Other Day"
     case twiceWeekly = "Twice a Week"
     case weekly = "Weekly"
     case biweekly = "Every 2 Weeks"
-    
+
     var description: String {
         switch self {
         case .daily: return "Every morning"
@@ -500,7 +516,7 @@ struct DarkProfilePersonalizationView: View {
     @AppStorage("userName") private var userName: String = ""
     @AppStorage("deepResearchMode") private var deepResearchMode: Bool = false
     @AppStorage("podcastCadence") private var podcastCadence: String = PodcastCadence.weekly.rawValue
-    
+
     var body: some View {
         lightSettingsSheet(title: "Profile & Personalization") {
             VStack(spacing: 16) {
@@ -510,7 +526,7 @@ struct DarkProfilePersonalizationView: View {
                     placeholder: "Enter your name",
                     text: $userName
                 )
-                
+
                 // Podcast Cadence
                 VStack(alignment: .leading, spacing: 10) {
                     FigmaLightSectionLabel(text: "Podcast Cadence")
@@ -541,7 +557,7 @@ struct DarkProfilePersonalizationView: View {
                         }
                     }
                 }
-                
+
                 // Deep Research Toggle
                 LightSettingsToggleRow(
                     title: "Deep Research Mode",
@@ -554,6 +570,7 @@ struct DarkProfilePersonalizationView: View {
 }
 
 // MARK: - Cadence Option Row
+
 /// One cadence choice. Deliberately carries no card of its own — the five
 /// options stack inside a single `FigmaLightRowCard` separated by dividers, the
 /// same grouped-list shape the Settings and Integrations pages use. Five
@@ -603,7 +620,7 @@ struct LightCadenceOption: View {
 
 struct DarkAppearanceSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         lightSettingsSheet(title: "Appearance") {
             VStack(spacing: 16) {
@@ -611,7 +628,7 @@ struct DarkAppearanceSettingsView: View {
                     title: "Theme",
                     value: "Dark (Always)"
                 )
-                
+
                 LightSettingsInfoRow(
                     title: "Accent Color",
                     value: "Terra Cotta"
@@ -624,7 +641,7 @@ struct DarkAppearanceSettingsView: View {
 struct DarkAudioSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("audioTestMode") private var audioTestMode: Bool = false
-    
+
     var body: some View {
         lightSettingsSheet(title: "Audio & Playback") {
             VStack(spacing: 16) {
@@ -642,7 +659,7 @@ struct DarkPrivacyAndSecurityView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
     @State private var showBiometricUnavailableAlert = false
-    
+
     var body: some View {
         lightSettingsSheet(title: "Privacy & Security") {
             VStack(spacing: 16) {
@@ -658,21 +675,21 @@ struct DarkPrivacyAndSecurityView: View {
                             checkBiometricAvailability()
                         }
                     }
-                    
+
                     if faceIDEnabled {
                         Divider()
                             .background(LinearColors.Minimal.border)
                             .padding(.horizontal, 16)
-                        
+
                         HStack(spacing: 8) {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 14))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
-                            
+
                             Text("Face ID will be required when opening the app")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
-                            
+
                             Spacer()
                         }
                         .padding(.horizontal, 16)
@@ -687,23 +704,25 @@ struct DarkPrivacyAndSecurityView: View {
                                 .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                         )
                 )
-                
+
                 // Privacy info
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
                         Image(systemName: "lock.shield.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.success)
-                        
+
                         Text("Your Data is Protected")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                     }
-                    
-                    Text("All your journal entries and reflections are stored locally on your device. Nothing is sent to external servers without your explicit action.")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textSecondary)
-                        .lineSpacing(4)
+
+                    Text(
+                        "All your journal entries and reflections are stored locally on your device. Nothing is sent to external servers without your explicit action."
+                    )
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(LinearColors.Minimal.textSecondary)
+                    .lineSpacing(4)
                 }
                 .padding(16)
                 .background(
@@ -724,11 +743,11 @@ struct DarkPrivacyAndSecurityView: View {
             Text("Face ID is not available on this device or is not configured. Please set up Face ID in Settings.")
         }
     }
-    
+
     private func checkBiometricAvailability() {
         let context = LAContext()
         var error: NSError?
-        
+
         if !context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             showBiometricUnavailableAlert = true
             faceIDEnabled = false
@@ -758,7 +777,7 @@ struct DarkIntegrationsDataView: View {
     @State private var showGoogleError = false
     @State private var showHealthError = false
     @State private var healthErrorMessage = ""
-    
+
     var body: some View {
         lightSettingsSheet(title: "Integrations & Data") {
             VStack(spacing: 20) {
@@ -768,13 +787,13 @@ struct DarkIntegrationsDataView: View {
                         Image(systemName: "doc.text.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.iconBlue)
-                        
+
                         Text("Google Docs")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-                        
+
                         Spacer()
-                        
+
                         if googleDocsService.isConnected {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -786,11 +805,11 @@ struct DarkIntegrationsDataView: View {
                             }
                         }
                     }
-                    
+
                     Text("Include your Google Docs in reflections for richer insights.")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
-                    
+
                     if googleDocsService.isConnected {
                         Button(action: disconnectGoogle) {
                             Text("Disconnect")
@@ -839,20 +858,20 @@ struct DarkIntegrationsDataView: View {
                                 .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                         )
                 )
-                
+
                 // Apple Health Section
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
                         Image(systemName: "heart.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.iconPink)
-                        
+
                         Text("Apple Health")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-                        
+
                         Spacer()
-                        
+
                         if healthKitEnabled {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -864,11 +883,11 @@ struct DarkIntegrationsDataView: View {
                             }
                         }
                     }
-                    
+
                     Text("Include sleep, activity, and mindfulness data in your reflections.")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
-                    
+
                     if healthKitEnabled {
                         Button(action: { healthKitEnabled = false }) {
                             Text("Disable")
@@ -917,20 +936,20 @@ struct DarkIntegrationsDataView: View {
                                 .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                         )
                 )
-                
+
                 // Screen Time Section
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
                         Image(systemName: "hourglass")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.iconPurple)
-                        
+
                         Text("Screen Time")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-                        
+
                         Spacer()
-                        
+
                         if screenTimeService.isAuthorized {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -942,11 +961,11 @@ struct DarkIntegrationsDataView: View {
                             }
                         }
                     }
-                    
+
                     Text("Track app usage, pickups, and digital habits to surface patterns in how you spend your time on-screen.")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
-                    
+
                     if screenTimeService.isAuthorized {
                         // Show latest summary if available
                         if let summary = screenTimeService.latestSummary {
@@ -959,7 +978,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
-                                
+
                                 VStack(spacing: 2) {
                                     Text("\(summary.totalPickups)")
                                         .font(.system(size: 15, weight: .semibold))
@@ -968,7 +987,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
-                                
+
                                 VStack(spacing: 2) {
                                     Text("\(summary.appUsage.count)")
                                         .font(.system(size: 15, weight: .semibold))
@@ -977,7 +996,7 @@ struct DarkIntegrationsDataView: View {
                                         .font(.system(size: 11, weight: .regular))
                                         .foregroundColor(LinearColors.Minimal.textTertiary)
                                 }
-                                
+
                                 Spacer()
                             }
                             .padding(12)
@@ -986,7 +1005,7 @@ struct DarkIntegrationsDataView: View {
                                     .fill(LinearColors.Minimal.backgroundCardHover)
                             )
                         }
-                        
+
                         HStack(spacing: 10) {
                             Button(action: {
                                 screenTimeService.syncToBackend()
@@ -1014,7 +1033,7 @@ struct DarkIntegrationsDataView: View {
                             }
                             .disabled(screenTimeService.isSyncing)
                             .buttonStyle(PlainButtonStyle())
-                            
+
                             Button(action: {
                                 screenTimeService.revokeAuthorization()
                             }) {
@@ -1065,7 +1084,7 @@ struct DarkIntegrationsDataView: View {
                         }
                         .disabled(isConnectingScreenTime)
                         .buttonStyle(PlainButtonStyle())
-                        
+
                         if let error = screenTimeService.authorizationError {
                             Text(error)
                                 .font(.system(size: 12, weight: .regular))
@@ -1082,19 +1101,19 @@ struct DarkIntegrationsDataView: View {
                                 .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                         )
                 )
-                
+
                 // Data Management
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
                         Image(systemName: "externaldrive.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
-                        
+
                         Text("Data Management")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                     }
-                    
+
                     Text("Your data is stored locally on your device. Export or delete your data at any time.")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
@@ -1127,7 +1146,7 @@ struct DarkIntegrationsDataView: View {
             Text(healthErrorMessage)
         }
     }
-    
+
     private func connectGoogle() {
         isConnectingGoogle = true
         Task {
@@ -1144,11 +1163,11 @@ struct DarkIntegrationsDataView: View {
             }
         }
     }
-    
+
     private func disconnectGoogle() {
         googleDocsService.signOut()
     }
-    
+
     private func connectHealth() {
         // Check if HealthKit is available (only on physical devices, not simulator)
         guard HealthKitManager.shared.isHealthDataAvailable() else {
@@ -1156,17 +1175,17 @@ struct DarkIntegrationsDataView: View {
             showHealthError = true
             return
         }
-        
+
         isConnectingHealth = true
         HapticManager.shared.playLightImpact()
-        
+
         print("🏥 DarkSettingsView: Requesting HealthKit authorization...")
-        
+
         HealthKitManager.shared.requestAuthorization { success in
             DispatchQueue.main.async {
                 isConnectingHealth = false
                 print("🏥 DarkSettingsView: Authorization callback received. Success: \(success)")
-                
+
                 if success {
                     healthKitEnabled = true
                     HapticManager.shared.playSuccessNotification()
@@ -1201,7 +1220,7 @@ struct DarkAdvancedSettingsView: View {
     @StateObject private var entryManager = EntryManager.shared
     @StateObject private var goalsManager = GoalsManager.shared
     @StateObject private var viewModel = TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared)
-    
+
     var body: some View {
         lightSettingsSheet(title: "Advanced") {
             VStack(spacing: 16) {
@@ -1210,7 +1229,7 @@ struct DarkAdvancedSettingsView: View {
                     subtitle: "Enable developer options",
                     isOn: $devMode
                 )
-                
+
                 // Mock API Calls - only visible when Dev Mode is on
                 if devMode {
                     LightSettingsToggleRow(
@@ -1221,13 +1240,13 @@ struct DarkAdvancedSettingsView: View {
                     .padding(.leading, 16)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                
+
                 LightSettingsToggleRow(
                     title: "Experimental View",
                     subtitle: "New podcast-focused interface",
                     isOn: $experimentalViewEnabled
                 )
-                
+
                 // Test Notification
                 Button(action: testNotification) {
                     HStack {
@@ -1235,14 +1254,14 @@ struct DarkAdvancedSettingsView: View {
                             Text("Test Podcast Notification")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(FigmaLightTheme.primaryText)
-                            
+
                             Text("Send a test notification with your content")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(FigmaLightTheme.mutedText)
                         }
-                        
+
                         Spacer()
-                        
+
                         if isGeneratingTestPodcast {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
@@ -1265,7 +1284,7 @@ struct DarkAdvancedSettingsView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .disabled(isGeneratingTestPodcast)
-                
+
                 // Resync Entries to Backend
                 if devMode {
                     Button(action: {
@@ -1277,14 +1296,14 @@ struct DarkAdvancedSettingsView: View {
                                 Text("Resync Entries to Backend")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(FigmaLightTheme.primaryText)
-                                
+
                                 Text("\(entryManager.entries.count) entries will be pushed to Supabase")
                                     .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(FigmaLightTheme.mutedText)
                             }
-                            
+
                             Spacer()
-                            
+
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 18, weight: .medium))
                                 .foregroundColor(FigmaLightTheme.primaryText)
@@ -1301,7 +1320,7 @@ struct DarkAdvancedSettingsView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
-                
+
                 // Create Test Podcast (only when devMode is on)
                 if devMode {
                     Button(action: createTestPodcast) {
@@ -1310,20 +1329,22 @@ struct DarkAdvancedSettingsView: View {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(FigmaLightTheme.primaryText)
-                                
+
                                 if isGeneratingTestPodcast {
-                                    Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
+                                    Text(mockAPICalls ? "Creating sample podcast..." :
+                                        (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
                                         .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(FigmaLightTheme.primaryText)
                                 } else {
-                                    Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
+                                    Text(mockAPICalls ? "Uses sample data (no API calls)" :
+                                        "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
                                         .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(FigmaLightTheme.mutedText)
                                 }
                             }
-                            
+
                             Spacer()
-                            
+
                             if isGeneratingTestPodcast {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
@@ -1347,7 +1368,7 @@ struct DarkAdvancedSettingsView: View {
                     .buttonStyle(PlainButtonStyle())
                     .disabled(isGeneratingTestPodcast)
                 }
-                
+
                 // Replay Onboarding
                 Button(action: {
                     onboardingReplayId += 1
@@ -1361,14 +1382,14 @@ struct DarkAdvancedSettingsView: View {
                             Text("Replay Onboarding")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(FigmaLightTheme.primaryText)
-                            
+
                             Text("Go through the setup flow again")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(FigmaLightTheme.mutedText)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(FigmaLightTheme.faintText)
@@ -1384,7 +1405,7 @@ struct DarkAdvancedSettingsView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 // Preview Podcast Flow
                 Button(action: { showPodcastFlowPreview = true }) {
                     HStack {
@@ -1392,14 +1413,14 @@ struct DarkAdvancedSettingsView: View {
                             Text("Preview Podcast Flow")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(FigmaLightTheme.primaryText)
-                            
+
                             Text("Test the complete podcast UI flow")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(FigmaLightTheme.mutedText)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "play.rectangle.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(FigmaLightTheme.primaryText)
@@ -1415,7 +1436,7 @@ struct DarkAdvancedSettingsView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 // Legacy UI
                 Button(action: { showLegacyUI = true }) {
                     HStack {
@@ -1423,14 +1444,14 @@ struct DarkAdvancedSettingsView: View {
                             Text("Legacy UI (UI1)")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(FigmaLightTheme.primaryText)
-                            
+
                             Text("Original warm cream interface")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(FigmaLightTheme.mutedText)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(FigmaLightTheme.faintText)
@@ -1446,7 +1467,7 @@ struct DarkAdvancedSettingsView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 // Podcast Flow Preview
                 Button(action: { showPodcastFlowPreview = true }) {
                     HStack {
@@ -1454,14 +1475,14 @@ struct DarkAdvancedSettingsView: View {
                             Text("Preview Podcast Flow")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(FigmaLightTheme.primaryText)
-                            
+
                             Text("Walk through the complete podcast UI")
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundColor(FigmaLightTheme.mutedText)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "play.rectangle.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(FigmaLightTheme.primaryText)
@@ -1477,7 +1498,7 @@ struct DarkAdvancedSettingsView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 // Create Test Podcast - Only visible when Dev Mode is on
                 if devMode {
                     Button(action: createTestPodcast) {
@@ -1486,20 +1507,22 @@ struct DarkAdvancedSettingsView: View {
                                 Text(isGeneratingTestPodcast ? "Generating Podcast..." : (mockAPICalls ? "Generate Mock Podcast" : "Generate Real Podcast"))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(FigmaLightTheme.primaryText)
-                                
+
                                 if isGeneratingTestPodcast {
-                                    Text(mockAPICalls ? "Creating sample podcast..." : (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
+                                    Text(mockAPICalls ? "Creating sample podcast..." :
+                                        (viewModel.processingStatus.isEmpty ? "Initializing..." : viewModel.processingStatus))
                                         .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(FigmaLightTheme.primaryText)
                                 } else {
-                                    Text(mockAPICalls ? "Uses sample data (no API calls)" : "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
+                                    Text(mockAPICalls ? "Uses sample data (no API calls)" :
+                                        "Uses \(entryManager.getEntriesForWeek().count) entries • \(goalsManager.goals.count) goals")
                                         .font(.system(size: 13, weight: .regular))
                                         .foregroundColor(FigmaLightTheme.mutedText)
                                 }
                             }
-                            
+
                             Spacer()
-                            
+
                             if isGeneratingTestPodcast {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: FigmaLightTheme.primaryText))
@@ -1563,7 +1586,7 @@ struct DarkAdvancedSettingsView: View {
         }
         .onChange(of: viewModel.transcript) { _, newTranscript in
             // When transcript is generated via createTestPodcast, show arrival view
-            if isGeneratingTestPodcast && newTranscript != nil {
+            if isGeneratingTestPodcast, newTranscript != nil {
                 testTranscript = newTranscript
                 isGeneratingTestPodcast = false
                 HapticManager.shared.playSuccessNotification()
@@ -1572,7 +1595,7 @@ struct DarkAdvancedSettingsView: View {
         }
         .onChange(of: viewModel.errorMessage) { _, newError in
             // Handle generation errors
-            if isGeneratingTestPodcast && newError != nil {
+            if isGeneratingTestPodcast, newError != nil {
                 isGeneratingTestPodcast = false
                 generationError = newError
                 showErrorAlert = true
@@ -1591,20 +1614,20 @@ struct DarkAdvancedSettingsView: View {
             }
         }
     }
-    
+
     private func testNotification() {
         isGeneratingTestPodcast = true
         HapticManager.shared.playLightImpact()
-        
+
         // Generate a personalized hook based on existing entries
         let entries = entryManager.entries
         var cheekyHook = "This week told a story you haven't admitted to yourself yet."
-        
+
         if !entries.isEmpty {
             // Analyze recent entries for personalization - punchy single sentences
-            let recentContent = entries.prefix(5).map { $0.content }.joined(separator: " ")
+            let recentContent = entries.prefix(5).map(\.content).joined(separator: " ")
             let lowercased = recentContent.lowercased()
-            
+
             // Look for personal topics - one punchy sentence each
             if lowercased.contains("broke up") || lowercased.contains("breakup") || lowercased.contains("ex ") {
                 cheekyHook = "We found the real reason it didn't work out."
@@ -1630,9 +1653,9 @@ struct DarkAdvancedSettingsView: View {
                 cheekyHook = "We found the pattern you've been ignoring."
             }
         }
-        
+
         // Create a test transcript
-        let combinedText = entries.prefix(3).map { $0.content }.joined(separator: "\n\n")
+        let combinedText = entries.prefix(3).map(\.content).joined(separator: "\n\n")
         let testTranscript = TranscriptModel(
             id: UUID(),
             originalText: combinedText.isEmpty ? "This is a test podcast notification." : combinedText,
@@ -1647,15 +1670,15 @@ struct DarkAdvancedSettingsView: View {
             researchQueries: nil,
             createdAt: Date()
         )
-        
+
         self.testTranscript = testTranscript
-        
+
         // Send the notification
         notificationService.sendPodcastNotification(
             cheekyHook: cheekyHook,
             podcastId: testTranscript.id.uuidString
         )
-        
+
         // Show the arrival view after a brief delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             isGeneratingTestPodcast = false
@@ -1663,16 +1686,16 @@ struct DarkAdvancedSettingsView: View {
             HapticManager.shared.playSuccessNotification()
         }
     }
-    
+
     private func createTestPodcast() {
         HapticManager.shared.playMediumImpact()
         isGeneratingTestPodcast = true
         generationError = nil
-        
+
         // If Mock API Calls is enabled, use sample data without real API calls
         if mockAPICalls {
             print("🔧 Mock API Calls enabled - using sample data")
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 let sampleTranscript = TranscriptModel(
                     id: UUID(),
@@ -1680,15 +1703,15 @@ struct DarkAdvancedSettingsView: View {
                     goals: ["Personal growth", "Work-life balance", "Self-reflection"],
                     processedTranscript: """
                     This week has been quite a journey for you. Looking at everything you've shared, there's a clear pattern emerging—one that speaks to your growth and the challenges you're facing.
-                    
+
                     Let's start with what's been on your mind the most. You've been thinking a lot about balance—between work and personal life, between ambition and contentment. And here's the thing: that tension isn't a bug, it's a feature. It means you care about both sides.
-                    
+
                     What I noticed in your entries is a shift in how you're talking about your goals. Early in the week, there was hesitation. By Thursday, something clicked. You started writing with more certainty, more ownership of your direction.
-                    
+
                     The pattern I want to highlight: every time you wrote about feeling stuck, it was followed within 24 hours by a breakthrough insight. Your brain is working on these problems even when you think you're not making progress.
-                    
+
                     For next week, consider this: what if the uncertainty you're feeling isn't a problem to solve, but information to listen to? Sometimes our discomfort is pointing us exactly where we need to look.
-                    
+
                     Until next time, keep writing. Keep reflecting. The clarity is coming.
                     """,
                     audioFileURL: nil,
@@ -1700,22 +1723,22 @@ struct DarkAdvancedSettingsView: View {
                     researchQueries: nil,
                     createdAt: Date()
                 )
-                
-                self.testTranscript = sampleTranscript
-                self.isGeneratingTestPodcast = false
+
+                testTranscript = sampleTranscript
+                isGeneratingTestPodcast = false
                 HapticManager.shared.playSuccessNotification()
-                self.showNewPodcastArrival = true
+                showNewPodcastArrival = true
             }
             return
         }
-        
+
         // Real API calls - Get real entries from the past week
         let weekEntries = entryManager.getEntriesForWeek()
         let goals = goalsManager.goalContextForGeneration
 
         // Build combined text from entries
         var combinedText = ""
-        
+
         if weekEntries.isEmpty {
             // If no entries, use sample data for testing
             combinedText = """
@@ -1727,30 +1750,30 @@ struct DarkAdvancedSettingsView: View {
         } else {
             // Combine all entries from the week
             let sortedEntries = weekEntries.sorted { $0.date < $1.date }
-            
+
             for entry in sortedEntries {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateStyle = .medium
                 dateFormatter.timeStyle = .short
-                
+
                 let entryHeader = "[\(dateFormatter.string(from: entry.date)) - \(entry.type.rawValue.capitalized)]"
                 combinedText += "\(entryHeader)\n\(entry.content)\n\n"
             }
         }
-        
+
         // Use default goals if none exist
         let finalGoals = goals.isEmpty ? ["Personal growth", "Self-reflection", "Well-being"] : goals
-        
+
         print("🎙️ Settings: Generating podcast with \(weekEntries.count) entries and \(finalGoals.count) goals")
         print("📝 Combined text length: \(combinedText.count) characters")
-        
+
         // Call the actual transcript generation
         viewModel.generateTranscript(text: combinedText, goals: finalGoals)
     }
 }
 
 // MARK: - Settings Sheet Template
-@ViewBuilder
+
 /// Shared chrome for every settings sub-sheet. Previously only the Advanced
 /// screen used it while the other five sheets rendered dark, which is why a
 /// sheet pushed from the (light) Settings page looked like a different app.
@@ -1817,6 +1840,7 @@ struct LightSettingsToggleRow: View {
 }
 
 // MARK: - Settings Row Components
+
 struct LightSettingsInfoRow: View {
     let title: String
     let value: String
@@ -1886,7 +1910,7 @@ struct LightSettingsInputRow: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         DarkSettingsView()
     }
 }

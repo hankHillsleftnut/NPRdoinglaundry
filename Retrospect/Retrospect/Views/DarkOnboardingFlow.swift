@@ -5,22 +5,31 @@
 //  Figma-led onboarding flow matching the light privacy-card aesthetic.
 //
 
-import SwiftUI
 import GoogleSignIn
+import SwiftUI
 
 // MARK: - Dark Onboarding Flow Container
+
 struct DarkOnboardingFlow: View {
-    var onComplete: (([RichGoal]) -> Void)? = nil
-    var onPreviewPaywall: (() -> Void)? = nil
-    var onDebugGoHome: (() -> Void)? = nil
+    var onComplete: (([RichGoal]) -> Void)?
+    var onPreviewPaywall: (() -> Void)?
+    var onDebugGoHome: (() -> Void)?
 
     @StateObject private var onboardingState = OnboardingState()
 
     private var screenIndex: Int {
-        if !onboardingState.hasSignedIn { return 0 }
-        if !onboardingState.questionsCompleted { return 1 }
-        if !onboardingState.integrationsCompleted { return 2 }
-        if !onboardingState.personaCompleted { return 3 }
+        if !onboardingState.hasSignedIn {
+            return 0
+        }
+        if !onboardingState.questionsCompleted {
+            return 1
+        }
+        if !onboardingState.integrationsCompleted {
+            return 2
+        }
+        if !onboardingState.personaCompleted {
+            return 3
+        }
         return 4
     }
 
@@ -37,10 +46,10 @@ struct DarkOnboardingFlow: View {
                     onboardingState.markQuestionsCompleted(name: name)
                     GoalsManager.shared.addRichGoals(goals)
                 }, onDebugGoHome: onDebugGoHome)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
             } else if !onboardingState.integrationsCompleted {
                 IntegrationsSetupPage(state: onboardingState)
                     .transition(.asymmetric(
@@ -84,34 +93,35 @@ struct DarkOnboardingFlow: View {
 }
 
 // MARK: - Dark Onboarding Screen Template
+
 struct DarkOnboardingScreenTemplate: View {
     let title: String
     let currentStep: Int
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-    var onSkipStory: (() -> Void)? = nil
-    
+    var onSkipStory: (() -> Void)?
+
     @State private var displayedText = ""
     @State private var isAnimating = false
     @State private var showButton = false
     @State private var dragOffset: CGFloat = 0
     @State private var animationTimer: Timer?
     @State private var currentCharacterIndex = 0
-    
+
     private let animationSpeed: Double = 0.04
-    
+
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Top section
                 topSection
-                
+
                 Spacer()
-                
+
                 // Main text — tap to complete animation instantly
                 Text(displayedText)
                     .font(.custom("HedvigLettersSerif-24ptRegular", size: 38))
@@ -131,9 +141,9 @@ struct DarkOnboardingScreenTemplate: View {
                             }
                         }
                     }
-                
+
                 Spacer()
-                
+
                 // Next button
                 darkNextButton
                     .opacity(showButton ? 1 : 0)
@@ -148,7 +158,7 @@ struct DarkOnboardingScreenTemplate: View {
         .onAppear { startTextAnimation() }
         .onChange(of: title) { _, _ in resetAndAnimate() }
     }
-    
+
     private var topSection: some View {
         VStack(spacing: 20) {
             // Skip button + drag handle row
@@ -175,7 +185,7 @@ struct DarkOnboardingScreenTemplate: View {
                                 }
                         )
                 }
-                
+
                 if let skipAction = onSkipStory {
                     HStack {
                         Spacer()
@@ -190,21 +200,21 @@ struct DarkOnboardingScreenTemplate: View {
                     }
                 }
             }
-            
+
             // Progress bar
             progressBar
         }
         .padding(.horizontal, 40)
         .padding(.top, 12)
     }
-    
+
     private var progressBar: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.border)
                     .frame(height: 3)
-                
+
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.accent)
                     .frame(width: geometry.size.width * CGFloat(currentStep) / CGFloat(totalSteps), height: 3)
@@ -213,7 +223,7 @@ struct DarkOnboardingScreenTemplate: View {
         }
         .frame(height: 3)
     }
-    
+
     private var darkNextButton: some View {
         Button(action: onNext) {
             Text("Next")
@@ -228,7 +238,7 @@ struct DarkOnboardingScreenTemplate: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private func startTextAnimation() {
         guard !isAnimating else { return }
         isAnimating = true
@@ -236,7 +246,7 @@ struct DarkOnboardingScreenTemplate: View {
         showButton = false
         currentCharacterIndex = 0
         animationTimer?.invalidate()
-        
+
         let characters = Array(title)
         animationTimer = Timer.scheduledTimer(withTimeInterval: animationSpeed, repeats: true) { timer in
             guard currentCharacterIndex < characters.count else {
@@ -254,7 +264,7 @@ struct DarkOnboardingScreenTemplate: View {
             HapticManager.shared.playLightImpact()
         }
     }
-    
+
     private func resetAndAnimate() {
         animationTimer?.invalidate()
         isAnimating = false
@@ -268,25 +278,26 @@ struct DarkOnboardingScreenTemplate: View {
 }
 
 // MARK: - Dark Privacy Onboarding Screen
+
 struct DarkPrivacyOnboardingScreen: View {
     let currentStep: Int
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-    
+
     @State private var contentOpacity: Double = 0
-    
+
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Progress bar
                 progressBar
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
-                
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         // Icon & label
@@ -297,12 +308,12 @@ struct DarkPrivacyOnboardingScreen: View {
                                 .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
+
                         // Title
                         Text("Your data stays yours.")
                             .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
-                        
+
                         // Privacy points
                         VStack(alignment: .leading, spacing: 16) {
                             privacyPoint(icon: "iphone", text: "Everything is processed on your device")
@@ -316,9 +327,9 @@ struct DarkPrivacyOnboardingScreen: View {
                     .padding(.top, 40)
                 }
                 .opacity(contentOpacity)
-                
+
                 Spacer()
-                
+
                 // Next button
                 Button(action: onNext) {
                     Text("I Understand")
@@ -342,14 +353,14 @@ struct DarkPrivacyOnboardingScreen: View {
             }
         }
     }
-    
+
     private var progressBar: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.border)
                     .frame(height: 3)
-                
+
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.accent)
                     .frame(width: geometry.size.width * CGFloat(currentStep) / CGFloat(totalSteps), height: 3)
@@ -357,14 +368,14 @@ struct DarkPrivacyOnboardingScreen: View {
         }
         .frame(height: 3)
     }
-    
+
     private func privacyPoint(icon: String, text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.accent)
                 .frame(width: 24)
-            
+
             Text(text)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
@@ -373,30 +384,31 @@ struct DarkPrivacyOnboardingScreen: View {
 }
 
 // MARK: - Dark Google Docs Onboarding Screen
+
 struct DarkGoogleDocsOnboardingScreen: View {
     let currentStep: Int
     let totalSteps: Int
     let onNext: () -> Void
     let onSkip: () -> Void
     let onExit: (() -> Void)?
-    
+
     @StateObject private var googleDocsService = GoogleDocsService.shared
     @State private var isConnecting = false
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var contentOpacity: Double = 0
-    
+
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Progress bar
                 progressBar
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
-                
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         // Icon & label
@@ -407,29 +419,29 @@ struct DarkGoogleDocsOnboardingScreen: View {
                                 .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
+
                         // Title
                         Text("Connect your Google Docs.")
                             .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
-                        
+
                         // Description
                         Text("Automatically include your recent Google Docs in your weekly reflections. All processing happens on your device.")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
-                        
+
                         Text("Your documents stay private and are never shared.")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
-                        
+
                         // Connection status
                         if googleDocsService.isConnected {
                             HStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.success)
-                                
+
                                 Text("Connected Successfully")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -447,7 +459,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                                         Image(systemName: "link")
                                             .font(.system(size: 16, weight: .medium))
                                     }
-                                    
+
                                     Text(isConnecting ? "Connecting..." : "Connect Google Account")
                                         .font(.system(size: 16, weight: .semibold))
                                 }
@@ -472,9 +484,9 @@ struct DarkGoogleDocsOnboardingScreen: View {
                     .padding(.top, 40)
                 }
                 .opacity(contentOpacity)
-                
+
                 Spacer()
-                
+
                 // Bottom buttons
                 VStack(spacing: 12) {
                     if !googleDocsService.isConnected {
@@ -485,7 +497,7 @@ struct DarkGoogleDocsOnboardingScreen: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
-                    
+
                     Button(action: onNext) {
                         Text(googleDocsService.isConnected ? "Continue" : "Continue")
                             .font(.system(size: 17, weight: .semibold))
@@ -514,14 +526,14 @@ struct DarkGoogleDocsOnboardingScreen: View {
             Text(errorMessage)
         }
     }
-    
+
     private var progressBar: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.border)
                     .frame(height: 3)
-                
+
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.accent)
                     .frame(width: geometry.size.width * CGFloat(currentStep) / CGFloat(totalSteps), height: 3)
@@ -529,10 +541,10 @@ struct DarkGoogleDocsOnboardingScreen: View {
         }
         .frame(height: 3)
     }
-    
+
     private func connectToGoogleDocs() {
         isConnecting = true
-        
+
         Task {
             do {
                 try await googleDocsService.authenticate()
@@ -551,28 +563,29 @@ struct DarkGoogleDocsOnboardingScreen: View {
 }
 
 // MARK: - Dark Apple Health Onboarding Screen
+
 struct DarkAppleHealthOnboardingScreen: View {
     let currentStep: Int
     let totalSteps: Int
     let onNext: () -> Void
     let onSkip: () -> Void
     let onExit: (() -> Void)?
-    
+
     @AppStorage("healthKitEnabled") private var healthKitEnabled: Bool = false
     @State private var isConnecting = false
     @State private var contentOpacity: Double = 0
-    
+
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Progress bar
                 progressBar
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
-                
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         // Icon & label
@@ -583,18 +596,18 @@ struct DarkAppleHealthOnboardingScreen: View {
                                 .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
-                        
+
                         // Title
                         Text("Connect Apple Health.")
                             .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
-                        
+
                         // Description
                         Text("Include your health data in reflections—sleep, activity, and mindfulness—for a complete picture of your wellbeing.")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
-                        
+
                         // Health points
                         VStack(alignment: .leading, spacing: 16) {
                             healthPoint(icon: "bed.double.fill", text: "Sleep patterns and quality")
@@ -602,14 +615,14 @@ struct DarkAppleHealthOnboardingScreen: View {
                             healthPoint(icon: "brain.head.profile", text: "Mindfulness minutes")
                         }
                         .padding(.top, 8)
-                        
+
                         // Connection status
                         if healthKitEnabled {
                             HStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.success)
-                                
+
                                 Text("Health Access Enabled")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -627,7 +640,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                                         Image(systemName: "heart.fill")
                                             .font(.system(size: 16, weight: .medium))
                                     }
-                                    
+
                                     Text(isConnecting ? "Requesting..." : "Enable Health Access")
                                         .font(.system(size: 16, weight: .semibold))
                                 }
@@ -652,9 +665,9 @@ struct DarkAppleHealthOnboardingScreen: View {
                     .padding(.top, 40)
                 }
                 .opacity(contentOpacity)
-                
+
                 Spacer()
-                
+
                 // Bottom buttons
                 VStack(spacing: 12) {
                     if !healthKitEnabled {
@@ -665,7 +678,7 @@ struct DarkAppleHealthOnboardingScreen: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
-                    
+
                     Button(action: onNext) {
                         Text("Continue")
                             .font(.system(size: 17, weight: .semibold))
@@ -689,14 +702,14 @@ struct DarkAppleHealthOnboardingScreen: View {
             }
         }
     }
-    
+
     private var progressBar: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.border)
                     .frame(height: 3)
-                
+
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.Minimal.accent)
                     .frame(width: geometry.size.width * CGFloat(currentStep) / CGFloat(totalSteps), height: 3)
@@ -704,23 +717,23 @@ struct DarkAppleHealthOnboardingScreen: View {
         }
         .frame(height: 3)
     }
-    
+
     private func healthPoint(icon: String, text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.iconPink)
                 .frame(width: 24)
-            
+
             Text(text)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
         }
     }
-    
+
     private func requestHealthAccess() {
         isConnecting = true
-        
+
         // Request HealthKit permissions
         HealthKitManager.shared.requestAuthorization { success in
             DispatchQueue.main.async {
@@ -732,19 +745,20 @@ struct DarkAppleHealthOnboardingScreen: View {
 }
 
 // MARK: - Dark Goals Onboarding Screen
+
 struct DarkGoalsOnboardingScreen: View {
     let onComplete: () -> Void
-    
+
     @StateObject private var goalsManager = GoalsManager.shared
     @State private var newGoalText = ""
     @State private var contentOpacity: Double = 0
     @FocusState private var isInputFocused: Bool
-    
+
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
@@ -757,18 +771,18 @@ struct DarkGoalsOnboardingScreen: View {
                         }
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                         .padding(.top, 60)
-                        
+
                         // Title
                         Text("What do you want to focus on?")
                             .font(.custom("HedvigLettersSerif-24ptRegular", size: 36))
                             .foregroundColor(LinearColors.Minimal.headlineText.opacity(0.85))
-                        
+
                         // Description
                         Text("Add some goals to help personalize your reflections. You can always change these later.")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineSpacing(4)
-                        
+
                         // Goal input
                         HStack(spacing: 12) {
                             TextField("Add a goal...", text: $newGoalText)
@@ -777,7 +791,7 @@ struct DarkGoalsOnboardingScreen: View {
                                 .focused($isInputFocused)
                                 .submitLabel(.done)
                                 .onSubmit { addGoal() }
-                            
+
                             Button(action: addGoal) {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 24, weight: .medium))
@@ -798,26 +812,26 @@ struct DarkGoalsOnboardingScreen: View {
                                 )
                         )
                         .padding(.top, 8)
-                        
+
                         // Current goals
                         if goalsManager.goalsCount > 0 {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Your Goals")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
-                                
+
                                 ForEach(goalsManager.goals, id: \.self) { goal in
                                     HStack(spacing: 12) {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 18, weight: .medium))
                                             .foregroundColor(LinearColors.Minimal.accent)
-                                        
+
                                         Text(goal)
                                             .font(.system(size: 16, weight: .regular))
                                             .foregroundColor(LinearColors.Minimal.textPrimary)
-                                        
+
                                         Spacer()
-                                        
+
                                         Button(action: {
                                             goalsManager.removeGoal(goal)
                                         }) {
@@ -839,14 +853,14 @@ struct DarkGoalsOnboardingScreen: View {
                             }
                             .padding(.top, 16)
                         }
-                        
+
                         // Suggestions
                         if goalsManager.goalsCount < 3 {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Suggestions")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
-                                
+
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(goalSuggestions, id: \.self) { suggestion in
                                         Button(action: {
@@ -878,9 +892,9 @@ struct DarkGoalsOnboardingScreen: View {
                     .padding(.bottom, 120)
                 }
                 .opacity(contentOpacity)
-                
+
                 Spacer()
-                
+
                 // Continue button
                 VStack(spacing: 0) {
                     Button(action: onComplete) {
@@ -915,16 +929,16 @@ struct DarkGoalsOnboardingScreen: View {
             }
         }
     }
-    
+
     private var goalSuggestions: [String] {
         let allSuggestions = [
             "Exercise more", "Better sleep", "Read daily", "Learn something new",
             "Reduce stress", "Eat healthier", "Save money", "Be more present",
-            "Improve focus", "Build habits"
+            "Improve focus", "Build habits",
         ]
         return allSuggestions.filter { !goalsManager.goals.contains($0) }.prefix(6).map { $0 }
     }
-    
+
     private func addGoal() {
         let trimmed = newGoalText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -939,7 +953,7 @@ struct DarkGoalsOnboardingScreen: View {
 struct OnboardingClosingPage: View {
     let userName: String
     let onPlay: () -> Void
-    var onPreviewPaywall: (() -> Void)? = nil
+    var onPreviewPaywall: (() -> Void)?
 
     private let lines: [String]
     @State private var visibleLine: Int = 0
@@ -957,9 +971,9 @@ struct OnboardingClosingPage: View {
         self.userName = userName
         self.onPlay = onPlay
         self.onPreviewPaywall = onPreviewPaywall
-        self.lines = [
+        lines = [
             userName.isEmpty ? "Now I know what matters to you." : "Now I know what matters to you, \(userName).",
-            "Let's help you get there."
+            "Let's help you get there.",
         ]
     }
 
@@ -971,7 +985,7 @@ struct OnboardingClosingPage: View {
                 Spacer().frame(height: 200)
 
                 VStack(alignment: .leading, spacing: 18) {
-                    ForEach(0..<lines.count, id: \.self) { i in
+                    ForEach(0 ..< lines.count, id: \.self) { i in
                         if i < visibleLine {
                             Text(attributed(lines[i], count: lines[i].count))
                                 .lineSpacing(4)
@@ -1024,7 +1038,7 @@ struct OnboardingClosingPage: View {
         attr.tracking = -0.5
         if count < full.count {
             let start = attr.index(attr.startIndex, offsetByCharacters: count)
-            attr[start..<attr.endIndex].foregroundColor = .clear
+            attr[start ..< attr.endIndex].foregroundColor = .clear
         }
         return attr
     }

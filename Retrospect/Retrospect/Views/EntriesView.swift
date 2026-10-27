@@ -12,7 +12,7 @@ struct EntriesView: View {
     @State private var selectedFilter: EntryFilterType = .all
     @State private var searchText = ""
     @State private var selectedEntry: Entry?
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -20,12 +20,12 @@ struct EntriesView: View {
                 searchBar
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                
+
                 // Filter Tabs
                 filterTabs
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                
+
                 // Entries List
                 if filteredEntries.isEmpty {
                     emptyStateView
@@ -58,18 +58,19 @@ struct EntriesView: View {
             EntryDetailView(entry: entry)
         }
     }
-    
+
     // MARK: - Search Bar
+
     private var searchBar: some View {
         HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(LinearColors.textSecondary)
-            
+
             TextField("Search entries...", text: $searchText)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textPrimary)
-            
+
             if !searchText.isEmpty {
                 Button(action: {
                     searchText = ""
@@ -90,8 +91,9 @@ struct EntriesView: View {
                 .stroke(LinearColors.inputBorder, lineWidth: 1)
         )
     }
-    
+
     // MARK: - Filter Tabs
+
     private var filterTabs: some View {
         HStack(spacing: 12) {
             ForEach(EntryFilterType.allCases, id: \.self) { filter in
@@ -108,20 +110,21 @@ struct EntriesView: View {
             }
         }
     }
-    
+
     // MARK: - Empty State
+
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: searchText.isEmpty ? "folder" : "magnifyingglass")
                 .font(.system(size: 60, weight: .thin))
                 .foregroundColor(LinearColors.textSecondary.opacity(0.5))
-            
+
             VStack(spacing: 8) {
                 Text(searchText.isEmpty ? "No Entries Yet" : "No Results Found")
                     .font(.serifHeadline)
                     .fontWeight(.bold)
                     .foregroundColor(LinearColors.textPrimary)
-                
+
                 Text(searchText.isEmpty ? "Your written reflections and video journals will appear here" : "Try adjusting your search or filters")
                     .font(.system(size: 16, weight: .regular))
                     .foregroundColor(LinearColors.textSecondary)
@@ -132,11 +135,12 @@ struct EntriesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 60)
     }
-    
+
     // MARK: - Computed Properties
+
     private var filteredEntries: [Entry] {
         var entries = entryManager.getAllEntries()
-        
+
         // Apply filter
         switch selectedFilter {
         case .all:
@@ -148,19 +152,19 @@ struct EntriesView: View {
         case .voice:
             entries = entries.filter { $0.type == .voice }
         }
-        
+
         // Apply search
         if !searchText.isEmpty {
             entries = entries.filter { entry in
                 entry.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-                entry.content.localizedCaseInsensitiveContains(searchText) ||
-                entry.tags.contains(where: { $0.localizedCaseInsensitiveContains(searchText) })
+                    entry.content.localizedCaseInsensitiveContains(searchText) ||
+                    entry.tags.contains(where: { $0.localizedCaseInsensitiveContains(searchText) })
             }
         }
-        
+
         return entries
     }
-    
+
     private func countForFilter(_ filter: EntryFilterType) -> Int {
         let allEntries = entryManager.getAllEntries()
         switch filter {
@@ -174,11 +178,12 @@ struct EntriesView: View {
             return allEntries.filter { $0.type == .voice }.count
         }
     }
-    
+
     // MARK: - Delete Entry
+
     private func deleteEntry(_ entry: Entry) {
         HapticManager.shared.playWarningNotification()
-        
+
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             entryManager.deleteEntry(withId: entry.id)
         }
@@ -186,18 +191,19 @@ struct EntriesView: View {
 }
 
 // MARK: - Filter Tab Component
+
 struct FilterTab: View {
     let title: String
     let isSelected: Bool
     let count: Int
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(title)
                     .font(.system(size: 15, weight: .semibold))
-                
+
                 Text("\(count)")
                     .font(.system(size: 13, weight: .bold))
             }
@@ -216,4 +222,3 @@ struct FilterTab: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-

@@ -1,71 +1,72 @@
-import SwiftUI
-import AVFoundation
 import ActivityKit
+import AVFoundation
+import SwiftUI
 
 // MARK: - Mood Types
+
 enum PodcastMood: String, CaseIterable {
-    case positive = "positive"
-    case neutral = "neutral"
-    case reflective = "reflective"
-    case energetic = "energetic"
-    case calm = "calm"
-    case mysterious = "mysterious"
-    case happy = "happy"
-    case melancholic = "melancholic"
-    
+    case positive
+    case neutral
+    case reflective
+    case energetic
+    case calm
+    case mysterious
+    case happy
+    case melancholic
+
     var colors: [Color] {
         switch self {
         case .positive:
             return [
                 .orange, .yellow, .red,
                 .yellow, LinearColors.backgroundLight, .orange,
-                .red, .orange, .yellow
+                .red, .orange, .yellow,
             ]
         case .neutral:
             return [
                 .blue, .mint, .cyan,
                 .mint, LinearColors.backgroundLight, .mint,
-                .cyan, .mint, .blue
+                .cyan, .mint, .blue,
             ]
         case .reflective:
             return [
                 .purple, .indigo, .blue,
                 .indigo, LinearColors.backgroundLight, .indigo,
-                .blue, .indigo, .purple
+                .blue, .indigo, .purple,
             ]
         case .energetic:
             return [
                 .red, .orange, .yellow,
                 .orange, .pink, .yellow,
-                .yellow, .red, .orange
+                .yellow, .red, .orange,
             ]
         case .calm:
             return [
                 .blue, .green, .mint,
                 .green, LinearColors.backgroundLight, .mint,
-                .mint, .blue, .green
+                .mint, .blue, .green,
             ]
         case .mysterious:
             return [
                 .purple, .indigo, LinearColors.charcoalBase,
                 .indigo, LinearColors.textSecondary, .purple,
-                LinearColors.charcoalBase, .purple, .indigo
+                LinearColors.charcoalBase, .purple, .indigo,
             ]
         case .happy:
             return [
                 .yellow, .orange, .pink,
                 .orange, LinearColors.backgroundLight, .pink,
-                .pink, .yellow, .orange
+                .pink, .yellow, .orange,
             ]
         case .melancholic:
             return [
                 .blue, .purple, LinearColors.textSecondary,
                 .purple, LinearColors.backgroundLight, LinearColors.textSecondary,
-                LinearColors.textSecondary, .blue, .purple
+                LinearColors.textSecondary, .blue, .purple,
             ]
         }
     }
-    
+
     var animationSpeed: Double {
         switch self {
         case .energetic, .happy:
@@ -78,7 +79,7 @@ enum PodcastMood: String, CaseIterable {
             return 1.5
         }
     }
-    
+
     var intensity: Double {
         switch self {
         case .energetic, .happy:
@@ -91,7 +92,7 @@ enum PodcastMood: String, CaseIterable {
             return 0.10
         }
     }
-    
+
     var displayName: String {
         switch self {
         case .positive: return "Positive"
@@ -107,9 +108,10 @@ enum PodcastMood: String, CaseIterable {
 }
 
 // MARK: - Audio Session Manager
+
 class AudioSessionManager {
     static let shared = AudioSessionManager()
-    
+
     func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
@@ -119,7 +121,7 @@ class AudioSessionManager {
             print("Failed to configure audio session: \(error.localizedDescription)")
         }
     }
-    
+
     func deactivateAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setActive(false)
@@ -130,33 +132,34 @@ class AudioSessionManager {
 }
 
 // MARK: - Grain Effect
+
 struct GrainEffect: View {
     @State private var time: CGFloat = 0
-    
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1/30)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
             Canvas { context, size in
                 context.addFilter(.colorMatrix(
                     .init(
 //                        .monochrome(color: .white, intensity: 1)
                     )
                 ))
-                
+
                 let scale: CGFloat = 1.2
                 let xOffset = CGFloat(time * 10).truncatingRemainder(dividingBy: size.width * scale)
                 let yOffset = CGFloat(time * 8).truncatingRemainder(dividingBy: size.height * scale)
-                
+
                 context.drawLayer { ctx in
-                    for _ in 0..<2000 {
-                        let x = CGFloat.random(in: -xOffset...(size.width * scale - xOffset))
-                        let y = CGFloat.random(in: -yOffset...(size.height * scale - yOffset))
+                    for _ in 0 ..< 2000 {
+                        let x = CGFloat.random(in: -xOffset ... (size.width * scale - xOffset))
+                        let y = CGFloat.random(in: -yOffset ... (size.height * scale - yOffset))
                         let rect = CGRect(x: x, y: y, width: 1, height: 1)
                         ctx.fill(Path(rect), with: .color(.white.opacity(0.1)))
                     }
                 }
             }
             .onChange(of: timeline.date) { _ in
-                time += 1/30
+                time += 1 / 30
             }
             .blendMode(.overlay)
             .opacity(0.15)
@@ -165,67 +168,68 @@ struct GrainEffect: View {
 }
 
 // MARK: - Animated Mesh Gradient View
+
 struct AnimatedMeshGradient: View {
     let mood: PodcastMood
-    
+
     private func getAnimatedPoints(date: Date) -> [SIMD2<Float>] {
         let basePoints: [(x: CGFloat, y: CGFloat)] = [
-            (-0.3, -0.3), (0.5, -0.3), (1.3, -0.3),      // Top row
-            (-0.3, 0.5), (0.5, 0.5), (1.3, 0.5),         // Middle row
-            (-0.3, 1.3), (0.5, 1.3), (1.3, 1.3)          // Bottom row
+            (-0.3, -0.3), (0.5, -0.3), (1.3, -0.3), // Top row
+            (-0.3, 0.5), (0.5, 0.5), (1.3, 0.5), // Middle row
+            (-0.3, 1.3), (0.5, 1.3), (1.3, 1.3), // Bottom row
         ]
-        
+
         // Very slow breathing cycle (about 6-8 seconds per cycle)
         let breathingPhase = date.timeIntervalSince1970 * 0.008
-        
+
         return basePoints.enumerated().map { index, point in
             let normalizedIndex = Double(index) / Double(basePoints.count)
-            let timeOffset = normalizedIndex * .pi * 2  // Spread movement across points
-            
+            let timeOffset = normalizedIndex * .pi * 2 // Spread movement across points
+
             // Create a breathing cycle with easing
             let breathCycle = (sin(breathingPhase + timeOffset) * 0.5 + 0.5) // Normalized 0 to 1
             let easedBreathCycle = sin(breathCycle * .pi) // Apply easing for more natural movement
-            
+
             // Calculate distance from center for radial movement
             let distanceFromCenter = sqrt(
                 pow(point.x - 0.5, 2) + pow(point.y - 0.5, 2)
             )
-            
+
             // Gentler breathing movement
             let breathingIntensity = mood.intensity * 0.6 // Reduced intensity
             let breathingAmount = easedBreathCycle * breathingIntensity
-            
+
             // Move points slightly towards/away from center
             let directionX = (point.x - 0.5) / (distanceFromCenter + 0.01)
             let directionY = (point.y - 0.5) / (distanceFromCenter + 0.01)
-            
+
             // Very subtle rotation (about 15-20 seconds per cycle)
             let rotationPhase = breathingPhase * 0.05
             let rotationAmount = sin(rotationPhase) * 0.01 // Reduced rotation
-            
+
             // Combine breathing and subtle rotation
-            let xOffset = directionX * breathingAmount + 
-                         cos(rotationPhase) * rotationAmount * (point.y - 0.5)
-            let yOffset = directionY * breathingAmount - 
-                         sin(rotationPhase) * rotationAmount * (point.x - 0.5)
-            
+            let xOffset = directionX * breathingAmount +
+                cos(rotationPhase) * rotationAmount * (point.y - 0.5)
+            let yOffset = directionY * breathingAmount -
+                sin(rotationPhase) * rotationAmount * (point.x - 0.5)
+
             // Calculate final positions with smooth clamping
             let finalX = point.x + xOffset
             let finalY = point.y + yOffset
-            
+
             // Smoother clamping function
             let clampedX = -0.3 + (1.6 * (1 / (1 + exp(-3 * (finalX + 0.3)))))
             let clampedY = -0.3 + (1.6 * (1 / (1 + exp(-3 * (finalY + 0.3)))))
-            
+
             return SIMD2<Float>(
                 Float(clampedX),
                 Float(clampedY)
             )
         }
     }
-    
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1/30, paused: false)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: false)) { timeline in
             ZStack {
                 // Base gradient with more blur for softer effect
                 MeshGradient(
@@ -234,8 +238,8 @@ struct AnimatedMeshGradient: View {
                     points: getAnimatedPoints(date: timeline.date),
                     colors: mood.colors
                 )
-                .blur(radius: 45)  // Increased blur for softer edges
-                
+                .blur(radius: 45) // Increased blur for softer edges
+
                 // Sharper overlay gradient
                 MeshGradient(
                     width: 3,
@@ -243,11 +247,11 @@ struct AnimatedMeshGradient: View {
                     points: getAnimatedPoints(date: timeline.date),
                     colors: mood.colors
                 )
-                .opacity(0.6)  // Reduced opacity for softer look
-                
+                .opacity(0.6) // Reduced opacity for softer look
+
                 // Grain effect overlay
                 GrainEffect()
-                    .opacity(0.08)  // Reduced grain for smoother appearance
+                    .opacity(0.08) // Reduced grain for smoother appearance
             }
         }
     }
@@ -260,7 +264,7 @@ struct AudioPlayerView: View {
     @Binding var audioPlayer: AVAudioPlayer?
     @Binding var isPlaying: Bool
     @Binding var isExpanded: Bool
-    
+
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var wordLines: [[String]] = []
@@ -270,24 +274,24 @@ struct AudioPlayerView: View {
     @State private var isDragging = false
     @State private var draggedProgress: Double = 0
     @State private var showTranscript = false
-    
+
     // Animation states
     @State private var animateBackground = false
     @State private var animateWaveform = false
-    
+
     private let wordsPerLine = 8
     private let gradientColors = [
-        LinearColors.terraCottaPrimary,  // Main accent
-        LinearColors.terraCottaLight,    // Lighter accent
-        LinearColors.terraCottaDark      // Darker accent
+        LinearColors.terraCottaPrimary, // Main accent
+        LinearColors.terraCottaLight, // Lighter accent
+        LinearColors.terraCottaDark, // Darker accent
     ]
-    
-    // Convert mood string to PodcastMood enum
+
+    /// Convert mood string to PodcastMood enum
     private var podcastMood: PodcastMood {
         guard let moodString = mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -304,7 +308,7 @@ struct AudioPlayerView: View {
                         .repeatForever(autoreverses: true),
                     value: animateBackground
                 )
-                
+
                 // Main content
                 VStack(spacing: 0) {
                     if isExpanded {
@@ -345,22 +349,22 @@ struct AudioPlayerView: View {
                         let velocity = gesture.predictedEndLocation.y - gesture.location.y
                         let velocityThreshold = 300.0
                         let dismissThreshold = 100.0
-                        
+
                         // Dismiss if dragged more than threshold or if velocity is high enough
                         if dragOffset.height > dismissThreshold || (dragOffset.height > 50 && velocity > velocityThreshold) {
                             withAnimation(.spring(
-                                response: 0.6,  // Increased from 0.4 for gentler motion
+                                response: 0.6, // Increased from 0.4 for gentler motion
                                 dampingFraction: 0.92, // Increased from 0.85 for smoother settling
-                                blendDuration: 0.4  // Increased from 0.3 for smoother blending
+                                blendDuration: 0.4 // Increased from 0.3 for smoother blending
                             )) {
                                 isExpanded = false
                                 dragOffset = .zero
                             }
                         } else {
                             withAnimation(.spring(
-                                response: 0.45,  // Increased from 0.35 for gentler bounce back
-                                dampingFraction: 0.8,  // Increased from 0.7 for smoother settling
-                                blendDuration: 0.3  // Increased from 0.2 for smoother blending
+                                response: 0.45, // Increased from 0.35 for gentler bounce back
+                                dampingFraction: 0.8, // Increased from 0.7 for smoother settling
+                                blendDuration: 0.3 // Increased from 0.2 for smoother blending
                             )) {
                                 dragOffset = .zero
                             }
@@ -376,15 +380,15 @@ struct AudioPlayerView: View {
             anchor: .top
         )
         .animation(.spring(
-            response: 0.6,  // Increased from 0.4 for gentler motion
-            dampingFraction: 0.88,  // Increased from 0.8 for smoother settling
-            blendDuration: 0.4  // Increased from 0.3 for smoother blending
+            response: 0.6, // Increased from 0.4 for gentler motion
+            dampingFraction: 0.88, // Increased from 0.8 for smoother settling
+            blendDuration: 0.4 // Increased from 0.3 for smoother blending
         ), value: isExpanded)
         .onAppear {
             prepareTranscriptForStreaming()
             setupPlayback()
             animateBackground = true
-            
+
             // Start waveform animation
             withAnimation(
                 Animation.easeInOut(duration: 1.0)
@@ -400,9 +404,9 @@ struct AudioPlayerView: View {
             endLiveActivity()
         }
     }
-    
+
     // MARK: - Subviews
-    
+
     private var minimizedView: some View {
         HStack(spacing: 16) {
             // Artwork/Icon with mood tag
@@ -412,7 +416,7 @@ struct AudioPlayerView: View {
                         .fill(LinearColors.Minimal.pureWhite)
                         .frame(width: 40, height: 40)
                         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                    
+
                     if mood != nil {
                         AnimatedMeshGradient(mood: podcastMood)
                             .frame(width: 40, height: 40)
@@ -424,22 +428,22 @@ struct AudioPlayerView: View {
                             .scaleEffect(animateWaveform ? 1.1 : 0.9)
                     }
                 }
-                
+
                 // Chips container
                 VStack(spacing: 2) {
-                if let mood = mood {
-                    Text(mood.capitalized)
-                        .font(.serifCaption)
-                        .foregroundColor(LinearColors.secondaryText)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(LinearColors.Minimal.backgroundCard)
-                        )
+                    if let mood {
+                        Text(mood.capitalized)
+                            .font(.serifCaption)
+                            .foregroundColor(LinearColors.secondaryText)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(LinearColors.Minimal.backgroundCard)
+                            )
                     }
-                    
-                    if let generationType = generationType {
+
+                    if let generationType {
                         Text(generationType.displayName)
                             .font(.serifCaption)
                             .foregroundColor(LinearColors.accent)
@@ -453,20 +457,20 @@ struct AudioPlayerView: View {
                 }
             }
             .padding(.leading, 16)
-            
+
             // Title and progress
             VStack(alignment: .leading, spacing: 2) {
                 Text("Weekly Insights")
                     .font(.serifLabel).fontWeight(.semibold)
                     .foregroundColor(LinearColors.primaryText)
-                
+
                 // Progress bar
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
                             .fill(LinearColors.border)
                             .frame(height: 2)
-                        
+
                         Rectangle()
                             .fill(LinearColors.accent)
                             .frame(width: geometry.size.width * progress, height: 2)
@@ -474,9 +478,9 @@ struct AudioPlayerView: View {
                 }
                 .frame(height: 2)
             }
-            
+
             Spacer()
-            
+
             // Play/Pause Button
             Button(action: togglePlayback) {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -486,7 +490,7 @@ struct AudioPlayerView: View {
                     .contentShape(Rectangle())
             }
             .padding(.trailing, 8)
-            
+
             // Expand Button
             Button(action: {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -510,7 +514,7 @@ struct AudioPlayerView: View {
             alignment: .top
         )
     }
-    
+
     private func expandedView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
             // Handle bar for drag gesture
@@ -519,7 +523,7 @@ struct AudioPlayerView: View {
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
                 .padding(.bottom, 20)
-            
+
             ScrollView {
                 VStack(spacing: 32) {
                     // Artwork with mood tag
@@ -529,7 +533,7 @@ struct AudioPlayerView: View {
                                 .fill(LinearColors.Minimal.pureWhite)
                                 .frame(width: min(geometry.size.width * 0.6, 240), height: min(geometry.size.width * 0.6, 240))
                                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
-                            
+
                             if mood != nil {
                                 AnimatedMeshGradient(mood: podcastMood)
                                     .frame(width: min(geometry.size.width * 0.6, 240), height: min(geometry.size.width * 0.6, 240))
@@ -540,8 +544,8 @@ struct AudioPlayerView: View {
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                             }
                         }
-                        
-                        if let mood = mood {
+
+                        if let mood {
                             Text(mood.capitalized)
                                 .font(.serifLabel)
                                 .foregroundColor(LinearColors.secondaryText)
@@ -552,8 +556,8 @@ struct AudioPlayerView: View {
                                         .fill(LinearColors.Minimal.backgroundCard)
                                 )
                         }
-                        
-                        if let generationType = generationType {
+
+                        if let generationType {
                             Text(generationType.displayName)
                                 .font(.serifLabel)
                                 .foregroundColor(LinearColors.accent)
@@ -566,18 +570,18 @@ struct AudioPlayerView: View {
                         }
                     }
                     .padding(.top, 20)
-                    
+
                     // Title and subtitle
                     VStack(spacing: 8) {
                         Text("Weekly Insights")
                             .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                             .foregroundColor(LinearColors.primaryText)
-                        
+
                         Text("AI-Generated Summary")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(LinearColors.secondaryText)
                     }
-                    
+
                     // Time and progress slider
                     VStack(spacing: 8) {
                         // Custom slider
@@ -595,15 +599,15 @@ struct AudioPlayerView: View {
                             draggedValue: $draggedProgress
                         )
                         .frame(height: 44)
-                        
+
                         // Time labels
                         HStack {
                             Text(formatTime(currentTime))
                                 .font(.serifCaption)
                                 .foregroundColor(LinearColors.secondaryText)
-                            
+
                             Spacer()
-                            
+
                             Text(formatTime(audioPlayer?.duration ?? 0))
                                 .font(.serifCaption)
                                 .foregroundColor(LinearColors.secondaryText)
@@ -611,7 +615,7 @@ struct AudioPlayerView: View {
                         .padding(.horizontal, 2)
                     }
                     .padding(.horizontal, 32)
-                    
+
                     // Playback controls
                     HStack(spacing: 40) {
                         // Rewind button
@@ -620,7 +624,7 @@ struct AudioPlayerView: View {
                                 .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                                 .foregroundColor(LinearColors.primaryText)
                         }
-                        
+
                         // Play/Pause button
                         Button(action: togglePlayback) {
                             HStack(alignment: .center, spacing: 10) {
@@ -663,7 +667,7 @@ struct AudioPlayerView: View {
                                     .offset(x: 0, y: 3)
                             )
                         }
-                        
+
                         // Forward button
                         Button(action: forward15) {
                             Image(systemName: "goforward.15")
@@ -672,7 +676,7 @@ struct AudioPlayerView: View {
                         }
                     }
                     .padding(.top, 20)
-                    
+
                     // Transcript toggle
                     Button(action: { showTranscript.toggle() }) {
                         HStack {
@@ -691,7 +695,7 @@ struct AudioPlayerView: View {
                         )
                     }
                     .padding(.top, 20)
-                    
+
                     if showTranscript {
                         // Transcript text
                         Text(transcript)
@@ -707,23 +711,23 @@ struct AudioPlayerView: View {
                             .padding(.horizontal)
                             .padding(.top, 20)
                     }
-                    
+
                     Spacer()
                         .frame(height: 40)
                 }
             }
         }
     }
-    
+
     // MARK: - Helper Views
-    
+
     struct WaveformAnimationView: View {
         let isPlaying: Bool
-        
+
         var body: some View {
             TimelineView(.animation) { _ in
                 HStack(spacing: 4) {
-                    ForEach(0..<15) { index in
+                    ForEach(0 ..< 15) { index in
                         RoundedRectangle(cornerRadius: BorderRadius.card)
                             .fill(LinearColors.Minimal.pureWhite)
                             .frame(width: 3, height: isPlaying ? randomHeight(for: index) : 15)
@@ -738,18 +742,18 @@ struct AudioPlayerView: View {
                 }
             }
         }
-        
+
         private func randomHeight(for index: Int) -> CGFloat {
             let base: Double = Date.timeIntervalSinceReferenceDate + Double(index)
             return 10 + abs(sin(base)) * 20
         }
     }
-    
+
     struct CustomSlider: View {
         @Binding var value: Double
         @Binding var isDragging: Bool
         @Binding var draggedValue: Double
-        
+
         var body: some View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
@@ -758,14 +762,14 @@ struct AudioPlayerView: View {
                         .fill(LinearColors.border)
                         .frame(height: 4)
                         .cornerRadius(2)
-                    
+
                     // Progress track
                     Rectangle()
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
                                     LinearColors.accent,
-                                    LinearColors.accent.opacity(0.8)
+                                    LinearColors.accent.opacity(0.8),
                                 ]),
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -773,7 +777,7 @@ struct AudioPlayerView: View {
                         )
                         .frame(width: max(0, min(geometry.size.width, geometry.size.width * value)), height: 4)
                         .cornerRadius(2)
-                    
+
                     // Drag handle
                     Circle()
                         .fill(LinearColors.Minimal.pureWhite)
@@ -785,14 +789,14 @@ struct AudioPlayerView: View {
                                 .onChanged { gesture in
                                     isDragging = true
                                     let newValue = max(0, min(1, (gesture.location.x) / geometry.size.width))
-                                    
+
                                     // Haptic feedback at 10% progress milestones
                                     let progressPercent = Int(newValue * 10) // 10% chunks
                                     let oldProgressPercent = Int(value * 10)
                                     if progressPercent != oldProgressPercent {
                                         HapticManager.shared.playProgressMilestone()
                                     }
-                                    
+
                                     draggedValue = newValue
                                     value = newValue
                                 }
@@ -804,14 +808,14 @@ struct AudioPlayerView: View {
             }
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private var progress: Double {
         guard let duration = audioPlayer?.duration, duration > 0 else { return 0 }
         return currentTime / duration
     }
-    
+
     private func togglePlayback() {
         if isPlaying {
             HapticManager.shared.playMediumImpact() // Pause feedback
@@ -822,30 +826,30 @@ struct AudioPlayerView: View {
         }
         isPlaying.toggle()
     }
-    
+
     private func rewind15() {
         HapticManager.shared.playLightImpact() // Quick navigation feedback
         guard let player = audioPlayer else { return }
         player.currentTime = max(0, player.currentTime - 15)
         currentTime = player.currentTime
     }
-    
+
     private func forward15() {
         HapticManager.shared.playLightImpact() // Quick navigation feedback
         guard let player = audioPlayer else { return }
         player.currentTime = min(player.duration, player.currentTime + 15)
         currentTime = player.currentTime
     }
-    
+
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
-    
+
     private func setupPlayback() {
         AudioSessionManager.shared.configureAudioSession()
-        
+
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             if let player = audioPlayer {
                 currentTime = player.currentTime
@@ -853,18 +857,18 @@ struct AudioPlayerView: View {
             }
         }
     }
-    
+
     private func prepareTranscriptForStreaming() {
         guard !transcript.isEmpty else { return }
-        
+
         let words = transcript.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .map { $0.trimmingCharacters(in: .punctuationCharacters) }
             .filter { !$0.isEmpty }
-        
+
         wordLines = []
         var currentLine: [String] = []
-        
+
         for word in words {
             currentLine.append(word)
             if currentLine.count >= wordsPerLine {
@@ -872,28 +876,29 @@ struct AudioPlayerView: View {
                 currentLine = []
             }
         }
-        
+
         if !currentLine.isEmpty {
             wordLines.append(currentLine)
         }
     }
-    
+
     private func updateCurrentLine() {
         guard let player = audioPlayer, player.duration > 0 else { return }
         let progress = player.currentTime / player.duration
         currentLineIndex = Int(progress * Double(wordLines.count))
     }
-    
+
     private func startLiveActivity() {
         // Implementation for live activity if needed
     }
-    
+
     private func endLiveActivity() {
         // Implementation for ending live activity if needed
     }
 }
 
 // MARK: - Color Extension
+
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -914,7 +919,7 @@ extension Color {
             .sRGB,
             red: Double(r) / 255,
             green: Double(g) / 255,
-            blue:  Double(b) / 255,
+            blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
     }

@@ -30,7 +30,9 @@ struct RetrospectLoadingMark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let box = CGSize(width: 112, height: 86)
-    private var height: CGFloat { width * Self.box.height / Self.box.width }
+    private var height: CGFloat {
+        width * Self.box.height / Self.box.width
+    }
 
     var body: some View {
         Group {
@@ -60,8 +62,11 @@ struct RetrospectLoadingMark: View {
         Canvas { ctx, size in
             let image = ctx.resolve(Image("retrospect-loading-mark"))
             let rect = CGRect(origin: .zero, size: size)
-            let style = StrokeStyle(lineWidth: revealWidth * size.width / Self.box.width,
-                                    lineCap: .round, lineJoin: .round)
+            let style = StrokeStyle(
+                lineWidth: revealWidth * size.width / Self.box.width,
+                lineCap: .round,
+                lineJoin: .round
+            )
             let reveal = MarkHalfPath.reveal(in: rect, progress: progress).strokedPath(style)
             // Half B is the same reveal turned 180° about the center, applied to
             // the path rather than the layer so the clip and the image stay in
@@ -106,15 +111,15 @@ struct MarkHalfPath: Shape {
         var path = Path()
         // Head / frame outline — starts at the top.
         path.move(to: CGPoint(x: 30, y: 9))
-        path.addLine(to: CGPoint(x: 14, y: 9))     // top-left corner
-        path.addLine(to: CGPoint(x: 13, y: 30))    // down the left edge
-        path.addLine(to: CGPoint(x: 2, y: 40))     // nose chevron tip (<)
-        path.addLine(to: CGPoint(x: 14, y: 52))    // back from the nose
-        path.addLine(to: CGPoint(x: 15, y: 68))    // bottom-left corner
-        path.addLine(to: CGPoint(x: 44, y: 70))    // along the bottom
-        path.addLine(to: CGPoint(x: 46, y: 42))    // up the right edge
-        path.addLine(to: CGPoint(x: 47, y: 9))     // top-right corner
-        path.addLine(to: CGPoint(x: 30, y: 9))     // close the top
+        path.addLine(to: CGPoint(x: 14, y: 9)) // top-left corner
+        path.addLine(to: CGPoint(x: 13, y: 30)) // down the left edge
+        path.addLine(to: CGPoint(x: 2, y: 40)) // nose chevron tip (<)
+        path.addLine(to: CGPoint(x: 14, y: 52)) // back from the nose
+        path.addLine(to: CGPoint(x: 15, y: 68)) // bottom-left corner
+        path.addLine(to: CGPoint(x: 44, y: 70)) // along the bottom
+        path.addLine(to: CGPoint(x: 46, y: 42)) // up the right edge
+        path.addLine(to: CGPoint(x: 47, y: 9)) // top-right corner
+        path.addLine(to: CGPoint(x: 30, y: 9)) // close the top
         return path
     }()
 
@@ -122,10 +127,16 @@ struct MarkHalfPath: Shape {
         var path = Path()
         path.move(to: CGPoint(x: 43, y: 16))
         path.addLine(to: CGPoint(x: 24, y: 18))
-        path.addCurve(to: CGPoint(x: 25, y: 30),
-                      control1: CGPoint(x: 18, y: 19), control2: CGPoint(x: 18, y: 27))
-        path.addCurve(to: CGPoint(x: 28, y: 23),
-                      control1: CGPoint(x: 31, y: 32), control2: CGPoint(x: 33, y: 25))
+        path.addCurve(
+            to: CGPoint(x: 25, y: 30),
+            control1: CGPoint(x: 18, y: 19),
+            control2: CGPoint(x: 18, y: 27)
+        )
+        path.addCurve(
+            to: CGPoint(x: 28, y: 23),
+            control1: CGPoint(x: 31, y: 32),
+            control2: CGPoint(x: 33, y: 25)
+        )
         return path
     }()
 

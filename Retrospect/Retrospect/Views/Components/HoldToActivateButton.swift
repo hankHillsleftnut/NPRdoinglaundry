@@ -7,18 +7,18 @@ struct HoldToActivateButton: View {
     let text: String
     let icon: String
     let isProcessing: Bool
-    
-    // Default initializer for backward compatibility
+
+    /// Default initializer for backward compatibility
     init(action: @escaping () -> Void, isDeepResearchMode: Bool, isDisabled: Bool) {
         self.action = action
         self.isDeepResearchMode = isDeepResearchMode
         self.isDisabled = isDisabled
-        self.text = "Generate"
-        self.icon = isDeepResearchMode ? "brain.head.profile" : "bolt.fill"
-        self.isProcessing = false
+        text = "Generate"
+        icon = isDeepResearchMode ? "brain.head.profile" : "bolt.fill"
+        isProcessing = false
     }
-    
-    // Full initializer
+
+    /// Full initializer
     init(action: @escaping () -> Void, isDeepResearchMode: Bool = false, isDisabled: Bool, text: String, icon: String, isProcessing: Bool = false) {
         self.action = action
         self.isDeepResearchMode = isDeepResearchMode
@@ -27,15 +27,15 @@ struct HoldToActivateButton: View {
         self.icon = icon
         self.isProcessing = isProcessing
     }
-    
+
     @State private var isPressed = false
     @State private var progress: Double = 0.0
     @State private var timer: Timer?
     @State private var hapticTimer: Timer?
-    
+
     private let holdDuration: Double = 0.5
     private let hapticInterval: Double = 0.05 // 20 haptics over 0.5 seconds
-    
+
     var body: some View {
         Button(action: {}) {
             HStack(spacing: 8) {
@@ -47,7 +47,7 @@ struct HoldToActivateButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .medium))
                 }
-                
+
                 Text(isProcessing ? "Generating..." : text)
                     .font(.system(size: 14, weight: .semibold))
             }
@@ -62,20 +62,20 @@ struct HoldToActivateButton: View {
                             LinearGradient(
                                 gradient: Gradient(colors: [
                                     LinearColors.Minimal.backgroundCard,
-                                    LinearColors.Minimal.background
+                                    LinearColors.Minimal.background,
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                    
+
                     // Progress fill overlay
                     RoundedRectangle(cornerRadius: BorderRadius.button)
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
                                     LinearColors.accent.opacity(0.8),
-                                    LinearColors.accent
+                                    LinearColors.accent,
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -98,7 +98,7 @@ struct HoldToActivateButton: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
-                    if !isPressed && !isDisabled {
+                    if !isPressed, !isDisabled {
                         startHolding()
                     }
                 }
@@ -109,13 +109,13 @@ struct HoldToActivateButton: View {
                 }
         )
     }
-    
+
     private func startHolding() {
-        guard !isDisabled && !isProcessing else { return }
-        
+        guard !isDisabled, !isProcessing else { return }
+
         isPressed = true
         progress = 0.0
-        
+
         // Start fill animation timer
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
             if progress < 1.0 {
@@ -127,24 +127,24 @@ struct HoldToActivateButton: View {
                 action()
             }
         }
-        
+
         // Start progressive haptic feedback
         hapticTimer = Timer.scheduledTimer(withTimeInterval: hapticInterval, repeats: true) { _ in
             let intensity = min(progress, 1.0)
             HapticManager.shared.playProgressiveHaptic(intensity: intensity)
         }
-        
+
         // Initial haptic
         HapticManager.shared.playProgressiveHaptic(intensity: 0.0)
     }
-    
+
     private func stopHolding() {
         isPressed = false
         timer?.invalidate()
         timer = nil
         hapticTimer?.invalidate()
         hapticTimer = nil
-        
+
         // Animate progress back to 0
         withAnimation(.easeOut(duration: 0.2)) {
             progress = 0.0
@@ -153,6 +153,7 @@ struct HoldToActivateButton: View {
 }
 
 // MARK: - Preview
+
 struct HoldToActivateButton_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 20) {
@@ -161,13 +162,13 @@ struct HoldToActivateButton_Previews: PreviewProvider {
                 isDeepResearchMode: false,
                 isDisabled: false
             )
-            
+
             HoldToActivateButton(
                 action: { print("Generated with research!") },
                 isDeepResearchMode: true,
                 isDisabled: false
             )
-            
+
             HoldToActivateButton(
                 action: { print("Should not work") },
                 isDeepResearchMode: false,

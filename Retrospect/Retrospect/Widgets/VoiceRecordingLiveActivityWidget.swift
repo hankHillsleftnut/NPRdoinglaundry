@@ -1,8 +1,9 @@
 import ActivityKit
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 // MARK: - Live Activity Widget (minimal, non-intrusive)
+
 @available(iOS 16.2, *)
 struct VoiceRecordingLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
@@ -64,23 +65,24 @@ struct VoiceRecordingLiveActivityWidget: Widget {
 }
 
 // MARK: - Lock Screen View (simple one line + Stop)
+
 @available(iOS 16.2, *)
 struct VoiceRecordingLockScreenView: View {
     let context: ActivityViewContext<VoiceRecordingAttributes>
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "mic.fill")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.accent)
-            
+
             Text("Recording · \(formatTime(context.state.recordingDuration))")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .monospacedDigit()
-            
+
             Spacer()
-            
+
             Link(destination: URL(string: "retrospect://stop-recording")!) {
                 Text("Stop")
                     .font(.system(size: 14, weight: .semibold))
@@ -100,6 +102,7 @@ struct VoiceRecordingLockScreenView: View {
 }
 
 // MARK: - Helper
+
 private func formatTime(_ timeInterval: TimeInterval) -> String {
     let minutes = Int(timeInterval) / 60
     let seconds = Int(timeInterval) % 60

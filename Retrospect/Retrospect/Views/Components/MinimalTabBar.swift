@@ -14,7 +14,7 @@ enum MinimalTab: CaseIterable {
     case goals
     case entries
     case settings
-    
+
     var icon: String {
         switch self {
         case .journal: return "square.and.pencil"
@@ -24,7 +24,7 @@ enum MinimalTab: CaseIterable {
         case .settings: return "slider.horizontal.3"
         }
     }
-    
+
     var title: String {
         switch self {
         case .journal: return "Journal"
@@ -40,7 +40,7 @@ struct MinimalTabBar: View {
     @Binding var selectedTab: MinimalTab
     var hasNewPodcast: Bool = false
     @Namespace private var animation
-    
+
     var body: some View {
         HStack(spacing: 16) {
             ForEach(MinimalTab.allCases, id: \.self) { tab in
@@ -68,14 +68,14 @@ struct MinimalTabButton: View {
     var hasNotification: Bool = false
     let animation: Namespace.ID
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: tab.icon)
                         .font(.system(size: isSelected ? 20 : 19, weight: isSelected ? .bold : .regular))
-                    
+
                     // Notification pill (shows when there's something to attend to)
                     if hasNotification {
                         Circle()
@@ -84,7 +84,7 @@ struct MinimalTabButton: View {
                             .offset(x: 4, y: -2)
                     }
                 }
-                
+
                 Text(tab.title)
                     .font(.system(size: 11, weight: isSelected ? .bold : .regular))
             }
@@ -100,7 +100,7 @@ struct MinimalTabButton: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         VStack {
             Spacer()
             MinimalTabBar(selectedTab: .constant(.journal))
@@ -108,4 +108,3 @@ struct MinimalTabButton: View {
         }
     }
 }
-

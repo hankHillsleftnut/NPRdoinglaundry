@@ -1,12 +1,12 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 struct VoiceEntryPlayerView: View {
     let audioURL: URL
-    
+
     @StateObject private var player = AudioPlayer()
     @State private var showError = false
-    
+
     var body: some View {
         VStack(spacing: 16) {
             // Waveform Icon
@@ -15,20 +15,20 @@ struct VoiceEntryPlayerView: View {
                 .foregroundColor(LinearColors.Minimal.iconPurple)
                 .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
                 .padding(.top, 20)
-            
+
             // Time Display
             HStack {
                 Text(formatTime(player.currentTime))
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundColor(LinearColors.textSecondary)
-                
+
                 Spacer()
-                
+
                 Text(formatTime(player.duration))
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundColor(LinearColors.textSecondary)
             }
-            
+
             // Progress Slider
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
@@ -36,7 +36,7 @@ struct VoiceEntryPlayerView: View {
                     Capsule()
                         .fill(LinearColors.cardBorder.opacity(0.3))
                         .frame(height: 4)
-                    
+
                     // Progress Track
                     Capsule()
                         .fill(
@@ -47,7 +47,7 @@ struct VoiceEntryPlayerView: View {
                             )
                         )
                         .frame(width: progressWidth(in: geometry.size.width), height: 4)
-                    
+
                     // Thumb
                     Circle()
                         .fill(LinearColors.Minimal.iconPurple)
@@ -64,7 +64,7 @@ struct VoiceEntryPlayerView: View {
                 )
             }
             .frame(height: 16)
-            
+
             // Controls
             HStack(spacing: 40) {
                 // Rewind 15s
@@ -76,7 +76,7 @@ struct VoiceEntryPlayerView: View {
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(LinearColors.textPrimary)
                 }
-                
+
                 // Play/Pause
                 Button(action: {
                     HapticManager.shared.playMediumImpact()
@@ -87,7 +87,7 @@ struct VoiceEntryPlayerView: View {
                         .foregroundColor(LinearColors.Minimal.iconPurple)
                         .symbolEffect(.bounce, value: player.isPlaying)
                 }
-                
+
                 // Forward 15s
                 Button(action: {
                     HapticManager.shared.playLightImpact()
@@ -121,12 +121,12 @@ struct VoiceEntryPlayerView: View {
             Text("Unable to play this audio file.")
         }
     }
-    
+
     private func progressWidth(in totalWidth: CGFloat) -> CGFloat {
         guard player.duration > 0 else { return 0 }
         return totalWidth * CGFloat(player.currentTime / player.duration)
     }
-    
+
     private func formatTime(_ time: Double) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
@@ -140,10 +140,10 @@ class AudioPlayer: ObservableObject {
     @Published var isPlaying = false
     @Published var currentTime: Double = 0
     @Published var duration: Double = 0
-    
+
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
-    
+
     func load(url: URL) {
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
@@ -154,7 +154,7 @@ class AudioPlayer: ObservableObject {
             print("❌ Failed to load audio: \(error)")
         }
     }
-    
+
     func togglePlayPause() {
         if isPlaying {
             pause()
@@ -162,39 +162,39 @@ class AudioPlayer: ObservableObject {
             play()
         }
     }
-    
+
     func play() {
         audioPlayer?.play()
         isPlaying = true
         startTimer()
     }
-    
+
     func pause() {
         audioPlayer?.pause()
         isPlaying = false
         stopTimer()
     }
-    
+
     func seek(to progress: Double) {
-        guard let audioPlayer = audioPlayer else { return }
+        guard let audioPlayer else { return }
         let targetTime = duration * progress
         audioPlayer.currentTime = targetTime
         currentTime = targetTime
     }
-    
+
     func skip(by seconds: Double) {
-        guard let audioPlayer = audioPlayer else { return }
+        guard let audioPlayer else { return }
         let newTime = min(max(0, audioPlayer.currentTime + seconds), duration)
         audioPlayer.currentTime = newTime
         currentTime = newTime
     }
-    
+
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
+            guard let self else { return }
             Task { @MainActor in
                 self.currentTime = self.audioPlayer?.currentTime ?? 0
-                
+
                 // Auto-stop at end
                 if self.currentTime >= self.duration {
                     self.pause()
@@ -203,12 +203,12 @@ class AudioPlayer: ObservableObject {
             }
         }
     }
-    
+
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
     }
-    
+
     deinit {
         stopTimer()
         audioPlayer?.stop()
@@ -220,4 +220,3 @@ class AudioPlayer: ObservableObject {
         .padding()
         .background(LinearColors.backgroundGrey)
 }
-

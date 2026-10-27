@@ -1,15 +1,17 @@
+import CryptoKit
 import Foundation
 import Security
-import CryptoKit
 import UIKit
 
 // MARK: - API Client for Retrospect Backend
+
 /// Handles all HTTP communication with the backend, including JWT-based authentication
 /// stored securely in the iOS Keychain.
 class RetrospectAPIClient: ObservableObject {
     static let shared = RetrospectAPIClient()
 
     // MARK: - Configuration
+
     static let productionBaseURL = "https://retrospect-api.onrender.com"
 
     #if DEBUG
@@ -47,13 +49,13 @@ class RetrospectAPIClient: ObservableObject {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 480 // agent pipeline (Cook A/B/C + TTS) takes 3-5 min
         config.timeoutIntervalForResource = 600
-        self.session = URLSession(configuration: config)
+        session = URLSession(configuration: config)
 
         // Restore auth state from Keychain
         if let _ = readKeychain(key: tokenKey),
            let userId = readKeychain(key: userIdKey) {
-            self.isAuthenticated = true
-            self.currentUserId = userId
+            isAuthenticated = true
+            currentUserId = userId
         }
     }
 
@@ -63,8 +65,12 @@ class RetrospectAPIClient: ObservableObject {
     /// to the backend, receives a JWT, and stores it in the Keychain.
     func signIn(appleUserId: String, email: String? = nil, identityToken: String? = nil) async throws -> (userId: String, email: String?) {
         var body: [String: Any] = ["appleUserId": appleUserId]
-        if let email = email { body["email"] = email }
-        if let token = identityToken { body["identityToken"] = token }
+        if let email {
+            body["email"] = email
+        }
+        if let token = identityToken {
+            body["identityToken"] = token
+        }
 
         let response: SignInResponse = try await post(path: "/auth/signin", body: body, authenticated: false)
 
@@ -172,7 +178,7 @@ class RetrospectAPIClient: ObservableObject {
         if let date = contentDate {
             body["contentDate"] = ISO8601DateFormatter().string(from: date)
         }
-        if let metadata = metadata {
+        if let metadata {
             body["metadata"] = metadata
         }
 
@@ -231,7 +237,11 @@ class RetrospectAPIClient: ObservableObject {
 
     func importIntegrationArchive(providerId: String, fileURL: URL) async throws {
         let access = fileURL.startAccessingSecurityScopedResource()
-        defer { if access { fileURL.stopAccessingSecurityScopedResource() } }
+        defer {
+            if access {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
         let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
         let response: ImportStartResponse = try await post(
             path: "/integrations/\(providerId)/imports",
@@ -250,7 +260,7 @@ class RetrospectAPIClient: ObservableObject {
         request.httpMethod = "PUT"
         request.setValue(fileURL.pathExtension.lowercased() == "zip" ? "application/zip" : "application/octet-stream", forHTTPHeaderField: "Content-Type")
         let (_, uploadResponse) = try await session.upload(for: request, from: data)
-        guard let http = uploadResponse as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        guard let http = uploadResponse as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
             throw APIError.serverError("Archive upload failed")
         }
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -288,7 +298,7 @@ class RetrospectAPIClient: ObservableObject {
         request.httpMethod = "PUT"
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         let (_, uploadResponse) = try await session.upload(for: request, from: data)
-        guard let http = uploadResponse as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        guard let http = uploadResponse as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
             throw APIError.serverError("Source asset upload failed")
         }
         let _: GenericResponse = try await post(
@@ -343,7 +353,9 @@ class RetrospectAPIClient: ObservableObject {
         var serverByTitle: [String: BackendGoal] = [:]
         for serverGoal in serverGoals {
             let key = Self.titleKey(serverGoal.title)
-            if let claimed = serverByTitle[key], claimed.isActive { continue }
+            if let claimed = serverByTitle[key], claimed.isActive {
+                continue
+            }
             serverByTitle[key] = serverGoal
         }
 
@@ -508,9 +520,15 @@ class RetrospectAPIClient: ObservableObject {
         maxTokens: Int = 2000
     ) async throws -> String {
         var body: [String: Any] = ["maxTokens": maxTokens]
-        if let systemPrompt { body["systemPrompt"] = systemPrompt }
-        if let userMessage { body["userMessage"] = userMessage }
-        if let messages { body["messages"] = messages }
+        if let systemPrompt {
+            body["systemPrompt"] = systemPrompt
+        }
+        if let userMessage {
+            body["userMessage"] = userMessage
+        }
+        if let messages {
+            body["messages"] = messages
+        }
         let response: ClaudeProxyResponse = try await post(path: "/claude/generate", body: body)
         guard response.success, let data = response.data else {
             throw APIError.serverError(response.error ?? "Claude generation failed")
@@ -523,7 +541,9 @@ class RetrospectAPIClient: ObservableObject {
     /// Fetch insights for the current user.
     func fetchInsights(goalId: String? = nil, limit: Int = 50) async throws -> [BackendInsight] {
         var path = "/pipeline/insights?limit=\(limit)"
-        if let goalId = goalId { path += "&goalId=\(goalId)" }
+        if let goalId {
+            path += "&goalId=\(goalId)"
+        }
         let response: InsightsListResponse = try await get(path: path)
         return response.data ?? []
     }
@@ -560,7 +580,7 @@ class RetrospectAPIClient: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = method
 
-        if let body = body {
+        if let body {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
@@ -578,7 +598,7 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.invalidResponse
         }
 
-        if response.statusCode == 401 && authenticated {
+        if response.statusCode == 401, authenticated {
             // Bridge (PL1.5): the new session refreshes the mirrored token once and the
             // request is retried; a second 401, or a session the server ended, signs out
             // as before. A refresh that can't be done now fails this request only.
@@ -602,7 +622,7 @@ class RetrospectAPIClient: ObservableObject {
             throw APIError.authFailed("Please sign in with Apple again")
         }
 
-        guard (200...299).contains(response.statusCode) else {
+        guard (200 ... 299).contains(response.statusCode) else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown"
             throw APIError.serverError("HTTP \(response.statusCode): \(errorBody)")
         }
@@ -651,6 +671,7 @@ class RetrospectAPIClient: ObservableObject {
 }
 
 // MARK: - API Error
+
 enum APIError: LocalizedError {
     case invalidURL
     case invalidResponse
@@ -663,8 +684,8 @@ enum APIError: LocalizedError {
         case .invalidURL: return "Invalid URL"
         case .invalidResponse: return "Invalid response from server"
         case .notAuthenticated: return "Not authenticated"
-        case .authFailed(let msg): return "Authentication failed: \(msg)"
-        case .serverError(let msg): return "Server error: \(msg)"
+        case let .authFailed(msg): return "Authentication failed: \(msg)"
+        case let .serverError(msg): return "Server error: \(msg)"
         }
     }
 }
@@ -835,6 +856,7 @@ struct GoalExtractionResponse {
 }
 
 // MARK: - Public Profile Model
+
 struct UserProfile: Codable {
     let id: String
     let email: String?
@@ -850,6 +872,7 @@ struct VoicePersonaOption: Codable, Identifiable {
 }
 
 // MARK: - JSON Decoder with snake_case support
+
 extension JSONDecoder {
     static let apiDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
@@ -860,10 +883,14 @@ extension JSONDecoder {
             // Try ISO8601 with fractional seconds
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: dateString) { return date }
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
             // Try without fractional seconds
             formatter.formatOptions = [.withInternetDateTime]
-            if let date = formatter.date(from: dateString) { return date }
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
         }
         return decoder

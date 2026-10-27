@@ -106,7 +106,7 @@ struct OnboardingScaffold<Header: View, Content: View, Bottom: View>: View {
                         colors: [
                             OnboardingStyle.background.opacity(0),
                             OnboardingStyle.background.opacity(0.98),
-                            OnboardingStyle.background
+                            OnboardingStyle.background,
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -119,8 +119,8 @@ struct OnboardingScaffold<Header: View, Content: View, Bottom: View>: View {
     }
 }
 
-// Convenience init for the common case with no header slot, so existing call
-// sites that don't pass a `header:` continue to compile unchanged.
+/// Convenience init for the common case with no header slot, so existing call
+/// sites that don't pass a `header:` continue to compile unchanged.
 extension OnboardingScaffold where Header == EmptyView {
     init(
         iconName: String? = nil,
@@ -144,7 +144,7 @@ extension OnboardingScaffold where Header == EmptyView {
 
 struct OnboardingPrimaryButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     var isLoading: Bool = false
     var isDisabled: Bool = false
     var action: () -> Void
@@ -191,7 +191,7 @@ struct OnboardingOptionRow: View {
     let icon: String
     let title: String
     let subtitle: String
-    var status: String? = nil
+    var status: String?
     var isSelected: Bool = false
     var isLoading: Bool = false
     var isDisabled: Bool = false
@@ -294,7 +294,7 @@ struct OnboardingTextInput: View {
 
 struct OnboardingStatusPill: View {
     let text: String
-    var systemImage: String? = nil
+    var systemImage: String?
 
     var body: some View {
         HStack(spacing: 8) {

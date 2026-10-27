@@ -9,12 +9,12 @@ struct SquircleLogo: View {
     let cornerRadiusRatio: CGFloat
     let shadowEnabled: Bool
     let backgroundColor: Color
-    
-    // Default iOS app icon corner radius is approximately 22.37% of the size
+
+    /// Default iOS app icon corner radius is approximately 22.37% of the size
     private var cornerRadius: CGFloat {
         size * cornerRadiusRatio
     }
-    
+
     init(
         size: CGFloat,
         cornerRadiusRatio: CGFloat = 0.2237, // iOS app icon standard
@@ -26,7 +26,7 @@ struct SquircleLogo: View {
         self.shadowEnabled = shadowEnabled
         self.backgroundColor = backgroundColor
     }
-    
+
     var body: some View {
         ZStack {
             // Background squircle
@@ -39,7 +39,7 @@ struct SquircleLogo: View {
                     x: 0,
                     y: shadowEnabled ? size * 0.04 : 0
                 )
-            
+
             // Logo image with proper padding
             Image("retrospect-logo")
                 .resizable()
@@ -51,22 +51,23 @@ struct SquircleLogo: View {
 }
 
 // MARK: - Convenience Initializers
+
 extension SquircleLogo {
     /// Small logo for settings, navigation, etc.
     static func small(shadowEnabled: Bool = true) -> SquircleLogo {
         SquircleLogo(size: 60, shadowEnabled: shadowEnabled)
     }
-    
+
     /// Medium logo for splash screens, onboarding
     static func medium(shadowEnabled: Bool = true) -> SquircleLogo {
         SquircleLogo(size: 120, shadowEnabled: shadowEnabled)
     }
-    
+
     /// Large logo for hero sections
     static func large(shadowEnabled: Bool = true) -> SquircleLogo {
         SquircleLogo(size: 180, shadowEnabled: shadowEnabled)
     }
-    
+
     /// Custom size with standard iOS proportions
     static func custom(size: CGFloat, shadowEnabled: Bool = true) -> SquircleLogo {
         SquircleLogo(size: size, shadowEnabled: shadowEnabled)
@@ -74,6 +75,7 @@ extension SquircleLogo {
 }
 
 // MARK: - Preview
+
 #Preview {
     VStack(spacing: 40) {
         // Different sizes
@@ -84,14 +86,14 @@ extension SquircleLogo {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             VStack(spacing: 8) {
                 SquircleLogo.medium()
                 Text("Medium (120pt)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             VStack(spacing: 8) {
                 SquircleLogo.large()
                 Text("Large (180pt)")
@@ -99,7 +101,7 @@ extension SquircleLogo {
                     .foregroundColor(.secondary)
             }
         }
-        
+
         // Different styles
         HStack(spacing: 30) {
             VStack(spacing: 8) {
@@ -108,7 +110,7 @@ extension SquircleLogo {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             VStack(spacing: 8) {
                 SquircleLogo(
                     size: 120,
@@ -119,7 +121,7 @@ extension SquircleLogo {
                     .foregroundColor(.secondary)
             }
         }
-        
+
         // Custom corner radius
         VStack(spacing: 8) {
             SquircleLogo(

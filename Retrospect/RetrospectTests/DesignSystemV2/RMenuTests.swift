@@ -20,7 +20,7 @@ struct RMenuTests {
     @Test("the panel starts at the source's leading edge when it fits, and never passes the margins")
     func xInsideMargins() {
         let source = CGRect(x: 24, y: 100, width: 100, height: 44)
-        #expect(abs(RMenuPlacement.x(source: source, containerWidth: 390, menuWidth: 196) - (24)) < 0.001)
+        #expect(abs(RMenuPlacement.x(source: source, containerWidth: 390, menuWidth: 196) - 24) < 0.001)
         let wide = CGRect(x: 0, y: 100, width: 100, height: 44)
         #expect(abs(RMenuPlacement.x(source: wide, containerWidth: 390, menuWidth: 196) - (RDimension.spaceScreenMargin)) < 0.001)
     }
@@ -36,7 +36,7 @@ struct RMenuTests {
     @Test("the width hugs the rows between 196 and layout.popoverMax, and fills the margins at accessibility sizes")
     func width() {
         #expect(abs(RMenuPlacement.width(hugging: 150, containerWidth: 390, accessibilitySize: false) - (RMenuPlacement.minWidth)) < 0.001)
-        #expect(abs(RMenuPlacement.width(hugging: 220, containerWidth: 390, accessibilitySize: false) - (220)) < 0.001)
+        #expect(abs(RMenuPlacement.width(hugging: 220, containerWidth: 390, accessibilitySize: false) - 220) < 0.001)
         #expect(abs(RMenuPlacement.width(hugging: 600, containerWidth: 390, accessibilitySize: false) - (RDimension.layoutPopoverMax)) < 0.001)
         #expect(abs(RMenuPlacement.width(hugging: 150, containerWidth: 390, accessibilitySize: true) - (390 - 2 * RDimension.spaceScreenMargin)) < 0.001)
     }

@@ -1,12 +1,13 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 // MARK: - Audio Player State Management
+
 class AudioPlayerState: ObservableObject {
     @Published var audioPlayer: AVAudioPlayer?
     @Published var isShowingAudioPlayer = false
     @Published var isAudioPlaying = false
-    
+
     func playAudio(from url: URL) {
         do {
             audioPlayer?.stop()
@@ -15,19 +16,19 @@ class AudioPlayerState: ObservableObject {
             audioPlayer?.play()
             isAudioPlaying = true
             isShowingAudioPlayer = true
-            
+
             configureAudioSession()
         } catch {
             print("❌ Error playing audio: \(error)")
         }
     }
-    
+
     func stopAudio() {
         audioPlayer?.stop()
         isAudioPlaying = false
         isShowingAudioPlayer = false
     }
-    
+
     private func configureAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setCategory(
@@ -43,14 +44,15 @@ class AudioPlayerState: ObservableObject {
 }
 
 // MARK: - Audio Player Container Component
+
 struct AudioPlayerContainer: View {
     @StateObject private var audioState = AudioPlayerState()
     @ObservedObject var viewModel: TranscriptViewModel
-    
+
     var body: some View {
         ZStack {
             // Audio Player Overlay
-            if audioState.isShowingAudioPlayer, 
+            if audioState.isShowingAudioPlayer,
                let transcript = viewModel.transcript?.processedTranscript {
                 AudioPlayerView(
                     transcript: transcript,
@@ -73,25 +75,26 @@ struct AudioPlayerContainer: View {
             audioState.isAudioPlaying = false
         }
     }
-    
-    // Public interface for controlling audio
+
+    /// Public interface for controlling audio
     func playTranscript() {
         guard let audioURL = viewModel.transcript?.audioFileURL else { return }
         audioState.playAudio(from: audioURL)
     }
-    
+
     func stopPlayback() {
         audioState.stopAudio()
     }
 }
 
 // MARK: - Audio Control Button Component
+
 struct AudioControlButton: View {
     @ObservedObject var audioState: AudioPlayerState
     let transcript: TranscriptModel?
-    
+
     var body: some View {
-        if let transcript = transcript, transcript.audioFileURL != nil {
+        if let transcript, transcript.audioFileURL != nil {
             Button(action: {
                 if audioState.isAudioPlaying {
                     audioState.stopAudio()

@@ -6,10 +6,10 @@
 //
 import SwiftUI
 
-// Authentic Terra-Cotta Pill Button Style
+/// Authentic Terra-Cotta Pill Button Style
 struct TerraCottaPillButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.serifCaption)

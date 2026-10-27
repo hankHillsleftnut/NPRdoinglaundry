@@ -1,7 +1,7 @@
-import SwiftUI
 import AVFoundation
-import Speech
 import LocalAuthentication
+import Speech
+import SwiftUI
 
 struct PrivacyAndSecurityView: View {
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
@@ -9,26 +9,26 @@ struct PrivacyAndSecurityView: View {
     @State private var showPermissionsAlert = false
     @State private var permissionsAlertMessage = ""
     @Environment(\.dismiss) private var dismiss
-    
+
     // Permission states
     @State private var cameraPermissionGranted = false
     @State private var microphonePermissionGranted = false
     @State private var speechPermissionGranted = false
-    
+
     var body: some View {
         ZStack {
             // Background
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background
+                    LinearColors.background,
                 ]),
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: UIScreen.main.bounds.width * 1.5
             )
             .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 20) {
@@ -40,13 +40,13 @@ struct PrivacyAndSecurityView: View {
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                 .foregroundColor(LinearColors.textPrimary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Text("Privacy & Security")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                             .foregroundColor(LinearColors.textPrimary)
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal, 24)
@@ -55,7 +55,7 @@ struct PrivacyAndSecurityView: View {
                 .padding(.bottom, 16)
                 .background(LinearColors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
                         // Device Security Section
@@ -72,21 +72,21 @@ struct PrivacyAndSecurityView: View {
                                         checkBiometricAvailability()
                                     }
                                 }
-                                
+
                                 if faceIDEnabled {
                                     Divider()
                                         .background(LinearColors.cardBorder)
                                         .padding(.horizontal, Spacing.cardPadding)
-                                    
+
                                     HStack {
                                         Image(systemName: "info.circle")
                                             .font(.system(size: 14))
                                             .foregroundColor(LinearColors.textTertiary)
-                                        
+
                                         Text("Face ID will be required to access the app")
                                             .font(.serifCaption)
                                             .foregroundColor(LinearColors.textSecondary)
-                                        
+
                                         Spacer()
                                     }
                                     .padding(.horizontal, Spacing.cardPadding)
@@ -94,7 +94,7 @@ struct PrivacyAndSecurityView: View {
                                 }
                             }
                         }
-                        
+
                         // App Permissions Section
                         SettingsGroup(title: "App Permissions") {
                             PermissionRow(
@@ -105,11 +105,11 @@ struct PrivacyAndSecurityView: View {
                             ) {
                                 requestCameraPermission()
                             }
-                            
+
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-                            
+
                             PermissionRow(
                                 icon: "mic.fill",
                                 title: "Microphone",
@@ -118,11 +118,11 @@ struct PrivacyAndSecurityView: View {
                             ) {
                                 requestMicrophonePermission()
                             }
-                            
+
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-                            
+
                             PermissionRow(
                                 icon: "waveform",
                                 title: "Speech Recognition",
@@ -132,7 +132,7 @@ struct PrivacyAndSecurityView: View {
                                 requestSpeechPermission()
                             }
                         }
-                        
+
                         // Privacy Information Section
                         SettingsSection(
                             title: "Privacy Information",
@@ -145,13 +145,13 @@ struct PrivacyAndSecurityView: View {
                                     title: "Local Storage",
                                     description: "Your reflections and personal data are stored locally on your device and never uploaded to external servers without your explicit permission."
                                 )
-                                
+
                                 InfoCard(
                                     icon: "key.fill",
                                     title: "Data Encryption",
                                     description: "All sensitive data is encrypted using industry-standard encryption methods to protect your privacy."
                                 )
-                                
+
                                 InfoCard(
                                     icon: "person.badge.shield.checkmark.fill",
                                     title: "No Data Sharing",
@@ -181,27 +181,28 @@ struct PrivacyAndSecurityView: View {
                     UIApplication.shared.open(settingsURL)
                 }
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(permissionsAlertMessage)
         }
     }
-    
+
     // MARK: - Permission Methods
+
     private func checkPermissions() {
         // Check camera permission
         let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
         cameraPermissionGranted = cameraStatus == .authorized
-        
+
         // Check microphone permission
         let microphoneStatus = AVAudioSession.sharedInstance().recordPermission
         microphonePermissionGranted = microphoneStatus == .granted
-        
+
         // Check speech recognition permission
         let speechStatus = SFSpeechRecognizer.authorizationStatus()
         speechPermissionGranted = speechStatus == .authorized
     }
-    
+
     private func requestCameraPermission() {
         AVCaptureDevice.requestAccess(for: .video) { granted in
             DispatchQueue.main.async {
@@ -214,7 +215,7 @@ struct PrivacyAndSecurityView: View {
             }
         }
     }
-    
+
     private func requestMicrophonePermission() {
         AVAudioSession.sharedInstance().requestRecordPermission { granted in
             DispatchQueue.main.async {
@@ -227,7 +228,7 @@ struct PrivacyAndSecurityView: View {
             }
         }
     }
-    
+
     private func requestSpeechPermission() {
         SFSpeechRecognizer.requestAuthorization { status in
             DispatchQueue.main.async {
@@ -240,11 +241,11 @@ struct PrivacyAndSecurityView: View {
             }
         }
     }
-    
+
     private func checkBiometricAvailability() {
         let context = LAContext()
         var error: NSError?
-        
+
         if !context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             showBiometricUnavailableAlert = true
             faceIDEnabled = false
@@ -266,34 +267,34 @@ struct PrivacyAndSecurityView: View {
     }
 }
 
-// Permission Toggle Component
+/// Permission Toggle Component
 struct PermissionToggle: View {
     let icon: String
     let title: String
     let description: String
     let isGranted: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                     .foregroundColor(LinearColors.accent)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.serifBody)
                         .foregroundColor(LinearColors.textPrimary)
-                    
+
                     Text(description)
                         .font(.serifLabel)
                         .foregroundColor(LinearColors.textSecondary)
                         .multilineTextAlignment(.leading)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .foregroundColor(isGranted ? LinearColors.successGreen : LinearColors.warningRed)
                     .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
@@ -310,29 +311,29 @@ struct PermissionToggle: View {
     }
 }
 
-// Info Card Component
+/// Info Card Component
 struct InfoCard: View {
     let icon: String
     let title: String
     let description: String
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                 .foregroundColor(LinearColors.accent)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.serifBody)
                     .foregroundColor(LinearColors.textPrimary)
-                
+
                 Text(description)
                     .font(.serifLabel)
                     .foregroundColor(LinearColors.textSecondary)
                     .multilineTextAlignment(.leading)
             }
-            
+
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -346,13 +347,14 @@ struct InfoCard: View {
 }
 
 // MARK: - Permission Row Component
+
 struct PermissionRow: View {
     let icon: String
     let title: String
     let description: String
     let isGranted: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -360,22 +362,22 @@ struct PermissionRow: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(LinearColors.accent)
                     .frame(width: 24, height: 24)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.geistBody).kerning(TypographyKerning.bodyKerning)
                         .foregroundColor(LinearColors.textPrimary)
                         .multilineTextAlignment(.leading)
-                    
+
                     Text(description)
                         .font(.serifCaption)
                         .foregroundColor(LinearColors.textSecondary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: isGranted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isGranted ? .green : .orange)
@@ -391,4 +393,4 @@ struct PrivacyAndSecurityView_Previews: PreviewProvider {
     static var previews: some View {
         PrivacyAndSecurityView()
     }
-} 
+}

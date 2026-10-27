@@ -6,9 +6,9 @@
 //  Hosts side-panel navigation, global audio state, mini player, and voice recording
 //
 
-import SwiftUI
 import AVFoundation
 import DeviceActivity
+import SwiftUI
 
 /// Global audio state manager for the dark UI
 class DarkAudioManager: ObservableObject {
@@ -263,7 +263,7 @@ struct DarkAppContainer: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         // Mini player (when audio is playing and not on full player)
-                        if audioManager.showMiniPlayer && !audioManager.showFullPlayer {
+                        if audioManager.showMiniPlayer, !audioManager.showFullPlayer {
                             DarkMiniPlayer(audioManager: audioManager)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                                 .padding(.horizontal, 16)
@@ -275,7 +275,7 @@ struct DarkAppContainer: View {
                     .environment(\.dynamicSafeAreaTop, resolvedSafeAreaInsets(from: geometry).top)
                     .environment(\.dynamicSafeAreaBottom, resolvedSafeAreaInsets(from: geometry).bottom)
                     .environment(\.sidePanelProgress, progress)
-                    .environment(\.openSidePanel, { openSidePanel() })
+                    .environment(\.openSidePanel) { openSidePanel() }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .clipShape(RoundedRectangle(cornerRadius: 60 * progress, style: .continuous))
@@ -449,12 +449,10 @@ struct DarkAppContainer: View {
 
                 // Decide target state from position + velocity
                 let base = isSidePanelOpen ? sidePanelWidth : 0
-                var shouldOpen: Bool
-
-                if abs(velocity) > flickVelocity {
-                    shouldOpen = velocity > 0
+                var shouldOpen: Bool = if abs(velocity) > flickVelocity {
+                    velocity > 0
                 } else {
-                    shouldOpen = (base + h) > sidePanelWidth * 0.5
+                    (base + h) > sidePanelWidth * 0.5
                 }
 
                 isDragging = false
@@ -468,7 +466,8 @@ struct DarkAppContainer: View {
 }
 
 // MARK: - Session Tracker for Headline Animation
-// This tracks whether the headline animation has played THIS SESSION (resets on app launch)
+
+/// This tracks whether the headline animation has played THIS SESSION (resets on app launch)
 class HeadlineAnimationTracker: ObservableObject {
     static let shared = HeadlineAnimationTracker()
     @Published var hasPlayedThisSession: Bool = false
@@ -481,6 +480,7 @@ class HeadlineAnimationTracker: ObservableObject {
 }
 
 // MARK: - Dark Journal View (Home Tab)
+
 struct DarkJournalView: View {
     @ObservedObject var viewModel: TranscriptViewModel
     @ObservedObject var goalsManager: GoalsManager
@@ -506,7 +506,7 @@ struct DarkJournalView: View {
     @Environment(\.dynamicSafeAreaBottom) private var dynamicSafeAreaBottom
     @Environment(\.openSidePanel) private var openSidePanel
 
-    // Session-based animation flag (plays once per app session, resets on app launch)
+    /// Session-based animation flag (plays once per app session, resets on app launch)
     @ObservedObject private var animationTracker = HeadlineAnimationTracker.shared
 
     // Typewriter animation states
@@ -657,7 +657,11 @@ struct DarkJournalView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showImagePicker)
         .alert("Agent Podcast Test Failed", isPresented: Binding(
             get: { agentPodcastTestError != nil },
-            set: { if !$0 { agentPodcastTestError = nil } }
+            set: {
+                if !$0 {
+                    agentPodcastTestError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {
                 agentPodcastTestError = nil
@@ -667,7 +671,11 @@ struct DarkJournalView: View {
         }
         .alert("Voice Recording Failed", isPresented: Binding(
             get: { inlineVoiceError != nil },
-            set: { if !$0 { inlineVoiceError = nil } }
+            set: {
+                if !$0 {
+                    inlineVoiceError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {
                 inlineVoiceError = nil
@@ -991,7 +999,7 @@ struct DarkJournalView: View {
             switch result {
             case .success:
                 HapticManager.shared.playSuccessNotification()
-            case .failure(let error):
+            case let .failure(error):
                 inlineVoiceError = error.localizedDescription
                 HapticManager.shared.playErrorNotification()
             }
@@ -1073,7 +1081,9 @@ struct DarkJournalView: View {
 
     private func formatSimpleNugget(_ summary: ScreenTimeSummary) -> String? {
         let minutes = summary.totalScreenTimeMinutes
-        if minutes < 5 { return nil }
+        if minutes < 5 {
+            return nil
+        }
 
         if summary.totalPickups > 60 {
             return "\(summary.totalPickups) pickups today · \(formatTime(minutes)) on screen"
@@ -1158,7 +1168,7 @@ struct DarkJournalView: View {
                         metadata: [
                             "source": "ios_dev_generate_button",
                             "generationSource": PodcastGenerationSource.onboardingFirstEpisode.rawValue,
-                            "purpose": "first_podcast_foundation_test"
+                            "purpose": "first_podcast_foundation_test",
                         ]
                     )
                 }

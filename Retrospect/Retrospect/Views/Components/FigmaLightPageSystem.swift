@@ -5,8 +5,8 @@
 //  Shared light surfaces for the Figma-led app shell.
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 enum FigmaLightTheme {
     static let drawerBackground = Color(red: 228 / 255, green: 228 / 255, blue: 226 / 255)
@@ -346,7 +346,7 @@ struct FigmaLightInlineEntryReader: View {
             audioPlayer?.prepareToPlay()
             timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
                 currentTime = audioPlayer?.currentTime ?? 0
-                if let player = audioPlayer, !player.isPlaying && currentTime > 0 && currentTime >= duration - 0.1 {
+                if let player = audioPlayer, !player.isPlaying, currentTime > 0, currentTime >= duration - 0.1 {
                     isPlaying = false
                 }
             }

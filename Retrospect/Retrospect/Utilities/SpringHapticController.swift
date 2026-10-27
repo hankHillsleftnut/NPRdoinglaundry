@@ -12,8 +12,8 @@ import UIKit
 let kSpringHapticMaxPullDistance: CGFloat = 300
 
 /// Interval range: min (at full pull) and max (at start). Shorter = more frequent, more spring-like.
-private let kSpringHapticIntervalMax: TimeInterval = 0.08  // 80ms at start
-private let kSpringHapticIntervalMin: TimeInterval = 0.02  // 20ms at full pull
+private let kSpringHapticIntervalMax: TimeInterval = 0.08 // 80ms at start
+private let kSpringHapticIntervalMin: TimeInterval = 0.02 // 20ms at full pull
 
 /// Exponent for progress curve. Higher = resistance ramps up more aggressively toward the end.
 private let kSpringHapticProgressExponent: Double = 2.3
@@ -23,29 +23,29 @@ private let kSpringHapticIntensityMin: Double = 0.5
 private let kSpringHapticIntensityMax: Double = 1.0
 
 final class SpringHapticController {
-    
+
     static let shared = SpringHapticController()
-    
+
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .heavy)
     private var lastHapticTime: TimeInterval = 0
-    
+
     private init() {}
-    
+
     func prepare() {
         feedbackGenerator.prepare()
     }
-    
+
     /// Call from gesture .changed with current pull distance and max distance.
     /// Rate-limited and intensity-curved to feel like pulling against a spring.
     func triggerSpringHaptic(pullDistance: CGFloat, maxDistance: CGFloat) {
         let now = CACurrentMediaTime()
         let progress = min(pullDistance / maxDistance, 1.0)
-        
+
         let interval = kSpringHapticIntervalMax - (progress * (kSpringHapticIntervalMax - kSpringHapticIntervalMin))
-        
+
         guard now - lastHapticTime >= interval else { return }
         lastHapticTime = now
-        
+
         let raw = pow(progress, kSpringHapticProgressExponent)
         let intensity = kSpringHapticIntensityMin + raw * (kSpringHapticIntensityMax - kSpringHapticIntensityMin)
         if #available(iOS 13.0, *) {
@@ -54,7 +54,7 @@ final class SpringHapticController {
             feedbackGenerator.impactOccurred()
         }
     }
-    
+
     /// Call on gesture end when user releases below threshold (spring snaps back).
     func triggerSnapBack() {
         if #available(iOS 13.0, *) {
@@ -65,7 +65,7 @@ final class SpringHapticController {
             feedbackGenerator.impactOccurred()
         }
     }
-    
+
     /// Call when user releases above threshold (success — let go to enter app).
     func triggerSuccessHaptic() {
         if #available(iOS 13.0, *) {
@@ -81,7 +81,7 @@ final class SpringHapticController {
             feedbackGenerator.impactOccurred()
         }
     }
-    
+
     func reset() {
         lastHapticTime = 0
     }

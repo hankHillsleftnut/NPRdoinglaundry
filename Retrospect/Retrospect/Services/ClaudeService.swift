@@ -28,16 +28,21 @@ class ClaudeService {
 
     // MARK: - Multi-Pass Generation System
 
-    private func performMultiPassGeneration(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
+    private func performMultiPassGeneration(
+        text: String,
+        goals: [String],
+        generationType: GenerationType,
+        completion: @escaping (Result<String, ClaudeError>) -> Void
+    ) {
         print("🎯 Starting 2-pass focused generation system (Claude)...")
 
         extractKeyInsights(text: text, goals: goals, generationType: generationType) { [weak self] insightsResult in
             switch insightsResult {
-            case .success(let insights):
+            case let .success(insights):
                 print("✅ Pass 1 complete - Key insights extracted (\(insights.count) chars)")
                 self?.generateFocusedPodcast(text: text, goals: goals, insights: insights, generationType: generationType) { finalResult in
                     switch finalResult {
-                    case .success(let finalPodcast):
+                    case let .success(finalPodcast):
                         print("✅ Pass 2 complete - Focused podcast generated (\(finalPodcast.count) chars)")
                         let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
                         if audioTestMode {
@@ -52,19 +57,24 @@ class ClaudeService {
                         } else {
                             completion(.success(finalPodcast))
                         }
-                    case .failure(let error):
+                    case let .failure(error):
                         print("❌ Pass 2 failed: \(error)")
                         completion(.failure(error))
                     }
                 }
-            case .failure(let error):
+            case let .failure(error):
                 print("❌ Pass 1 failed: \(error)")
                 completion(.failure(error))
             }
         }
     }
 
-    private func extractKeyInsights(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
+    private func extractKeyInsights(
+        text: String,
+        goals: [String],
+        generationType: GenerationType,
+        completion: @escaping (Result<String, ClaudeError>) -> Void
+    ) {
         print("🔍 Pass 1: Extracting key insights (Claude)...")
         let systemPrompt = getInsightsPrompt(for: generationType)
         let userMessage = """
@@ -77,7 +87,13 @@ class ClaudeService {
         makeAPICall(systemPrompt: systemPrompt, userMessage: userMessage, maxTokens: 1000, purpose: "key insights extraction", completion: completion)
     }
 
-    private func generateFocusedPodcast(text: String, goals: [String], insights: String, generationType: GenerationType, completion: @escaping (Result<String, ClaudeError>) -> Void) {
+    private func generateFocusedPodcast(
+        text: String,
+        goals: [String],
+        insights: String,
+        generationType: GenerationType,
+        completion: @escaping (Result<String, ClaudeError>) -> Void
+    ) {
         print("🎙️ Pass 2: Generating focused podcast (Claude)...")
         let systemPrompt = getFocusedPodcastPrompt(for: generationType)
         let userMessage = """
@@ -91,7 +107,7 @@ class ClaudeService {
         makeAPICall(systemPrompt: systemPrompt, userMessage: userMessage, maxTokens: 4000, purpose: "focused podcast generation", completion: completion)
     }
 
-    internal func makeAPICall(systemPrompt: String, userMessage: String, maxTokens: Int, purpose: String, completion: @escaping (Result<String, ClaudeError>) -> Void) {
+    func makeAPICall(systemPrompt: String, userMessage: String, maxTokens: Int, purpose: String, completion: @escaping (Result<String, ClaudeError>) -> Void) {
         Task {
             do {
                 let text = try await RetrospectAPIClient.shared.claudeGenerate(
@@ -250,7 +266,7 @@ class ClaudeService {
         }
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let start = cleaned.firstIndex(of: "["), let end = cleaned.lastIndex(of: "]"), start < end {
-            let slice = String(cleaned[start...end])
+            let slice = String(cleaned[start ... end])
             if let data = slice.data(using: .utf8),
                let arr = try? JSONSerialization.jsonObject(with: data) as? [String] {
                 return arr
@@ -292,7 +308,7 @@ class ClaudeService {
                     completion(.success(goalsArray))
                 } else {
                     let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if cleaned.hasPrefix("[") && cleaned.hasSuffix("]") {
+                    if cleaned.hasPrefix("["), cleaned.hasSuffix("]") {
                         let inner = String(cleaned.dropFirst().dropLast())
                         let goals = inner.components(separatedBy: ",")
                             .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) }
@@ -406,19 +422,19 @@ class ClaudeService {
                     "source": [
                         "type": "base64",
                         "media_type": "image/jpeg",
-                        "data": base64Image
-                    ]
+                        "data": base64Image,
+                    ],
                 ])
                 print("📷 Added image \(index + 1) to request")
             }
         }
         contentArray.append([
             "type": "text",
-            "text": "Please analyze these journal entry images and provide descriptions that can be used as context for a personal reflection podcast."
+            "text": "Please analyze these journal entry images and provide descriptions that can be used as context for a personal reflection podcast.",
         ])
 
         let messages: [[String: Any]] = [
-            ["role": "user", "content": contentArray]
+            ["role": "user", "content": contentArray],
         ]
 
         Task {

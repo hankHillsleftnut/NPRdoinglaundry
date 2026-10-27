@@ -5,7 +5,9 @@ import Testing
 struct REmptyLineTests {
     @Test("the line and the subline read as one sentence")
     func spokenWithSubline() {
-        #expect(REmptyLine.spoken(line: "nothing yet. say anything.", subline: "what you say shows up here, by day") == "nothing yet. say anything. what you say shows up here, by day")
+        #expect(REmptyLine
+            .spoken(line: "nothing yet. say anything.", subline: "what you say shows up here, by day") ==
+            "nothing yet. say anything. what you say shows up here, by day")
     }
 
     @Test("a one-line state reads only its line")

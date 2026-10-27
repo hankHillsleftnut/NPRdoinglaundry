@@ -36,15 +36,33 @@ struct DailyHealthSnapshot {
             "workout_minutes": workoutMinutes,
             "workout_types": workoutTypes,
         ]
-        if let steps { data["steps"] = steps }
-        if let activeEnergyKcal { data["active_energy_kcal"] = activeEnergyKcal }
-        if let averageHeartRateBpm { data["average_heart_rate_bpm"] = averageHeartRateBpm }
-        if let sleepHours { data["sleep_hours"] = sleepHours }
-        if let mindfulnessMinutes { data["mindfulness_minutes"] = mindfulnessMinutes }
-        if let distanceKilometers { data["distance_kilometers"] = distanceKilometers }
-        if let exerciseMinutes { data["exercise_minutes"] = exerciseMinutes }
-        if let restingHeartRateBpm { data["resting_heart_rate_bpm"] = restingHeartRateBpm }
-        if let heartRateVariabilityMs { data["heart_rate_variability_ms"] = heartRateVariabilityMs }
+        if let steps {
+            data["steps"] = steps
+        }
+        if let activeEnergyKcal {
+            data["active_energy_kcal"] = activeEnergyKcal
+        }
+        if let averageHeartRateBpm {
+            data["average_heart_rate_bpm"] = averageHeartRateBpm
+        }
+        if let sleepHours {
+            data["sleep_hours"] = sleepHours
+        }
+        if let mindfulnessMinutes {
+            data["mindfulness_minutes"] = mindfulnessMinutes
+        }
+        if let distanceKilometers {
+            data["distance_kilometers"] = distanceKilometers
+        }
+        if let exerciseMinutes {
+            data["exercise_minutes"] = exerciseMinutes
+        }
+        if let restingHeartRateBpm {
+            data["resting_heart_rate_bpm"] = restingHeartRateBpm
+        }
+        if let heartRateVariabilityMs {
+            data["heart_rate_variability_ms"] = heartRateVariabilityMs
+        }
         return data
     }
 }
@@ -65,21 +83,21 @@ class HealthKitManager {
         formatter.timeStyle = .none
         return formatter
     }()
-    
+
     private init() {}
-    
+
     /// Request authorization to read health data
     func requestAuthorization(completion: @escaping (Bool) -> Void) {
         print("🏥 HealthKit: Starting authorization request...")
-        
+
         guard HKHealthStore.isHealthDataAvailable() else {
             print("❌ HealthKit: Health data not available on this device")
             completion(false)
             return
         }
-        
+
         print("✅ HealthKit: Health data is available")
-        
+
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .stepCount)!,
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
@@ -92,13 +110,13 @@ class HealthKitManager {
             HKObjectType.categoryType(forIdentifier: .mindfulSession)!,
             HKObjectType.workoutType(),
         ]
-        
+
         print("🔐 HealthKit: Requesting authorization for \(typesToRead.count) data types...")
         print("🔐 HealthKit: This should trigger the iOS permission dialog...")
-        
+
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
             DispatchQueue.main.async {
-                if let error = error {
+                if let error {
                     print("❌ HealthKit authorization error: \(error.localizedDescription)")
                     completion(false)
                 } else {
@@ -135,12 +153,12 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
-    
+
     /// Check if HealthKit is available on this device
     func isHealthDataAvailable() -> Bool {
         return HKHealthStore.isHealthDataAvailable()
     }
-    
+
     /// Note: For READ-only permissions, Apple intentionally hides authorization status
     /// for privacy reasons. We cannot reliably check if user granted read access.
     /// The app should just try to fetch data - if denied, values will be empty/zero.
@@ -148,60 +166,60 @@ class HealthKitManager {
         // We can only check if HealthKit is available, not if user granted read access
         return HKHealthStore.isHealthDataAvailable()
     }
-    
+
     func fetchWeeklyHealthData(completion: @escaping (String) -> Void) {
         guard HKHealthStore.isHealthDataAvailable() else {
             completion("")
             return
         }
-        
+
         // Note: We don't check permissions here because for READ-only access,
         // Apple doesn't reveal authorization status. We just try to fetch data
         // and if user denied access, the values will be zero/empty.
-        
+
         let calendar = Calendar.current
         let now = Date()
         let startDate = calendar.date(byAdding: .day, value: -7, to: now)!
-        
+
         var healthSummary = "Health Summary for the Past Week:\n\n"
-        
+
         let group = DispatchGroup()
-        
+
         // Fetch steps
         group.enter()
         fetchSteps(startDate: startDate, endDate: now) { steps in
             healthSummary += "Steps: \(steps.map(String.init) ?? "Unavailable")\n"
             group.leave()
         }
-        
+
         // Fetch active energy
         group.enter()
         fetchActiveEnergy(startDate: startDate, endDate: now) { energy in
             healthSummary += "Active Energy: \(energy.map { String(format: "%.0f", $0) } ?? "Unavailable") kcal\n"
             group.leave()
         }
-        
+
         // Fetch average heart rate
         group.enter()
         fetchAverageHeartRate(startDate: startDate, endDate: now) { heartRate in
             healthSummary += "Average Heart Rate: \(heartRate.map { String(format: "%.0f", $0) } ?? "Unavailable") BPM\n"
             group.leave()
         }
-        
+
         // Fetch sleep analysis
         group.enter()
         fetchSleepAnalysis(startDate: startDate, endDate: now) { sleepHours in
             healthSummary += "Average Sleep: \(sleepHours.map { String(format: "%.1f", $0) } ?? "Unavailable") hours\n"
             group.leave()
         }
-        
+
         // Fetch mindfulness minutes
         group.enter()
         fetchMindfulnessMinutes(startDate: startDate, endDate: now) { minutes in
             healthSummary += "Mindfulness: \(minutes.map(String.init) ?? "Unavailable") minutes\n"
             group.leave()
         }
-        
+
         group.notify(queue: .main) {
             completion(healthSummary)
         }
@@ -376,7 +394,12 @@ class HealthKitManager {
     private func fetchWorkouts(startDate: Date, endDate: Date) async -> WorkoutDaySummary? {
         await withCheckedContinuation { continuation in
             let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-            let query = HKSampleQuery(sampleType: HKObjectType.workoutType(), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, _ in
                 let workouts = samples as? [HKWorkout] ?? []
                 guard !workouts.isEmpty else {
                     continuation.resume(returning: nil)
@@ -395,7 +418,7 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
-    
+
     private func fetchSteps(startDate: Date, endDate: Date) async -> Int? {
         await withCheckedContinuation { continuation in
             fetchSteps(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
@@ -407,26 +430,26 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
+
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        
+
         let query = HKStatisticsQuery(
             quantityType: stepType,
             quantitySamplePredicate: predicate,
             options: .cumulativeSum
-        ) { _, result, error in
-            guard let result = result, let sum = result.sumQuantity() else {
+        ) { _, result, _ in
+            guard let result, let sum = result.sumQuantity() else {
                 completion(nil)
                 return
             }
-            
+
             let steps = Int(sum.doubleValue(for: HKUnit.count()))
             completion(steps)
         }
-        
+
         healthStore.execute(query)
     }
-    
+
     private func fetchActiveEnergy(startDate: Date, endDate: Date) async -> Double? {
         await withCheckedContinuation { continuation in
             fetchActiveEnergy(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
@@ -438,26 +461,26 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
+
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        
+
         let query = HKStatisticsQuery(
             quantityType: energyType,
             quantitySamplePredicate: predicate,
             options: .cumulativeSum
-        ) { _, result, error in
-            guard let result = result, let sum = result.sumQuantity() else {
+        ) { _, result, _ in
+            guard let result, let sum = result.sumQuantity() else {
                 completion(nil)
                 return
             }
-            
+
             let energy = sum.doubleValue(for: HKUnit.kilocalorie())
             completion(energy)
         }
-        
+
         healthStore.execute(query)
     }
-    
+
     private func fetchAverageHeartRate(startDate: Date, endDate: Date) async -> Double? {
         await withCheckedContinuation { continuation in
             fetchAverageHeartRate(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
@@ -469,26 +492,26 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
+
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        
+
         let query = HKStatisticsQuery(
             quantityType: heartRateType,
             quantitySamplePredicate: predicate,
             options: .discreteAverage
-        ) { _, result, error in
-            guard let result = result, let average = result.averageQuantity() else {
+        ) { _, result, _ in
+            guard let result, let average = result.averageQuantity() else {
                 completion(nil)
                 return
             }
-            
+
             let heartRate = average.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
             completion(heartRate)
         }
-        
+
         healthStore.execute(query)
     }
-    
+
     private func fetchSleepAnalysis(startDate: Date, endDate: Date, averagingDays: Int) async -> Double? {
         await withCheckedContinuation { continuation in
             fetchSleepAnalysis(startDate: startDate, endDate: endDate, averagingDays: averagingDays) {
@@ -511,34 +534,34 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
+
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        
+
         let query = HKSampleQuery(
             sampleType: sleepType,
             predicate: predicate,
             limit: HKObjectQueryNoLimit,
             sortDescriptors: nil
-        ) { _, samples, error in
+        ) { _, samples, _ in
             guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
                 completion(nil)
                 return
             }
-            
+
             let totalSleepTime = samples.reduce(0.0) { total, sample in
                 if Self.isAsleep(sample.value) {
                     return total + sample.endDate.timeIntervalSince(sample.startDate)
                 }
                 return total
             }
-            
+
             let averageSleepHours = totalSleepTime / (Double(max(averagingDays, 1)) * 3600)
             completion(averageSleepHours)
         }
-        
+
         healthStore.execute(query)
     }
-    
+
     private func fetchMindfulnessMinutes(startDate: Date, endDate: Date) async -> Int? {
         await withCheckedContinuation { continuation in
             fetchMindfulnessMinutes(startDate: startDate, endDate: endDate) { continuation.resume(returning: $0) }
@@ -550,27 +573,27 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
+
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        
+
         let query = HKSampleQuery(
             sampleType: mindfulnessType,
             predicate: predicate,
             limit: HKObjectQueryNoLimit,
             sortDescriptors: nil
-        ) { _, samples, error in
+        ) { _, samples, _ in
             guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
                 completion(nil)
                 return
             }
-            
+
             let totalMinutes = samples.reduce(0) { total, sample in
                 return total + Int(sample.endDate.timeIntervalSince(sample.startDate) / 60)
             }
-            
+
             completion(totalMinutes)
         }
-        
+
         healthStore.execute(query)
     }
 

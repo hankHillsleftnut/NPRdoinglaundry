@@ -1,7 +1,7 @@
-//import SwiftUI
-//import AVFoundation
+// import SwiftUI
+// import AVFoundation
 //
-//struct VideoJournalingView: View {
+// struct VideoJournalingView: View {
 //    // State variables for camera, recording, transcription, etc.
 //    @State private var isRecording = false
 //    @State private var transcribedText = ""
@@ -120,12 +120,12 @@
 //        transcribedText += "\nRecording stopped." // Placeholder
 //        // TODO: Create a VideoJournalEntry and save it
 //    }
-//}
+// }
 //
-//struct VideoJournalingView_Previews: PreviewProvider {
+// struct VideoJournalingView_Previews: PreviewProvider {
 //    static var previews: some View {
 //        NavigationView {
 //            VideoJournalingView()
 //        }
 //    }
-//} 
+// }

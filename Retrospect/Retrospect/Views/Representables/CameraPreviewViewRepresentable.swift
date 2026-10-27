@@ -1,74 +1,73 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 struct CameraPreviewViewRepresentable: UIViewRepresentable {
     class VideoPreviewView: UIView {
         override class var layerClass: AnyClass {
             AVCaptureVideoPreviewLayer.self
         }
-        
+
         var previewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer
         }
-        
+
         init(session: AVCaptureSession) {
             super.init(frame: .zero)
             setupLayer(session: session)
         }
-        
+
+        @available(*, unavailable)
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
         }
-        
+
         private func setupLayer(session: AVCaptureSession) {
             previewLayer.session = session
             previewLayer.videoGravity = .resizeAspectFill
             previewLayer.connection?.automaticallyAdjustsVideoMirroring = false
             previewLayer.connection?.isVideoMirrored = true
-            
+
             // Set initial orientation
             updateOrientation()
         }
-        
+
         override func layoutSubviews() {
             super.layoutSubviews()
             previewLayer.frame = bounds
         }
-        
+
         func updateOrientation() {
             guard let connection = previewLayer.connection else { return }
-            
+
             let currentInterfaceOrientation = UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .first?.interfaceOrientation ?? .portrait
-            
-            let videoOrientation: AVCaptureVideoOrientation
-            switch currentInterfaceOrientation {
+
+            let videoOrientation: AVCaptureVideoOrientation = switch currentInterfaceOrientation {
             case .portrait:
-                videoOrientation = .portrait
+                .portrait
             case .portraitUpsideDown:
-                videoOrientation = .portraitUpsideDown
+                .portraitUpsideDown
             case .landscapeLeft:
-                videoOrientation = .landscapeRight
+                .landscapeRight
             case .landscapeRight:
-                videoOrientation = .landscapeLeft
+                .landscapeLeft
             default:
-                videoOrientation = .portrait
+                .portrait
             }
-            
+
             if connection.isVideoOrientationSupported {
                 connection.videoOrientation = videoOrientation
             }
         }
     }
-    
+
     let session: AVCaptureSession
-    
+
     func makeUIView(context: Context) -> VideoPreviewView {
-        let view = VideoPreviewView(session: session)
-        return view
+        return VideoPreviewView(session: session)
     }
-    
+
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {
         uiView.updateOrientation()
     }
@@ -95,4 +94,4 @@ struct CameraPreviewViewRepresentable: UIViewRepresentable {
 
 // Revised CameraPreviewViewRepresentable without CameraManagerWrapper:
 // The orientation logic inside the Representable itself using UIWindowScene.interfaceOrientation
-// should be sufficient for the preview layer's orientation. Mirroring is also handled. 
+// should be sufficient for the preview layer's orientation. Mirroring is also handled.

@@ -1,15 +1,15 @@
-import SwiftUI
 import MetalKit
+import SwiftUI
 
 struct MeshGradient: View {
     let width: Int
     let height: Int
     let points: [SIMD2<Float>]
     let colors: [Color]
-    
+
     private let device = MTLCreateSystemDefaultDevice()
     @State private var metalView = MTKView()
-    
+
     var body: some View {
         MetalViewRepresentable(
             metalView: metalView,
@@ -40,7 +40,7 @@ struct MetalViewRepresentable: UIViewRepresentable {
     let height: Int
     let points: [SIMD2<Float>]
     let colors: [SIMD4<Float>]
-    
+
     func makeUIView(context: Context) -> MTKView {
         metalView.device = MTLCreateSystemDefaultDevice()
         metalView.delegate = context.coordinator
@@ -49,17 +49,17 @@ struct MetalViewRepresentable: UIViewRepresentable {
         metalView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
         return metalView
     }
-    
+
     func updateUIView(_ uiView: MTKView, context: Context) {
         context.coordinator.points = points
         context.coordinator.colors = colors
         uiView.setNeedsDisplay()
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(width: width, height: height, points: points, colors: colors)
     }
-    
+
     class Coordinator: NSObject, MTKViewDelegate {
         var points: [SIMD2<Float>]
         var colors: [SIMD4<Float>]
@@ -69,7 +69,7 @@ struct MetalViewRepresentable: UIViewRepresentable {
         var vertexBuffer: MTLBuffer?
         var pointsBuffer: MTLBuffer?
         var colorsBuffer: MTLBuffer?
-        
+
         init(width: Int, height: Int, points: [SIMD2<Float>], colors: [SIMD4<Float>]) {
             self.width = width
             self.height = height
@@ -78,7 +78,7 @@ struct MetalViewRepresentable: UIViewRepresentable {
             super.init()
             createPipelineState()
         }
-        
+
         func createPipelineState() {
             guard let device = MTLCreateSystemDefaultDevice(),
                   let library = device.makeDefaultLibrary(),
@@ -86,7 +86,7 @@ struct MetalViewRepresentable: UIViewRepresentable {
                   let fragmentFunction = library.makeFunction(name: "meshGradientFragment") else {
                 return
             }
-            
+
             let pipelineDescriptor = MTLRenderPipelineDescriptor()
             pipelineDescriptor.vertexFunction = vertexFunction
             pipelineDescriptor.fragmentFunction = fragmentFunction
@@ -96,66 +96,76 @@ struct MetalViewRepresentable: UIViewRepresentable {
             pipelineDescriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
             pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
             pipelineDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
-            
+
             pipelineState = try? device.makeRenderPipelineState(descriptor: pipelineDescriptor)
         }
-        
+
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
-        
+
         func draw(in view: MTKView) {
             guard let device = view.device,
                   let commandBuffer = device.makeCommandQueue()?.makeCommandBuffer(),
                   let descriptor = view.currentRenderPassDescriptor,
-                  let pipelineState = pipelineState,
+                  let pipelineState,
                   let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
                 return
             }
-            
+
             // Create vertex data for a quad
             let vertices: [SIMD2<Float>] = [
                 SIMD2<Float>(-1, -1),
                 SIMD2<Float>(1, -1),
                 SIMD2<Float>(-1, 1),
-                SIMD2<Float>(1, 1)
+                SIMD2<Float>(1, 1),
             ]
-            
+
             // Create or update buffers
             if vertexBuffer == nil {
-                vertexBuffer = device.makeBuffer(bytes: vertices,
-                                               length: vertices.count * MemoryLayout<SIMD2<Float>>.stride,
-                                               options: [])
+                vertexBuffer = device.makeBuffer(
+                    bytes: vertices,
+                    length: vertices.count * MemoryLayout<SIMD2<Float>>.stride,
+                    options: []
+                )
             }
-            
-            pointsBuffer = device.makeBuffer(bytes: points,
-                                           length: points.count * MemoryLayout<SIMD2<Float>>.stride,
-                                           options: [])
-            
-            colorsBuffer = device.makeBuffer(bytes: colors,
-                                           length: colors.count * MemoryLayout<SIMD4<Float>>.stride,
-                                           options: [])
-            
+
+            pointsBuffer = device.makeBuffer(
+                bytes: points,
+                length: points.count * MemoryLayout<SIMD2<Float>>.stride,
+                options: []
+            )
+
+            colorsBuffer = device.makeBuffer(
+                bytes: colors,
+                length: colors.count * MemoryLayout<SIMD4<Float>>.stride,
+                options: []
+            )
+
             encoder.setRenderPipelineState(pipelineState)
             encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             encoder.setVertexBuffer(pointsBuffer, offset: 0, index: 1)
             encoder.setFragmentBuffer(pointsBuffer, offset: 0, index: 0)
             encoder.setFragmentBuffer(colorsBuffer, offset: 0, index: 1)
-            
+
             let pointCount = UInt32(points.count)
             var fragmentUniforms = pointCount
-            encoder.setFragmentBytes(&fragmentUniforms,
-                                   length: MemoryLayout<UInt32>.stride,
-                                   index: 2)
-            
-            encoder.drawPrimitives(type: .triangleStrip,
-                                 vertexStart: 0,
-                                 vertexCount: 4)
-            
+            encoder.setFragmentBytes(
+                &fragmentUniforms,
+                length: MemoryLayout<UInt32>.stride,
+                index: 2
+            )
+
+            encoder.drawPrimitives(
+                type: .triangleStrip,
+                vertexStart: 0,
+                vertexCount: 4
+            )
+
             encoder.endEncoding()
-            
+
             if let drawable = view.currentDrawable {
                 commandBuffer.present(drawable)
             }
-            
+
             commandBuffer.commit()
         }
     }
@@ -171,4 +181,4 @@ extension Color {
         uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
         return (Double(red), Double(green), Double(blue), Double(alpha))
     }
-} 
+}

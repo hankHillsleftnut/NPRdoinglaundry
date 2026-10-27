@@ -9,12 +9,13 @@
 import SwiftUI
 
 // MARK: - Floating Search Bar (Legacy - for reference)
+
 struct FloatingSearchBar: View {
     @Binding var searchText: String
     @Binding var isExpanded: Bool
     let placeholder: String
-    var onSearch: ((String) -> Void)? = nil
-    
+    var onSearch: ((String) -> Void)?
+
     var body: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -26,12 +27,12 @@ struct FloatingSearchBar: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(LinearColors.Minimal.textTertiary)
-                
+
                 Text(searchText.isEmpty ? placeholder : searchText)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(searchText.isEmpty ? LinearColors.Minimal.placeholderText : LinearColors.Minimal.textPrimary)
                     .lineLimit(1)
-                
+
                 Spacer()
             }
             .padding(.horizontal, 16)
@@ -50,29 +51,30 @@ struct FloatingSearchBar: View {
 }
 
 // MARK: - Entries Floating Search Bar (Pill-shaped, inline search)
+
 struct EntriesFloatingSearchBar: View {
     @Binding var searchText: String
     @Binding var isSearching: Bool
-    
+
     @FocusState private var isSearchFocused: Bool
-    
+
     private let barHeight: CGFloat = 52
-    
+
     var body: some View {
         HStack(spacing: 10) {
             // Only show search icon when not actively typing
             if !isSearching || searchText.isEmpty {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(FigmaLightTheme.mutedText)
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(FigmaLightTheme.mutedText)
             }
-            
+
             if isSearching {
                 TextField("Search entries...", text: $searchText)
-                        .font(.system(size: 15, weight: .regular))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                     .focused($isSearchFocused)
-                
+
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
@@ -80,7 +82,7 @@ struct EntriesFloatingSearchBar: View {
                             .foregroundColor(FigmaLightTheme.mutedText)
                     }
                 }
-                
+
                 Button(action: { dismissSearch() }) {
                     Text("Done")
                         .font(.system(size: 14, weight: .medium))
@@ -91,7 +93,7 @@ struct EntriesFloatingSearchBar: View {
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(FigmaLightTheme.mutedText.opacity(0.72))
                     .lineLimit(1)
-                
+
                 Spacer()
             }
         }
@@ -119,7 +121,7 @@ struct EntriesFloatingSearchBar: View {
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isSearching)
     }
-    
+
     private func dismissSearch() {
         isSearchFocused = false
         searchText = ""
@@ -130,10 +132,11 @@ struct EntriesFloatingSearchBar: View {
 }
 
 // MARK: - Goals Floating Bar (Swappable Search + Add)
+
 enum GoalsInputMode {
-    case idle      // Neither active - show search bar + plus button
+    case idle // Neither active - show search bar + plus button
     case searching // Search bar expanded, plus button visible
-    case adding    // Search button visible, add bar expanded
+    case adding // Search button visible, add bar expanded
 }
 
 struct GoalsFloatingBar: View {
@@ -142,18 +145,22 @@ struct GoalsFloatingBar: View {
     @Binding var newGoalText: String
     @Binding var isAdding: Bool
     let onSubmitGoal: (String) -> Void
-    
+
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isAddFocused: Bool
-    
+
     private let barHeight: CGFloat = 52
-    
+
     private var mode: GoalsInputMode {
-        if isAdding { return .adding }
-        if isSearching { return .searching }
+        if isAdding {
+            return .adding
+        }
+        if isSearching {
+            return .searching
+        }
         return .idle
     }
-    
+
     var body: some View {
         HStack(spacing: 10) {
             // LEFT SIDE
@@ -171,7 +178,7 @@ struct GoalsFloatingBar: View {
                             )
                             .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
                             .frame(width: barHeight, height: barHeight)
-                        
+
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(FigmaLightTheme.mutedText)
@@ -187,7 +194,7 @@ struct GoalsFloatingBar: View {
                         removal: .scale.combined(with: .opacity)
                     ))
             }
-            
+
             // RIGHT SIDE
             if mode == .adding {
                 // Add input bar (wide) on right when adding
@@ -207,7 +214,7 @@ struct GoalsFloatingBar: View {
                             .overlay(Circle().strokeBorder(FigmaLightTheme.border, lineWidth: 1))
                             .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
                             .frame(width: barHeight, height: barHeight)
-                        
+
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(FigmaLightTheme.mutedText)
@@ -219,8 +226,9 @@ struct GoalsFloatingBar: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: mode)
     }
-    
+
     // MARK: - Search Bar (Wide)
+
     private var searchBar: some View {
         HStack(spacing: 10) {
             // Only show search icon when not actively typing
@@ -229,21 +237,21 @@ struct GoalsFloatingBar: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(FigmaLightTheme.mutedText)
             }
-            
+
             if isSearching {
                 TextField("Search goals...", text: $searchText)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(FigmaLightTheme.primaryText.opacity(0.82))
                     .focused($isSearchFocused)
-                
+
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
-                    Image(systemName: "xmark.circle.fill")
+                        Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18))
-                        .foregroundColor(FigmaLightTheme.mutedText)
+                            .foregroundColor(FigmaLightTheme.mutedText)
+                    }
                 }
-                }
-                
+
                 Button(action: { dismissSearch() }) {
                     Text("Done")
                         .font(.system(size: 14, weight: .medium))
@@ -254,7 +262,7 @@ struct GoalsFloatingBar: View {
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(FigmaLightTheme.mutedText.opacity(0.72))
                     .lineLimit(1)
-                
+
                 Spacer()
             }
         }
@@ -272,7 +280,7 @@ struct GoalsFloatingBar: View {
         .onTapGesture {
             if !isSearching {
                 HapticManager.shared.playLightImpact()
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     isSearching = true
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -281,8 +289,9 @@ struct GoalsFloatingBar: View {
             }
         }
     }
-    
+
     // MARK: - Add Input Bar (Wide)
+
     private var addInputBar: some View {
         HStack(spacing: 10) {
             TextField("Add a new goal...", text: $newGoalText)
@@ -292,23 +301,23 @@ struct GoalsFloatingBar: View {
                 .onSubmit {
                     submitGoal()
                 }
-            
+
             if !newGoalText.isEmpty {
                 Button(action: { newGoalText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 18))
                         .foregroundColor(FigmaLightTheme.mutedText)
+                }
             }
-        }
-            
+
             // Submit button
             Button(action: { submitGoal() }) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 26))
                     .foregroundColor(
                         newGoalText.trimmingCharacters(in: .whitespaces).isEmpty
-                        ? FigmaLightTheme.mutedText.opacity(0.6)
-                        : FigmaLightTheme.primaryText.opacity(0.72)
+                            ? FigmaLightTheme.mutedText.opacity(0.6)
+                            : FigmaLightTheme.primaryText.opacity(0.72)
                     )
             }
             .disabled(newGoalText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -325,8 +334,9 @@ struct GoalsFloatingBar: View {
                 .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 5)
         )
     }
-    
+
     // MARK: - Actions
+
     private func switchToSearch() {
         HapticManager.shared.playLightImpact()
         isAddFocused = false
@@ -339,7 +349,7 @@ struct GoalsFloatingBar: View {
             isSearchFocused = true
         }
     }
-    
+
     private func switchToAdd() {
         HapticManager.shared.playLightImpact()
         isSearchFocused = false
@@ -352,7 +362,7 @@ struct GoalsFloatingBar: View {
             isAddFocused = true
         }
     }
-    
+
     private func dismissSearch() {
         isSearchFocused = false
         searchText = ""
@@ -360,11 +370,11 @@ struct GoalsFloatingBar: View {
             isSearching = false
         }
     }
-    
+
     private func submitGoal() {
         let trimmed = newGoalText.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        
+
         HapticManager.shared.playSuccessNotification()
         onSubmitGoal(trimmed)
         newGoalText = ""
@@ -376,14 +386,15 @@ struct GoalsFloatingBar: View {
 }
 
 // MARK: - Floating Search + Add Bar (for Goals)
+
 struct FloatingSearchAddBar: View {
     @Binding var searchText: String
     @Binding var isSearchExpanded: Bool
     @Binding var isAddExpanded: Bool
     let searchPlaceholder: String
-    var onSearch: ((String) -> Void)? = nil
-    var onAdd: (() -> Void)? = nil
-    
+    var onSearch: ((String) -> Void)?
+    var onAdd: (() -> Void)?
+
     var body: some View {
         HStack(spacing: 10) {
             // Search bar (flexible width)
@@ -393,31 +404,31 @@ struct FloatingSearchAddBar: View {
                     isSearchExpanded = true
                 }
             }) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(LinearColors.Minimal.textTertiary)
-                
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(LinearColors.Minimal.textTertiary)
+
                     Text(searchText.isEmpty ? searchPlaceholder : searchText)
                         .font(.system(size: 15, weight: .regular))
                         .foregroundColor(searchText.isEmpty ? LinearColors.Minimal.placeholderText : LinearColors.Minimal.textPrimary)
                         .lineLimit(1)
-                    
+
                     Spacer()
-            }
-            .padding(.horizontal, 14)
+                }
+                .padding(.horizontal, 14)
                 .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(LinearColors.Minimal.inputBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(LinearColors.Minimal.inputBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
                                 .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
-                    )
-            )
+                        )
+                )
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             // Add button
             Button(action: {
                 HapticManager.shared.playMediumImpact()
@@ -429,7 +440,7 @@ struct FloatingSearchAddBar: View {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(LinearColors.Minimal.accent)
                         .frame(width: 52, height: 52)
-                    
+
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -441,66 +452,67 @@ struct FloatingSearchAddBar: View {
 }
 
 // MARK: - Expanded Search Overlay
+
 struct ExpandedSearchOverlay<Content: View>: View {
     @Binding var isExpanded: Bool
     @Binding var searchText: String
     let placeholder: String
     @ViewBuilder let content: () -> Content
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
-        GeometryReader { geometry in
-        ZStack {
+        GeometryReader { _ in
+            ZStack {
                 // Dimmed background
-            LinearColors.Minimal.overlayHeavy
-                .ignoresSafeArea()
-                .onTapGesture {
-                    dismissOverlay()
-                }
-            
-            VStack(spacing: 0) {
+                LinearColors.Minimal.overlayHeavy
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismissOverlay()
+                    }
+
+                VStack(spacing: 0) {
                     // Results area (content provides its own ScrollView if needed)
-                content()
-                
+                    content()
+
                     // Search input at bottom (above keyboard)
                     VStack(spacing: 0) {
                         // Divider
                         Rectangle()
                             .fill(LinearColors.Minimal.border)
                             .frame(height: 1)
-                        
+
                         // Input bar
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(LinearColors.Minimal.textTertiary)
-                    
-                    TextField(placeholder, text: $searchText)
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                        .focused($isFocused)
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
+                        HStack(spacing: 12) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
+
+                            TextField(placeholder, text: $searchText)
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .focused($isFocused)
+
+                            if !searchText.isEmpty {
+                                Button(action: {
+                                    searchText = ""
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(LinearColors.Minimal.textTertiary)
+                                }
+                            }
+
+                            Button(action: {
+                                dismissOverlay()
+                            }) {
+                                Text("Cancel")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(LinearColors.Minimal.accent)
+                            }
                         }
-                    }
-                    
-                    Button(action: {
-                        dismissOverlay()
-                    }) {
-                        Text("Cancel")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(LinearColors.Minimal.accent)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                         .background(LinearColors.Minimal.background)
                     }
                 }
@@ -508,11 +520,11 @@ struct ExpandedSearchOverlay<Content: View>: View {
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isFocused = true
+                isFocused = true
             }
         }
     }
-    
+
     private func dismissOverlay() {
         isFocused = false
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -522,63 +534,64 @@ struct ExpandedSearchOverlay<Content: View>: View {
 }
 
 // MARK: - Expanded Add Goal Overlay
+
 struct ExpandedAddGoalOverlay: View {
     @Binding var isExpanded: Bool
     @Binding var goalText: String
     let onSubmit: (String) -> Void
-    
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
-        GeometryReader { geometry in
-        ZStack {
+        GeometryReader { _ in
+            ZStack {
                 // Dimmed background
-            LinearColors.Minimal.overlayHeavy
-                .ignoresSafeArea()
-                .onTapGesture {
-                    dismissOverlay()
-                }
-            
-            VStack {
-                Spacer()
-                
-                // Input bar at bottom (above keyboard)
+                LinearColors.Minimal.overlayHeavy
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismissOverlay()
+                    }
+
+                VStack {
+                    Spacer()
+
+                    // Input bar at bottom (above keyboard)
                     VStack(spacing: 0) {
                         // Divider
                         Rectangle()
                             .fill(LinearColors.Minimal.border)
                             .frame(height: 1)
-                        
+
                         // Input bar
-                HStack(spacing: 12) {
+                        HStack(spacing: 12) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.accent)
-                            
+
                             TextField("Add a new goal...", text: $goalText)
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                        .focused($isFocused)
-                        .onSubmit {
-                            submitGoal()
-                        }
-                    
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                                .focused($isFocused)
+                                .onSubmit {
+                                    submitGoal()
+                                }
+
                             // Add button
-                    Button(action: {
-                        submitGoal()
-                    }) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(
-                                goalText.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? LinearColors.Minimal.textTertiary
-                                : LinearColors.Minimal.accent
-                            )
-                    }
-                    .disabled(goalText.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                            Button(action: {
+                                submitGoal()
+                            }) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(
+                                        goalText.trimmingCharacters(in: .whitespaces).isEmpty
+                                            ? LinearColors.Minimal.textTertiary
+                                            : LinearColors.Minimal.accent
+                                    )
+                            }
+                            .disabled(goalText.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                         .background(LinearColors.Minimal.background)
                     }
                 }
@@ -586,20 +599,20 @@ struct ExpandedAddGoalOverlay: View {
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isFocused = true
+                isFocused = true
             }
         }
     }
-    
+
     private func submitGoal() {
         let trimmedText = goalText.trimmingCharacters(in: .whitespaces)
         guard !trimmedText.isEmpty else { return }
-        
+
         HapticManager.shared.playSuccessNotification()
         onSubmit(trimmedText)
         dismissOverlay()
     }
-    
+
     private func dismissOverlay() {
         isFocused = false
         goalText = ""
@@ -613,7 +626,7 @@ struct ExpandedAddGoalOverlay: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         VStack {
             Spacer()
             FloatingSearchBar(
@@ -631,7 +644,7 @@ struct ExpandedAddGoalOverlay: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         VStack {
             Spacer()
             FloatingSearchAddBar(

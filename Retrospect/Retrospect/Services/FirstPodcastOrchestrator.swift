@@ -14,7 +14,9 @@ final class FirstPodcastOrchestrator: ObservableObject {
     private var firstEpisodeTask: Task<PodcastEpisode, Error>?
 
     func firstEpisode() async throws -> PodcastEpisode {
-        if let task = firstEpisodeTask { return try await task.value }
+        if let task = firstEpisodeTask {
+            return try await task.value
+        }
         let task = Task { [apiClient] in
             try await apiClient.generatePodcast(daysSince: 14, generationSource: .onboardingFirstEpisode)
         }
@@ -32,8 +34,8 @@ final class FirstPodcastOrchestrator: ObservableObject {
     private let apiClient: RetrospectAPIClient
 
     private init() {
-        self.contextManager = .shared
-        self.apiClient = .shared
+        contextManager = .shared
+        apiClient = .shared
     }
 
     func runAfterOnboarding(extractedGoals: [RichGoal]) async throws -> TranscriptModel {

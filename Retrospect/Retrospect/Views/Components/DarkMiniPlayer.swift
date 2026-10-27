@@ -6,25 +6,25 @@
 //  Persists across all tabs when audio is playing
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 struct DarkMiniPlayer: View {
     @ObservedObject var audioManager: DarkAudioManager
-    
+
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
-    
+
     private var progress: Double {
         guard let duration = audioManager.audioPlayer?.duration, duration > 0 else { return 0 }
         return currentTime / duration
     }
-    
+
     private var podcastMood: PodcastMood {
         guard let moodString = audioManager.currentTranscript?.mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-    
+
     private var moodColors: [Color] {
         switch podcastMood {
         case .positive: return LinearColors.Minimal.Mood.positive
@@ -37,7 +37,7 @@ struct DarkMiniPlayer: View {
         case .melancholic: return LinearColors.Minimal.Mood.melancholic
         }
     }
-    
+
     var body: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -56,27 +56,27 @@ struct DarkMiniPlayer: View {
                                 )
                             )
                             .frame(width: 44, height: 44)
-                        
+
                         Image(systemName: "waveform")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.9))
                     }
-                    
+
                     // Info
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Weekly Insights")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
                             .lineLimit(1)
-                        
+
                         Text(podcastMood.displayName)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineLimit(1)
                     }
-                    
+
                     Spacer()
-                    
+
                     // Controls
                     HStack(spacing: 8) {
                         // Play/Pause
@@ -93,7 +93,7 @@ struct DarkMiniPlayer: View {
                                         .fill(LinearColors.Minimal.accent)
                                 )
                         }
-                        
+
                         // Close
                         Button(action: {
                             HapticManager.shared.playLightImpact()
@@ -116,14 +116,14 @@ struct DarkMiniPlayer: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                
+
                 // Progress bar
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
                             .fill(LinearColors.Minimal.progressTrack)
                             .frame(height: 2)
-                        
+
                         Rectangle()
                             .fill(LinearColors.Minimal.progressFill)
                             .frame(width: geometry.size.width * progress, height: 2)
@@ -154,7 +154,7 @@ struct DarkMiniPlayer: View {
             timer = nil
         }
     }
-    
+
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             currentTime = audioManager.audioPlayer?.currentTime ?? 0
@@ -167,7 +167,7 @@ struct DarkMiniPlayer: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         VStack {
             Spacer()
             DarkMiniPlayer(audioManager: DarkAudioManager.shared)
@@ -175,4 +175,3 @@ struct DarkMiniPlayer: View {
         }
     }
 }
-

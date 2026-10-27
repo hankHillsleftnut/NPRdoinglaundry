@@ -1,9 +1,9 @@
-import Foundation
-import EventKit
-import MediaPlayer
-import Photos
 import Contacts
+import EventKit
+import Foundation
+import MediaPlayer
 import Network
+import Photos
 import UIKit
 import UniformTypeIdentifiers
 
@@ -108,7 +108,7 @@ final class NativeSourcesManager: ObservableObject {
                         "batch_end": end,
                         "total_items": items.count,
                     ],
-                    items: Array(items[start..<end])
+                    items: Array(items[start ..< end])
                 )
             } catch {
                 print("[NativeSources] \(label) structured sync failed: \(error)")
@@ -225,7 +225,7 @@ final class NativeSourcesManager: ObservableObject {
             .filter { $0.playCount > 0 || $0.lastPlayedDate != nil }
             .sorted {
                 ($0.lastPlayedDate ?? .distantPast, $0.playCount) >
-                ($1.lastPlayedDate ?? .distantPast, $1.playCount)
+                    ($1.lastPlayedDate ?? .distantPast, $1.playCount)
             }
             .prefix(75)
         let iso = ISO8601DateFormatter()
@@ -325,9 +325,17 @@ final class NativeSourcesManager: ObservableObject {
             guard let creationDate = asset.creationDate else { return }
             let day = Self.dayKey(for: creationDate)
             var stats = days[day] ?? PhotoDayStats()
-            if asset.mediaType == .video { stats.videos += 1 } else { stats.photos += 1 }
-            if asset.isFavorite { stats.favorites += 1 }
-            if asset.location != nil { stats.withLocation += 1 }
+            if asset.mediaType == .video {
+                stats.videos += 1
+            } else {
+                stats.photos += 1
+            }
+            if asset.isFavorite {
+                stats.favorites += 1
+            }
+            if asset.location != nil {
+                stats.withLocation += 1
+            }
             days[day] = stats
         }
         let records: [[String: Any]] = days.sorted { $0.key > $1.key }.compactMap { entry -> [String: Any]? in
@@ -378,9 +386,8 @@ final class NativeSourcesManager: ObservableObject {
         var uploadedCount = 0
 
         for asset in candidates {
-            guard !uploadedIds.contains(asset.localIdentifier) else { continue }
-            guard let original = await imageOriginalData(for: asset) else { continue }
-            guard original.data.count <= maxPhotoOriginalBytes else { continue }
+            guard !uploadedIds.contains(asset.localIdentifier), let original = await imageOriginalData(for: asset),
+                  original.data.count <= maxPhotoOriginalBytes else { continue }
 
             do {
                 try await RetrospectAPIClient.shared.uploadIntegrationAsset(
@@ -457,7 +464,9 @@ final class NativeSourcesManager: ObservableObject {
             }
         }
         return Array(candidates.sorted {
-            if $0.isFavorite != $1.isFavorite { return $0.isFavorite && !$1.isFavorite }
+            if $0.isFavorite != $1.isFavorite {
+                return $0.isFavorite && !$1.isFavorite
+            }
             return ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast)
         }.prefix(maxPhotoOriginalUploadsPerSync))
     }
@@ -491,7 +500,9 @@ final class NativeSourcesManager: ObservableObject {
         let batteryState = UIDevice.current.batteryState
         let hasPower = batteryState == .charging || batteryState == .full
         guard hasPower else { return false }
-        if allowCellular { return true }
+        if allowCellular {
+            return true
+        }
         return await isUnmeteredNetworkAvailable()
     }
 
@@ -538,7 +549,7 @@ final class NativeSourcesManager: ObservableObject {
                     .map { $0.label ?? $0.value.name }
                     .filter { !$0.isEmpty }
                 let emails = contact.emailAddresses.map { String($0.value) }
-                let phones = contact.phoneNumbers.map { $0.value.stringValue }
+                let phones = contact.phoneNumbers.map(\.value.stringValue)
                 let socialProfiles = contact.socialProfiles.map {
                     [
                         "service": $0.value.service,
@@ -579,7 +590,9 @@ final class NativeSourcesManager: ObservableObject {
                     "contentType": "contacts",
                     "metadata": ["source": "contacts"],
                 ])
-                if items.count >= 300 { stop.pointee = true }
+                if items.count >= 300 {
+                    stop.pointee = true
+                }
             }
         } catch {
             print("[NativeSources] contacts read failed: \(error)")
@@ -599,7 +612,7 @@ final class NativeSourcesManager: ObservableObject {
         guard !records.isEmpty else { return [] }
         let canonicalRecords = records.compactMap { $0["canonicalText"] as? String }
         let selectedText = canonicalRecords.prefix(80).joined(separator: "\n\n")
-        let summaryText = "\(title)\n\n\(String(selectedText.prefix(3_500)))"
+        let summaryText = "\(title)\n\n\(String(selectedText.prefix(3500)))"
         let capturedAt = ISO8601DateFormatter().string(from: Date())
         let summaryPayload: [String: Any] = [
             "provider_id": providerId,

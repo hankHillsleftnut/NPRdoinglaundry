@@ -1,6 +1,7 @@
 import Foundation
 
 // MARK: - Citation Model
+
 struct Citation: Codable {
     let title: String
     let url: String
@@ -9,10 +10,11 @@ struct Citation: Codable {
 }
 
 // MARK: - Generation Types
+
 enum GenerationType: String, CaseIterable, Codable {
     case goodListener = "good_listener"
     case growthMentor = "growth_mentor"
-    
+
     var displayName: String {
         switch self {
         case .goodListener:
@@ -21,7 +23,7 @@ enum GenerationType: String, CaseIterable, Codable {
             return "Growth Mentor"
         }
     }
-    
+
     var description: String {
         switch self {
         case .goodListener:
@@ -50,15 +52,15 @@ struct TranscriptModel: Identifiable, Equatable, Codable {
     var isDeepResearch: Bool = false // Track if Supercharge mode was used
     var citations: [Citation]? // Citations from Supercharge mode
     var researchQueries: [String]? // Queries used during research
-    var createdAt: Date = Date() // When the transcript was generated
+    var createdAt: Date = .init() // When the transcript was generated
     var backendEpisodeId: String? // UUID from backend if this came from server
     var insightIds: [String]? // Backend insight IDs associated with this episode
-    
-    // Equatable conformance - compare by ID for onChange detection
+
+    /// Equatable conformance - compare by ID for onChange detection
     static func == (lhs: TranscriptModel, rhs: TranscriptModel) -> Bool {
         lhs.id == rhs.id && lhs.createdAt == rhs.createdAt
     }
-    
+
     init(
         id: UUID = UUID(),
         originalText: String,
@@ -86,8 +88,8 @@ struct TranscriptModel: Identifiable, Equatable, Codable {
         self.researchQueries = researchQueries
         self.createdAt = createdAt
     }
-    
-    // Sample data for development
+
+    /// Sample data for development
     static let sample = TranscriptModel(
         originalText: "This week was quite productive. I managed to complete most of my tasks and started a new project. I've been feeling more energetic since starting my morning routine. However, I still struggle with work-life balance.",
         goals: ["Improve work-life balance", "Exercise 3 times a week", "Read more books"],
@@ -138,8 +140,8 @@ struct TranscriptModel: Identifiable, Equatable, Codable {
         citations: nil,
         researchQueries: nil
     )
-    
-            // Supercharge mode sample for development
+
+    /// Supercharge mode sample for development
     static let deepResearchSample = TranscriptModel(
         originalText: "This week I've been struggling with procrastination and finding it hard to stick to my exercise routine. I keep putting off important tasks until the last minute.",
         goals: ["Overcome procrastination", "Exercise 4 times a week", "Improve time management"],
@@ -190,17 +192,18 @@ struct TranscriptModel: Identifiable, Equatable, Codable {
                 url: "https://www.acsm.org/docs/default-source/files-for-resource-library/exercise-adherence.pdf",
                 startIndex: 456,
                 endIndex: 523
-            )
+            ),
         ],
         researchQueries: [
             "procrastination behavioral psychology research",
             "exercise adherence strategies scientific studies",
-            "habit formation implementation intentions"
+            "habit formation implementation intentions",
         ]
     )
 }
 
 // MARK: - Google Docs Info for TranscriptModel
+
 struct GoogleDocsInfo: Codable {
     let includedDocuments: [String]
     let failedDocuments: [String]

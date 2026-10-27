@@ -9,7 +9,7 @@ import SwiftUI
 
 struct TotalActivityView: View {
     let totalActivity: String
-    
+
     private var viewData: ViewData? {
         guard let data = totalActivity.data(using: .utf8),
               let decoded = try? JSONDecoder().decode(ViewData.self, from: data) else {
@@ -17,7 +17,7 @@ struct TotalActivityView: View {
         }
         return decoded
     }
-    
+
     var body: some View {
         if let data = viewData {
             structuredView(data)
@@ -27,8 +27,7 @@ struct TotalActivityView: View {
                 .padding()
         }
     }
-    
-    @ViewBuilder
+
     private func structuredView(_ data: ViewData) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -36,9 +35,9 @@ struct TotalActivityView: View {
                 Text(data.formattedDuration)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
-                
+
                 Spacer()
-                
+
                 VStack(alignment: .trailing, spacing: 2) {
                     HStack(spacing: 4) {
                         Image(systemName: "hand.tap")
@@ -49,7 +48,7 @@ struct TotalActivityView: View {
                     .foregroundColor(.secondary)
                 }
             }
-            
+
             // Category bars
             if !data.categories.isEmpty {
                 HStack(spacing: 2) {
@@ -66,7 +65,7 @@ struct TotalActivityView: View {
                 }
                 .padding(.vertical, 4)
             }
-            
+
             // Top apps
             if !data.apps.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -74,7 +73,7 @@ struct TotalActivityView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
                         .textCase(.uppercase)
-                    
+
                     ForEach(data.apps.prefix(5), id: \.appName) { app in
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
@@ -87,9 +86,9 @@ struct TotalActivityView: View {
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            
+
                             Spacer()
-                            
+
                             Text(formatMinutes(app.minutes))
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
@@ -101,7 +100,7 @@ struct TotalActivityView: View {
         }
         .padding(16)
     }
-    
+
     private func formatMinutes(_ minutes: Int) -> String {
         if minutes >= 60 {
             let h = minutes / 60
@@ -110,7 +109,7 @@ struct TotalActivityView: View {
         }
         return minutes > 0 ? "\(minutes)m" : "<1m"
     }
-    
+
     private func colorForCategory(_ name: String) -> Color {
         switch name.lowercased() {
         case let n where n.contains("social"): return Color(red: 0.30, green: 0.56, blue: 0.86)

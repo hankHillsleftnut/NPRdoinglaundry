@@ -17,24 +17,51 @@ struct AnimationVariant: Identifiable {
 
 enum FluidVariants {
     static let all: [AnimationVariant] = [
-        .init(name: "Fluid Dots", blurb: "A ring of metaball dots — the original",
-              fragmentName: "fluidDotsFragment"),
-        .init(name: "Orbit", blurb: "A nucleus with electrons on pulsing orbits",
-              fragmentName: "variantOrbitFragment"),
-        .init(name: "Spiral", blurb: "Dots tracing a slowly rotating spiral arm",
-              fragmentName: "variantSpiralFragment"),
-        .init(name: "Lava", blurb: "Blobs drifting and merging, lava-lamp style",
-              fragmentName: "variantLavaFragment"),
-        .init(name: "Mercury", blurb: "Droplets coalescing like liquid metal",
-              fragmentName: "variantMercuryFragment"),
-        .init(name: "Wave", blurb: "A thick, playful flowing waveform",
-              fragmentName: "variantWaveFragment"),
-        .init(name: "Ribbon", blurb: "Two ribbons weaving past each other",
-              fragmentName: "variantRibbonFragment"),
-        .init(name: "Swarm", blurb: "Fireflies gathering and dispersing",
-              fragmentName: "variantSwarmFragment"),
-        .init(name: "Burst", blurb: "A ring of dots breathing outward and back",
-              fragmentName: "variantBurstFragment"),
+        .init(
+            name: "Fluid Dots",
+            blurb: "A ring of metaball dots — the original",
+            fragmentName: "fluidDotsFragment"
+        ),
+        .init(
+            name: "Orbit",
+            blurb: "A nucleus with electrons on pulsing orbits",
+            fragmentName: "variantOrbitFragment"
+        ),
+        .init(
+            name: "Spiral",
+            blurb: "Dots tracing a slowly rotating spiral arm",
+            fragmentName: "variantSpiralFragment"
+        ),
+        .init(
+            name: "Lava",
+            blurb: "Blobs drifting and merging, lava-lamp style",
+            fragmentName: "variantLavaFragment"
+        ),
+        .init(
+            name: "Mercury",
+            blurb: "Droplets coalescing like liquid metal",
+            fragmentName: "variantMercuryFragment"
+        ),
+        .init(
+            name: "Wave",
+            blurb: "A thick, playful flowing waveform",
+            fragmentName: "variantWaveFragment"
+        ),
+        .init(
+            name: "Ribbon",
+            blurb: "Two ribbons weaving past each other",
+            fragmentName: "variantRibbonFragment"
+        ),
+        .init(
+            name: "Swarm",
+            blurb: "Fireflies gathering and dispersing",
+            fragmentName: "variantSwarmFragment"
+        ),
+        .init(
+            name: "Burst",
+            blurb: "A ring of dots breathing outward and back",
+            fragmentName: "variantBurstFragment"
+        ),
     ]
 }
 

@@ -8,34 +8,34 @@ struct DataExplanationScreen: View {
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-    
+
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
-    
+
     init(currentStep: Int = 1, totalSteps: Int = 6, onNext: @escaping () -> Void, onExit: (() -> Void)? = nil) {
         self.currentStep = currentStep
         self.totalSteps = totalSteps
         self.onNext = onNext
         self.onExit = onExit
     }
-    
+
     var body: some View {
         ZStack {
             // App's dark mode background
             LinearColors.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Top section with draggable bar and dots
                 topSection
-                
+
                 // Main content area
                 Spacer()
-                
+
                 mainContent
-                
+
                 Spacer()
-                
+
                 // Bottom button area
                 bottomSection
             }
@@ -46,23 +46,25 @@ struct DataExplanationScreen: View {
             bodyTextAnimating = true
         }
     }
-    
+
     // MARK: - Top Section
+
     private var topSection: some View {
         VStack(spacing: 24) {
             // Draggable bar (if onExit provided)
             if onExit != nil {
                 draggableBar
             }
-            
+
             // Progress bar
             progressIndicator
         }
         .padding(.horizontal, 40)
         .padding(.top, 12)
     }
-    
+
     // MARK: - Draggable Dismiss Bar
+
     private var draggableBar: some View {
         RoundedRectangle(cornerRadius: 2.5)
             .fill(LinearColors.textTertiary.opacity(0.3))
@@ -85,8 +87,9 @@ struct DataExplanationScreen: View {
                     }
             )
     }
-    
+
     // MARK: - Progress Indicator (Bar with front-loaded progress)
+
     private var progressIndicator: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -94,7 +97,7 @@ struct DataExplanationScreen: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.textTertiary.opacity(0.2))
                     .frame(height: 3)
-                
+
                 // Progress fill with front-loaded calculation
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.accent)
@@ -105,44 +108,45 @@ struct DataExplanationScreen: View {
         .frame(height: 3)
         .padding(.horizontal, 40)
     }
-    
-    // Calculate front-loaded progress (fast at start, slow at end)
+
+    /// Calculate front-loaded progress (fast at start, slow at end)
     private func calculateFrontLoadedProgress() -> CGFloat {
         let progress = CGFloat(currentStep) / CGFloat(totalSteps)
-        
+
         // Front-loaded curve: fast progress early, slow at end
         // Using exponential easing for front-loading
         let frontLoaded = 1 - pow(1 - progress, 2.5)
-        
+
         return min(frontLoaded, 1.0)
     }
-    
+
     // MARK: - Main Content
+
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Data icon and heading
             dataHeader
-            
+
             // Main title
             mainTitle
-            
+
             // Body text
             bodyText
-            
+
             Spacer() // Push everything up, button stays at bottom
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 28)
         .padding(.top, 40)
     }
-    
+
     private var dataHeader: some View {
         HStack(spacing: 6) {
             // Chart icon
             Image(systemName: "chart.bar.fill")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(LinearColors.textTertiary)
-            
+
             // Data Usage label
             Text("Data Usage")
                 .font(.system(size: 11, weight: .medium))
@@ -150,7 +154,7 @@ struct DataExplanationScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private var mainTitle: some View {
         Text("Personalized Insights")
             .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
@@ -159,23 +163,26 @@ struct DataExplanationScreen: View {
             .lineLimit(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("We analyze the data you interact with—your notes, documents, and health metrics—to create personalized podcast insights about your life. Everything is processed securely on your device.")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundColor(LinearColors.textSecondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(nil)
-                .offset(y: bodyTextAnimating ? 0 : 20)
-                .blur(radius: bodyTextAnimating ? 0 : 8)
-                .opacity(bodyTextAnimating ? 1.0 : 0.3)
-                .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
+            Text(
+                "We analyze the data you interact with—your notes, documents, and health metrics—to create personalized podcast insights about your life. Everything is processed securely on your device."
+            )
+            .font(.system(size: 16, weight: .regular))
+            .foregroundColor(LinearColors.textSecondary)
+            .multilineTextAlignment(.leading)
+            .lineLimit(nil)
+            .offset(y: bodyTextAnimating ? 0 : 20)
+            .blur(radius: bodyTextAnimating ? 0 : 8)
+            .opacity(bodyTextAnimating ? 1.0 : 0.3)
+            .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     // MARK: - Bottom Section
+
     private var bottomSection: some View {
         VStack(spacing: 0) {
             // Next button
@@ -184,8 +191,9 @@ struct DataExplanationScreen: View {
                 .padding(.bottom, 40)
         }
     }
-    
+
     // MARK: - Next Button (ClickyButton Style)
+
     private var nextButton: some View {
         Button(action: {
             onNext()
@@ -206,7 +214,7 @@ struct DataExplanationScreen: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             LinearColors.metalGray,
-                            LinearColors.charcoalCard
+                            LinearColors.charcoalCard,
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -217,7 +225,11 @@ struct DataExplanationScreen: View {
                         .stroke(LinearColors.warmHighlight.opacity(0.4), lineWidth: 2)
                         .blur(radius: 0.5)
                         .offset(x: 0, y: 2)
-                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
+                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
+                            gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )))
                 )
         )
         .overlay(
@@ -229,7 +241,11 @@ struct DataExplanationScreen: View {
                 .stroke(LinearColors.textPrimary.opacity(0.8), lineWidth: 2)
                 .blur(radius: 1)
                 .offset(x: 0, y: -1)
-                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
+                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
+                    gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )))
         )
         .shadow(color: LinearColors.cardShadow, radius: 17, x: 0, y: 4)
         .shadow(color: LinearColors.cardShadow, radius: 3, x: 0, y: 2)
@@ -242,13 +258,14 @@ struct DataExplanationScreen: View {
             }
         }, perform: {})
     }
-    
+
     // MARK: - Haptic Functions
+
     private func playButtonTouchDownHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred(intensity: 0.6)
     }
-    
+
     private func playButtonTouchUpHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
@@ -256,6 +273,7 @@ struct DataExplanationScreen: View {
 }
 
 // MARK: - Preview
+
 #Preview {
     DataExplanationScreen(
         currentStep: 8,
@@ -268,5 +286,3 @@ struct DataExplanationScreen: View {
         }
     )
 }
-
-

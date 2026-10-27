@@ -5,8 +5,8 @@
 //  Created by Shaurya Narang on 12/1/25.
 //
 
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 @main
 struct RetrospectWidgetsBundle: WidgetBundle {

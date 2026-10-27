@@ -3,7 +3,7 @@ import WebKit
 
 struct MarkdownView: UIViewRepresentable {
     let markdownString: String
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let webConfiguration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: webConfiguration)
@@ -11,22 +11,22 @@ struct MarkdownView: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
-        
+
         // Add navigation delegate to track loading
         webView.navigationDelegate = context.coordinator
-        
+
         return webView
     }
-    
+
     func updateUIView(_ webView: WKWebView, context: Context) {
         // Log the original markdown for debugging
         print("🔍 Original Markdown: \(markdownString)")
-        
+
         let htmlString = convertMarkdownToHTML(markdownString)
-        
+
         // Log the generated HTML
         print("🌐 Generated HTML: \(htmlString)")
-        
+
         let styledHTML = """
         <!DOCTYPE html>
         <html>
@@ -89,24 +89,24 @@ struct MarkdownView: UIViewRepresentable {
         </body>
         </html>
         """
-        
+
         webView.loadHTMLString(styledHTML, baseURL: nil)
     }
-    
+
     private func convertMarkdownToHTML(_ markdown: String) -> String {
         // Ensure markdown is not empty
         guard !markdown.isEmpty else {
             print("⚠️ Empty markdown string")
             return "<p>No content available</p>"
         }
-        
+
         // Basic Markdown to HTML conversion
         var html = markdown
-        
+
         // Escape any existing HTML to prevent injection
         html = html.replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
-        
+
         // Convert headers
         html = html.replacingOccurrences(of: "# ", with: "<h1>")
             .replacingOccurrences(of: "\n# ", with: "</h1>\n<h1>")
@@ -114,42 +114,42 @@ struct MarkdownView: UIViewRepresentable {
             .replacingOccurrences(of: "\n## ", with: "</h2>\n<h2>")
             .replacingOccurrences(of: "### ", with: "<h3>")
             .replacingOccurrences(of: "\n### ", with: "</h3>\n<h3>")
-        
+
         // Close headers
         html = html.replacingOccurrences(of: "\n", with: "</h1>\n", options: .literal, range: html.range(of: html))
-        
+
         // Convert bold
         html = html.replacingOccurrences(of: "**", with: "<strong>")
         html = html.replacingOccurrences(of: "**", with: "</strong>")
-        
+
         // Convert lists
         html = html.replacingOccurrences(of: "- ", with: "<li>")
             .replacingOccurrences(of: "\n- ", with: "</li>\n<li>")
         html = "<ul>" + html + "</li></ul>"
-        
+
         return html
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     class Coordinator: NSObject, WKNavigationDelegate {
         var parent: MarkdownView
-        
+
         init(_ parent: MarkdownView) {
             self.parent = parent
         }
-        
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             print("✅ Web view finished loading")
         }
-        
+
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             print("❌ Web view failed to load: \(error.localizedDescription)")
         }
     }
-    
+
     static func dismantleUIView(_ uiView: WKWebView, coordinator: ()) {
         uiView.stopLoading()
     }

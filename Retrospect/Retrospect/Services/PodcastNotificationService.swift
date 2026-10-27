@@ -12,16 +12,16 @@ import UserNotifications
 @MainActor
 class PodcastNotificationService: ObservableObject {
     static let shared = PodcastNotificationService()
-    
+
     @Published var isAuthorized = false
     @Published var pendingNotification: PodcastNotification?
-    
+
     private init() {
         checkAuthorizationStatus()
     }
-    
+
     // MARK: - Authorization
-    
+
     func requestAuthorization() async -> Bool {
         do {
             let granted = try await UNUserNotificationCenter.current().requestAuthorization(
@@ -36,7 +36,7 @@ class PodcastNotificationService: ObservableObject {
             return false
         }
     }
-    
+
     func checkAuthorizationStatus() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             Task { @MainActor in
@@ -44,9 +44,9 @@ class PodcastNotificationService: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Send Notification
-    
+
     func sendPodcastNotification(
         title: String = "You have a new podcast ready 🎧",
         cheekyHook: String,
@@ -58,22 +58,22 @@ class PodcastNotificationService: ObservableObject {
         content.sound = .default
         content.badge = 1
         content.userInfo = ["podcastId": podcastId, "type": "newPodcast"]
-        
+
         // Send immediately
         let request = UNNotificationRequest(
             identifier: "podcast-\(podcastId)",
             content: content,
             trigger: nil
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
+            if let error {
                 print("Failed to send notification: \(error)")
             } else {
                 print("✅ Podcast notification sent!")
             }
         }
-        
+
         // Store for in-app handling
         pendingNotification = PodcastNotification(
             id: podcastId,
@@ -81,9 +81,9 @@ class PodcastNotificationService: ObservableObject {
             hook: cheekyHook
         )
     }
-    
+
     // MARK: - Schedule Follow-up Notifications
-    
+
     func scheduleFollowUpNotification(
         hook: String,
         podcastId: String,
@@ -94,38 +94,38 @@ class PodcastNotificationService: ObservableObject {
         content.body = hook
         content.sound = .default
         content.userInfo = ["podcastId": podcastId, "type": "followUp"]
-        
+
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: TimeInterval(delayHours * 3600),
             repeats: false
         )
-        
+
         let request = UNNotificationRequest(
             identifier: "podcast-followup-\(podcastId)-\(delayHours)",
             content: content,
             trigger: trigger
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
+            if let error {
                 print("Failed to schedule follow-up: \(error)")
             }
         }
     }
-    
+
     // MARK: - Generate Cheeky Hook
-    
+
     func generateCheekyHook(from transcript: TranscriptModel) -> String {
         // Extract key content from transcript for personalized hook
         let content = transcript.originalText
-        
+
         // If we have actual content, try to extract names and make it personal
         if !content.isEmpty {
             // Try to find a name in the content for ultra-personal hooks
             if let name = extractName(from: content) {
                 return generateNameBasedHook(name: name, content: content)
             }
-            
+
             // Look for personal topics
             let topicHooks: [(keywords: [String], hook: String)] = [
                 (["broke up", "breakup", "ex ", "ended things"], "We found the real reason it didn't work out."),
@@ -147,9 +147,9 @@ class PodcastNotificationService: ObservableObject {
                 (["alone", "lonely", "isolated"], "You're not as alone as you feel right now."),
                 (["happy", "excited", "good news"], "Something shifted this week. You felt it too."),
                 (["therapy", "therapist", "counseling"], "Your therapist would agree with this episode."),
-                (["decision", "choice", "deciding"], "You already made the decision. You just haven't admitted it.")
+                (["decision", "choice", "deciding"], "You already made the decision. You just haven't admitted it."),
             ]
-            
+
             for (keywords, hook) in topicHooks {
                 for keyword in keywords {
                     if content.lowercased().contains(keyword) {
@@ -158,44 +158,76 @@ class PodcastNotificationService: ObservableObject {
                 }
             }
         }
-        
+
         // Fallback hooks - still punchy single sentences
         let fallbackHooks = [
             "This week told a story you haven't admitted to yourself yet.",
             "We found the pattern you've been ignoring.",
             "There's something you need to hear about yourself.",
             "Your subconscious had a lot to say this week.",
-            "This one might hit different."
+            "This one might hit different.",
         ]
-        
+
         return fallbackHooks.randomElement() ?? fallbackHooks[0]
     }
-    
+
     /// Try to extract a proper name from the content
     private func extractName(from content: String) -> String? {
         // Common name patterns - look for capitalized words that might be names
         let words = content.components(separatedBy: .whitespacesAndNewlines)
-        
+
         // Common names to look for (could be expanded)
-        let commonNames = ["Amanda", "Sarah", "Jessica", "Emily", "Ashley", "Michael", "David", "James", "John", "Chris", 
-                          "Matt", "Alex", "Sam", "Jake", "Ryan", "Tyler", "Brandon", "Justin", "Nick", "Josh",
-                          "Katie", "Lauren", "Rachel", "Megan", "Hannah", "Nicole", "Stephanie", "Jennifer", "Lisa", "Amy",
-                          "Mom", "Dad", "Brother", "Sister"]
-        
+        let commonNames = [
+            "Amanda",
+            "Sarah",
+            "Jessica",
+            "Emily",
+            "Ashley",
+            "Michael",
+            "David",
+            "James",
+            "John",
+            "Chris",
+            "Matt",
+            "Alex",
+            "Sam",
+            "Jake",
+            "Ryan",
+            "Tyler",
+            "Brandon",
+            "Justin",
+            "Nick",
+            "Josh",
+            "Katie",
+            "Lauren",
+            "Rachel",
+            "Megan",
+            "Hannah",
+            "Nicole",
+            "Stephanie",
+            "Jennifer",
+            "Lisa",
+            "Amy",
+            "Mom",
+            "Dad",
+            "Brother",
+            "Sister",
+        ]
+
         for word in words {
             let cleanWord = word.trimmingCharacters(in: .punctuationCharacters)
             if commonNames.contains(where: { $0.lowercased() == cleanWord.lowercased() }) {
                 return cleanWord.capitalized
             }
         }
-        
+
         return nil
     }
-    
+
     /// Generate a hook that includes a specific name
     private func generateNameBasedHook(name: String, content: String) -> String {
         let lowercased = content.lowercased()
-        
+
         if lowercased.contains("broke up") || lowercased.contains("breakup") || lowercased.contains("ex ") {
             return "This is why things with \(name) didn't work out."
         } else if lowercased.contains("fight") || lowercased.contains("argument") || lowercased.contains("angry") {
@@ -210,9 +242,9 @@ class PodcastNotificationService: ObservableObject {
             return "We need to talk about \(name)."
         }
     }
-    
+
     // MARK: - Weekly Reflection Reminder
-    
+
     /// Schedule a recurring weekly notification that nudges the user to open the app.
     /// This also triggers screen time data collection when they open it.
     func scheduleWeeklyReflectionReminder() {
@@ -221,33 +253,33 @@ class PodcastNotificationService: ObservableObject {
         content.body = "Your patterns this week tell a story. Come hear what we found."
         content.sound = .default
         content.userInfo = ["type": "weeklyReflection"]
-        
+
         // Every Sunday at 10 AM
         var dateComponents = DateComponents()
         dateComponents.weekday = 1 // Sunday
         dateComponents.hour = 10
         dateComponents.minute = 0
-        
+
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: dateComponents,
             repeats: true
         )
-        
+
         let request = UNNotificationRequest(
             identifier: "weekly-reflection-reminder",
             content: content,
             trigger: trigger
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
+            if let error {
                 print("❌ Failed to schedule weekly reflection: \(error)")
             } else {
                 print("✅ Weekly reflection reminder scheduled (Sundays 10 AM)")
             }
         }
     }
-    
+
     /// Schedule a mid-week check-in to keep data fresh
     func scheduleMidWeekCheckIn() {
         let content = UNMutableNotificationContent()
@@ -255,40 +287,40 @@ class PodcastNotificationService: ObservableObject {
         content.body = "30 seconds. How's the week going so far?"
         content.sound = .default
         content.userInfo = ["type": "midWeekCheckIn"]
-        
+
         // Wednesday at 8 PM
         var dateComponents = DateComponents()
         dateComponents.weekday = 4 // Wednesday
         dateComponents.hour = 20
         dateComponents.minute = 0
-        
+
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: dateComponents,
             repeats: true
         )
-        
+
         let request = UNNotificationRequest(
             identifier: "midweek-checkin",
             content: content,
             trigger: trigger
         )
-        
+
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
+            if let error {
                 print("❌ Failed to schedule mid-week check-in: \(error)")
             } else {
                 print("✅ Mid-week check-in scheduled (Wednesdays 8 PM)")
             }
         }
     }
-    
+
     /// Schedule all recurring notifications
     func scheduleAllRecurringNotifications() {
         guard isAuthorized else { return }
         scheduleWeeklyReflectionReminder()
         scheduleMidWeekCheckIn()
     }
-    
+
     /// Cancel all recurring reminders
     func cancelRecurringNotifications() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(
@@ -296,14 +328,14 @@ class PodcastNotificationService: ObservableObject {
         )
         print("✅ Recurring notifications cancelled")
     }
-    
+
     // MARK: - Clear Notifications
-    
+
     func clearPendingNotification() {
         pendingNotification = nil
         UNUserNotificationCenter.current().setBadgeCount(0)
     }
-    
+
     func clearAllNotifications() {
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
@@ -313,10 +345,10 @@ class PodcastNotificationService: ObservableObject {
 }
 
 // MARK: - Podcast Notification Model
+
 struct PodcastNotification: Identifiable {
     let id: String
     let title: String
     let hook: String
-    var timestamp: Date = Date()
+    var timestamp: Date = .init()
 }
-

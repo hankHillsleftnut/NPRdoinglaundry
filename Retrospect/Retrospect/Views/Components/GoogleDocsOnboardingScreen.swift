@@ -1,5 +1,5 @@
-import SwiftUI
 import GoogleSignIn
+import SwiftUI
 
 // === GOOGLE DOCS ONBOARDING SCREEN ===
 // Matches app's design aesthetic with Hedvig titles and SF Pro Display body text
@@ -10,14 +10,14 @@ struct GoogleDocsOnboardingScreen: View {
     let onNext: () -> Void
     let onSkip: () -> Void
     let onExit: (() -> Void)?
-    
+
     @StateObject private var googleDocsService = GoogleDocsService()
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isConnecting = false
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
-    
+
     init(currentStep: Int, totalSteps: Int, onNext: @escaping () -> Void, onSkip: @escaping () -> Void, onExit: (() -> Void)? = nil) {
         self.currentStep = currentStep
         self.totalSteps = totalSteps
@@ -25,24 +25,24 @@ struct GoogleDocsOnboardingScreen: View {
         self.onSkip = onSkip
         self.onExit = onExit
     }
-    
+
     var body: some View {
         ZStack {
             // App's background
             LinearColors.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Top section with draggable bar and dots
                 topSection
-                
+
                 // Main content area
                 Spacer()
-                
+
                 mainContent
-                
+
                 Spacer()
-                
+
                 // Bottom button area
                 bottomSection
             }
@@ -50,7 +50,7 @@ struct GoogleDocsOnboardingScreen: View {
             .opacity(1.0 - (dragOffset / 500))
         }
         .alert("Connection Error", isPresented: $showError) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)
         }
@@ -58,23 +58,25 @@ struct GoogleDocsOnboardingScreen: View {
             bodyTextAnimating = true
         }
     }
-    
+
     // MARK: - Top Section
+
     private var topSection: some View {
         VStack(spacing: 24) { // Healthy margin between bar and dots
             // Draggable bar (if onExit provided)
             if onExit != nil {
                 draggableBar
             }
-            
+
             // Progress bar
-                progressIndicator
+            progressIndicator
         }
         .padding(.horizontal, 40)
         .padding(.top, 12)
     }
-    
+
     // MARK: - Draggable Dismiss Bar
+
     private var draggableBar: some View {
         RoundedRectangle(cornerRadius: 2.5)
             .fill(LinearColors.textSecondary.opacity(0.3))
@@ -97,8 +99,9 @@ struct GoogleDocsOnboardingScreen: View {
                     }
             )
     }
-    
+
     // MARK: - Progress Indicator (Bar with front-loaded progress)
+
     private var progressIndicator: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -106,7 +109,7 @@ struct GoogleDocsOnboardingScreen: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.textTertiary.opacity(0.2))
                     .frame(height: 3)
-                
+
                 // Progress fill with front-loaded calculation
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.accent)
@@ -117,48 +120,49 @@ struct GoogleDocsOnboardingScreen: View {
         .frame(height: 3)
         .padding(.horizontal, 40)
     }
-    
-    // Calculate front-loaded progress (fast at start, slow at end)
+
+    /// Calculate front-loaded progress (fast at start, slow at end)
     private func calculateFrontLoadedProgress() -> CGFloat {
         let progress = CGFloat(currentStep) / CGFloat(totalSteps)
-        
+
         // Front-loaded curve: fast progress early, slow at end
         // Using exponential easing for front-loading
         let frontLoaded = 1 - pow(1 - progress, 2.5)
-        
+
         return min(frontLoaded, 1.0)
     }
-    
+
     // MARK: - Main Content
+
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Google Docs icon and heading - top left like privacy screen
             googleDocsHeader
-            
+
             // Main title - left aligned
             mainTitle
-            
+
             // Body text - left aligned
             bodyText
-            
+
             // Connection status or button - higher up with healthy margin
             connectionSection
                 .padding(.top, 32)
-            
+
             Spacer() // Push everything up, buttons stay at bottom
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 28) // Increased to 28pt for more breathing room
         .padding(.top, 40) // Move content higher to match privacy screen
     }
-    
+
     private var googleDocsHeader: some View {
         HStack(spacing: 6) {
             // Google Docs icon
             Image(systemName: "doc.text.fill")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(LinearColors.textTertiary) // Lighter for better contrast
-            
+
             // Integration label
             Text("Integration")
                 .font(.system(size: 11, weight: .medium))
@@ -166,7 +170,7 @@ struct GoogleDocsOnboardingScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading) // Left align like privacy screen
     }
-    
+
     private var mainTitle: some View {
         Text("Connect your Google Docs.")
             .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
@@ -175,7 +179,7 @@ struct GoogleDocsOnboardingScreen: View {
             .lineLimit(nil)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Automatically include your recent Google Docs in your weekly reflections. All processing happens **on your device**.")
@@ -187,7 +191,7 @@ struct GoogleDocsOnboardingScreen: View {
                 .blur(radius: bodyTextAnimating ? 0 : 8)
                 .opacity(bodyTextAnimating ? 1.0 : 0.3)
                 .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
-            
+
             Text("Your documents stay private and are never shared.")
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(LinearColors.textSecondary) // Lighter for better contrast
@@ -200,7 +204,7 @@ struct GoogleDocsOnboardingScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private var connectionSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             if googleDocsService.isConnected {
@@ -209,7 +213,7 @@ struct GoogleDocsOnboardingScreen: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 24, weight: .medium))
                         .foregroundColor(LinearColors.accent)
-                    
+
                     Text("Connected Successfully")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.textDisplay)
@@ -222,7 +226,7 @@ struct GoogleDocsOnboardingScreen: View {
         }
         .padding(.top, 20)
     }
-    
+
     private var connectButton: some View {
         Button(action: {
             connectToGoogleDocs()
@@ -236,7 +240,7 @@ struct GoogleDocsOnboardingScreen: View {
                     Image(systemName: "link")
                         .font(.system(size: 16, weight: .medium))
                 }
-                
+
                 Text(isConnecting ? "Connecting..." : "Connect Google Account")
                     .font(.system(size: 17, weight: .medium))
             }
@@ -251,8 +255,9 @@ struct GoogleDocsOnboardingScreen: View {
         .disabled(isConnecting)
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     // MARK: - Bottom Section
+
     private var bottomSection: some View {
         VStack(spacing: 0) {
             // Show skip button above Next button if not connected
@@ -260,14 +265,14 @@ struct GoogleDocsOnboardingScreen: View {
                 skipButton
                     .padding(.bottom, 16)
             }
-            
+
             // Next/Continue button
             nextButton
         }
         .padding(.horizontal, 28) // Increased to 28pt to match text margins
         .padding(.bottom, 40)
     }
-    
+
     private var nextButton: some View {
         Button(action: {
             onNext()
@@ -289,7 +294,7 @@ struct GoogleDocsOnboardingScreen: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             LinearColors.metalGray,
-                            LinearColors.charcoalCard
+                            LinearColors.charcoalCard,
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -300,7 +305,11 @@ struct GoogleDocsOnboardingScreen: View {
                         .stroke(LinearColors.warmHighlight.opacity(0.4), lineWidth: 2)
                         .blur(radius: 0.5)
                         .offset(x: 0, y: 2)
-                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
+                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
+                            gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )))
                 )
         )
         .overlay(
@@ -312,7 +321,11 @@ struct GoogleDocsOnboardingScreen: View {
                 .stroke(LinearColors.textPrimary.opacity(0.8), lineWidth: 2)
                 .blur(radius: 1)
                 .offset(x: 0, y: -1)
-                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
+                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
+                    gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )))
         )
         .shadow(color: LinearColors.cardShadow, radius: 17, x: 0, y: 4)
         .shadow(color: LinearColors.cardShadow, radius: 3, x: 0, y: 2)
@@ -330,7 +343,7 @@ struct GoogleDocsOnboardingScreen: View {
             }
         })
     }
-    
+
     private var skipButton: some View {
         Button(action: {
             onSkip()
@@ -341,22 +354,24 @@ struct GoogleDocsOnboardingScreen: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     // MARK: - Haptic Functions
+
     private func playButtonTouchDownHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred(intensity: 0.6)
     }
-    
+
     private func playButtonTouchUpHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
     }
-    
+
     // MARK: - Actions
+
     private func connectToGoogleDocs() {
         isConnecting = true
-        
+
         Task {
             do {
                 try await googleDocsService.authenticate()
@@ -375,6 +390,7 @@ struct GoogleDocsOnboardingScreen: View {
 }
 
 // MARK: - Preview
+
 #Preview {
     GoogleDocsOnboardingScreen(
         currentStep: 7,

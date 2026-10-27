@@ -4,7 +4,10 @@ import SwiftUI
 // MARK: - Onboarding Podcast Context
 
 struct OnboardingAnswer: Codable, Identifiable {
-    var id: String { question }
+    var id: String {
+        question
+    }
+
     let question: String
     let answer: String
     let answeredAt: Date
@@ -21,7 +24,7 @@ struct OnboardingIntegrationsSnapshot: Codable {
         [
             "Google Docs: \(googleDocsConnected && googleDocsEnabled ? "connected" : "not connected")",
             "Apple Health: \(healthKitEnabled ? "enabled" : "not enabled")",
-            "Screen Time: \(screenTimeAuthorized ? "enabled" : "not enabled")"
+            "Screen Time: \(screenTimeAuthorized ? "enabled" : "not enabled")",
         ]
         .joined(separator: "\n")
     }
@@ -177,7 +180,7 @@ final class OnboardingContextManager: ObservableObject {
             .nilIfEmpty
     }
 
-    nonisolated private static func persistedContext() -> OnboardingPodcastContext? {
+    private nonisolated static func persistedContext() -> OnboardingPodcastContext? {
         guard let data = UserDefaults.standard.data(forKey: contextKey) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -195,7 +198,7 @@ final class OnboardingContextManager: ObservableObject {
             "googleDocsConnected": context.integrations.googleDocsConnected,
             "googleDocsEnabled": context.integrations.googleDocsEnabled,
             "healthKitEnabled": context.integrations.healthKitEnabled,
-            "screenTimeAuthorized": context.integrations.screenTimeAuthorized
+            "screenTimeAuthorized": context.integrations.screenTimeAuthorized,
         ]
 
         try await RetrospectAPIClient.shared.uploadContent(
@@ -295,9 +298,15 @@ struct RichGoal: Codable, Identifiable, Equatable {
 
     var backendDescription: String {
         var parts: [String] = []
-        if !goalDescription.isEmpty { parts.append(goalDescription) }
-        if !motivation.isEmpty { parts.append("Why: \(motivation)") }
-        if !actionItems.isEmpty { parts.append("Next steps: \(actionItems.joined(separator: "; "))") }
+        if !goalDescription.isEmpty {
+            parts.append(goalDescription)
+        }
+        if !motivation.isEmpty {
+            parts.append("Why: \(motivation)")
+        }
+        if !actionItems.isEmpty {
+            parts.append("Next steps: \(actionItems.joined(separator: "; "))")
+        }
         return parts.joined(separator: "\n")
     }
 }
@@ -317,7 +326,7 @@ class GoalsManager: ObservableObject {
     /// Backward-compatible computed property — returns goal titles as [String].
     /// All existing consumers (podcast gen, UI counts, etc.) continue to work unchanged.
     var goals: [String] {
-        richGoals.map { $0.title }
+        richGoals.map(\.title)
     }
 
     /// Richer goal strings for podcast generation — includes description if available.
@@ -383,8 +392,7 @@ class GoalsManager: ObservableObject {
 
     func addGoal(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        guard !richGoals.contains(where: { $0.title.lowercased() == trimmed.lowercased() }) else { return }
+        guard !trimmed.isEmpty, !richGoals.contains(where: { $0.title.lowercased() == trimmed.lowercased() }) else { return }
         richGoals.append(RichGoal(title: trimmed))
         saveGoals()
     }
@@ -418,7 +426,7 @@ class GoalsManager: ObservableObject {
     }
 
     private func persistLocally() {
-        let snapshot = self.richGoals
+        let snapshot = richGoals
         DispatchQueue.global(qos: .background).async {
             if let data = try? JSONEncoder().encode(snapshot) {
                 UserDefaults.standard.set(data, forKey: GoalsManager.richGoalsKey)
@@ -428,7 +436,7 @@ class GoalsManager: ObservableObject {
 
     func syncToBackend() {
         guard RetrospectAPIClient.shared.isAuthenticated else { return }
-        let snapshot = self.richGoals
+        let snapshot = richGoals
         Task { [weak self] in
             do {
                 let assigned = try await RetrospectAPIClient.shared.syncRichGoals(snapshot)

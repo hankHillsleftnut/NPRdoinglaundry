@@ -8,8 +8,8 @@
 //  screens are chrome around this core, not separate player implementations.
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 // MARK: - Theme
 
@@ -101,10 +101,17 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
         self.visualDuration = visualDuration
     }
 
-    var hasAudio: Bool { url != nil }
+    var hasAudio: Bool {
+        url != nil
+    }
 
-    var currentTimeNow: TimeInterval { url == nil ? visualTime : realCurrentTime }
-    var playbackDuration: TimeInterval { url == nil ? visualDuration : realDuration }
+    var currentTimeNow: TimeInterval {
+        url == nil ? visualTime : realCurrentTime
+    }
+
+    var playbackDuration: TimeInterval {
+        url == nil ? visualDuration : realDuration
+    }
 
     func start() {
         removeTimeObserver()
@@ -133,7 +140,9 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
             Task {
                 if let d = try? await item.asset.load(.duration) {
                     let secs = CMTimeGetSeconds(d)
-                    if secs.isFinite, secs > 0 { self.realDuration = secs }
+                    if secs.isFinite, secs > 0 {
+                        self.realDuration = secs
+                    }
                 }
             }
             p.play()
@@ -185,7 +194,7 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
         let startingVolume = player.volume
         let steps = 20
         fadeTask = Task { @MainActor in
-            for step in 1...steps {
+            for step in 1 ... steps {
                 try? await Task.sleep(nanoseconds: UInt64((safeDuration / Double(steps)) * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 player.volume = startingVolume * Float(1 - Double(step) / Double(steps))
@@ -212,12 +221,18 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
 
     func toggle() {
         if url == nil {
-            if visualTask == nil { startVisual() }
-            else { visualTask?.cancel(); visualTask = nil; isPlaying = false }
+            if visualTask == nil {
+                startVisual()
+            } else {
+                visualTask?.cancel(); visualTask = nil; isPlaying = false
+            }
             return
         }
-        if isPlaying { player?.pause(); isPlaying = false }
-        else { player?.play(); isPlaying = true }
+        if isPlaying {
+            player?.pause(); isPlaying = false
+        } else {
+            player?.play(); isPlaying = true
+        }
     }
 
     func seek(toProgress progress: Double) {
@@ -252,16 +267,26 @@ final class StreamingPodcastPlayback: ObservableObject, PodcastPlayback {
     }
 
     deinit {
-        if let timeObserver { player?.removeTimeObserver(timeObserver) }
+        if let timeObserver {
+            player?.removeTimeObserver(timeObserver)
+        }
     }
 }
 
 // MARK: - DarkAudioManager conformance (the live listening backend)
 
 extension DarkAudioManager: PodcastPlayback {
-    var currentTimeNow: TimeInterval { audioPlayer?.currentTime ?? 0 }
-    var playbackDuration: TimeInterval { audioPlayer?.duration ?? 0 }
-    var hasAudio: Bool { audioPlayer != nil }
+    var currentTimeNow: TimeInterval {
+        audioPlayer?.currentTime ?? 0
+    }
+
+    var playbackDuration: TimeInterval {
+        audioPlayer?.duration ?? 0
+    }
+
+    var hasAudio: Bool {
+        audioPlayer != nil
+    }
 
     func toggle() { togglePlayback() }
 
@@ -280,7 +305,9 @@ struct PodcastSegment: Identifiable {
     let text: String
     let startTime: TimeInterval
     let endTime: TimeInterval
-    var id: String { "segment-\(index)" }
+    var id: String {
+        "segment-\(index)"
+    }
 }
 
 enum PodcastTranscript {
@@ -331,7 +358,9 @@ enum PodcastTranscript {
 }
 
 private extension String {
-    var podWordCount: Int { split { $0.isWhitespace || $0.isNewline }.count }
+    var podWordCount: Int {
+        split { $0.isWhitespace || $0.isNewline }.count
+    }
 }
 
 // MARK: - Shared follow-along transcript reader
@@ -344,7 +373,7 @@ struct PodcastTranscriptReader: View {
     var fontSize: CGFloat = 30
     var horizontalPadding: CGFloat = 38
     var alignment: TextAlignment = .center
-    var textAlignment: TextAlignment? = nil
+    var textAlignment: TextAlignment?
     var topInset: CGFloat = 96
     var bottomInset: CGFloat = 220
     var autoScroll: Bool = true
@@ -355,9 +384,11 @@ struct PodcastTranscriptReader: View {
     private var segments: [PodcastSegment] {
         PodcastTranscript.segments(from: transcript, duration: duration)
     }
+
     private var currentIndex: Int {
         PodcastTranscript.currentIndex(segments: segments, currentTime: currentTime, duration: duration)
     }
+
     private var stackAlignment: HorizontalAlignment {
         switch alignment {
         case .center: return .center
@@ -365,6 +396,7 @@ struct PodcastTranscriptReader: View {
         default: return .leading
         }
     }
+
     private var resolvedTextAlignment: TextAlignment {
         textAlignment ?? alignment
     }
@@ -441,7 +473,9 @@ private struct PodcastTranscriptLine: View {
     let alignment: TextAlignment
     let typography: PodcastTranscriptTypography
 
-    private var distance: Int { segment.index - currentIndex }
+    private var distance: Int {
+        segment.index - currentIndex
+    }
 
     var body: some View {
         Text(segment.text)
@@ -472,7 +506,9 @@ struct PodcastTransport<Leading: View>: View {
 
     @State private var isDragging = false
 
-    private var progress: Double { duration > 0 ? min(1, currentTime / duration) : 0 }
+    private var progress: Double {
+        duration > 0 ? min(1, currentTime / duration) : 0
+    }
 
     var body: some View {
         VStack(spacing: 20) {

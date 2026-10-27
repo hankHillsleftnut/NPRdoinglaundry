@@ -6,13 +6,13 @@ struct SupportAndDataView: View {
 
     @ObservedObject private var goalsManager = GoalsManager.shared
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         ZStack {
             // Background
             LinearColors.backgroundGrey
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Custom Header
                 VStack(spacing: 16) {
@@ -24,18 +24,18 @@ struct SupportAndDataView: View {
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                 .foregroundColor(LinearColors.textPrimary)
                         }
-                        
+
                         Text("Support & Data")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                             .foregroundColor(LinearColors.textPrimary)
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal)
                 }
                 .padding(.top, 20)
                 .padding(.bottom, 8)
-                
+
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 24) {
                         // Help & Support Section
@@ -46,7 +46,6 @@ struct SupportAndDataView: View {
                         ) {
                             VStack(spacing: 12) {
 
-                                
                                 Button(action: {
                                     VideoJournalManager.shared.debugPrintEntries()
                                 }) {
@@ -57,9 +56,9 @@ struct SupportAndDataView: View {
                                         Text("Debug Video Journals")
                                             .font(.serifBody)
                                             .foregroundColor(LinearColors.textPrimary)
-                                        
+
                                         Spacer()
-                                        
+
                                         Image(systemName: "chevron.right")
                                             .foregroundColor(LinearColors.textSecondary)
                                             .font(.serifLabel)
@@ -75,7 +74,7 @@ struct SupportAndDataView: View {
                                 .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        
+
                         // Developer Settings Section
                         SettingsSection(
                             title: "Developer",
@@ -87,19 +86,19 @@ struct SupportAndDataView: View {
                                     Image(systemName: "hammer.fill")
                                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                         .foregroundColor(LinearColors.accent)
-                                    
+
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Development Mode")
                                             .font(.serifBody)
                                             .foregroundColor(LinearColors.textPrimary)
-                                        
+
                                         Text("Enable debug features and testing tools")
                                             .font(.serifLabel)
                                             .foregroundColor(LinearColors.textSecondary)
                                     }
-                                    
+
                                     Spacer()
-                                    
+
                                     Toggle("", isOn: $devMode)
                                         .toggleStyle(DevelopmentModeToggle())
                                 }
@@ -112,7 +111,7 @@ struct SupportAndDataView: View {
                                 )
                             }
                         }
-                        
+
                         // Data Management Section
                         SettingsSection(
                             title: "Data Management",
@@ -132,9 +131,8 @@ struct SupportAndDataView: View {
             }
         }
         .navigationBarHidden(true)
-
         .alert("Reset All Data", isPresented: $showResetAlert) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {
                 // Handle reset logic here
                 UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
@@ -145,7 +143,7 @@ struct SupportAndDataView: View {
     }
 }
 
-// Development Mode Toggle Style
+/// Development Mode Toggle Style
 struct DevelopmentModeToggle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(action: {
@@ -171,10 +169,8 @@ struct DevelopmentModeToggle: ToggleStyle {
     }
 }
 
-
-
 struct SupportAndDataView_Previews: PreviewProvider {
     static var previews: some View {
         SupportAndDataView()
     }
-} 
+}

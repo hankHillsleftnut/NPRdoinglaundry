@@ -7,25 +7,25 @@ struct ProfilePersonalizationView: View {
     @AppStorage("generationType") private var generationTypeRaw: String = GenerationType.goodListener.rawValue
     @AppStorage("deepResearchMode") private var deepResearchMode: Bool = false
     @Environment(\.dismiss) private var dismiss
-    
+
     private var generationType: GenerationType {
         GenerationType(rawValue: generationTypeRaw) ?? .goodListener
     }
-    
+
     var body: some View {
         ZStack {
             // Background
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background
+                    LinearColors.background,
                 ]),
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: UIScreen.main.bounds.width * 1.5
             )
             .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 20) {
@@ -37,13 +37,13 @@ struct ProfilePersonalizationView: View {
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                 .foregroundColor(LinearColors.textPrimary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Text("Profile & Personalization")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                             .foregroundColor(LinearColors.textPrimary)
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal, 24)
@@ -52,7 +52,7 @@ struct ProfilePersonalizationView: View {
                 .padding(.bottom, 16)
                 .background(LinearColors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
                         // AI Reflection Style Section
@@ -64,11 +64,11 @@ struct ProfilePersonalizationView: View {
                                 ) {
                                     // This will show the picker
                                 }
-                                
+
                                 Divider()
                                     .background(LinearColors.cardBorder)
                                     .padding(.horizontal, Spacing.cardPadding)
-                                
+
                                 // Picker embedded in the group
                                 AIReflectionStylePicker(selectedType: Binding(
                                     get: { generationType },
@@ -78,7 +78,7 @@ struct ProfilePersonalizationView: View {
                                 .padding(.vertical, 12)
                             }
                         }
-                        
+
                         // Research Mode Section
                         SettingsGroup(title: "Research Mode") {
                             SettingsToggleRow(
@@ -88,7 +88,7 @@ struct ProfilePersonalizationView: View {
                                 isOn: $deepResearchMode
                             )
                         }
-                        
+
                         // Info Section
                         VStack(alignment: .leading, spacing: 8) {
                             Text("About These Settings")
@@ -96,16 +96,16 @@ struct ProfilePersonalizationView: View {
                                 .foregroundColor(LinearColors.textSecondary)
                                 .textCase(.uppercase)
                                 .padding(.horizontal, Spacing.containerMargin)
-                            
+
                             VStack(alignment: .leading, spacing: 12) {
                                 InfoRow(
                                     title: "AI Reflection Style",
                                     description: "Choose how the AI analyzes and responds to your reflections. Each style offers a different perspective on your thoughts and experiences."
                                 )
-                                
+
                                 Divider()
                                     .background(LinearColors.cardBorder)
-                                
+
                                 InfoRow(
                                     title: "Supercharge Mode",
                                     description: "When enabled, the AI performs deeper research and analysis, providing more comprehensive insights but taking slightly longer to process."
@@ -138,16 +138,17 @@ struct ProfilePersonalizationView: View {
 }
 
 // MARK: - Info Row Component
+
 struct InfoRow: View {
     let title: String
     let description: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.geistBody).kerning(TypographyKerning.bodyKerning)
                 .foregroundColor(LinearColors.textPrimary)
-            
+
             Text(description)
                 .font(.serifCaption)
                 .foregroundColor(LinearColors.textSecondary)

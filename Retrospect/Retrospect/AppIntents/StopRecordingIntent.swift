@@ -4,31 +4,31 @@ import SwiftUI
 @available(iOS 16.0, *)
 struct StopRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Stop Voice Recording"
-    
+
     static var description: IntentDescription? = IntentDescription(
         "Stop the active voice recording",
         categoryName: "Journal"
     )
-    
-    // Don't open app - stop in background
+
+    /// Don't open app - stop in background
     static var openAppWhenRun: Bool = false
-    
+
     @MainActor
     func perform() async throws -> some IntentResult {
         print("🛑 Stop recording triggered from Live Activity")
-        
+
         // Stop recording in background
         let recorder = BackgroundAudioRecordingManager.shared
         recorder.stopRecording { result in
             switch result {
-            case .success(let audioURL):
+            case let .success(audioURL):
                 print("✅ Recording stopped: \(audioURL.lastPathComponent)")
-                
+
                 // Transcribe and save
                 let transcriptionService = TranscriptionService.shared
                 transcriptionService.transcribe(audioURL: audioURL) { transcriptionResult in
                     switch transcriptionResult {
-                    case .success(let transcription):
+                    case let .success(transcription):
                         print("✅ Transcription completed")
                         Task { @MainActor in
                             await saveVoiceEntry(audioURL: audioURL, transcription: transcription)
@@ -40,27 +40,27 @@ struct StopRecordingIntent: AppIntent {
                         }
                     }
                 }
-                
-            case .failure(let error):
+
+            case let .failure(error):
                 print("❌ Failed to stop recording: \(error.localizedDescription)")
             }
         }
-        
+
         return .result()
     }
-    
-    // Helper to save entry
+
+    /// Helper to save entry
     @MainActor
     private func saveVoiceEntry(audioURL: URL, transcription: String) async {
         let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
         let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
-        
+
         guard !trimmed.isEmpty || hasUsableAudio else {
             print("⚠️ Discarding empty voice recording from Live Activity — no content")
             return
         }
-        
+
         // Generate simple title
         var title = "Voice Entry"
         if !trimmed.isEmpty {
@@ -70,12 +70,12 @@ struct StopRecordingIntent: AppIntent {
                 title += "..."
             }
         }
-        
+
         // Move audio to permanent storage
         let entryId = UUID()
         do {
             try FileStorageManager.shared.moveAudio(from: audioURL, to: entryId)
-            
+
             let entry = Entry(
                 id: entryId,
                 type: .voice,
@@ -84,7 +84,7 @@ struct StopRecordingIntent: AppIntent {
                 aiGeneratedTitle: title,
                 tags: []
             )
-            
+
             EntryManager.shared.addEntry(entry)
             print("✅ Voice entry saved from Live Activity stop")
         } catch {
@@ -92,4 +92,3 @@ struct StopRecordingIntent: AppIntent {
         }
     }
 }
-

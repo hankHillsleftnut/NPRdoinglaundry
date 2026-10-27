@@ -12,19 +12,19 @@ struct NavBarButton: View {
     let systemLabel: String
     let labelOffset: (x: CGFloat, y: CGFloat)
     let isSelected: Bool
-    
+
     var body: some View {
         Button {
             action()
         } label: {
             Image(systemName: systemLabel)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isSelected ? 
+                .foregroundStyle(isSelected ?
                     LinearGradient(
                         colors: [LinearColors.terraCottaPrimary, LinearColors.terraCottaLight],
                         startPoint: .bottomLeading,
                         endPoint: .topTrailing
-                    ) : 
+                    ) :
                     LinearGradient(
                         colors: [LinearColors.warmGray, LinearColors.warmGray],
                         startPoint: .top,
@@ -32,17 +32,15 @@ struct NavBarButton: View {
                     )
                 )
                 .shadow(color: isSelected ? .black.opacity(0.25) : .clear, radius: 0.5, y: 1)
-            
                 .offset(x: labelOffset.x, y: labelOffset.y)
                 .frame(width: 45, height: 45)
-            
                 .background(buttonBackground)
                 .overlay { buttonBorder }
         }
     }
-    
+
     // Views
-    
+
     private var buttonBackground: some View {
         Circle()
             .fill(
@@ -54,13 +52,13 @@ struct NavBarButton: View {
             )
             .shadow(color: .black.opacity(0.15), radius: 1.5, y: 1)
     }
-    
+
     private var buttonBorder: some View {
         Circle()
             .strokeBorder(LinearColors.Minimal.border) // #D2D2D2
     }
-    
-    // Init
+
+    /// Init
     init(
         systemLabel: String,
         labelOffset: (x: CGFloat, y: CGFloat) = (0, 0),
@@ -77,7 +75,7 @@ struct NavBarButton: View {
 struct NavBarContainer: View {
     @Binding var selectedTab: HomeTab
     @Namespace private var animation
-    
+
     var body: some View {
         HStack(spacing: 0) {
             // Write Tab
@@ -132,14 +130,14 @@ struct NavBarContainer: View {
     }
 }
 
-// Compact tab button styled like segmented control
+/// Compact tab button styled like segmented control
 struct CompactTabButton: View {
     let icon: String
     let title: String
     let isSelected: Bool
     let animation: Namespace.ID
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
@@ -173,13 +171,13 @@ struct CompactTabButton: View {
     }
 }
 
-// Old floating tab button - keeping for compatibility if needed elsewhere
+/// Old floating tab button - keeping for compatibility if needed elsewhere
 struct FloatingTabButton: View {
     let icon: String
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
@@ -188,7 +186,7 @@ struct FloatingTabButton: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(isSelected ? LinearColors.accent : LinearColors.textSecondary)
                     .frame(width: 24, height: 24)
-                
+
                 // Title label
                 Text(title)
                     .font(.system(size: 12, weight: .medium))

@@ -3,34 +3,34 @@ import SwiftUI
 struct PolaroidHomeView: View {
     let devMode: Bool
     @Environment(\.presentationMode) var presentationMode
-    
+
     // Audio and transcript state
     @StateObject private var viewModel = TranscriptViewModel(openAIService: .shared, textToSpeechService: .shared)
     @ObservedObject private var goalsManager = GoalsManager.shared
-    
+
     // UI State
     @State private var isPlaying = false
     @State private var showingControls = false
-    
+
     // Input text for podcast generation
     @State private var inputText = ""
     @State private var showingInputSheet = false
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Background - original cream/grey design
                 LinearColors.backgroundGrey
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 0) {
                     // Top bar with close button
                     topBar
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
-                    
+
                     Spacer()
-                    
+
                     if showingControls {
                         // Playing state: Polaroid at top, controls at bottom
                         playingStateView(geometry: geometry)
@@ -38,7 +38,7 @@ struct PolaroidHomeView: View {
                         // Initial state: Polaroid centered with play button below
                         initialStateView(geometry: geometry)
                     }
-                    
+
                     Spacer()
                 }
             }
@@ -49,7 +49,7 @@ struct PolaroidHomeView: View {
             // No need to set it manually since it's private
         }
         .onChange(of: viewModel.isProcessing) { _, isProcessing in
-            if !isProcessing && viewModel.transcript != nil {
+            if !isProcessing, viewModel.transcript != nil {
                 // Auto-play when generation completes
                 startPlayback()
             }
@@ -61,7 +61,7 @@ struct PolaroidHomeView: View {
             )
         }
     }
-    
+
     private var topBar: some View {
         HStack {
             Button(action: {
@@ -71,15 +71,15 @@ struct PolaroidHomeView: View {
                     .font(.system(size: 28))
                     .foregroundColor(LinearColors.textSecondary)
             }
-            
+
             Spacer()
-            
+
             Text("Polaroid")
                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                 .foregroundColor(LinearColors.primaryText)
-            
+
             Spacer()
-            
+
             // Add notebook button (pencil on notebook icon)
             Button(action: {
                 showingInputSheet = true
@@ -102,33 +102,33 @@ struct PolaroidHomeView: View {
             .buttonStyle(PlainButtonStyle())
         }
     }
-    
+
     private func initialStateView(geometry: GeometryProxy) -> some View {
         ZStack {
             VStack(spacing: 0) {
                 Spacer()
-                
+
                 VStack(spacing: 24) {
                     // Simple Polaroid with clean animation
                     SimplePolaroid()
-                    
+
                     // Text labels below polaroid area
                     VStack(spacing: 8) {
                         Text(getCurrentWeekText())
                             .font(.system(size: 16, weight: .medium, design: .default))
                             .foregroundColor(LinearColors.textSecondary)
                             .textCase(.lowercase)
-                        
+
                         Text(getPodcastTitle())
                             .font(.system(size: 22, weight: .medium, design: .default))
                             .foregroundColor(LinearColors.primaryText)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                     }
-                    
+
                     Spacer()
                         .frame(height: 40)
-                    
+
                     // Play button for podcast generation
                     ClickyButton(
                         text: viewModel.isProcessing ? "Generating..." : "Play",
@@ -138,29 +138,29 @@ struct PolaroidHomeView: View {
                     }
                     .frame(width: min(geometry.size.width * 0.7, 250))
                 }
-                
+
                 Spacer()
             }
         }
     }
-    
+
     private func playingStateView(geometry: GeometryProxy) -> some View {
         ZStack {
             VStack(spacing: 0) {
                 // Top spacing
                 Spacer()
                     .frame(height: geometry.size.height * 0.15)
-                
+
                 // Large polaroid at top
                 PolaroidFrame(geometry: geometry, isPlaying: true)
-                
+
                 Spacer()
             }
-            
+
             // Floating controls card positioned below polaroid
             VStack {
                 Spacer()
-                
+
                 // Controls as floating card
                 PolaroidPlayingControls(
                     viewModel: viewModel,
@@ -172,36 +172,36 @@ struct PolaroidHomeView: View {
             }
         }
     }
-    
+
     private func generatePodcast() {
         let goals = goalsManager.goalContextForGeneration
         viewModel.generateTranscript(text: inputText, goals: goals)
     }
-    
+
     private func startPlayback() {
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
             showingControls = true
             isPlaying = true
         }
-        
+
         // Audio playback will be handled by the PolaroidPlayingControls
         // when it appears in the playing state
     }
-    
+
     private func stopPlayback() {
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
             showingControls = false
             isPlaying = false
         }
     }
-    
-    // Helper functions for dynamic content
+
+    /// Helper functions for dynamic content
     private func getCurrentWeekText() -> String {
         let calendar = Calendar.current
         let weekOfYear = calendar.component(.weekOfYear, from: Date())
         return "week \(weekOfYear)"
     }
-    
+
     private func getPodcastTitle() -> String {
         if !inputText.isEmpty {
             // Try to extract a meaningful title from the input text
@@ -209,24 +209,25 @@ struct PolaroidHomeView: View {
             let meaningfulWords = words.filter { word in
                 word.count > 3 && !["this", "that", "with", "have", "been", "were", "they", "them", "from", "what", "when", "where"].contains(word.lowercased())
             }
-            
+
             if meaningfulWords.count >= 2 {
                 let title = meaningfulWords.prefix(4).joined(separator: " ")
                 return "Your thoughts on \(title.capitalized)"
             }
         }
-        
+
         // Default fallback
         return "Your weekly reflection"
     }
 }
 
 // MARK: - Input Sheet
+
 struct InputSheet: View {
     @Binding var inputText: String
     let onGenerate: () -> Void
     @Environment(\.presentationMode) var presentationMode
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
@@ -234,7 +235,7 @@ struct InputSheet: View {
                     .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                     .foregroundColor(LinearColors.primaryText)
                     .padding(.top)
-                
+
                 TextEditor(text: $inputText)
                     .font(.serifBody)
                     .padding(16)
@@ -247,7 +248,7 @@ struct InputSheet: View {
                         RoundedRectangle(cornerRadius: BorderRadius.card)
                             .stroke(LinearColors.border.opacity(0.5), lineWidth: 1)
                     )
-                
+
                 ClickyButton(
                     text: "Generate Podcast",
                     isDisabled: inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -255,7 +256,7 @@ struct InputSheet: View {
                     onGenerate()
                     presentationMode.wrappedValue.dismiss()
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal, 24)

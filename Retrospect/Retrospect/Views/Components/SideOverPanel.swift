@@ -273,5 +273,8 @@ private struct StatefulPreviewWrapper<Value, Content: View>: View {
         _value = State(initialValue: initial)
         self.content = content
     }
-    var body: some View { content($value) }
+
+    var body: some View {
+        content($value)
+    }
 }

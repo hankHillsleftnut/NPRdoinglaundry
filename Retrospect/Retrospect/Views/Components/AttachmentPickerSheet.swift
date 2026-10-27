@@ -5,23 +5,23 @@
 //  Simple attachment picker with camera and photo library options
 //
 
-import SwiftUI
-import PhotosUI
 import PDFKit
+import PhotosUI
+import SwiftUI
 import UniformTypeIdentifiers
 
 struct AttachmentPickerSheet: View {
     @Binding var isPresented: Bool
     @Binding var selectedImages: [UIImage]
     let onDeepResearch: () -> Void
-    
+
     @State private var showCamera = false
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var isImportingFiles = false
     @State private var isFileDropTargeted = false
     @State private var importStatus: String?
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Drag indicator
@@ -30,13 +30,13 @@ struct AttachmentPickerSheet: View {
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
                 .padding(.bottom, 16)
-            
+
             // Title
             Text("Add Attachment")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
                 .padding(.bottom, 20)
-            
+
             // Attachment buttons
             HStack(spacing: 16) {
                 // Camera button
@@ -53,19 +53,19 @@ struct AttachmentPickerSheet: View {
                                     Circle()
                                         .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                                 )
-                            
+
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 22, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
-                        
+
                         Text("Camera")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
-                
+
                 // Photo Library button
                 Button(action: {
                     HapticManager.shared.playLightImpact()
@@ -80,12 +80,12 @@ struct AttachmentPickerSheet: View {
                                     Circle()
                                         .strokeBorder(LinearColors.Minimal.border, lineWidth: 1)
                                 )
-                            
+
                             Image(systemName: "photo.fill")
                                 .font(.system(size: 22, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
                         }
-                        
+
                         Text("Library")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
@@ -118,7 +118,7 @@ struct AttachmentPickerSheet: View {
                     .padding(.horizontal, 24)
             }
             .padding(.bottom, 20)
-            
+
             // Cancel button
             Button(action: {
                 HapticManager.shared.playLightImpact()
@@ -159,9 +159,9 @@ struct AttachmentPickerSheet: View {
             allowsMultipleSelection: true
         ) { result in
             switch result {
-            case .success(let urls):
+            case let .success(urls):
                 importPDFs(from: urls)
-            case .failure(let error):
+            case let .failure(error):
                 importStatus = "File import failed: \(error.localizedDescription)"
                 HapticManager.shared.playErrorNotification()
             }
@@ -322,7 +322,7 @@ private enum AppleNotesPDFImporter {
                 continue
             }
 
-            let pageText = (0..<document.pageCount).compactMap { index in
+            let pageText = (0 ..< document.pageCount).compactMap { index in
                 document.page(at: index)?.string?.trimmingCharacters(in: .whitespacesAndNewlines)
             }
             let content = pageText
@@ -344,33 +344,34 @@ private enum AppleNotesPDFImporter {
 }
 
 // MARK: - Simple Photo Picker using PHPicker
+
 struct SimplePhotoPicker: UIViewControllerRepresentable {
     @Binding var selectedImages: [UIImage]
     @Binding var isPresented: Bool
-    
+
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
         config.selectionLimit = 5 - selectedImages.count
         config.filter = .images
-        
+
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
         return picker
     }
-    
+
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let parent: SimplePhotoPicker
-        
+
         init(_ parent: SimplePhotoPicker) {
             self.parent = parent
         }
-        
+
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             for result in results {
                 if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
@@ -385,7 +386,7 @@ struct SimplePhotoPicker: UIViewControllerRepresentable {
                     }
                 }
             }
-            
+
             DispatchQueue.main.async {
                 self.parent.isPresented = false
             }
@@ -394,32 +395,33 @@ struct SimplePhotoPicker: UIViewControllerRepresentable {
 }
 
 // MARK: - Simple Camera View
+
 struct SimpleCameraView: UIViewControllerRepresentable {
     @Binding var selectedImages: [UIImage]
     @Binding var isPresented: Bool
     @Environment(\.dismiss) private var dismiss
-    
+
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.delegate = context.coordinator
         return picker
     }
-    
+
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
+
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: SimpleCameraView
-        
+
         init(_ parent: SimpleCameraView) {
             self.parent = parent
         }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             if let image = info[.originalImage] as? UIImage {
                 DispatchQueue.main.async {
                     if self.parent.selectedImages.count < 5 {
@@ -430,7 +432,7 @@ struct SimpleCameraView: UIViewControllerRepresentable {
             }
             parent.dismiss()
         }
-        
+
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
@@ -441,7 +443,7 @@ struct SimpleCameraView: UIViewControllerRepresentable {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-        
+
         VStack {
             Spacer()
             AttachmentPickerSheet(

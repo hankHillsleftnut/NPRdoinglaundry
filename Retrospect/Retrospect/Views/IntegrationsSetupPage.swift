@@ -86,16 +86,24 @@ struct IntegrationsSetupPage: View {
         }
         .alert("Connection Error", isPresented: Binding(
             get: { connectionError != nil },
-            set: { if !$0 { connectionError = nil } }
+            set: {
+                if !$0 {
+                    connectionError = nil
+                }
+            }
         )) {
             Button("OK") { connectionError = nil }
         } message: {
-            if let err = connectionError { Text(err) }
+            if let err = connectionError {
+                Text(err)
+            }
         }
         .alert(item: $selectedPlannedSource) { source in
             Alert(
                 title: Text(source.title),
-                message: Text("\(source.subtitle)\n\n\(source.plannedStatus ?? "Connection is being built"). This source is visible now so it can be connected here as soon as its verified collection path is ready."),
+                message: Text(
+                    "\(source.subtitle)\n\n\(source.plannedStatus ?? "Connection is being built"). This source is visible now so it can be connected here as soon as its verified collection path is ready."
+                ),
                 dismissButton: .default(Text("Got it"))
             )
         }
@@ -106,7 +114,7 @@ struct IntegrationsSetupPage: View {
         ) { result in
             guard let source = importSource else { return }
             switch result {
-            case .success(let urls):
+            case let .success(urls):
                 guard let url = urls.first else { return }
                 connectingSourceId = source.id
                 Task {
@@ -120,7 +128,7 @@ struct IntegrationsSetupPage: View {
                         connectionError = error.localizedDescription
                     }
                 }
-            case .failure(let error):
+            case let .failure(error):
                 connectionError = error.localizedDescription
             }
         }
@@ -160,7 +168,9 @@ struct IntegrationsSetupPage: View {
     }
 
     private func connectionStatusLabel(_ source: IntegrationCatalogItem, connected: Bool) -> String? {
-        if connected { return "Verified and connected" }
+        if connected {
+            return "Verified and connected"
+        }
         switch remoteConnectionStatus[source.id] {
         case "action_required": return "First sync queued"
         case "expired": return "Reconnect required"

@@ -1,12 +1,12 @@
-import SwiftUI
 import GoogleSignIn
+import SwiftUI
 
 struct GoogleDocsIntegrationView: View {
     @Binding var isPresented: Bool
     @StateObject private var googleDocsService = GoogleDocsService()
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -14,12 +14,12 @@ struct GoogleDocsIntegrationView: View {
                     .font(.title)
                     .fontWeight(.bold)
                     .padding(.top, 40)
-                
+
                 Text("Connect your Google account to automatically include your recent Google Docs in your weekly reflections.")
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
                     .foregroundColor(.secondary)
-                
+
                 if !googleDocsService.isConnected {
                     Button(action: {
                         Task {
@@ -44,10 +44,10 @@ struct GoogleDocsIntegrationView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                             .font(.system(size: 50))
-                        
+
                         Text("Connected to Google")
                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
-                        
+
                         Toggle("Include Google Docs Data", isOn: Binding(
                             get: { googleDocsService.isGoogleDocsEnabled },
                             set: { googleDocsService.toggleGoogleDocsIntegration($0) }
@@ -55,9 +55,9 @@ struct GoogleDocsIntegrationView: View {
                         .padding(.horizontal, 30)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     isPresented = false
                 }) {
@@ -73,7 +73,7 @@ struct GoogleDocsIntegrationView: View {
             }
             .navigationTitle("Google Docs Setup")
             .alert("Error", isPresented: $showError) {
-                Button("OK", role: .cancel) { }
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }

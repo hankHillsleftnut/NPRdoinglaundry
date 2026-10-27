@@ -5,9 +5,9 @@ import SwiftUI
 
 struct ModeSegmentedControl: View {
     @Binding var selectedMode: HomeTab
-    
+
     @Namespace private var animation
-    
+
     var body: some View {
         HStack(spacing: 0) {
             // Writing Option
@@ -16,7 +16,7 @@ struct ModeSegmentedControl: View {
                 icon: "pencil",
                 mode: .reflections
             )
-            
+
             // Entries Option
             segmentButton(
                 title: "Entries",
@@ -36,7 +36,7 @@ struct ModeSegmentedControl: View {
         .fixedSize(horizontal: true, vertical: false) // Make it compact horizontally
         .padding(.horizontal, 24)
     }
-    
+
     private func segmentButton(title: String, icon: String, mode: HomeTab) -> some View {
         Button(action: {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -81,4 +81,3 @@ struct ModeSegmentedControl: View {
     .padding()
     .background(LinearColors.background)
 }
-

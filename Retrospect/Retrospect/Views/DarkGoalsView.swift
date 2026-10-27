@@ -66,30 +66,30 @@ enum GoalCategory: String, CaseIterable {
         let lowercased = goal.lowercased()
 
         if lowercased.contains("health") || lowercased.contains("exercise") || lowercased.contains("workout") ||
-           lowercased.contains("gym") || lowercased.contains("weight") || lowercased.contains("fitness") ||
-           lowercased.contains("run") || lowercased.contains("sleep") || lowercased.contains("diet") ||
-           lowercased.contains("eat") || lowercased.contains("meditation") || lowercased.contains("yoga") ||
-           lowercased.contains("walk") || lowercased.contains("body") || lowercased.contains("muscle") {
+            lowercased.contains("gym") || lowercased.contains("weight") || lowercased.contains("fitness") ||
+            lowercased.contains("run") || lowercased.contains("sleep") || lowercased.contains("diet") ||
+            lowercased.contains("eat") || lowercased.contains("meditation") || lowercased.contains("yoga") ||
+            lowercased.contains("walk") || lowercased.contains("body") || lowercased.contains("muscle") {
             return .health
         }
         if lowercased.contains("work") || lowercased.contains("career") || lowercased.contains("job") ||
-           lowercased.contains("promotion") || lowercased.contains("business") || lowercased.contains("professional") {
+            lowercased.contains("promotion") || lowercased.contains("business") || lowercased.contains("professional") {
             return .career
         }
         if lowercased.contains("relationship") || lowercased.contains("friend") || lowercased.contains("family") ||
-           lowercased.contains("partner") || lowercased.contains("dating") || lowercased.contains("social") {
+            lowercased.contains("partner") || lowercased.contains("dating") || lowercased.contains("social") {
             return .relationships
         }
         if lowercased.contains("learn") || lowercased.contains("skill") || lowercased.contains("study") ||
-           lowercased.contains("read") || lowercased.contains("course") || lowercased.contains("book") {
+            lowercased.contains("read") || lowercased.contains("course") || lowercased.contains("book") {
             return .skills
         }
         if lowercased.contains("money") || lowercased.contains("save") || lowercased.contains("invest") ||
-           lowercased.contains("budget") || lowercased.contains("finance") {
+            lowercased.contains("budget") || lowercased.contains("finance") {
             return .finance
         }
         if lowercased.contains("habit") || lowercased.contains("mindful") || lowercased.contains("confident") ||
-           lowercased.contains("stress") || lowercased.contains("mental") || lowercased.contains("growth") {
+            lowercased.contains("stress") || lowercased.contains("mental") || lowercased.contains("growth") {
             return .personal
         }
         return .other
@@ -118,8 +118,8 @@ struct DarkGoalsView: View {
         let query = searchText.lowercased()
         return goalsManager.richGoals.filter {
             $0.title.lowercased().contains(query) ||
-            $0.goalDescription.lowercased().contains(query) ||
-            $0.motivation.lowercased().contains(query)
+                $0.goalDescription.lowercased().contains(query) ||
+                $0.motivation.lowercased().contains(query)
         }
     }
 
@@ -165,7 +165,7 @@ struct DarkGoalsView: View {
                                     .init(color: .clear, location: 0),
                                     .init(color: .black.opacity(0.3), location: 0.3),
                                     .init(color: .black.opacity(0.7), location: 0.6),
-                                    .init(color: .black, location: 1.0)
+                                    .init(color: .black, location: 1.0),
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -260,7 +260,9 @@ struct DarkGoalsView: View {
     private func deleteGoal(_ goal: RichGoal) {
         HapticManager.shared.playMediumImpact()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            if expandedGoalID == goal.id { expandedGoalID = nil }
+            if expandedGoalID == goal.id {
+                expandedGoalID = nil
+            }
             goalsManager.removeRichGoal(id: goal.id)
         }
     }
@@ -281,7 +283,7 @@ struct RichGoalCard: View {
             // Always visible: collapsed header
             collapsedHeader
 
-            if isExpanded && goal.hasDepth {
+            if isExpanded, goal.hasDepth {
                 expandedContent
                     .transition(.opacity)
                     .clipped()
@@ -317,7 +319,7 @@ struct RichGoalCard: View {
                     .foregroundColor(FigmaLightTheme.primaryText.opacity(0.84))
                     .lineLimit(isExpanded ? nil : 2)
 
-                if !isExpanded && !goal.goalDescription.isEmpty {
+                if !isExpanded, !goal.goalDescription.isEmpty {
                     Text(goal.goalDescription)
                         .font(FigmaLightTheme.body(13))
                         .foregroundColor(FigmaLightTheme.mutedText)

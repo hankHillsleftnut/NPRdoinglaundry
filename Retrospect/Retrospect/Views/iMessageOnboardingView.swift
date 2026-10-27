@@ -7,8 +7,8 @@
 //  Sign-in happens on WelcomeSignInPage before this view is shown.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - Color aliases
 
@@ -90,11 +90,17 @@ struct iMessageOnboardingView: View {
         }
         .alert("Connection Error", isPresented: Binding(
             get: { state.googleError != nil },
-            set: { if !$0 { state.googleError = nil } }
+            set: {
+                if !$0 {
+                    state.googleError = nil
+                }
+            }
         )) {
             Button("OK") { state.googleError = nil }
         } message: {
-            if let err = state.googleError { Text(err) }
+            if let err = state.googleError {
+                Text(err)
+            }
         }
     }
 
@@ -148,7 +154,7 @@ struct iMessageOnboardingView: View {
                     Color.clear,
                     LinearColors.Minimal.background.opacity(0.3),
                     LinearColors.Minimal.background.opacity(0.5),
-                    LinearColors.Minimal.background.opacity(0.7)
+                    LinearColors.Minimal.background.opacity(0.7),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -180,7 +186,7 @@ struct iMessageOnboardingView: View {
                             .id(ScrollTarget.typing)
                     }
 
-                    if state.phase == .voicePersona && state.showActionButton {
+                    if state.phase == .voicePersona, state.showActionButton {
                         PersonaCardStack(onSelect: { personaId in
                             let name = state.personaDisplayName(personaId)
                             inputBarText = name
@@ -192,7 +198,7 @@ struct iMessageOnboardingView: View {
                         })
                     }
 
-                    if state.phase == .integrations && state.showActionButton {
+                    if state.phase == .integrations, state.showActionButton {
                         IntegrationCardStack(
                             googleConnected: googleDocsService.isConnected,
                             healthConnected: healthKitEnabled,
@@ -273,7 +279,7 @@ struct iMessageOnboardingView: View {
 
     private var contactHeader: some View {
         HStack(spacing: 0) {
-            if state.phase.rawValue > OnboardingPhase.integrations.rawValue && !state.isBusyWithAction {
+            if state.phase.rawValue > OnboardingPhase.integrations.rawValue, !state.isBusyWithAction {
                 Button(action: { goBackPhase() }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .medium))
@@ -298,7 +304,7 @@ struct iMessageOnboardingView: View {
             } else {
                 inputBar
 
-                if state.phase == .integrations && state.showActionButton {
+                if state.phase == .integrations, state.showActionButton {
                     Button("Skip all") {
                         state.addUserBubble("Skip for now")
                         scrollToBottomAfterSend()
@@ -348,7 +354,7 @@ struct iMessageOnboardingView: View {
 
     @ViewBuilder
     private var inputBar: some View {
-        if state.phase == .integrations && state.showActionButton {
+        if state.phase == .integrations, state.showActionButton {
             actionPillButton
         } else {
             regularInputBar
@@ -444,8 +450,8 @@ struct iMessageOnboardingView: View {
                     }
                     .foregroundStyle(
                         state.sendButtonOverride == .sparkle || !inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? LinearColors.Minimal.textPrimary
-                        : LinearColors.Minimal.textTertiary
+                            ? LinearColors.Minimal.textPrimary
+                            : LinearColors.Minimal.textTertiary
                     )
                 }
                 .disabled(state.sendButtonOverride == .default && inputBarText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -507,7 +513,7 @@ struct iMessageOnboardingView: View {
                     let stretched = min(pullUp, OnboardingState.pullToEnterMaxStretch)
                     state.pullToEnterOffset = stretched
 
-                    if stretched > 0 && !state.pullGestureDidPrepare {
+                    if stretched > 0, !state.pullGestureDidPrepare {
                         SpringHapticController.shared.prepare()
                         SpringHapticController.shared.reset()
                         state.pullGestureDidPrepare = true
@@ -587,7 +593,7 @@ struct iMessageOnboardingView: View {
                 for g in state.extractedGoalsFromConversation {
                     goalsManager.addGoal(g)
                 }
-                if !trimmed.lowercased().contains("perfect") && trimmed.count > 2 {
+                if !trimmed.lowercased().contains("perfect"), trimmed.count > 2 {
                     goalsManager.addGoal(trimmed)
                 }
                 HapticManager.shared.playSuccessNotification()
@@ -611,7 +617,7 @@ struct iMessageOnboardingView: View {
             onboardingAudioManager.stopRecording { result in
                 DispatchQueue.main.async {
                     switch result {
-                    case .success((_, let transcription)):
+                    case let .success((_, transcription)):
                         let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !trimmed.isEmpty {
                             inputBarText = trimmed
@@ -638,12 +644,14 @@ struct iMessageOnboardingView: View {
         state.sendButtonOverride = style
         state.showSkipLink = showSkip
         inputBarText = ""
-        let intervalPerChar: Double = 0.03
+        let intervalPerChar = 0.03
         let characters = Array(text)
         for (index, _) in characters.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + intervalPerChar * Double(index)) { [self] in
                 guard state.isAutoFillLocked else { return }
-                if index < inputBarText.count { return }
+                if index < inputBarText.count {
+                    return
+                }
                 inputBarText = String(characters.prefix(index + 1))
             }
         }
@@ -781,8 +789,11 @@ struct iMessageOnboardingView: View {
                     state.isConnectingGoogle = false
                     HapticManager.shared.playSuccessNotification()
                     state.messages.append(ChatMessage(sender: .retrospect, text: "Connected.", isSpecial: true))
-                    if state.phase != .integrations { advancePhase() }
-                    else { scrollToBottomAfterSend() }
+                    if state.phase != .integrations {
+                        advancePhase()
+                    } else {
+                        scrollToBottomAfterSend()
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -803,8 +814,11 @@ struct iMessageOnboardingView: View {
                     healthKitEnabled = true
                     HapticManager.shared.playSuccessNotification()
                     state.messages.append(ChatMessage(sender: .retrospect, text: "Health access enabled.", isSpecial: true))
-                    if state.phase != .integrations { advancePhase() }
-                    else { scrollToBottomAfterSend() }
+                    if state.phase != .integrations {
+                        advancePhase()
+                    } else {
+                        scrollToBottomAfterSend()
+                    }
                 } else if state.phase != .integrations {
                     advancePhase()
                 }
@@ -821,15 +835,28 @@ struct iMessageOnboardingView: View {
                 if screenTimeService.isAuthorized {
                     HapticManager.shared.playSuccessNotification()
                     screenTimeService.startRetroactiveBackfill()
-                    state.messages.append(ChatMessage(sender: .retrospect, text: "Screen Time enabled. I'll start noticing your digital patterns.", isSpecial: true))
-                    if state.phase != .integrations { advancePhase() }
-                    else { scrollToBottomAfterSend() }
+                    state.messages.append(ChatMessage(
+                        sender: .retrospect,
+                        text: "Screen Time enabled. I'll start noticing your digital patterns.",
+                        isSpecial: true
+                    ))
+                    if state.phase != .integrations {
+                        advancePhase()
+                    } else {
+                        scrollToBottomAfterSend()
+                    }
                 } else {
                     if let error = screenTimeService.authorizationError {
-                        state.messages.append(ChatMessage(sender: .retrospect, text: "Couldn't connect Screen Time: \(error). You can enable this later in Settings."))
+                        state.messages.append(ChatMessage(
+                            sender: .retrospect,
+                            text: "Couldn't connect Screen Time: \(error). You can enable this later in Settings."
+                        ))
                     }
-                    if state.phase != .integrations { advancePhase() }
-                    else { scrollToBottomAfterSend() }
+                    if state.phase != .integrations {
+                        advancePhase()
+                    } else {
+                        scrollToBottomAfterSend()
+                    }
                 }
             }
         }
@@ -845,7 +872,7 @@ struct iMessageOnboardingView: View {
             fetchGoalsReplyAndAppend(
                 messages: [
                     ["role": "assistant", "content": OnboardingState.goalsFirstQuestion],
-                    ["role": "user", "content": text]
+                    ["role": "user", "content": text],
                 ],
                 fallback: state.fallbackGoalsReplyForTurn(2),
                 storeIn: { state.goalTurn2BotMessage = $0 }
@@ -870,7 +897,7 @@ struct iMessageOnboardingView: View {
                 state.isLoadingGoalsReply = false
                 let replyText: String
                 switch result {
-                case .success(let text):
+                case let .success(text):
                     replyText = text
                     storeIn(text)
                 case .failure:
@@ -899,7 +926,7 @@ struct iMessageOnboardingView: View {
             ["role": "assistant", "content": OnboardingState.goalsFirstQuestion],
             ["role": "user", "content": state.goalTurn1Text],
             ["role": "assistant", "content": state.goalTurn2BotMessage.isEmpty ? state.fallbackGoalsReplyForTurn(2) : state.goalTurn2BotMessage],
-            ["role": "user", "content": state.goalTurn2Text]
+            ["role": "user", "content": state.goalTurn2Text],
         ]
 
         ClaudeService.shared.extractGoalsFromConversation(conversationHistory: conversationHistory) { result in
@@ -908,7 +935,7 @@ struct iMessageOnboardingView: View {
                 state.isLoadingGoalsReply = false
 
                 switch result {
-                case .success(let goals):
+                case let .success(goals):
                     state.extractedGoalsFromConversation = goals
                     let list = goals.prefix(3).joined(separator: ", ")
                     let summaryMessage = goals.isEmpty
@@ -982,7 +1009,7 @@ struct iMessageOnboardingView: View {
 private struct TypingRevealText: View {
     let fullText: String
     let textColor: Color
-    var onComplete: (() -> Void)? = nil
+    var onComplete: (() -> Void)?
 
     private static let unblurDuration: Double = 0.7
 
@@ -1246,15 +1273,15 @@ private struct TypingIndicatorView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { i in
+                ForEach(0 ..< 3, id: \.self) { i in
                     Circle()
                         .fill(LinearColors.Minimal.textTertiary)
                         .frame(width: 6, height: 6)
                         .offset(y: animating ? -4 : 0)
                         .animation(
                             .easeInOut(duration: 0.4)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(i) * 0.15),
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(i) * 0.15),
                             value: animating
                         )
                 }

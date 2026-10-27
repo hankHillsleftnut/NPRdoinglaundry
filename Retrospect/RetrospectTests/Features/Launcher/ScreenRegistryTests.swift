@@ -79,13 +79,13 @@ struct ScreenRegistryTests {
     func unique() {
         let ids = ScreenRegistry.allIDs
         #expect(Set(ids).count == ids.count)
-        let names = ScreenRegistry.groups.map { $0.name }
+        let names = ScreenRegistry.groups.map(\.name)
         #expect(Set(names).count == names.count)
     }
 
     @Test("every planned V2 group is registered once, so a screen PR edits only its group's file")
     func v2GroupsRegistered() {
-        let names = Set(ScreenRegistry.groups.map { $0.name })
+        let names = Set(ScreenRegistry.groups.map(\.name))
         for group in ["journal · v2", "podcasts", "you", "settings", "settings · trust", "goals", "outside the app", "shell"] {
             #expect(names.contains(group), "group \(group) is not registered")
         }

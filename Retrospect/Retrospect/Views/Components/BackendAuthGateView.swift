@@ -1,7 +1,8 @@
-import SwiftUI
 import AuthenticationServices
+import SwiftUI
 
 // MARK: - Backend Auth Gate
+
 // Shown when the user completed onboarding but has no valid backend JWT.
 // Uses the SAME design as the onboarding `WelcomeSignInPage` so the "true" sign-in matches it,
 // just wired to `onAuthenticated` instead of advancing the onboarding flow.
@@ -78,6 +79,7 @@ struct BackendAuthGateView: View {
     }
 
     // MARK: - Apple Sign-in (same coordinator-based flow as WelcomeSignInPage)
+
     private func triggerSignIn() {
         guard !isSigningIn else { return }
         signInError = nil

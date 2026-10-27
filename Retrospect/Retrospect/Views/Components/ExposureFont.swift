@@ -29,10 +29,13 @@ enum ExposureFont {
     static func postScriptName(axis: Int, italic: Bool) -> String {
         let base = italic ? "ExposureItalicTrial" : "ExposureTrial"
         let snapped = snap(axis)
-        let suffix: String
-        if snapped == 0 { suffix = "0" }
-        else if snapped > 0 { suffix = "+\(snapped)" }
-        else { suffix = "\(snapped)" } // already has leading "-"
+        let suffix = if snapped == 0 {
+            "0"
+        } else if snapped > 0 {
+            "+\(snapped)"
+        } else {
+            "\(snapped)"
+        } // already has leading "-"
         return "\(base)-\(suffix)"
     }
 }

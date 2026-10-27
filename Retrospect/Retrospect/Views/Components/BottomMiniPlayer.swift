@@ -5,8 +5,8 @@
 //  Created by Assistant on 1/30/25.
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 struct BottomMiniPlayer: View {
     let transcript: TranscriptModel
@@ -14,20 +14,20 @@ struct BottomMiniPlayer: View {
     @Binding var isPlaying: Bool
     let onTap: () -> Void
     let onDismiss: () -> Void
-    
+
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
-    
+
     private var progress: Double {
         guard let duration = audioPlayer?.duration, duration > 0 else { return 0 }
         return currentTime / duration
     }
-    
+
     private var podcastMood: PodcastMood {
         guard let moodString = transcript.mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Spacing.md) {
@@ -42,12 +42,12 @@ struct BottomMiniPlayer: View {
                             )
                         )
                         .frame(width: 48, height: 48)
-                    
+
                     Image(systemName: "waveform")
                         .font(.geistHeadline)
                         .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
-                
+
                 // Info and controls
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -57,15 +57,15 @@ struct BottomMiniPlayer: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(LinearColors.textPrimary)
                                 .lineLimit(1)
-                            
+
                             Text(transcript.generationType?.displayName ?? "Neutral")
                                 .font(.geistCaption)
                                 .foregroundColor(LinearColors.textSecondary)
                                 .lineLimit(1)
                         }
-                        
+
                         Spacer()
-                        
+
                         HStack(spacing: Spacing.sm) {
                             // Play/pause button
                             Button(action: togglePlayback) {
@@ -81,7 +81,7 @@ struct BottomMiniPlayer: View {
                             .onTapGesture {
                                 // Prevent button tap from triggering the card tap
                             }
-                            
+
                             // Dismiss button
                             Button(action: onDismiss) {
                                 Image(systemName: "xmark")
@@ -103,7 +103,7 @@ struct BottomMiniPlayer: View {
                             }
                         }
                     }
-                    
+
                     // Progress bar
                     GeometryReader { progressGeometry in
                         ZStack(alignment: .leading) {
@@ -111,7 +111,7 @@ struct BottomMiniPlayer: View {
                                 .fill(LinearColors.accent.opacity(0.15))
                                 .frame(height: 2)
                                 .cornerRadius(1)
-                            
+
                             Rectangle()
                                 .fill(LinearColors.accent)
                                 .frame(width: progressGeometry.size.width * progress, height: 2)
@@ -148,16 +148,16 @@ struct BottomMiniPlayer: View {
             timer = nil
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             currentTime = audioPlayer?.currentTime ?? 0
         }
         RunLoop.current.add(timer!, forMode: .common)
     }
-    
+
     private func togglePlayback() {
         if isPlaying {
             HapticManager.shared.playMediumImpact()

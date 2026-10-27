@@ -3,9 +3,9 @@ import SwiftUI
 struct PolaroidFrame: View {
     let geometry: GeometryProxy
     let isPlaying: Bool
-    
-    // Calculate size based on the reference image - much larger polaroid
-    // Should take up a significant portion of the screen width
+
+    /// Calculate size based on the reference image - much larger polaroid
+    /// Should take up a significant portion of the screen width
     private var polaroidSize: CGFloat {
         if isPlaying {
             // Large size when playing - 40% of screen
@@ -15,7 +15,7 @@ struct PolaroidFrame: View {
             return min(geometry.size.width * 0.65, geometry.size.height * 0.4)
         }
     }
-    
+
     var body: some View {
         ZStack {
             // Traditional polaroid frame with large bottom chin
@@ -24,7 +24,7 @@ struct PolaroidFrame: View {
             let chinHeight = frameHeight * 0.25 // Large chin (25% of total height)
             // Calculate photo area height (currently using square photo, but keeping calculation for future use)
             let _ = frameHeight - chinHeight - (frameWidth * 0.05) // Photo area minus chin and top border
-            
+
             // Outer polaroid frame (white border) - traditional rectangular shape
             RoundedRectangle(cornerRadius: 8)
                 .fill(LinearColors.Minimal.pureWhite)
@@ -35,7 +35,7 @@ struct PolaroidFrame: View {
                     x: 0,
                     y: 4
                 )
-            
+
             // Inner photo area with gradient - positioned in upper portion
             let photoSize = frameWidth * 0.9 // Thin borders on sides
             RoundedRectangle(cornerRadius: 4)
@@ -44,7 +44,7 @@ struct PolaroidFrame: View {
                         gradient: Gradient(colors: [
                             LinearColors.Minimal.iconPurple.opacity(0.5), // Light purple
                             LinearColors.terraCottaLight, // Light peach
-                            LinearColors.Minimal.iconGreen.opacity(0.5)  // Light mint
+                            LinearColors.Minimal.iconGreen.opacity(0.5), // Light mint
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -55,21 +55,21 @@ struct PolaroidFrame: View {
                     height: photoSize
                 )
                 .offset(y: -chinHeight * 0.4) // Position in upper area, leaving chin space
-            
+
             // Optional: Add some subtle texture or pattern when playing
             if isPlaying {
                 let frameWidth = polaroidSize
                 let frameHeight = polaroidSize * 1.2
                 let chinHeight = frameHeight * 0.25
                 let photoSize = frameWidth * 0.9
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 LinearColors.Minimal.textTertiary.opacity(0.5),
                                 Color.clear,
-                                LinearColors.Minimal.border
+                                LinearColors.Minimal.border,
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -83,7 +83,7 @@ struct PolaroidFrame: View {
                     .opacity(0.6)
                     .animation(
                         .easeInOut(duration: 2.0)
-                        .repeatForever(autoreverses: true),
+                            .repeatForever(autoreverses: true),
                         value: isPlaying
                     )
             }

@@ -8,7 +8,7 @@ struct SettingsCategoryCard: View {
     let subtitle: String
     let icon: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
@@ -17,28 +17,28 @@ struct SettingsCategoryCard: View {
                     Circle()
                         .fill(LinearColors.accent.opacity(0.15))
                         .frame(width: 44, height: 44)
-                    
+
                     Image(systemName: icon)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(LinearColors.accent)
                 }
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                         .foregroundColor(LinearColors.textPrimary)
                         .multilineTextAlignment(.leading)
-                    
+
                     Text(subtitle)
                         .font(.serifLabel)
                         .foregroundColor(LinearColors.textSecondary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
-                
+
                 Spacer()
-                
+
                 // Chevron
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .medium))
@@ -65,15 +65,11 @@ struct SettingsCategoryCard: View {
 }
 
 // MARK: - Settings Group Component
+
 struct SettingsGroup<Content: View>: View {
     let title: String
-    let content: Content
-    
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-    
+    @ViewBuilder let content: Content
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Group header
@@ -85,7 +81,7 @@ struct SettingsGroup<Content: View>: View {
                 Spacer()
             }
             .padding(.horizontal, Spacing.containerMargin)
-            
+
             // Group content
             VStack(spacing: 0) {
                 content
@@ -110,13 +106,14 @@ struct SettingsGroup<Content: View>: View {
 }
 
 // MARK: - Settings Row Component
+
 struct SettingsRow: View {
     let title: String
     let subtitle: String?
     let icon: String?
     let showChevron: Bool
     let action: (() -> Void)?
-    
+
     init(
         title: String,
         subtitle: String? = nil,
@@ -130,26 +127,26 @@ struct SettingsRow: View {
         self.showChevron = showChevron
         self.action = action
     }
-    
+
     var body: some View {
         Button(action: action ?? {}) {
             HStack(spacing: 12) {
                 // Optional icon
-                if let icon = icon {
+                if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(LinearColors.accent)
                         .frame(width: 24, height: 24)
                 }
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.geistBody).kerning(TypographyKerning.bodyKerning)
                         .foregroundColor(LinearColors.textPrimary)
                         .multilineTextAlignment(.leading)
-                    
-                    if let subtitle = subtitle {
+
+                    if let subtitle {
                         Text(subtitle)
                             .font(.serifCaption)
                             .foregroundColor(LinearColors.textSecondary)
@@ -157,9 +154,9 @@ struct SettingsRow: View {
                             .lineLimit(2)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Optional chevron
                 if showChevron {
                     Image(systemName: "chevron.right")
@@ -176,30 +173,31 @@ struct SettingsRow: View {
 }
 
 // MARK: - Settings Toggle Row
+
 struct SettingsToggleRow: View {
     let title: String
     let subtitle: String?
     let icon: String?
     @Binding var isOn: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Optional icon
-            if let icon = icon {
+            if let icon {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(LinearColors.accent)
                     .frame(width: 24, height: 24)
             }
-            
+
             // Content
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.geistBody).kerning(TypographyKerning.bodyKerning)
                     .foregroundColor(LinearColors.textPrimary)
                     .multilineTextAlignment(.leading)
-                
-                if let subtitle = subtitle {
+
+                if let subtitle {
                     Text(subtitle)
                         .font(.serifCaption)
                         .foregroundColor(LinearColors.textSecondary)
@@ -207,9 +205,9 @@ struct SettingsToggleRow: View {
                         .lineLimit(2)
                 }
             }
-            
+
             Spacer()
-            
+
             // Toggle
             Toggle("", isOn: $isOn)
                 .labelsHidden()
@@ -229,7 +227,7 @@ struct SettingsToggleRow: View {
         ) {
             print("Tapped Profile")
         }
-        
+
         SettingsGroup(title: "Example Group") {
             SettingsRow(
                 title: "Example Setting",
@@ -239,10 +237,10 @@ struct SettingsToggleRow: View {
             ) {
                 print("Tapped setting")
             }
-            
+
             Divider()
                 .background(LinearColors.cardBorder)
-            
+
             SettingsToggleRow(
                 title: "Toggle Setting",
                 subtitle: "Enable this feature",

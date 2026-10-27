@@ -1,5 +1,5 @@
-import SwiftUI
 import AVKit
+import SwiftUI
 
 struct EntryDetailView: View {
     @Environment(\.dismiss) var dismiss
@@ -11,12 +11,12 @@ struct EntryDetailView: View {
     @State private var newTag = ""
     @State private var showShareSheet = false
     @State private var showDeleteAlert = false
-    
+
     init(entry: Entry) {
         _entry = State(initialValue: entry)
         _editedTitle = State(initialValue: entry.aiGeneratedTitle ?? "")
     }
-    
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             // Main Content
@@ -25,26 +25,26 @@ struct EntryDetailView: View {
                     // Header spacing for dismiss button
                     Spacer()
                         .frame(height: 40)
-                    
+
                     // Title Section
                     titleSection
-                    
+
                     // Tags Section
                     tagsSection
-                    
+
                     // Content Section
                     contentSection
-                    
+
                     // Action Buttons
                     actionButtons
-                    
+
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
             }
             .background(LinearColors.backgroundGrey.ignoresSafeArea())
-            
+
             // Dismiss Button (floating)
             dismissButton
                 .padding(.top, 16)
@@ -62,8 +62,9 @@ struct EntryDetailView: View {
             ShareSheet(activityItems: [shareText])
         }
     }
-    
+
     // MARK: - Dismiss Button
+
     private var dismissButton: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -90,21 +91,22 @@ struct EntryDetailView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     // MARK: - Title Section
+
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Type Badge and Date
             HStack {
                 typeBadge
-                
+
                 Spacer()
-                
+
                 Text(formattedDate)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LinearColors.textSecondary)
             }
-            
+
             // Title with Edit
             if isEditingTitle {
                 VStack(spacing: 12) {
@@ -121,7 +123,7 @@ struct EntryDetailView: View {
                                         .stroke(LinearColors.inputFocusBorder, lineWidth: 1)
                                 )
                         )
-                    
+
                     HStack(spacing: 12) {
                         Button("Cancel") {
                             HapticManager.shared.playLightImpact()
@@ -140,9 +142,9 @@ struct EntryDetailView: View {
                                         .strokeBorder(LinearColors.cardBorder, lineWidth: 1)
                                 )
                         )
-                        
+
                         Spacer()
-                        
+
                         Button("Save") {
                             HapticManager.shared.playMediumImpact()
                             saveTitle()
@@ -164,9 +166,9 @@ struct EntryDetailView: View {
                         .fontWeight(.bold)
                         .foregroundColor(LinearColors.textPrimary)
                         .multilineTextAlignment(.leading)
-                    
+
                     Spacer()
-                    
+
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         isEditingTitle = true
@@ -199,7 +201,7 @@ struct EntryDetailView: View {
                 .strokeBorder(LinearColors.cardBorder, lineWidth: 1)
         )
     }
-    
+
     private var typeBadge: some View {
         HStack(spacing: 6) {
             Image(systemName: badgeIcon)
@@ -215,7 +217,7 @@ struct EntryDetailView: View {
                 .fill(badgeBackground)
         )
     }
-    
+
     private var badgeIcon: String {
         switch entry.type {
         case .video: return "video.fill"
@@ -223,7 +225,7 @@ struct EntryDetailView: View {
         case .text: return "doc.text.fill"
         }
     }
-    
+
     private var badgeText: String {
         switch entry.type {
         case .video: return "Video Entry"
@@ -231,7 +233,7 @@ struct EntryDetailView: View {
         case .text: return "Text Entry"
         }
     }
-    
+
     private var badgeForeground: Color {
         switch entry.type {
         case .video: return .white
@@ -239,7 +241,7 @@ struct EntryDetailView: View {
         case .text: return LinearColors.textPrimary
         }
     }
-    
+
     private var badgeBackground: Color {
         switch entry.type {
         case .video: return LinearColors.accent
@@ -247,17 +249,18 @@ struct EntryDetailView: View {
         case .text: return LinearColors.cardBorder.opacity(0.5)
         }
     }
-    
+
     // MARK: - Tags Section
+
     private var tagsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("TAGS")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(LinearColors.textSecondary)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     HapticManager.shared.playLightImpact()
                     isEditingTags.toggle()
@@ -267,8 +270,8 @@ struct EntryDetailView: View {
                         .foregroundColor(LinearColors.accent)
                 }
             }
-            
-            if entry.tags.isEmpty && !isEditingTags {
+
+            if entry.tags.isEmpty, !isEditingTags {
                 Text("No tags yet. Tap + to add some.")
                     .font(.serifBody)
                     .foregroundColor(LinearColors.textSecondary.opacity(0.6))
@@ -280,32 +283,32 @@ struct EntryDetailView: View {
                         if index < entry.tags.count {
                             let tag = entry.tags[index]
                             HStack(spacing: 6) {
-                            Text(tag)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(LinearColors.accent)
-                            
-                            if isEditingTags {
-                                Button(action: {
+                                Text(tag)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(LinearColors.accent)
+
+                                if isEditingTags {
+                                    Button(action: {
                                         HapticManager.shared.playLightImpact()
-                                    removeTag(tag)
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(LinearColors.textSecondary)
+                                        removeTag(tag)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(LinearColors.textSecondary)
+                                    }
                                 }
                             }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(LinearColors.accent.opacity(0.1))
-                        )
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(LinearColors.accent.opacity(0.1))
+                            )
                         }
                     }
                 }
             }
-            
+
             if isEditingTags {
                 HStack(spacing: 10) {
                     TextField("Add tag", text: $newTag)
@@ -323,7 +326,7 @@ struct EntryDetailView: View {
                         .onSubmit {
                             addTag()
                         }
-                    
+
                     Button(action: {
                         HapticManager.shared.playMediumImpact()
                         addTag()
@@ -353,14 +356,15 @@ struct EntryDetailView: View {
                 .strokeBorder(LinearColors.cardBorder, lineWidth: 1)
         )
     }
-    
+
     // MARK: - Content Section
+
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("CONTENT")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(LinearColors.textSecondary)
-            
+
             if entry.type == .video, let videoURL = entry.videoURL {
                 // Video Player
                 VideoPlayer(player: AVPlayer(url: videoURL))
@@ -370,11 +374,11 @@ struct EntryDetailView: View {
                         RoundedRectangle(cornerRadius: BorderRadius.card)
                             .strokeBorder(LinearColors.cardBorder.opacity(0.5), lineWidth: 1)
                     )
-                
+
                 if !entry.content.isEmpty {
-                Divider()
-                    .padding(.vertical, 8)
-                
+                    Divider()
+                        .padding(.vertical, 8)
+
                     Text("TRANSCRIPTION")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(LinearColors.textSecondary)
@@ -382,25 +386,25 @@ struct EntryDetailView: View {
             } else if entry.type == .voice, let audioURL = entry.audioURL {
                 // Audio Player
                 VoiceEntryPlayerView(audioURL: audioURL)
-                
+
                 if !entry.content.isEmpty {
                     Divider()
                         .padding(.vertical, 8)
-                    
+
                     Text("TRANSCRIPTION")
                         .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(LinearColors.textSecondary)
+                        .foregroundColor(LinearColors.textSecondary)
                 }
             }
-            
+
             // Text Content (or transcription for video/voice)
             if !entry.content.isEmpty {
-            Text(entry.content)
-                .font(.serifBody)
-                .foregroundColor(LinearColors.textPrimary)
+                Text(entry.content)
+                    .font(.serifBody)
+                    .foregroundColor(LinearColors.textPrimary)
                     .lineSpacing(6)
-                .multilineTextAlignment(.leading)
-                .textSelection(.enabled)
+                    .multilineTextAlignment(.leading)
+                    .textSelection(.enabled)
             }
         }
         .padding(20)
@@ -419,8 +423,9 @@ struct EntryDetailView: View {
                 .strokeBorder(LinearColors.cardBorder, lineWidth: 1)
         )
     }
-    
+
     // MARK: - Action Buttons
+
     private var actionButtons: some View {
         HStack(spacing: 12) {
             // Share Button
@@ -453,7 +458,7 @@ struct EntryDetailView: View {
                 )
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             // Delete Button
             Button(action: {
                 HapticManager.shared.playMediumImpact()
@@ -482,8 +487,9 @@ struct EntryDetailView: View {
             .buttonStyle(PlainButtonStyle())
         }
     }
-    
+
     // MARK: - Helper Methods
+
     private func saveTitle() {
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedTitle.isEmpty {
@@ -494,10 +500,10 @@ struct EntryDetailView: View {
         }
         isEditingTitle = false
     }
-    
+
     private func addTag() {
         let trimmedTag = newTag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if !trimmedTag.isEmpty && !entry.tags.contains(trimmedTag) {
+        if !trimmedTag.isEmpty, !entry.tags.contains(trimmedTag) {
             var updatedEntry = entry
             updatedEntry.tags.append(trimmedTag)
             entryManager.updateEntry(updatedEntry)
@@ -505,30 +511,30 @@ struct EntryDetailView: View {
             newTag = ""
         }
     }
-    
+
     private func removeTag(_ tag: String) {
         var updatedEntry = entry
         updatedEntry.tags.removeAll { $0 == tag }
         entryManager.updateEntry(updatedEntry)
         entry = updatedEntry
     }
-    
+
     private func deleteEntry() {
         entryManager.deleteEntry(withId: entry.id)
         dismiss()
     }
-    
+
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .full
         formatter.timeStyle = .short
         return formatter.string(from: entry.date)
     }
-    
+
     private var shareText: String {
         var text = entry.displayTitle + "\n\n"
         if !entry.tags.isEmpty {
-        text += "Tags: " + entry.tags.joined(separator: ", ") + "\n\n"
+            text += "Tags: " + entry.tags.joined(separator: ", ") + "\n\n"
         }
         text += entry.content
         return text

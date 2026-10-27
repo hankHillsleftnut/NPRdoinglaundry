@@ -17,25 +17,25 @@ struct MinimalHomeScreen: View {
     @State private var showImagePicker = false
     @State private var isShowingGoals = false
     @State private var isShowingSettings = false
-    
+
     // Animation states
     @State private var headlineOpacity: Double = 0
     @State private var headlineOffset: CGFloat = 20
     @State private var inputOpacity: Double = 0
     @State private var inputOffset: CGFloat = 30
     @State private var tabBarOpacity: Double = 0
-    
+
     var body: some View {
         ZStack {
             // Pure black background
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Close button - top right
                 HStack {
                     Spacer()
-                    
+
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         dismiss()
@@ -53,7 +53,7 @@ struct MinimalHomeScreen: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
-                
+
                 // Main content based on selected tab
                 Group {
                     switch selectedTab {
@@ -69,9 +69,9 @@ struct MinimalHomeScreen: View {
                         placeholderContent(title: "Settings", icon: "gearshape.fill")
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Bottom tab bar
                 MinimalTabBar(selectedTab: $selectedTab)
                     .padding(.horizontal, 24)
@@ -87,14 +87,14 @@ struct MinimalHomeScreen: View {
             VoiceRecordingView()
         }
     }
-    
+
     // MARK: - Journal Tab Content
-    
+
     private var journalContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
                 .frame(height: 80)
-            
+
             // Italic headline - the hero element
             Text("How do you\nwant to rewire\nthe mind\ntoday?")
                 .font(.minimalHeadline)
@@ -104,9 +104,9 @@ struct MinimalHomeScreen: View {
                 .padding(.horizontal, 32)
                 .opacity(headlineOpacity)
                 .offset(y: headlineOffset)
-            
+
             Spacer()
-            
+
             // Input field
             MinimalJournalInput(
                 text: $journalText,
@@ -130,43 +130,43 @@ struct MinimalHomeScreen: View {
             )
         }
     }
-    
+
     // MARK: - Placeholder Content for Other Tabs
-    
+
     private func placeholderContent(title: String, icon: String) -> some View {
         VStack(spacing: 16) {
             Spacer()
-            
+
             Image(systemName: icon)
                 .font(.system(size: 48, weight: .light))
                 .foregroundColor(LinearColors.Minimal.tabText)
-            
+
             Text(title)
                 .font(.minimalHeadline)
                 .foregroundColor(LinearColors.Minimal.headlineText)
-            
+
             Text("Coming soon")
                 .font(.minimalInput)
                 .foregroundColor(LinearColors.Minimal.placeholderText)
-            
+
             Spacer()
         }
     }
-    
+
     // MARK: - Animations
-    
+
     private func animateIn() {
         // Staggered entrance animation
         withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
             headlineOpacity = 1
             headlineOffset = 0
         }
-        
+
         withAnimation(.easeOut(duration: 0.6).delay(0.25)) {
             inputOpacity = 1
             inputOffset = 0
         }
-        
+
         withAnimation(.easeOut(duration: 0.4).delay(0.4)) {
             tabBarOpacity = 1
         }
@@ -176,4 +176,3 @@ struct MinimalHomeScreen: View {
 #Preview {
     MinimalHomeScreen()
 }
-

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AIReflectionStylePicker: View {
     @Binding var selectedType: GenerationType
-    
+
     var body: some View {
         VStack(spacing: 12) {
             ForEach(GenerationType.allCases, id: \.self) { type in
@@ -13,18 +13,18 @@ struct AIReflectionStylePicker: View {
                         Image(systemName: selectedType == type ? "largecircle.fill.circle" : "circle")
                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                             .foregroundColor(LinearColors.accent)
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text(type.displayName)
                                 .font(.serifBody)
                                 .foregroundColor(LinearColors.textPrimary)
-                            
+
                             Text(type.description)
                                 .font(.serifLabel)
                                 .foregroundColor(LinearColors.textSecondary)
                                 .multilineTextAlignment(.leading)
                         }
-                        
+
                         Spacer()
                     }
                     .padding()
@@ -60,4 +60,4 @@ struct AIReflectionStylePicker_Previews: PreviewProvider {
         AIReflectionStylePicker(selectedType: .constant(.goodListener))
             .padding()
     }
-} 
+}

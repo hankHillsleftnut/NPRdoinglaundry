@@ -5,10 +5,10 @@
 //  Created by Shaurya Narang on 5/13/25.
 //
 
-import SwiftUI
 import LocalAuthentication
+import SwiftUI
 
-// Splash Screen View
+/// Splash Screen View
 struct SplashScreenView: View {
     @Binding var isPresented: Bool
     @State private var iconOffset: CGFloat = 50
@@ -23,13 +23,13 @@ struct SplashScreenView: View {
     @State private var authenticationError: String?
     @State private var showRetryButton = false
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
-    
+
     var body: some View {
         ZStack {
             // Clean adaptive background
             LinearColors.background
                 .ignoresSafeArea()
-            
+
             // Clean Authentication Status
             VStack {
                 HStack(spacing: 8) {
@@ -52,7 +52,7 @@ struct SplashScreenView: View {
                 .opacity(pillOpacity)
                 .offset(y: pillOffset)
                 .padding(.top, 120)
-                
+
                 if showRetryButton {
                     Button(action: authenticate) {
                         HStack(spacing: 8) {
@@ -76,10 +76,10 @@ struct SplashScreenView: View {
                     .padding(.top, 16)
                     .transition(.scale.combined(with: .opacity))
                 }
-                
+
                 Spacer()
             }
-            
+
             // Centered Main Content
             VStack(spacing: 20) {
                 SquircleLogo.large(shadowEnabled: false)
@@ -92,7 +92,7 @@ struct SplashScreenView: View {
                     .offset(y: iconOffset)
                     .opacity(iconOpacity)
                     .scaleEffect(iconScale)
-                
+
                 VStack(spacing: 8) {
                     Text("Retrospect")
                         .font(.custom("HedvigLettersSerif-24ptRegular", size: 42))
@@ -100,7 +100,7 @@ struct SplashScreenView: View {
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleOffset)
                         .opacity(titleOpacity)
-                    
+
                     Text("Your Journey of Self-Reflection")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(LinearColors.textSecondary)
@@ -116,51 +116,51 @@ struct SplashScreenView: View {
                 pillOffset = 0
                 pillOpacity = 1
             }
-            
+
             // Icon animation with spring effect
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2)) {
                 iconOffset = 0
                 iconScale = 1.0
                 iconOpacity = 1
             }
-            
+
             // Title animation with slight delay
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.4)) {
                 titleOffset = 0
                 titleOpacity = 1
             }
-            
+
             // Subtitle animation with further delay
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.5)) {
                 subtitleOffset = 0
                 subtitleOpacity = 1
             }
-            
+
             // Start authentication
             authenticate()
         }
     }
-    
+
     private func authenticate() {
         // If Face ID is disabled, automatically authenticate
         guard faceIDEnabled else {
             finishAuthentication(success: true)
             return
         }
-        
+
         let context = LAContext()
         var error: NSError?
-        
+
         // Check if the device supports Face ID
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
             // Device doesn't support Face ID, authenticate anyway
             finishAuthentication(success: true)
             return
         }
-        
+
         let reason = "Authenticate to access your weekly reflections"
-        
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authError in
+
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
             DispatchQueue.main.async {
                 if success {
                     finishAuthentication(success: true)
@@ -173,7 +173,7 @@ struct SplashScreenView: View {
             }
         }
     }
-    
+
     private func finishAuthentication(success: Bool) {
         if success {
             // Animate out with consistent spring animation
@@ -188,7 +188,7 @@ struct SplashScreenView: View {
                 subtitleOpacity = 0
                 pillOpacity = 0
             }
-            
+
             // Dismiss splash screen
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 isPresented = false
