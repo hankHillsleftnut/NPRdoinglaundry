@@ -61,6 +61,10 @@ struct SampleFlowHost: View {
                 )
             }
         }
+        // getting ready stays mounted under the tease but out of reach: VoiceOver stays on the sheet
+        .accessibilityHidden(flow.step == .tease)
+        // and out of touch: a field still focused there lets go, so no keyboard stays up over the sheet
+        .disabled(flow.step == .tease)
         // ON-11: the tease rises over getting ready as the player sheet, exactly as `-Screen player` shows it
         .overlay {
             if flow.step == .tease {

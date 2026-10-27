@@ -171,7 +171,11 @@ final class SampleFlowModel {
         let made = PlayerSheetModel(
             playback: playback,
             transcript: SampleTranscript.tease,
-            onCollapse: { [weak self] in self?.send(.teaseEnded) }
+            onCollapse: { [weak self, weak playback] in
+                // never sound under what comes next (the paywall): the tease stops as it hands on
+                playback?.pause()
+                self?.send(.teaseEnded)
+            }
         )
         tease = made
         followTease(playback)

@@ -274,7 +274,12 @@ struct FlowHostTests {
         #expect(model.step == .tease)
         let sheet = model.teaseSheet()
         #expect(model.teaseSheet() === sheet)
-        await settle { sheet.state == .ended && model.isAtEnd }
+        // it rises playing, from 0:00
+        #expect(sheet.state == .playing)
+        #expect(sheet.playback.position == 0)
+        // its end, without racing 40 beats against a bounded settle
+        sheet.playback.seek(to: 10)
+        await settle { model.isAtEnd }
         #expect(sheet.state == .ended)
         #expect(model.step == .tease)
         #expect(model.endedAt == .tease)
@@ -286,6 +291,8 @@ struct FlowHostTests {
         let sheet = model.teaseSheet()
         sheet.collapse()
         #expect(model.endedAt == .tease)
+        // the tease stops as it hands on
+        #expect(sheet.state == .paused)
         // a second tap does nothing more
         sheet.collapse()
         #expect(sheet.hasCollapsed)
