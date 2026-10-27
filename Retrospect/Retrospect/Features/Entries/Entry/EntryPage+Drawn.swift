@@ -28,7 +28,7 @@ extension EntryPage {
     }
 
     @ViewBuilder
-    func drawnContent(_ drawn: EntryDrawnModel, words: String, meta: String, standing: EntryModel.Standing) -> some View {
+    func drawnContent(_ drawn: EntryDrawnModel, words: String, meta: String, standing: EntryPageModel.Standing) -> some View {
         let kept = drawn.words(words)
         @Bindable var drawn = drawn
         VStack(alignment: .leading, spacing: RDimension.space8) {
@@ -65,7 +65,7 @@ extension EntryPage {
 /// The delete dialog and "not right"'s haptic, on the page. Delete's warning haptic belongs to the
 /// host that pops the page (it outlives the pop; `EntryScreen.onDelete`).
 struct EntryDrawnPresentation: ViewModifier {
-    let model: EntryModel
+    let model: EntryPageModel
     let drawn: EntryDrawnModel?
 
     func body(content: Content) -> some View {
