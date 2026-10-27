@@ -27,7 +27,14 @@ struct EntryPage: View {
             deleteRow
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
-        .accessibilityAction(.escape, back)
+        .accessibilityAction(.escape) {
+            // while editing there is no back in the bar: escape is cancel, never a silent pop
+            if let drawn, drawn.edit.editing {
+                drawn.cancelEdit()
+            } else {
+                back()
+            }
+        }
         .task { await model.load() }
         .modifier(EntryDrawnPresentation(model: model, drawn: drawn))
     }
@@ -112,11 +119,12 @@ struct EntryScreen: View {
         capabilities: EntryCapabilities = .cut,
         claims: [TookClaim] = [],
         start: EntryDrawnModel.Start = .rest,
+        onDelete: (() -> Void)? = nil,
         back: @escaping () -> Void
     ) {
         _model = State(initialValue: EntryModel(id: id, data: data, capabilities: capabilities))
         // the drawn parts exist only when a capability is on (all off = the app's cut)
-        _drawn = State(initialValue: capabilities == .cut ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: back))
+        _drawn = State(initialValue: capabilities == .cut ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))
         self.back = back
     }
 

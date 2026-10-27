@@ -71,6 +71,10 @@ struct EntriesLaunch: View {
     /// Drawn parts on (J2b `drawn-*`), and the state the first opened entry starts in.
     private let drawn: EntryDrawnModel.Start?
     private let openingID: String?
+    /// The opening entry's drawn start is used once; entries opened later start at rest.
+    @State private var startUsed = false
+    /// Deletes so far: the warning haptic plays here, on the stack that outlives the popped page.
+    @State private var deletes = 0
 
     init(scenario: EntriesScenario, opening entryID: String? = nil, drawn: EntryDrawnModel.Start? = nil) {
         self.scenario = scenario
@@ -100,12 +104,29 @@ struct EntriesLaunch: View {
                     data: data,
                     capabilities: drawn == nil ? .cut : .drawn,
                     claims: SampleTook.claims(for: id),
-                    start: id == openingID ? drawn ?? .rest : .rest
-                ) { path.removeLast() }
-                    .toolbar(.hidden, for: .navigationBar)
+                    start: id == openingID && !startUsed ? drawn ?? .rest : .rest,
+                    onDelete: {
+                        deletes += 1
+                        if !path.isEmpty {
+                            path.removeLast()
+                        }
+                    },
+                    back: {
+                        if !path.isEmpty {
+                            path.removeLast()
+                        }
+                    }
+                )
+                .onAppear {
+                    if id == openingID {
+                        startUsed = true
+                    }
+                }
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
         .onAppear { model.onOpen = { path.append($0.id) } }
+        .sensoryFeedback(RHaptic.warning, trigger: deletes)
         .fullScreenCover(isPresented: $showsSettings) {
             AccountPage(flow: SampleSignOutFlow(unsent: 0)) { showsSettings = false }
         }

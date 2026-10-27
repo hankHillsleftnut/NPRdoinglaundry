@@ -4,7 +4,8 @@
 //  Rest (N51-0): "edit" in the bar; your words and the meta line; 32 under them "what i took from
 //  this"; "delete entry" at the foot, 32 off the bottom. Editing (N8R-0): "cancel · edit this entry ·
 //  save", the words in the sunken field with the caret, "retro reads it again when you save" 8 under;
-//  nothing else. Delete (NAB-0): RDialog over the page, "delete it" pops back with a warning haptic.
+//  nothing else; escape cancels the edit. Delete (NAB-0): RDialog over the page, "delete it" pops back
+//  (once), and the host plays the warning haptic.
 //  "show it in the conversation ›" stays hidden even here (no drawn landing, J-17).
 //
 import SwiftUI
@@ -61,7 +62,8 @@ extension EntryPage {
     }
 }
 
-/// The delete dialog and the drawn parts' haptics, on the page.
+/// The delete dialog and "not right"'s haptic, on the page. Delete's warning haptic belongs to the
+/// host that pops the page (it outlives the pop; `EntryScreen.onDelete`).
 struct EntryDrawnPresentation: ViewModifier {
     let model: EntryModel
     let drawn: EntryDrawnModel?
@@ -80,7 +82,6 @@ struct EntryDrawnPresentation: ViewModifier {
                     )
                 }
                 .sensoryFeedback(RHaptic.confirm, trigger: drawn.notedCount)
-                .sensoryFeedback(RHaptic.warning, trigger: drawn.deleteCount)
         } else {
             content
         }

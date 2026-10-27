@@ -65,9 +65,11 @@ final class EntryDrawnModel {
     private(set) var savedWords: String?
     var showsDelete = false
     private(set) var claims: [TookClaim]
-    /// Bumped on "not right" and on delete, for the page's haptics.
+    /// Bumped on "not right", for the page's haptic. (Delete's warning haptic plays on the host
+    /// that survives the pop.)
     private(set) var notedCount = 0
-    private(set) var deleteCount = 0
+    /// "delete it" goes once: a second tap while the dialog leaves does nothing.
+    private(set) var hasDeleted = false
 
     let start: Start
     @ObservationIgnored private var started = false
@@ -108,7 +110,7 @@ final class EntryDrawnModel {
     /// Save is lit only once the words changed and aren't empty.
     func canSave(from words: String) -> Bool {
         let draft = edit.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !draft.isEmpty && draft != words
+        return !draft.isEmpty && draft != words.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func save() {
@@ -143,8 +145,9 @@ final class EntryDrawnModel {
 
     /// "delete it": the dialog closes and the page goes back (SCREEN-MAP row 65: pop, J-16).
     func confirmDelete() {
+        guard !hasDeleted else { return }
+        hasDeleted = true
         showsDelete = false
-        deleteCount += 1
         onDelete()
     }
 }

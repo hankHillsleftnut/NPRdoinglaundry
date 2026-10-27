@@ -17,7 +17,7 @@ struct TookSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RDimension.space2) {
             Text(EntryDrawnModel.tookTitle)
-                .rText(.briefLabelTook)
+                .rText(.briefLabel)
                 .foregroundStyle(RColor.textLabel)
                 .accessibilityAddTraits(.isHeader)
             switch section {
@@ -115,15 +115,6 @@ struct DestructiveRow: View {
 }
 
 extension RTextStyle {
-    /// "what i took from this" (N5K-0: Geist sm medium, snug, no tracking).
-    static let briefLabelTook = RTextStyle(
-        family: .label,
-        size: RDimension.fontSizeSm,
-        weight: .medium,
-        tracking: RNumber.fontTrackingNone,
-        leading: 1.3,
-        relativeTo: .caption
-    )
     /// "noted" (N59-0: Geist md regular, snug).
     static let tookNoted = RTextStyle(
         family: .label,

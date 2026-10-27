@@ -52,6 +52,10 @@ struct EntryDrawnModelTests {
         #expect(model.canSave(from: words))
         model.cancelEdit()
         #expect(model.words(words) == words)
+        // words that end in a space or a newline (voice transcripts) don't light save on their own
+        model.beginEdit(from: words + "\n")
+        #expect(!model.canSave(from: words + "\n"))
+        model.cancelEdit()
         model.beginEdit(from: words)
         model.edit.draft = "i dread it, every monday"
         model.save()
@@ -59,7 +63,7 @@ struct EntryDrawnModelTests {
         #expect(model.words(words) == "i dread it, every monday")
     }
 
-    @Test("delete: the dialog asks; keep closes it; delete it pops back once")
+    @Test("delete: the dialog asks; keep closes it; delete it pops back once, a double tap too")
     func delete() {
         var pops = 0
         let model = drawn { pops += 1 }
@@ -70,9 +74,10 @@ struct EntryDrawnModelTests {
         #expect(pops == 0)
         model.askDelete()
         model.confirmDelete()
+        model.confirmDelete()
         #expect(!model.showsDelete)
         #expect(pops == 1)
-        #expect(model.deleteCount == 1)
+        #expect(model.hasDeleted)
     }
 
     @Test("the launcher's start applies once: editing begins from the words; the dialog opens")
