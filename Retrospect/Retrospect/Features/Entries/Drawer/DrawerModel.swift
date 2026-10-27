@@ -72,7 +72,8 @@ final class DrawerModel {
     /// What the list holds so far, and the cursor for the next page (contract 02 §5 pages).
     @ObservationIgnored private var loaded: [Entry] = []
     @ObservationIgnored private var nextCursor: String?
-    @ObservationIgnored private var loadingMore = false
+    /// The load whose next page is in flight (a newer load's page request is never blocked by an older one).
+    @ObservationIgnored private var loadingMoreFor: Int?
     /// Entries being sent again: a second tap while one is sending doesn't send it twice.
     @ObservationIgnored private var retrying: Set<String> = []
 
@@ -106,10 +107,14 @@ final class DrawerModel {
 
     /// The next page, when the list's last row comes into view.
     func loadMore() async {
-        guard let cursor = nextCursor, !loadingMore else { return }
-        loadingMore = true
-        defer { loadingMore = false }
         let mine = generation
+        guard let cursor = nextCursor, loadingMoreFor != mine else { return }
+        loadingMoreFor = mine
+        defer {
+            if loadingMoreFor == mine {
+                loadingMoreFor = nil
+            }
+        }
         let searched = Self.cleaned(query)
         let result = await data.entries(cursor: cursor, query: searched)
         guard mine == generation, Self.cleaned(query) == searched, case let .success(page) = result else { return }
