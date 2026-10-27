@@ -37,11 +37,23 @@ struct RIconButton: View {
     let label: String
     var role: Role = .topBar
     var tint: Color = RColor.iconDefault
+    /// The glyph's share of its 20 frame (RSymbol).
+    var glyphScale: CGFloat = RSymbol.defaultGlyphScale
     let action: () -> Void
+
+    /// The onboarding back chevron at Paper's size: 11.3pt tall in the 20 frame (ON-6 `21CA-0`;
+    /// founder, 26 Oct: "Paper's chevron size, not larger"). SF's chevron at the default scale is 14.
+    static let backChevronGlyphScale: CGFloat = 0.66 // literal-ok: Paper 21CA-0, 11.3 of SF's 14 at 0.82
+
+    /// The quiet back chevron of the onboarding pages (questions, privacy, connect): a 32 wash
+    /// circle in a 44 hit area, the chevron at Paper's size.
+    static func onboardingBack(action: @escaping () -> Void) -> Self {
+        Self(symbol: "chevron.left", label: "back", role: .inField, glyphScale: backChevronGlyphScale, action: action)
+    }
 
     var body: some View {
         Button(action: action) {
-            Self.face(symbol: symbol, role: role, tint: tint)
+            Self.face(symbol: symbol, role: role, tint: tint, glyphScale: glyphScale)
         }
         .rPress(small: true, haptic: role == .bubble ? RHaptic.press : nil)
         .accessibilityLabel(label)
@@ -49,8 +61,13 @@ struct RIconButton: View {
 
     /// The wash circle and its glyph in the 44 hit frame: the button's face, also worn by system
     /// controls that need their own button (the player header's ShareLink).
-    static func face(symbol: String, role: Role, tint: Color = RColor.iconDefault) -> some View {
-        RSymbol(name: symbol, size: role.glyph, tint: tint, weight: role.weight)
+    static func face(
+        symbol: String,
+        role: Role,
+        tint: Color = RColor.iconDefault,
+        glyphScale: CGFloat = RSymbol.defaultGlyphScale
+    ) -> some View {
+        RSymbol(name: symbol, size: role.glyph, tint: tint, weight: role.weight, glyphScale: glyphScale)
             .frame(width: role.visible, height: role.visible)
             .background(RColor.surfaceWash, in: Circle())
             .frame(width: max(role.visible, RDimension.sizeControlDefault), height: max(role.visible, RDimension.sizeControlDefault))
