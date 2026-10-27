@@ -35,7 +35,7 @@ struct ShareLaunch: View {
 
     var body: some View {
         if case let .closed(saved) = model.state {
-            Text(saved ? "saved · it goes to tomorrow's journal" : "share cancelled")
+            Text(saved ? "saved (sample: nothing was sent)" : "share cancelled")
                 .rText(.textMd)
                 .foregroundStyle(RColor.textSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
