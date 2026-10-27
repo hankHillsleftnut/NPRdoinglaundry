@@ -63,7 +63,7 @@ struct EpisodePlayerLaunch: View {
                     .foregroundStyle(RColor.textSecondary)
                     .accessibilityIdentifier("pc2.exit")
                 // back to the same sheet, where it was (the stand-in is a dead end otherwise)
-                RButton(title: "back to the player", variant: .secondary) { self.exit = nil }
+                RButton(title: "back to the player", variant: .secondary) { backToThePlayer() }
                     .fixedSize()
                     .accessibilityIdentifier("pc2.exit.back")
             }
@@ -80,21 +80,25 @@ struct EpisodePlayerLaunch: View {
         } else {
             RColor.backgroundUnderlay
                 .ignoresSafeArea()
-                .onAppear {
-                    model = Self.makeModel(scenario) {
-                        model?.playback.pause()
-                        exit = .collapsed
-                    }
-                }
+                .onAppear { model = sheetModel(SamplePlayback(scenario: scenario.playback, clock: ContinuousClock())) }
         }
     }
 
-    static func makeModel(_ scenario: EpisodePlayerScenario, onCollapse: @escaping () -> Void) -> PlayerSheetModel {
-        PlayerSheetModel(
-            playback: SamplePlayback(scenario: scenario.playback, clock: ContinuousClock()),
-            transcript: SampleEpisodeTranscript.weekly,
-            onCollapse: onCollapse
-        )
+    /// The sheet's model on `playback`; its collapse pauses the player and shows the stand-in.
+    private func sheetModel(_ playback: any Flows.Playback) -> PlayerSheetModel {
+        PlayerSheetModel(playback: playback, transcript: SampleEpisodeTranscript.weekly) {
+            playback.pause()
+            exit = .collapsed
+        }
+    }
+
+    /// Back to the same player where it stopped. A sheet model hands its collapse over once, so after a
+    /// collapse a fresh model wraps the same player and the chevron works again.
+    private func backToThePlayer() {
+        if exit == .collapsed, let model {
+            self.model = sheetModel(model.playback)
+        }
+        exit = nil
     }
 }
 
