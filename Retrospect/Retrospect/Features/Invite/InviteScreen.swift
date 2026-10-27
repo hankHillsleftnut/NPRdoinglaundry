@@ -82,7 +82,10 @@ struct InviteScreen: View {
         .animation(RMotion.standard(RNumber.motionDurationBase), value: model.waitlist)
         .sensoryFeedback(RHaptic.select, trigger: stage.ticks)
         .sensoryFeedback(RHaptic.select, trigger: stage.landings)
-        .sensoryFeedback(TicketFeedback.rip, trigger: model.rips)
+        // TEAR.motion: a paper click per hole, the rip on the snap frame, a soft tap as the stub lands
+        .sensoryFeedback(RHaptic.tearTick, trigger: stage.clicks)
+        .sensoryFeedback(RHaptic.rip, trigger: stage.rips)
+        .sensoryFeedback(RHaptic.tearLand, trigger: stage.stubLandings)
         .sensoryFeedback(RHaptic.reveal, trigger: model.reveals)
         .sensoryFeedback(RHaptic.warning, trigger: model.warnings)
         .sensoryFeedback(RHaptic.confirm, trigger: model.confirms)
@@ -241,19 +244,13 @@ struct InviteScreen: View {
     private func ticketStage(width: CGFloat) -> some View {
         let geometry = geometry(page: width)
         let fallen = model.phase == .torn || model.phase == .youreIn
-        return TicketStage(
-            geometry: geometry,
-            face: model.face,
-            tiles: model.shownTiles,
-            date: model.stubDate,
-            label: model.stubLabel,
-            typed: model.phase == .typed,
-            caretOn: caretOn,
-            tearProgress: stage.holdProgress > 0 && reduceMotion ? 0 : stage.tearProgress,
-            stub: fallen ? .fallen : .joined,
-            printProgress: stage.printProgress,
-            reduceMotion: reduceMotion
-        )
+        // the tear's clock runs only while the paper moves
+        return TimelineView(.animation(minimumInterval: nil, paused: !stage.moving)) { context in
+            ticketView(geometry, fallen: fallen)
+                .onChange(of: context.date) { stage.advanceTear() }
+        }
+        .onChange(of: geometry.width, initial: true) { stage.placeTear(geometry, reduceMotion: reduceMotion) }
+        .onChange(of: reduceMotion) { stage.placeTear(geometry, reduceMotion: reduceMotion) }
         .animation(RMotion.settle, value: fallen)
         .overlay(alignment: .bottom) { slotOverlay(geometry) }
         .overlay(alignment: .topLeading) { holdFill(geometry) }
@@ -292,7 +289,7 @@ struct InviteScreen: View {
     @ViewBuilder private func handleLayer(_ geometry: TicketGeometry) -> some View {
         let available = model.phase == .ready || model.phase == .sealing
         RTicketHandle(held: stage.held)
-            .offset(x: stage.tearProgress * geometry.width - RDimension.sizeTouchTarget / 2, y: geometry.perforationY - RDimension.sizeTouchTarget / 2)
+            .offset(x: stage.handleX(width: geometry.width) - RDimension.sizeTouchTarget / 2, y: geometry.perforationY - RDimension.sizeTouchTarget / 2)
             .gesture(reduceMotion ? nil : tearDrag(geometry))
             .simultaneousGesture(reduceMotion ? holdGesture : nil)
             .opacity(available ? 1 : 0)
@@ -476,11 +473,6 @@ struct InviteScreen: View {
 /// Stands in for Apple's result when the launcher plays the sign-in on sample data.
 struct SampleSignInTap: Error {}
 
-enum TicketFeedback {
-    /// The rip: a rigid impact on the frame the stub lets go (FR0.1's `haptic.rip`).
-    static let rip: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.8) // literal-ok: FR0.1 token, not yet generated
-}
-
 /// Layout values read from Paper, kept out of the struct body.
 extension InviteScreen {
     /// Paper T1/T-alt/T5: the bottom zone ends 40 above the screen's edge, whatever the host does with
@@ -553,5 +545,26 @@ extension InviteScreen {
         DragGesture(minimumDistance: 0)
             .onChanged { _ in stage.holdBegan() }
             .onEnded { _ in stage.holdReleased(completed: false) }
+    }
+}
+
+/// The ticket the stage draws, kept out of the struct body.
+extension InviteScreen {
+    /// One TicketStage for every phase; the tear's frame comes from the stage controller's physics.
+    func ticketView(_ geometry: TicketGeometry, fallen: Bool) -> TicketStage {
+        TicketStage(
+            geometry: geometry,
+            face: model.face,
+            tiles: model.shownTiles,
+            date: model.stubDate,
+            label: model.stubLabel,
+            typed: model.phase == .typed,
+            caretOn: caretOn,
+            tearProgress: stage.holdProgress > 0 && reduceMotion ? 0 : stage.tearProgress,
+            stub: fallen ? .fallen : .joined,
+            printProgress: stage.printProgress,
+            reduceMotion: reduceMotion,
+            tear: stage.tearFrame
+        )
     }
 }
