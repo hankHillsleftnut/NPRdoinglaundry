@@ -2,8 +2,9 @@
 //  FirstRunScreens+Launcher.swift
 //  First run's screens in the launcher (T02): `-Screen first-run -State questions|questions-resume|
 //  questions-offline` opens ON-3–9 on `SampleFirstRunData` in that scenario; `-State privacy` opens
-//  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on; `-State connect` opens ON-6
-//  on the sample sources (calendar connected). Nothing is mounted in the
+//  ON-5 on a silent ~8 s sample read-aloud, after which the page moves on; `-State connect|connect-3of6`
+//  opens ON-6 on the sample sources (calendar connected, or all three); `-State getting-ready|
+//  getting-ready-still` opens ON-10 on the sample listening and episode. Nothing is mounted in the
 //  app yet (FR.root): when a page is left it says so in a quiet line.
 //
 #if DEBUG
@@ -15,12 +16,16 @@ extension ScreenRegistry {
             id: "first-run",
             states: FirstRunScenario.allCases.map(\.rawValue) + PrivacyScenario.allCases.map(\.rawValue)
                 + ConnectScenario.allCases.map(\.rawValue)
+                + GettingReadyScenario.allCases.map(\.rawValue)
         ) { arguments in
             if let privacy = PrivacyScenario(rawValue: arguments.state) {
                 return AnyView(PrivacyLaunch(scenario: privacy))
             }
             if let connect = ConnectScenario(rawValue: arguments.state) {
                 return AnyView(ConnectLaunch(scenario: connect))
+            }
+            if let gettingReady = GettingReadyScenario(rawValue: arguments.state) {
+                return AnyView(GettingReadyLaunch(scenario: gettingReady))
             }
             return AnyView(QuestionsLaunch(scenario: FirstRunScenario(rawValue: arguments.state) ?? .questions))
         },
@@ -111,6 +116,26 @@ struct ConnectLaunch: View {
                 onBack: { left = "back to privacy" }
             )
         }
+    }
+}
+
+/// ON-10 on the sample seams, on the real clock: `getting-ready` hears an invented answer and is made
+/// about 30 s later; `getting-ready-still` holds Paper's frame. Nothing is mounted after it yet (the
+/// tease, ON-11): when it is made the line fills, VoiceOver hears it, and the page stays.
+struct GettingReadyLaunch: View {
+    let scenario: GettingReadyScenario
+    @State private var firstRun = SampleFirstRunData(scenario: .questions)
+    @State private var episode: SampleFirstEpisode
+    @State private var listening: SampleListening
+
+    init(scenario: GettingReadyScenario) {
+        self.scenario = scenario
+        _episode = State(initialValue: SampleFirstEpisode(scenario: scenario.episode))
+        _listening = State(initialValue: SampleListening(ends: scenario.utteranceEnds, waits: scenario.utteranceEnds))
+    }
+
+    var body: some View {
+        GettingReadyPageContainer(firstRun: firstRun, episode: episode, listening: listening)
     }
 }
 

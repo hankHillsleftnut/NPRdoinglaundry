@@ -35,6 +35,21 @@ struct SampleFlowHost: View {
                     onAnswered: { key, words in flow.answered(key, words: words) },
                     onDone: { flow.send(.questionsDone) }
                 )
+            case .connect:
+                ConnectPageContainer(
+                    data: flow.connect,
+                    onDone: { _ in flow.send(.connectDone) },
+                    onBack: { flow.send(.connectBack) }
+                )
+            case .gettingReady:
+                GettingReadyPageContainer(
+                    firstRun: flow.firstRun,
+                    episode: flow.gettingReadyEpisode(),
+                    listening: flow.listening,
+                    kept: flow.answers[.thisWeek],
+                    onAnswered: { key, words in flow.answered(key, words: words) },
+                    onReady: { flow.send(.episodeReady) }
+                )
             }
         }
         // the same move between pages as the live root's
@@ -46,4 +61,6 @@ struct SampleFlowHost: View {
 
 #Preview("flow · from the splash") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .splash)) }
 #Preview("flow · questions") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .questions)) }
+#Preview("flow · connect") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .connect)) }
+#Preview("flow · getting ready") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .gettingReady)) }
 #endif
