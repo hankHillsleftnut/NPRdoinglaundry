@@ -73,6 +73,10 @@ final class SampleFlowModel {
         step = saved.step
         answers = Self.keyed(saved.answers)
         cameBack = saved.cameBack ?? false
+        // still the end only while the next screen isn't built (a newer build may have joined it)
+        endedAt = saved.endedAt.flatMap { ended in
+            FlowPlan.edges.contains { $0.from.rawValue == ended.rawValue && $0.to.step == nil } ? ended : nil
+        }
         signIn = SignInModel(
             look: .splash,
             coordinator: SampleSignIn(script: [.signedIn(firstName: SampleInvite.firstName, access: .waitlisted)], sleep: sleep)
@@ -114,8 +118,10 @@ final class SampleFlowModel {
     func send(_ event: FlowEvent) {
         guard let next = FlowStep.next(from: step, event: event, table: table) else {
             // the page handed on to a screen the map plans but that isn't built: the walk ends here
-            if Self.reachesUnbuilt(from: step, event: event) {
+            if Self.reachesUnbuilt(from: step, event: event), endedAt != step {
                 endedAt = step
+                // kept, so a relaunch at the end shows the pill at once
+                save()
             }
             return
         }
@@ -179,7 +185,7 @@ final class SampleFlowModel {
 
     private func save() {
         let words = Dictionary(answers.map { ($0.key.rawValue, $0.value) }, uniquingKeysWith: { first, _ in first })
-        store.save(SampleFlowSaved(step: step, answers: words, cameBack: cameBack ? true : nil))
+        store.save(SampleFlowSaved(step: step, answers: words, cameBack: cameBack ? true : nil, endedAt: endedAt))
     }
 
     /// Saved answers back to keys; a key the app doesn't know is dropped.
