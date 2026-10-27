@@ -61,38 +61,76 @@ extension Flows.Settings {
         }
     }
 
-    /// What retro has learned about how you answer (ST-8), in three lines.
+    /// Reading in the background (contract 06 `AmbientSettings`): your own switch, whether it is
+    /// actually reading, and the founder's paused-for-everyone switch (its look is undrawn: ST-D20).
+    struct Ambient: Equatable, Sendable {
+        /// Your switch (ST-5 "read in the background").
+        var enabled: Bool
+        /// Whether retro is reading now (off when paused for everyone, even with yours on).
+        var effective: Bool
+        var pausedForEveryone: Bool
+    }
+
+    /// Who set how straight retro is (contract 06 §2 `straightness.source`).
+    enum StraightnessSource: Sendable {
+        /// You chose it on ST-6.
+        case yours
+        /// Retro picked it for you (ST-6 "picked by retro").
+        case picked
+    }
+
+    /// How straight retro is, who set it, and (only when retro picked it) why (contract 06 §2).
+    struct StraightnessSetting: Equatable, Sendable {
+        /// Nil for a level this app doesn't know yet (the contract's "unknown").
+        var level: Straightness?
+        var source: StraightnessSource
+        /// Retro's reason; present only when `source == .picked`.
+        var why: String?
+    }
+
+    /// What retro has learned about how you answer (ST-8; contract 06 §3).
     struct Learned: Equatable, Sendable {
+        enum State: Sendable {
+            /// Something is learned: the page Paper draws.
+            case learning
+            /// Too early to say (undrawn: ST-D25).
+            case tooEarly
+            /// Learning is off (undrawn: ST-D25).
+            case off
+            /// A state this app doesn't know yet.
+            case unknown
+        }
+
+        let state: State
         /// The display sentence ("you answer questions about work most, 8 of 10.").
-        let headline: String
-        /// What retro does about it.
-        let detail: String
-        /// "last changed on sunday".
-        let changed: String
+        let headline: String?
+        /// What retro does about it (the contract's `why`).
+        let detail: String?
+        /// When it last changed; the page says "last changed on sunday".
+        let changedAt: Date?
     }
 }
 
 extension Flows {
-    /// The second half's settings, as ST-5 … ST-9 read and change them. Writes apply at once.
+    /// The second half's settings, as ST-5 … ST-9 read and change them (the shape of contract 06).
+    /// Writes apply at once.
     @MainActor
     protocol SettingsTrustData: AnyObject, Observable {
-        var straightness: Settings.Straightness { get }
-        /// The choice retro made for you, and why (ST-6 "picked by retro").
-        var retroPick: Settings.Straightness { get }
-        var retroReason: String { get }
-        /// Nil until retro has learned something (that page is undrawn: ST-D25).
-        var learned: Settings.Learned? { get }
-        /// ST-5 "read in the background": your own ambient switch. Off, retro learns only from what you send.
-        var readsInBackground: Bool { get }
-        /// ST-5 "where it's processed" ("europe · named providers").
-        var processedWhere: String { get }
+        var straightness: Settings.StraightnessSetting { get }
+        var learned: Settings.Learned { get }
+
+        var ambient: Settings.Ambient { get }
         /// ST-7: how briefs and episodes play.
         var speed: Settings.Speed { get }
 
-        func setStraightness(_ value: Settings.Straightness)
-        func setReadsInBackground(_ isOn: Bool)
+        /// Your choice, or nil to let retro decide again.
+        func setStraightness(_ level: Settings.Straightness?)
+        /// Your ambient switch. Throws when it couldn't be saved; `ambient` then still says what is true,
+        /// so the switch snaps back (contract 06 §1).
+        func setAmbient(enabled: Bool) async throws
         func setSpeed(_ value: Settings.Speed)
-        /// ST-5 "delete my data…", confirmed in its dialog.
-        func deleteMyData() async
+        /// ST-5 "delete my data…", confirmed in its dialog. Throws when it didn't happen, so the dialog
+        /// stays up with its error line.
+        func deleteMyData() async throws
     }
 }

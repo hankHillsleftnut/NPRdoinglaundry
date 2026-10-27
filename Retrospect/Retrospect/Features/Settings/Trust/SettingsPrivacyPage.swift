@@ -27,10 +27,13 @@ struct SettingsPrivacyPage: View {
                 SettingsSwitchRow(
                     title: "read in the background",
                     subline: "off means retro only learns from what you send it",
-                    isOn: Binding { data.readsInBackground } set: { data.setReadsInBackground($0) }
+                    isOn: Binding { data.ambient.enabled } set: { isOn in
+                        // the switch shows what is saved: if this fails, it snaps back (contract 06 §1)
+                        Task { try? await data.setAmbient(enabled: isOn) }
+                    }
                 )
                 .accessibilityIdentifier("privacy.readInBackground")
-                RSettingsRow(title: "where it's processed", subline: data.processedWhere)
+                RSettingsRow(title: "where it's processed", subline: Self.processedWhere)
                     .accessibilityHint("not available yet")
                     .accessibilityIdentifier("privacy.processed")
                 SettingsActionRow(title: "download my data", pill: "export", symbol: "arrow.down.to.line")
@@ -62,11 +65,21 @@ struct SettingsPrivacyPage: View {
         }
     }
 
+    /// Paper 1GPU-0. An app string, not a server value: contract 06 has no field for it.
+    static let processedWhere = "europe · named providers"
+
     private func confirmDelete() async {
+        // a second tap before the dialog re-renders does nothing
+        guard status != .pending else { return }
         status = .pending
-        await data.deleteMyData()
-        status = .rest
-        deleting = false
+        do {
+            try await data.deleteMyData()
+            status = .rest
+            deleting = false
+        } catch {
+            // provisional words, as the RDialog gallery's (ST-D19)
+            status = .error(message: "retro couldn't be reached. try again.")
+        }
     }
 }
 
