@@ -23,6 +23,10 @@ final class YouModel {
     var onlyCertain = false
     /// The source a citation was tapped for, shown pressed for a beat.
     var highlighted: Int?
+    /// The node in the sheet (YO-4); kept while the sheet closes so its content doesn't vanish mid-motion.
+    private(set) var node: Flows.Node?
+    /// The sheet is up.
+    var sheetOpen = false
     private let data: any YouData
 
     init(data: any YouData) {
@@ -31,6 +35,24 @@ final class YouModel {
 
     func load() async {
         atRest = await data.atRest()
+    }
+
+    /// A named orb was tapped: its sheet.
+    func openNode(named name: String) async {
+        await show(data.node(named: name))
+    }
+
+    private func show(_ node: Flows.Node?) {
+        guard let node else { return }
+        self.node = node
+        sheetOpen = true
+    }
+
+    /// "still true": kept, and the sheet closes.
+    func answer(_ answer: Flows.NodeAnswer) async {
+        guard let node else { return }
+        sheetOpen = false
+        await data.answer(answer, node: node.id)
     }
 
     /// Asks the field's words; an empty field asks nothing.

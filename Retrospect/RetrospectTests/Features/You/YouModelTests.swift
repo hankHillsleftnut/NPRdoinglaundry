@@ -91,4 +91,23 @@ struct YouModelTests {
         #expect(ScreenRegistry.screen("YO-1")?.states == ["rest"])
         #expect(ScreenRegistry.screen("YO-2")?.states == ["found", "nothing"])
     }
+
+    @Test("a named orb opens priya's sheet (the one person drawn); still true keeps it and closes")
+    func node() async {
+        let data = SampleYou()
+        let model = YouModel(data: data)
+        await model.openNode(named: "work")
+        #expect(model.sheetOpen)
+        #expect(model.node == SampleYou.priya)
+        #expect(model.node?.header == "person · priya")
+        await model.answer(.stillTrue)
+        #expect(!model.sheetOpen)
+        #expect(model.node == SampleYou.priya)
+        #expect(data.answered[SampleYou.priya.id] == .stillTrue)
+    }
+
+    @Test("YO-4 is registered with its drawn state")
+    func nodeRegistered() {
+        #expect(ScreenRegistry.screen("YO-4")?.states == ["person"])
+    }
 }

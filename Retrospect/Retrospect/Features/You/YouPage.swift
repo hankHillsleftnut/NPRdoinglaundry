@@ -6,14 +6,13 @@
 //  sources and "only what's certain" (1G9Y-0, 1G97-0, 1G91-0), 32 apart. The change is in place: the map
 //  gives way with the blur replace (Reduce Motion: a cross-fade). "list" (1G81-0) is hidden: its view is
 //  not drawn (DISCREPANCIES YO-D2). The page ends at the tab bar with the tab edge's progressive blur.
+//  A named orb opens its sheet (YO-4) through the RSheetHost the tab sits in.
 //
 import SwiftUI
 
 struct YouPage: View {
     @Bindable var model: YouModel
     let navigator: YouNavigator
-    /// Opens a named node's sheet (YO-4); nil until the sheet is in this build.
-    var openNode: ((String) -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -50,6 +49,14 @@ struct YouPage: View {
             }
         }
         .background(RColor.backgroundCanvas)
+        // YO-4: a node's sheet over the page, at the full detent (a sibling, so it never nests another request)
+        .background {
+            Color.clear.rSheet(isPresented: $model.sheetOpen, detent: .full) {
+                if let node = model.node {
+                    NodeSheet(node: node, answer: { answer in Task { await model.answer(answer) } }, close: { model.sheetOpen = false })
+                }
+            }
+        }
         .onChange(of: model.query) { _, query in
             // the field's × (or deleting every word) goes back to the map
             if query.isEmpty, model.phase != .rest {
@@ -64,7 +71,7 @@ struct YouPage: View {
 
     private var rest: some View {
         VStack(alignment: .leading, spacing: RDimension.space6) {
-            YouMap(open: openNode)
+            YouMap { name in Task { await model.openNode(named: name) } }
             REvidenceGroup {
                 YouNavRow(
                     title: "what i know about you",
