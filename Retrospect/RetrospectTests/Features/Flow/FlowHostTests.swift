@@ -260,6 +260,8 @@ struct FlowHostTests {
         #expect(again.draft == "an answer for \(last.key.rawValue).")
         await again.send(again.draft)
         #expect(done == 1)
+        // the seam was finished on the first pass: back and on again doesn't finish it twice
+        #expect(model.firstRun.finishCount == 1)
         #expect(model.step == .privacy)
         #expect(model.cameBack == false)
 
@@ -270,6 +272,19 @@ struct FlowHostTests {
         await bounced.appear()
         #expect(bounces == 1)
         #expect(bounced.draft.isEmpty)
+    }
+
+    @Test("a relaunch after back from privacy keeps the questions open on the last one")
+    func relaunchAfterBackKeepsTheReturn() {
+        let store = MemoryFlowStore(SampleFlowSaved(step: .privacy))
+        let model = flow(store)
+        model.makePrivacy(clock: FlowImmediateClock()).back()
+        #expect(store.saved?.cameBack == true)
+        #expect(flow(store).cameBack)
+        // forward again clears it
+        model.send(.questionsDone)
+        #expect(store.saved?.cameBack == nil)
+        #expect(flow(store).cameBack == false)
     }
 
     @Test("a relaunch at privacy comes back to privacy, after the tear, with the answers kept")

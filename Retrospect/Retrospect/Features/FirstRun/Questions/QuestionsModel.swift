@@ -233,7 +233,10 @@ final class QuestionsModel {
     private func finish() async {
         guard !isFinished else { return }
         isFinished = true
-        await data.finishQuestions()
+        // came back from the next page: the seam was finished on the way out; only hand on again
+        if !cameBack {
+            await data.finishQuestions()
+        }
         onDone()
     }
 }

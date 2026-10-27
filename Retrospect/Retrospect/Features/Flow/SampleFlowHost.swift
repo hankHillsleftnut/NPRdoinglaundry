@@ -51,14 +51,18 @@ struct SampleFlowHost: View {
 /// ON-5 for one visit: the model is made when the page arrives and kept while it shows; leaving the step
 /// drops it, so a return (back from connect, later) reads again on a fresh one.
 private struct FlowPrivacyVisit: View {
-    @State private var model: PrivacyModel
-
-    init(flow: SampleFlowModel) {
-        _model = State(initialValue: flow.makePrivacy())
-    }
+    let flow: SampleFlowModel
+    @State private var model: PrivacyModel?
 
     var body: some View {
-        PrivacyPage(model: model)
+        if let model {
+            PrivacyPage(model: model)
+        } else {
+            // one model per visit, made as the page arrives (as `PrivacyLaunch` does)
+            RColor.backgroundCanvas
+                .ignoresSafeArea()
+                .onAppear { model = flow.makePrivacy() }
+        }
     }
 }
 

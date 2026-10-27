@@ -28,7 +28,9 @@ struct FlowPlanTests {
         #expect(FlowPlan.missing(from: withoutBack).map(\.event) == ["back"])
         // and a merged screen with no edges at all is caught (as if privacy were mounted without its rows)
         let withoutPrivacy = FlowEdge.table.filter { $0.from != .privacy && $0.to != .privacy }
-        #expect(FlowPlan.missing(from: withoutPrivacy).count == 2)
+        let privacyEdges = FlowPlan.edges.filter { ($0.from == .privacy || $0.to == .privacy) && $0.from.step != nil && $0.to.step != nil }
+        #expect(FlowPlan.missing(from: withoutPrivacy).count == privacyEdges.count)
+        #expect(privacyEdges.isEmpty == false)
     }
 
     @Test("a step whose next screen isn't built has no forward row: the flow ends there, nothing is drawn")
