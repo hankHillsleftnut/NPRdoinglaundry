@@ -52,14 +52,14 @@ extension EntryPage {
     }
 
     /// "delete entry" at the foot, outside the scroll (N52-0: 32 off the screen's bottom edge, the screen
-    /// margin each side). Paper measures the 32 from the frame's bottom, so the row reaches into the bottom
-    /// safe area (it sits above the home indicator either way; on SE the two are the same).
-    @ViewBuilder var deleteRow: some View {
+    /// margin each side). Paper measures the 32 from the frame's bottom, so the safe area's bottom inset is
+    /// taken back (the 44 row still clears the home indicator; on SE, with no inset, it is 32 as drawn).
+    @ViewBuilder
+    func deleteRow(bottomInset: CGFloat) -> some View {
         if let drawn, model.capabilities.delete, !drawn.edit.editing, case .shown = model.state {
             DestructiveRow(title: "delete entry") { drawn.askDelete() }
                 .padding(.horizontal, RDimension.spaceScreenMargin)
-                .padding(.bottom, RDimension.space8)
-                .ignoresSafeArea(.container, edges: .bottom)
+                .padding(.bottom, RDimension.space8 - bottomInset)
                 .transition(.opacity)
         }
     }

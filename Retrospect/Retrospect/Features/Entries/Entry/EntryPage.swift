@@ -15,16 +15,18 @@ struct EntryPage: View {
     var drawn: EntryDrawnModel?
 
     var body: some View {
-        VStack(spacing: RDimension.space0) {
-            RTopBar(variant: .entry(barVariant))
-            ScrollView {
-                content
-                    .padding(.top, RDimension.space4)
-                    .padding(.horizontal, RDimension.spaceScreenMargin)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        GeometryReader { proxy in
+            VStack(spacing: RDimension.space0) {
+                RTopBar(variant: .entry(barVariant))
+                ScrollView {
+                    content
+                        .padding(.top, RDimension.space4)
+                        .padding(.horizontal, RDimension.spaceScreenMargin)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollIndicators(.hidden)
+                deleteRow(bottomInset: proxy.safeAreaInsets.bottom)
             }
-            .scrollIndicators(.hidden)
-            deleteRow
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .accessibilityAction(.escape) {
