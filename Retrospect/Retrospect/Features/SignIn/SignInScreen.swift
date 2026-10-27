@@ -102,15 +102,21 @@ struct SignInScreen: View {
             .rAppear()
         } else {
             VStack(spacing: RDimension.space4) {
+                if largeType, let newHereAction {
+                    // at large type the link wraps and would sit on the map: it takes its own row
+                    newHereLink(newHereAction)
+                        .padding(.trailing, RDimension.space3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 RYouMapRest(scale: mapScale)
                 words(alignment: .center)
                     .padding(.horizontal, RDimension.spaceScreenMargin)
             }
             .padding(.top, RDimension.space10)
             // "new here? get started" top-right under the status bar (founder 27 Oct, option B), in the
-            // 40 above the map; it scrolls with the page at large type like everything else
+            // 40 above the map (at large type it takes its own row above the map instead)
             .overlay(alignment: .topTrailing) {
-                if let newHereAction {
+                if !largeType, let newHereAction {
                     newHereLink(newHereAction)
                         .padding(.trailing, RDimension.space3)
                 }
