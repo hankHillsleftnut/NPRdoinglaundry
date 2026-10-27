@@ -4,8 +4,10 @@
 //  calendar, contacts) as far as Paper draws them (2190-0): calendar (already connected), health and
 //  google, with Paper's words and symbols. Contacts waits for its drawing (QUESTION Q1). A connect
 //  lands at once: Paper draws a row at rest and a row connected, nothing in between (Q3). Nothing
-//  leaves the phone and nothing is asked of iOS.
+//  leaves the phone and nothing is asked of iOS. Debug builds only (sandbox fence, #205): the live
+//  source plugs in behind `Flows.Connect`.
 //
+#if DEBUG
 import Foundation
 import Observation
 
@@ -83,3 +85,4 @@ final class SampleConnect: Flows.Connect {
         return .connected
     }
 }
+#endif
