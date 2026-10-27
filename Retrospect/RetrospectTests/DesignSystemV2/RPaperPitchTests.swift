@@ -3,8 +3,8 @@ import SwiftUI
 import Testing
 import UIKit
 
-/// TYPE.leading: the ink titles' lines sit Paper's pitch apart (leading × size), the first line
-/// stays where it was, and no existing type value changed.
+/// TYPE.leading: the ink titles' lines sit Paper's pitch apart (leading × size) in Paper's line box
+/// (line 1 lifted by half the font's extra height, as CSS sets it), and no type value changed.
 @MainActor
 struct RPaperPitchTests {
     /// Paper (file Retrospect, tokens e8f98ba6): --leading-tight 110% at --text-3xl 30, --text-2xl 28,
@@ -76,7 +76,7 @@ struct RPaperPitchTests {
         #expect(abs(Self.layoutManagerPitch(font: font, paragraph: paper) - 33) < 0.01)
     }
 
-    @Test("a four-line ink title renders 33pt apart, line 1 in place, 135pt tall, no line dropped")
+    @Test("a four-line ink title renders 33pt apart in Paper's 4 × 33 box, line 1 lifted 1.5pt as CSS does, no line dropped")
     func renderedPitchEqualsPaper() throws {
         let text = "H\nH\nH\nH"
         let fixed = try #require(Self.inkRows(Text(text).rText(.inkTitle)))
@@ -87,13 +87,16 @@ struct RPaperPitchTests {
         for pitch in pitches {
             #expect(abs(pitch - 33) <= 0.34, "pitch \(pitch)")
         }
-        // line 1 sits where SwiftUI puts a bare one-line title (where it was before the fix)
+        // line 1 sits half of (font line − 33) above where SwiftUI hangs a bare title: CSS centres
+        // the glyphs in Paper's 33 box
+        let natural = RTextStyle.inkTitle.naturalLineHeight(scaledSize: RDimension.fontSize3xl)
+        let lift = (natural - 33) / 2
         let firstLine = try #require(fixed.tops.first)
         let bareLine = try #require(bare.tops.first)
-        #expect(abs(firstLine - bareLine) <= 0.34)
-        #expect(abs(one.height - bare.height) <= 0.34)
-        // first line keeps the font's own 36, each later line adds one Paper pitch
-        #expect(abs(fixed.height - (one.height + 3 * 33)) <= 0.67, "height \(fixed.height)")
+        #expect(abs(firstLine - (bareLine - lift)) <= 0.34, "line 1 at \(firstLine), bare \(bareLine)")
+        // Paper's boxes: one line 33, four lines 132 (SwiftUI's pixel rounding allows a third)
+        #expect(abs(one.height - 33) <= 0.34, "one line \(one.height)")
+        #expect(abs(fixed.height - 4 * 33) <= 0.34, "height \(fixed.height)")
     }
 
     @Test("rText on anything but a bare Text keeps the font's own line height")
@@ -117,10 +120,26 @@ struct RPaperPitchTests {
         }
     }
 
+    @Test("a looser ink style draws at Paper's pitch once accessibility sizes cap its leading under the font")
+    func answerWordsAtAccessibilitySize() throws {
+        let style = RTextStyle.answerWords
+        let size = style.scaledSize(at: .accessibility3)
+        let applied = min(style.leading, style.accessibilityLeading)
+        #expect(!style.drawsAtPaperPitch(leading: style.leading, scaledSize: style.size))
+        #expect(style.drawsAtPaperPitch(leading: applied, scaledSize: size))
+        let rows = try #require(Self.inkRows(Text("H\nH\nH").rText(style), dynamicTypeSize: .accessibility3))
+        #expect(rows.tops.count == 3)
+        for pitch in zip(rows.tops.dropFirst(), rows.tops).map({ $0 - $1 }) {
+            #expect(abs(pitch - applied * size) <= 0.34, "pitch \(pitch) vs \(applied * size)")
+        }
+    }
+
     @Test("the height maths: one line unchanged, n lines lose (n − 1) × the squeeze")
     func heightMaths() {
         #expect(RPaperPitch.height(laidOut: 36, naturalLineHeight: 36, pitch: 33) == 36)
         #expect(RPaperPitch.height(laidOut: 144, naturalLineHeight: 36, pitch: 33) == 135)
+        #expect(RPaperPitch(pitch: 33, naturalLineHeight: 36).halfLeading == -1.5)
+        #expect(RPaperPitch(pitch: 40, naturalLineHeight: 36).halfLeading == 0)
         #expect(RPaperPitch.height(laidOut: 144, naturalLineHeight: 36, pitch: 40) == 144)
         #expect(RPaperPitch.offset(lineIndex: 3, firstBaseline: 28.5, baseline: 136.5, pitch: 33) == -9)
         // a height offered at Paper's pitch is widened so the text keeps the same lines

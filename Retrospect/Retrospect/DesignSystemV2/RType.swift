@@ -76,10 +76,16 @@ struct RTextStyle {
 
     /// The ink faces whose Paper leading is tighter than the font's own line box (Exposure's is
     /// 1.2 × size, so --leading-tight 1.1): their lines are drawn at Paper's pitch (`RPaperPitch`).
-    /// The ratio doesn't change with size, so this holds at every Dynamic Type size.
+    /// At the style's own leading; the modifier asks with the leading it applies at the size.
     var drawsAtPaperPitch: Bool {
+        drawsAtPaperPitch(leading: leading, scaledSize: size)
+    }
+
+    /// The same question with the leading actually applied at a size (accessibility sizes cap it
+    /// with `accessibilityLeading`, which can bring a looser ink style under the font's box).
+    func drawsAtPaperPitch(leading applied: CGFloat, scaledSize: CGFloat) -> Bool {
         guard case .inky = family else { return false }
-        return leading * size < naturalLineHeight(scaledSize: size)
+        return applied * scaledSize < naturalLineHeight(scaledSize: scaledSize)
     }
 
     private var isMono: Bool {
@@ -334,11 +340,14 @@ private struct RTextModifier: ViewModifier {
             .tracking(style.tracking * size)
             .lineSpacing(extra)
             .padding(.vertical, extra / 2)
-        if paperPitch, style.drawsAtPaperPitch {
+        if paperPitch, style.drawsAtPaperPitch(leading: leading, scaledSize: size) {
             let pitch = RPaperPitch(pitch: leading * size, naturalLineHeight: natural)
             RPaperPitchLayout(pitch: pitch) {
                 styled.textRenderer(pitch)
             }
+            // Paper's line box, as CSS sets it: half of the font's extra height trims above the
+            // first line and below the last (founder 26 Oct, "fit the lines to Paper")
+            .padding(.vertical, pitch.halfLeading)
         } else {
             styled
         }

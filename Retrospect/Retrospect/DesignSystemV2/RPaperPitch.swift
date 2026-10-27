@@ -5,9 +5,11 @@
 //  SwiftUI never sets a line shorter than the font's box: `.lineSpacing` only adds. Paper sets
 //  the ink titles at --leading-tight (1.1 × size: 33 at --text-3xl), so every line after the first
 //  landed 0.1 × size lower than Paper (3pt a line at 30, 9pt by line 4) and the title stood
-//  3pt a line taller. This renderer keeps the first line where it is and draws each later line
-//  one Paper pitch below the one before; the text reports the matching shorter height, so what
-//  sits below moves up with it.
+//  3pt a line taller. This renderer draws each later line one Paper pitch below the one before;
+//  the text reports the matching shorter height, so what sits below moves up with it. Then, as
+//  CSS does (founder 26 Oct, "fit the lines to Paper"), half the font's extra height comes off
+//  above the first line and below the last, so the box is n × Paper's line height and every
+//  line lands where Paper draws it.
 //
 import SwiftUI
 
@@ -24,6 +26,12 @@ struct RPaperPitch: TextRenderer {
     /// How much closer each line sits than the font's own height; 0 leaves the text as it was.
     var squeeze: CGFloat {
         max(0, naturalLineHeight - pitch)
+    }
+
+    /// Half of Paper's line box minus the font's (negative when Paper is tighter). CSS centres the
+    /// glyphs in the box, so this much comes off above the first line and below the last.
+    var halfLeading: CGFloat {
+        -squeeze / 2
     }
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
@@ -51,7 +59,9 @@ struct RPaperPitch: TextRenderer {
         let squeeze = naturalLineHeight - pitch
         guard squeeze > 0, naturalLineHeight > 0 else { return laidOut }
         let lines = max(1, Int((laidOut / naturalLineHeight).rounded()))
-        return laidOut - CGFloat(lines - 1) * squeeze
+        // from the font's own line, not the laid-out height: SwiftUI rounds the whole text up to a
+        // pixel, and that third of a point would otherwise stay under every title
+        return naturalLineHeight + CGFloat(lines - 1) * pitch
     }
 
     /// The height to lay the text out in so it keeps as many lines as fit in `pitchHeight` at
