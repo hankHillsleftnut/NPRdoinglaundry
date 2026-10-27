@@ -6,9 +6,28 @@ private final class Counter {
     var value = 0
 }
 
+/// How often a wait read its condition (a plain count, not observed, so counting never wakes the wait).
+@MainActor
+private final class Reads {
+    var count = 0
+}
+
+/// Whether a wait has ended (plain, not observed).
+@MainActor
+private final class Woke {
+    var yes = false
+}
+
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct ObservedUntilTests {
+    /// Lets the waiting task run until it has read its condition at least `count` times.
+    private func untilRead(_ reads: Reads, _ count: Int) async {
+        while reads.count < count {
+            await Task.yield()
+        }
+    }
+
     @Test("a condition that is already true returns at once")
     func alreadyTrue() async {
         let counter = Counter()
@@ -17,15 +36,42 @@ struct ObservedUntilTests {
         #expect(counter.value == 1)
     }
 
-    @Test("it waits through changes that don't meet the condition and wakes on the one that does")
+    @Test("it waits through a change that doesn't meet the condition and wakes on the one that does")
     func wakesOnTheChangeThatMeetsIt() async {
         let counter = Counter()
-        let waiting = Task { await observedUntil { counter.value == 3 } }
-        for _ in 0 ..< 3 {
-            await Task.yield()
-            counter.value += 1
+        let reads = Reads()
+        let woke = Woke()
+        let waiting = Task {
+            await observedUntil {
+                reads.count += 1
+                return counter.value == 2
+            }
+            woke.yes = true
         }
+        // the wait reads the condition twice (the check, then the tracked read) and suspends
+        await untilRead(reads, 2)
+        counter.value = 1
+        // woken by the change, it reads twice more, finds it unmet and waits again
+        await untilRead(reads, 4)
+        #expect(!woke.yes, "a change that doesn't meet the condition doesn't end the wait")
+        counter.value = 2
         await waiting.value
-        #expect(counter.value == 3)
+        #expect(woke.yes)
+    }
+
+    @Test("a wait whose condition never comes true returns when its task is cancelled")
+    func cancelledWaitReturns() async {
+        let counter = Counter()
+        let reads = Reads()
+        let waiting = Task {
+            await observedUntil {
+                reads.count += 1
+                return counter.value == 99
+            }
+        }
+        await untilRead(reads, 2)
+        waiting.cancel()
+        await waiting.value
+        #expect(counter.value == 0)
     }
 }
