@@ -71,6 +71,15 @@ extension Flows.Settings {
         var pausedForEveryone: Bool
     }
 
+    /// Your subscription (ST-9 "your plan"). On-device StoreKit data in a live build, not a server value.
+    struct Plan: Equatable, Sendable {
+        /// "yearly"
+        let name: String
+        let renewsOn: Date
+        /// "$239.99", as the store formats it.
+        let price: String
+    }
+
     /// Who set how straight retro is (contract 06 §2 `straightness.source`).
     enum StraightnessSource: Sendable {
         /// You chose it on ST-6.
@@ -132,5 +141,9 @@ extension Flows {
         /// ST-5 "delete my data…", confirmed in its dialog. Throws when it didn't happen, so the dialog
         /// stays up with its error line.
         func deleteMyData() async throws
+        /// ST-9: nil when there is no plan to show.
+        var plan: Settings.Plan? { get }
+        /// ST-9 "delete account…", confirmed in its dialog. Throws when it didn't happen.
+        func deleteAccount() async throws
     }
 }

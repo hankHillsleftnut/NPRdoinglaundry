@@ -33,6 +33,13 @@ extension SampleSettings {
         /// ST-7 (Paper 1GSK-0: "1×").
         var speed: Settings.Speed = .normal
 
+        /// ST-9 (Paper 1GV2-0: "yearly" / "renews on 3 march · $239.99").
+        var plan: Settings.Plan? = Settings.Plan(
+            name: "yearly",
+            renewsOn: Calendar.current.date(from: DateComponents(year: 2027, month: 3, day: 3, hour: 12)) ?? .now,
+            price: "$239.99"
+        )
+
         /// ST-1's "how straight i am with you" value.
         var straightnessName: String {
             straightness.level?.shortName ?? ""
@@ -73,6 +80,13 @@ extension SampleSettings: Flows.SettingsTrustData {
 
     /// Nothing after a delete is drawn (ST-D19): the sample keeps its values and the dialog closes.
     func deleteMyData() async throws {}
+
+    var plan: Settings.Plan? {
+        trust.plan
+    }
+
+    /// Nothing after deleting the account is drawn (ST-D26): the sample deletes nothing and the dialog closes.
+    func deleteAccount() async throws {}
 
     func setStraightness(_ level: Settings.Straightness?) {
         if let level {

@@ -102,10 +102,23 @@ struct SettingsTrustTests {
         #expect(SettingsDestinations.isBuilt(.account, data: data))
     }
 
+    @Test("ST-9 reads Paper's plan line and its delete changes nothing in the sample")
+    func account() async throws {
+        let data = SampleSettings(sleep: Self.instant)
+        let plan = try #require(data.plan)
+        #expect(plan.name == "yearly")
+        #expect(AccountSettingsPage.renewal(plan) == "renews on 3 march · $239.99")
+        try await data.deleteAccount()
+        #expect(data.plan == plan)
+    }
+
     @Test("the trust group registers ST-5 … ST-8 in the launcher")
     func registered() {
         #expect(ScreenRegistry.screen("ST-5")?.states == ["rest", "delete"])
         #expect(ScreenRegistry.screen("ST-7")?.states == ["rest"])
+        #expect(ScreenRegistry.screen("ST-9")?.states == ["rest", "delete"])
+        // the shipping account page keeps its own launcher entry
+        #expect(ScreenRegistry.screen("account") != nil)
         #expect(ScreenRegistry.screen("ST-6")?.states == ["rest"])
         #expect(ScreenRegistry.screen("ST-8")?.states == ["rest"])
     }
