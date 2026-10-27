@@ -48,7 +48,7 @@ struct DrawerPage: View {
                 .frame(maxHeight: .infinity)
                 .accessibilityIdentifier("drawer.noResults")
         case let .failed(reason):
-            REmptyLine(line: reason)
+            REmptyLine(line: reason, action: .init(title: "try again") { Task { await model.load() } })
                 .frame(maxHeight: .infinity)
         case let .list(sections):
             list(sections)
@@ -73,6 +73,11 @@ struct DrawerPage: View {
                                     .disabled(!model.opens(row))
                                     .accessibilityHint(model.opens(row) ? "" : "not available yet")
                                     .accessibilityIdentifier("drawer.row.\(row.id)")
+                                    .task(id: model.isLast(row)) {
+                                        if model.isLast(row) {
+                                            await model.loadMore()
+                                        }
+                                    }
                             }
                         }
                     } header: {
