@@ -1,8 +1,6 @@
 # Retrospect tokens
 
-Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
-
-**621 tokens** · 545 semantic · 276 marked *to set*
+Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the counts (total, semantic, marked *to set*) run the validator; it prints them.
 
 ## palette
 
