@@ -8,14 +8,15 @@
 //  closures that can go stale when SwiftUI recreates the view struct.
 //
 
-import AuthenticationServices
 import SwiftUI
+import AuthenticationServices
 
 // MARK: - Coordinator (lives as @StateObject, outlives view rebuilds)
 
 final class AppleSignInCoordinator: NSObject, ObservableObject,
     ASAuthorizationControllerDelegate,
-    ASAuthorizationControllerPresentationContextProviding {
+    ASAuthorizationControllerPresentationContextProviding
+{
     private var activeController: ASAuthorizationController?
     private var continuation: CheckedContinuation<ASAuthorization, Error>?
 
@@ -38,19 +39,15 @@ final class AppleSignInCoordinator: NSObject, ObservableObject,
 
     // MARK: Delegate
 
-    func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
+    func authorizationController(controller: ASAuthorizationController,
+                                 didCompleteWithAuthorization authorization: ASAuthorization) {
         activeController = nil
         continuation?.resume(returning: authorization)
         continuation = nil
     }
 
-    func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithError error: Error
-    ) {
+    func authorizationController(controller: ASAuthorizationController,
+                                 didCompleteWithError error: Error) {
         activeController = nil
         continuation?.resume(throwing: error)
         continuation = nil
@@ -61,7 +58,7 @@ final class AppleSignInCoordinator: NSObject, ObservableObject,
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
-            let window = scene.windows.first
+              let window = scene.windows.first
         else {
             return ASPresentationAnchor()
         }
@@ -217,7 +214,6 @@ struct WelcomeSignInPage: View {
     }
 
     #if DEBUG
-
     // MARK: - Dev test user
 
     /// Signs in as a brand new throwaway account holding a real JWT, so the new-user

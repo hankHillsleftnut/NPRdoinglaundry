@@ -9,60 +9,60 @@ struct PrivacyScreen: View {
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-
+    
     @StateObject private var themeManager = ThemeManager.shared
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
-
+    
     init(currentStep: Int = 1, totalSteps: Int = 6, onNext: @escaping () -> Void, onExit: (() -> Void)? = nil) {
         self.currentStep = currentStep
         self.totalSteps = totalSteps
         self.onNext = onNext
         self.onExit = onExit
     }
-
-    /// Inverted colors for privacy emphasis
+    
+    // Inverted colors for privacy emphasis
     private var backgroundColor: Color {
         LinearColors.Minimal.background
     }
-
+    
     private var textColor: Color {
         LinearColors.Minimal.textPrimary
     }
-
+    
     private var subtitleColor: Color {
         LinearColors.Minimal.textTertiary
     }
-
+    
     private var bodyTextColor: Color {
         LinearColors.Minimal.textPrimary
     }
-
+    
     private var progressTrackColor: Color {
         LinearColors.Minimal.border
     }
-
+    
     private var progressFillColor: Color {
         LinearColors.Minimal.textPrimary
     }
-
+    
     var body: some View {
         ZStack {
             // Inverted background
             backgroundColor
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Top section with draggable bar and dots
                 topSection
-
+                
                 // Main content area
                 Spacer()
-
+                
                 mainContent
-
+                
                 Spacer()
-
+                
                 // Bottom button area
                 bottomSection
             }
@@ -73,25 +73,23 @@ struct PrivacyScreen: View {
             bodyTextAnimating = true
         }
     }
-
+    
     // MARK: - Top Section
-
     private var topSection: some View {
         VStack(spacing: 24) { // Healthy margin between bar and dots
             // Draggable bar (if onExit provided)
             if onExit != nil {
                 draggableBar
             }
-
+            
             // Progress bar
-            progressIndicator
+                progressIndicator
         }
         .padding(.horizontal, 40)
         .padding(.top, 12)
     }
-
+    
     // MARK: - Draggable Dismiss Bar
-
     private var draggableBar: some View {
         RoundedRectangle(cornerRadius: 2.5)
             .fill(subtitleColor.opacity(0.3))
@@ -114,9 +112,8 @@ struct PrivacyScreen: View {
                     }
             )
     }
-
+    
     // MARK: - Progress Indicator (Bar with front-loaded progress)
-
     private var progressIndicator: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -124,7 +121,7 @@ struct PrivacyScreen: View {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(progressTrackColor)
                     .frame(height: 3)
-
+                
                 // Progress fill with front-loaded calculation
                 RoundedRectangle(cornerRadius: 2)
                     .fill(progressFillColor)
@@ -135,49 +132,48 @@ struct PrivacyScreen: View {
         .frame(height: 3)
         .padding(.horizontal, 40)
     }
-
-    /// Calculate front-loaded progress (fast at start, slow at end)
+    
+    // Calculate front-loaded progress (fast at start, slow at end)
     private func calculateFrontLoadedProgress() -> CGFloat {
         let progress = CGFloat(currentStep) / CGFloat(totalSteps)
-
+        
         // Front-loaded curve: fast progress early, slow at end
         // Using exponential easing for front-loading
         let frontLoaded = 1 - pow(1 - progress, 2.5)
-
+        
         return min(frontLoaded, 1.0)
     }
-
+    
     // MARK: - Main Content
-
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Privacy icon and heading
             privacyHeader
-
+            
             // Main title
             mainTitle
-
+            
             // Body text
             bodyText
-
+            
             // Signature section - right-aligned with healthy margin
             signatureSection
                 .padding(.top, 32)
-
+            
             Spacer() // Push everything up, button stays at bottom
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 28) // Increased to 28pt for more breathing room
         .padding(.top, 40) // Move content higher
     }
-
+    
     private var privacyHeader: some View {
         HStack(spacing: 6) {
             // Lock icon
             Image(systemName: "lock.fill")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(subtitleColor) // Match Privacy label color
-
+            
             // Privacy subtitle
             Text("Privacy")
                 .font(.system(size: 11, weight: .medium))
@@ -185,7 +181,7 @@ struct PrivacyScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading) // Left align
     }
-
+    
     private var mainTitle: some View {
         Text("Nothing leaves your device.")
             .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
@@ -194,7 +190,7 @@ struct PrivacyScreen: View {
             .lineLimit(nil)
             .frame(maxWidth: .infinity, alignment: .leading) // Left align
     }
-
+    
     private var bodyText: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("This app uses the content that you allow access to and process it **on your device**. none of it is sent to us or stored.")
@@ -206,19 +202,19 @@ struct PrivacyScreen: View {
                 .blur(radius: bodyTextAnimating ? 0 : 8)
                 .opacity(bodyTextAnimating ? 1.0 : 0.3)
                 .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
-
+            
             HStack {
                 Text("Read our")
                     .font(.system(size: 16, weight: .regular))
                     .foregroundColor(bodyTextColor)
-
+                
                 Button("privacy policy") {
                     // Handle privacy policy tap
                 }
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(bodyTextColor)
                 .underline()
-
+                
                 Spacer()
             }
             .offset(y: bodyTextAnimating ? 0 : 20)
@@ -228,14 +224,14 @@ struct PrivacyScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
+    
     private var signatureSection: some View {
         VStack(spacing: 16) {
             // Signature (using a handwritten-style text for now)
             Text("– Shaurya")
                 .font(.custom("HedvigLettersSerif-24ptRegular", size: 18))
                 .foregroundColor(textColor)
-
+            
             // Founder name
             Text("Shaurya Narang, Founder")
                 .font(.system(size: 14, weight: .medium))
@@ -243,9 +239,8 @@ struct PrivacyScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .trailing) // Right-aligned
     }
-
+    
     // MARK: - Bottom Section
-
     private var bottomSection: some View {
         VStack(spacing: 0) {
             // Next button
@@ -254,9 +249,8 @@ struct PrivacyScreen: View {
                 .padding(.bottom, 40)
         }
     }
-
+    
     // MARK: - Next Button (ClickyButton Style)
-
     private var nextButton: some View {
         Button(action: {
             onNext()
@@ -278,7 +272,7 @@ struct PrivacyScreen: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             LinearColors.metalGray, // Top: metal gray
-                            LinearColors.charcoalCard, // Bottom: darker charcoal
+                            LinearColors.charcoalCard  // Bottom: darker charcoal
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -290,11 +284,7 @@ struct PrivacyScreen: View {
                         .stroke(LinearColors.warmHighlight.opacity(0.4), lineWidth: 2)
                         .blur(radius: 0.5)
                         .offset(x: 0, y: 2)
-                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
-                            gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )))
+                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
                 )
         )
         .overlay(
@@ -308,11 +298,7 @@ struct PrivacyScreen: View {
                 .stroke(LinearColors.textPrimary.opacity(0.8), lineWidth: 2)
                 .blur(radius: 1)
                 .offset(x: 0, y: -1)
-                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
-                    gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )))
+                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
         )
         // Drop shadows - adaptive
         .shadow(color: LinearColors.cardShadow, radius: 17, x: 0, y: 4)
@@ -326,14 +312,13 @@ struct PrivacyScreen: View {
             }
         }, perform: {})
     }
-
+    
     // MARK: - Haptic Functions
-
     private func playButtonTouchDownHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred(intensity: 0.6)
     }
-
+    
     private func playButtonTouchUpHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
@@ -341,7 +326,6 @@ struct PrivacyScreen: View {
 }
 
 // MARK: - Preview
-
 #Preview("Privacy Screen - Light Mode") {
     PrivacyScreen(
         currentStep: 2,
@@ -372,3 +356,4 @@ struct PrivacyScreen: View {
         ThemeManager.shared.isDarkMode = true
     }
 }
+

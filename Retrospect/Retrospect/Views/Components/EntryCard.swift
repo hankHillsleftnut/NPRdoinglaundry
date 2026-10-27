@@ -4,13 +4,13 @@ struct EntryCard: View {
     let entry: Entry
     let onTap: () -> Void
     let onDelete: (() -> Void)?
-
+    
     init(entry: Entry, onTap: @escaping () -> Void, onDelete: (() -> Void)? = nil) {
         self.entry = entry
         self.onTap = onTap
         self.onDelete = onDelete
     }
-
+    
     var body: some View {
         Button(action: {
             HapticManager.shared.playLightImpact()
@@ -26,15 +26,15 @@ struct EntryCard: View {
                             .foregroundColor(LinearColors.textPrimary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
-
+                        
                         // Date & Time
                         Text(formattedDate)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(LinearColors.textSecondary)
                     }
-
+                    
                     Spacer()
-
+                    
                     // Type Badge
                     typeBadge
                 }
@@ -58,14 +58,14 @@ struct EntryCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .contextMenu {
-            if let onDelete {
+            if let onDelete = onDelete {
                 Button(role: .destructive, action: {
                     onDelete()
                 }) {
                     Label("Delete", systemImage: "trash")
                 }
             }
-
+            
             Button(action: {
                 shareEntry()
             }) {
@@ -73,7 +73,7 @@ struct EntryCard: View {
             }
         }
     }
-
+    
     private var typeBadge: some View {
         HStack(spacing: 4) {
             Image(systemName: badgeIcon)
@@ -89,7 +89,7 @@ struct EntryCard: View {
                 .fill(badgeBackgroundColor)
         )
     }
-
+    
     private var badgeIcon: String {
         switch entry.type {
         case .video:
@@ -100,7 +100,7 @@ struct EntryCard: View {
             return "doc.text.fill"
         }
     }
-
+    
     private var badgeText: String {
         switch entry.type {
         case .video:
@@ -111,7 +111,7 @@ struct EntryCard: View {
             return "Text"
         }
     }
-
+    
     private var badgeColor: Color {
         switch entry.type {
         case .video:
@@ -122,7 +122,7 @@ struct EntryCard: View {
             return LinearColors.textPrimary
         }
     }
-
+    
     private var badgeBackgroundColor: Color {
         switch entry.type {
         case .video:
@@ -133,11 +133,11 @@ struct EntryCard: View {
             return LinearColors.cardBorder.opacity(0.5)
         }
     }
-
+    
     private var formattedDate: String {
         let formatter = DateFormatter()
         let calendar = Calendar.current
-
+        
         if calendar.isDateInToday(entry.date) {
             formatter.timeStyle = .short
             return "Today, \(formatter.string(from: entry.date))"
@@ -150,23 +150,22 @@ struct EntryCard: View {
             return formatter.string(from: entry.date)
         }
     }
-
+    
     // MARK: - Actions
-
     private func shareEntry() {
         HapticManager.shared.playLightImpact()
-
+        
         var shareText = entry.displayTitle
         if !entry.content.isEmpty {
             shareText += "\n\n\(entry.content)"
         }
         shareText += "\n\n— Retrospect Journal"
-
+        
         let activityVC = UIActivityViewController(
             activityItems: [shareText],
             applicationActivities: nil
         )
-
+        
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first,
            let rootVC = window.rootViewController {
@@ -177,3 +176,4 @@ struct EntryCard: View {
         }
     }
 }
+

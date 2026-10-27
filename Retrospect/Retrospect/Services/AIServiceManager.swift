@@ -2,11 +2,10 @@ import Foundation
 import UIKit
 
 // MARK: - AI Provider Selection
-
 // Change this to switch between Claude and OpenAI
 
 enum AIProvider: String {
-    case claude
+    case claude = "claude"
     case openAI = "openai"
 
     var displayName: String {
@@ -31,7 +30,7 @@ enum AIServiceError: Error {
             return "Network error occurred"
         case .parseError:
             return "Failed to parse response"
-        case let .apiError(message):
+        case .apiError(let message):
             return "API error: \(message)"
         case .invalidKey:
             return "Invalid API key"
@@ -44,9 +43,9 @@ enum AIServiceError: Error {
 class AIServiceManager {
     static let shared = AIServiceManager()
 
-    /// ============================================
-    /// CHANGE THIS LINE TO SWITCH AI PROVIDERS
-    /// ============================================
+    // ============================================
+    // CHANGE THIS LINE TO SWITCH AI PROVIDERS
+    // ============================================
     static let activeProvider: AIProvider = .claude
     // ============================================
 
@@ -66,9 +65,9 @@ class AIServiceManager {
         case .claude:
             ClaudeService.shared.generateTranscript(text: text, goals: goals, generationType: generationType) { result in
                 switch result {
-                case let .success(transcript):
+                case .success(let transcript):
                     completion(.success(transcript))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertClaudeError(error)))
                 }
             }
@@ -76,9 +75,9 @@ class AIServiceManager {
         case .openAI:
             OpenAIService.shared.generateTranscript(text: text, goals: goals, generationType: generationType) { result in
                 switch result {
-                case let .success(transcript):
+                case .success(let transcript):
                     completion(.success(transcript))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertOpenAIError(error)))
                 }
             }
@@ -92,9 +91,9 @@ class AIServiceManager {
         case .claude:
             ClaudeService.shared.validateAPIKey { result in
                 switch result {
-                case let .success(valid):
+                case .success(let valid):
                     completion(.success(valid))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertClaudeError(error)))
                 }
             }
@@ -102,9 +101,9 @@ class AIServiceManager {
         case .openAI:
             OpenAIService.shared.validateAPIKey { result in
                 switch result {
-                case let .success(valid):
+                case .success(let valid):
                     completion(.success(valid))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertOpenAIError(error)))
                 }
             }
@@ -121,9 +120,9 @@ class AIServiceManager {
         case .claude:
             ClaudeService.shared.analyzeEntryForMetadata(content: content) { result in
                 switch result {
-                case let .success(metadata):
+                case .success(let metadata):
                     completion(.success((title: metadata.title, tags: metadata.tags)))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertClaudeError(error)))
                 }
             }
@@ -131,9 +130,9 @@ class AIServiceManager {
         case .openAI:
             OpenAIService.shared.analyzeEntryForMetadata(content: content) { result in
                 switch result {
-                case let .success(metadata):
+                case .success(let metadata):
                     completion(.success((title: metadata.title, tags: metadata.tags)))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertOpenAIError(error)))
                 }
             }
@@ -150,9 +149,9 @@ class AIServiceManager {
         case .claude:
             ClaudeService.shared.analyzeImages(images) { result in
                 switch result {
-                case let .success(analysis):
+                case .success(let analysis):
                     completion(.success((descriptions: analysis.descriptions, combinedContext: analysis.combinedContext)))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertClaudeError(error)))
                 }
             }
@@ -160,9 +159,9 @@ class AIServiceManager {
         case .openAI:
             OpenAIService.shared.analyzeImages(images) { result in
                 switch result {
-                case let .success(analysis):
+                case .success(let analysis):
                     completion(.success((descriptions: analysis.descriptions, combinedContext: analysis.combinedContext)))
-                case let .failure(error):
+                case .failure(let error):
                     completion(.failure(self.convertOpenAIError(error)))
                 }
             }
@@ -181,9 +180,9 @@ class AIServiceManager {
         print("⚡ Deep Research using OpenAI (specialized model)")
         OpenAIService.shared.generateDeepResearchTranscript(text: text, goals: goals, generationType: generationType) { result in
             switch result {
-            case let .success(response):
+            case .success(let response):
                 completion(.success(response))
-            case let .failure(error):
+            case .failure(let error):
                 completion(.failure(self.convertOpenAIError(error)))
             }
         }
@@ -197,7 +196,7 @@ class AIServiceManager {
             return .networkError
         case .parseError:
             return .parseError
-        case let .apiError(message):
+        case .apiError(let message):
             return .apiError(message)
         case .invalidKey:
             return .invalidKey
@@ -210,7 +209,7 @@ class AIServiceManager {
             return .networkError
         case .parseError:
             return .parseError
-        case let .apiError(message):
+        case .apiError(let message):
             return .apiError(message)
         case .invalidKey:
             return .invalidKey

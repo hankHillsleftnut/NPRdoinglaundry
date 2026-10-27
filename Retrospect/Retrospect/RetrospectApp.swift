@@ -5,15 +5,14 @@
 //  Created by Shaurya Narang on 6/5/25.
 //
 
-import DeviceActivity
 import SwiftUI
 import UIKit
 import UserNotifications
+import DeviceActivity
 
 // MARK: - App Delegate for Notifications
-
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         // Initialize RevenueCat (no-op until the purchases-ios SDK is added). Must
         // run before any paywall queries customerInfo/offerings.
@@ -28,25 +27,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     /// The outbox's background task (PL2.2b). `RetrospectApp` points it at the
     /// platform's outbox once there is one.
     let backgroundDrain = Store.BackgroundDrain()
-
-    /// Handle notification when app is in foreground
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
+    
+    // Handle notification when app is in foreground
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Show banner and play sound even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
-
-    /// Handle notification tap
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
+    
+    // Handle notification tap
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-
+        
         if let podcastId = userInfo["podcastId"] as? String,
            let type = userInfo["type"] as? String,
            type == "newPodcast" || type == "followUp" {
@@ -57,14 +48,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 userInfo: ["podcastId": podcastId]
             )
         }
-
+        
         completionHandler()
     }
 }
 
 struct RetrospectApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
+    
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("useDarkUI") private var useDarkUI: Bool = true // Default to new dark UI
     @AppStorage("faceIDEnabled") private var faceIDEnabled: Bool = true
@@ -187,19 +178,19 @@ struct RetrospectApp: App {
     private var hasUsableBackendAuth: Bool {
         apiClient.isAuthenticated
     }
-
+    
     private var isGoogleConfigured: Bool {
         guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String else {
             return false
         }
         return !clientID.isEmpty && clientID != "554366364287-po5osj24tcqrom1lhfkitm3c4qsb3i2c.apps.googleusercontent.com"
     }
-
-    /// Check if we need to show splash screen
+    
+    // Check if we need to show splash screen
     private var shouldShowSplash: Bool {
         return faceIDEnabled && !isAuthenticated && hasCompletedOnboarding
     }
-
+    
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -237,70 +228,70 @@ struct RetrospectApp: App {
                     // Bridge (PL1.4b): the new session decides what shows; the old onboarding, sign-in gate and home are not on this path.
                     NewAppRoot()
                 } else {
-                    // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
-                    if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
-                        DeviceActivityReport(
-                            DeviceActivityReport.Context("Total Activity"),
-                            filter: DeviceActivityFilter(segment: .daily(during: interval))
-                        )
-                        .frame(width: 1, height: 1)
-                        .opacity(0)
-                        .allowsHitTesting(false)
-                        .zIndex(-1)
-                    }
-
-                    // Show transparent view when handling stop from widget
-                    if isProcessingStopFromWidget {
-                        LinearColors.Minimal.pureBlack
-                            .ignoresSafeArea()
-                            .transition(.opacity)
-                    } else if isCreatingFirstPodcast {
-                        FirstPodcastExperience(
-                            transcript: firstPodcastTranscript?.processedTranscript
-                                ?? firstPodcastTranscript?.originalText ?? "",
-                            audioURL: firstPodcastTranscript?.audioFileURL,
-                            podcastReady: firstPodcastTranscript != nil,
-                            onComplete: { finishFinale() },
-                            startAtPaywall: isPreviewingPaywall
-                        )
+                // Hidden Screen Time backfill report (runs in background when user enables Screen Time)
+                if screenTimeService.isBackfilling, let interval = screenTimeService.currentBackfillDateInterval {
+                    DeviceActivityReport(
+                        DeviceActivityReport.Context("Total Activity"),
+                        filter: DeviceActivityFilter(segment: .daily(during: interval))
+                    )
+                    .frame(width: 1, height: 1)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .zIndex(-1)
+                }
+                
+                // Show transparent view when handling stop from widget
+                if isProcessingStopFromWidget {
+                    LinearColors.Minimal.pureBlack
+                        .ignoresSafeArea()
                         .transition(.opacity)
-                    } else if !hasCompletedOnboarding {
-                        DarkOnboardingFlow(
-                            onComplete: { goals in
-                                startFirstPodcastHandoff(extractedGoals: goals)
-                            },
-                            onPreviewPaywall: {
-                                previewPaywall()
-                            },
-                            onDebugGoHome: {
-                                completeOnboardingShell()
-                            }
-                        )
-                        .transition(.opacity)
-                    } else if !hasUsableBackendAuth {
-                        // Backend auth gate — user completed onboarding but has no valid JWT
-                        BackendAuthGateView(onAuthenticated: {
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                needsBackendAuth = false
-                                isAuthenticated = true
-                            }
-                        })
-                        .transition(.opacity)
-                    } else if shouldShowSplash {
-                        // Show Face ID splash screen
-                        DarkSplashScreen(isAuthenticated: $isAuthenticated)
-                            .transition(.opacity)
-                    } else {
-                        // Use new dark UI by default
-                        DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
-                            .transition(.opacity)
+                } else if isCreatingFirstPodcast {
+                    FirstPodcastExperience(
+                        transcript: firstPodcastTranscript?.processedTranscript
+                            ?? firstPodcastTranscript?.originalText ?? "",
+                        audioURL: firstPodcastTranscript?.audioFileURL,
+                        podcastReady: firstPodcastTranscript != nil,
+                        onComplete: { finishFinale() },
+                        startAtPaywall: isPreviewingPaywall
+                    )
+                    .transition(.opacity)
+                } else if !hasCompletedOnboarding {
+                DarkOnboardingFlow(
+                    onComplete: { goals in
+                        startFirstPodcastHandoff(extractedGoals: goals)
+                    },
+                    onPreviewPaywall: {
+                        previewPaywall()
+                    },
+                    onDebugGoHome: {
+                        completeOnboardingShell()
                     }
-
-                    if showGoogleAuth, isGoogleConfigured, hasCompletedOnboarding, isAuthenticated, apiClient.isAuthenticated {
-                        GoogleAuthView(isPresented: $showGoogleAuth)
-                            .transition(.opacity)
-                            .zIndex(1)
-                    }
+                )
+                    .transition(.opacity)
+                } else if !hasUsableBackendAuth {
+                    // Backend auth gate — user completed onboarding but has no valid JWT
+                    BackendAuthGateView(onAuthenticated: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            needsBackendAuth = false
+                            isAuthenticated = true
+                        }
+                    })
+                    .transition(.opacity)
+                } else if shouldShowSplash {
+                    // Show Face ID splash screen
+                    DarkSplashScreen(isAuthenticated: $isAuthenticated)
+                    .transition(.opacity)
+                } else {
+                    // Use new dark UI by default
+                    DarkAppContainer(shouldStartVoiceRecording: $shouldStartVoiceRecording)
+                        .transition(.opacity)
+                }
+                
+                if showGoogleAuth && isGoogleConfigured && hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {
+                    GoogleAuthView(isPresented: $showGoogleAuth)
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
                 }
             }
             .animation(.easeInOut(duration: 0.5), value: hasCompletedOnboarding)
@@ -326,34 +317,34 @@ struct RetrospectApp: App {
                 if !faceIDEnabled {
                     isAuthenticated = true
                 }
-
+                
                 // Check if launched from shortcut (persisted flag)
                 if UserDefaults.standard.bool(forKey: "shouldStartVoiceRecordingFromShortcut") {
                     UserDefaults.standard.set(false, forKey: "shouldStartVoiceRecordingFromShortcut")
                     UserDefaults.standard.synchronize()
-
+                    
                     print("🎙️ App launched from shortcut - starting voice recording")
-
-                    if hasCompletedOnboarding, isAuthenticated {
+                    
+                    if hasCompletedOnboarding && isAuthenticated {
                         // Small delay to let UI settle
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             shouldStartVoiceRecording = true
                         }
                     }
                 }
-
+                
                 // Schedule recurring notifications for existing users (old home only: PLP.1b)
-                if hasCompletedOnboarding, oldHooksActive {
+                if hasCompletedOnboarding && oldHooksActive {
                     PodcastNotificationService.shared.scheduleAllRecurringNotifications()
                 }
-
+                
                 // Show Google auth if properly configured, not connected, onboarding is complete, and backend-authenticated
-                if hasCompletedOnboarding, isAuthenticated, apiClient.isAuthenticated, !googleDocsService.isConnected, isGoogleConfigured {
+                if hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated && !googleDocsService.isConnected && isGoogleConfigured {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         showGoogleAuth = true
                     }
                 }
-
+                
                 // Listen for voice recording shortcut trigger (when app is already running)
                 NotificationCenter.default.addObserver(
                     forName: NSNotification.Name("StartVoiceRecordingFromShortcut"),
@@ -362,12 +353,12 @@ struct RetrospectApp: App {
                 ) { _ in
                     // Clear the flag in case it was set
                     UserDefaults.standard.set(false, forKey: "shouldStartVoiceRecordingFromShortcut")
-
-                    if hasCompletedOnboarding, isAuthenticated {
+                    
+                    if hasCompletedOnboarding && isAuthenticated {
                         shouldStartVoiceRecording = true
                     }
                 }
-
+                
                 // Listen for podcast notification tap (old home only: PLP.1b)
                 if oldHooksActive {
                     NotificationCenter.default.addObserver(
@@ -420,19 +411,19 @@ struct RetrospectApp: App {
             }
             .onChange(of: googleDocsService.isConnected) { _, isConnected in
                 // Hide Google auth when connected
-                if isConnected, showGoogleAuth {
+                if isConnected && showGoogleAuth {
                     showGoogleAuth = false
                 }
             }
             .onChange(of: isAuthenticated) { _, newValue in
                 // Show Google auth after authentication
-                if newValue, hasCompletedOnboarding, apiClient.isAuthenticated, !googleDocsService.isConnected, isGoogleConfigured {
+                if newValue && hasCompletedOnboarding && apiClient.isAuthenticated && !googleDocsService.isConnected && isGoogleConfigured {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         showGoogleAuth = true
                     }
                 }
             }
-            .onChange(of: scenePhase) { _, newPhase in
+            .onChange(of: scenePhase) { oldPhase, newPhase in
                 // Bridge (DG.4): foreground and background land in the diagnostics rings.
                 platform.scenePhaseChanged(to: newPhase)
                 // the sample flow reaches no backend: no drain, no version check, no session read, no syncs
@@ -443,7 +434,7 @@ struct RetrospectApp: App {
                 }
                 if newPhase == .background {
                     Task {
-                        let unsent = await (try? platform.outbox?.waitingToSendCount()) ?? 0
+                        let unsent = (try? await platform.outbox?.waitingToSendCount()) ?? 0
                         appDelegate.backgroundDrain.scheduleIfNeeded(unsent: unsent)
                     }
                 }
@@ -452,7 +443,7 @@ struct RetrospectApp: App {
                     print("📱 App moved to background - recording continues")
                     IntegrationBackgroundTasks.schedule()
                 }
-
+                
                 // Re-check Screen Time auth and refresh data when app becomes active.
                 // Delayed refresh gives the hidden DeviceActivityReport time to trigger
                 // the extension and write fresh data to the App Group.
@@ -469,9 +460,7 @@ struct RetrospectApp: App {
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                 // Bridge (PL5.2): universal links (an invite link) arrive as a web activity.
-                if !isSampleFlowMode, let url = activity.webpageURL {
-                    platform.router.open(url)
-                }
+                if !isSampleFlowMode, let url = activity.webpageURL { platform.router.open(url) }
             }
             .onOpenURL { url in
                 guard !isSampleFlowMode else { return } // the sample flow opens no address and syncs nothing
@@ -479,31 +468,31 @@ struct RetrospectApp: App {
                 // center); the branches below still act for the old screens, unchanged.
                 platform.router.open(url)
                 guard url.scheme == "retrospect" else { return }
-
+                
                 if url.host == "start-recording" {
                     print("🎙️ Start recording triggered from Lock Screen control")
 
-                    if hasCompletedOnboarding, isAuthenticated, apiClient.isAuthenticated {
+                    if hasCompletedOnboarding && isAuthenticated && apiClient.isAuthenticated {
                         shouldStartVoiceRecording = true
                     } else {
                         UserDefaults.standard.set(true, forKey: "shouldStartVoiceRecordingFromShortcut")
                     }
                 } else if url.host == "stop-recording" {
                     print("💾 Save recording triggered from Live Activity")
-
+                    
                     // Show black screen immediately (don't show app UI)
                     isProcessingStopFromWidget = true
-
+                    
                     // Notify VoiceRecordingView to stop and save
                     // This will trigger the proper save flow in VoiceRecordingView
                     NotificationCenter.default.post(
                         name: NSNotification.Name("StopVoiceRecordingFromLiveActivity"),
                         object: nil
                     )
-
+                    
                     // Give time for the save to complete, then hide black screen
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        isProcessingStopFromWidget = false
+                        self.isProcessingStopFromWidget = false
                     }
                 } else if url.host == "integration-connected" {
                     let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
@@ -524,7 +513,7 @@ struct RetrospectApp: App {
             .rReadsScreenHeight()
         }
     }
-
+    
     // MARK: - Helper Methods
 
     private func startFirstPodcastHandoff(extractedGoals: [RichGoal]) {
@@ -579,7 +568,7 @@ struct RetrospectApp: App {
             isPreviewingPaywall = false
         }
     }
-
+    
     /// Find existing transcript or create placeholder for notification
     private func findOrCreateTranscript(for podcastId: String) -> TranscriptModel {
         // Check if we have a pending notification with this podcast
@@ -595,7 +584,7 @@ struct RetrospectApp: App {
                 createdAt: pending.timestamp
             )
         }
-
+        
         // Fallback placeholder
         return TranscriptModel(
             id: UUID(uuidString: podcastId) ?? UUID(),
@@ -607,21 +596,21 @@ struct RetrospectApp: App {
             createdAt: Date()
         )
     }
-
+    
     /// Save voice entry with audio file and transcription
     @MainActor
     private func saveVoiceEntry(audioURL: URL, transcription: String) async {
         print("💾 Saving voice entry...")
-
+        
         let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
         let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
-
+        
         guard !trimmed.isEmpty || hasUsableAudio else {
             print("⚠️ Discarding empty voice recording — no transcription and no usable audio")
             return
         }
-
+        
         // Generate simple title from transcription
         var title = "Voice Entry"
         if !trimmed.isEmpty {
@@ -631,7 +620,7 @@ struct RetrospectApp: App {
                 title += "..."
             }
         }
-
+        
         // Move audio file from temp to permanent storage
         let entryId = UUID()
         do {
@@ -641,7 +630,7 @@ struct RetrospectApp: App {
             print("❌ Failed to move audio file: \(error.localizedDescription)")
             return
         }
-
+        
         // Create and save entry
         let entry = Entry(
             id: entryId,
@@ -651,7 +640,7 @@ struct RetrospectApp: App {
             aiGeneratedTitle: title,
             tags: []
         )
-
+        
         EntryManager.shared.addEntry(entry)
         print("✅ Voice entry saved successfully!")
     }
@@ -691,7 +680,7 @@ private struct PodcastLayoutDiagnosticsOnboardingLayer: View {
                 PodcastPaywallFlow(
                     audioURL: nil,
                     transcript: "There is a version of you that already knows what to do. You have spent the last few weeks moving fast, shipping, and quietly carrying a lot. The body keeps showing up in the data even when you do not mention it.",
-                    teaseSeconds: 10000,
+                    teaseSeconds: 10_000,
                     diagnosticsEnabled: false
                 )
             }

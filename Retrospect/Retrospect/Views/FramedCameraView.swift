@@ -1,15 +1,15 @@
-import AVFoundation
 import SwiftUI
+import AVFoundation
 
 struct FramedCameraView: View {
     let session: AVCaptureSession?
     let showPlaceholder: Bool
-
+    
     init(session: AVCaptureSession? = nil, showPlaceholder: Bool = false) {
         self.session = session
         self.showPlaceholder = showPlaceholder
     }
-
+    
     var body: some View {
         // Outer frame
         ZStack {
@@ -21,7 +21,7 @@ struct FramedCameraView: View {
                 )
             // Camera preview inset
             VStack {
-                if let session, !showPlaceholder {
+                if let session = session, !showPlaceholder {
                     CameraPreview(session: session)
                         .clipShape(RoundedRectangle(cornerRadius: BorderRadius.card))
                         .padding(18)
@@ -48,12 +48,11 @@ struct FramedCameraView: View {
                 }
             }
         }
-        .aspectRatio(4 / 3, contentMode: .fit)
+        .aspectRatio(4/3, contentMode: .fit)
     }
 }
 
 // MARK: - Preview
-
 struct FramedCameraView_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 30) {
@@ -65,4 +64,4 @@ struct FramedCameraView_Previews: PreviewProvider {
         .padding()
         .background(LinearColors.Minimal.backgroundCard)
     }
-}
+} 

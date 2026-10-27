@@ -5,8 +5,8 @@
 //  Default in-app splash screen with Face ID authentication.
 //
 
-import LocalAuthentication
 import SwiftUI
+import LocalAuthentication
 import UIKit
 
 struct DarkSplashScreen: View {

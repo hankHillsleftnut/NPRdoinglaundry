@@ -13,7 +13,7 @@ struct ExpandableCard: View {
     @State private var isExpanded: Bool = true
     @State private var contentHeight: CGFloat = .zero
     @State private var chevronRotation: Double = 180
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
@@ -27,16 +27,16 @@ struct ExpandableCard: View {
                     Text(title)
                         .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                         .foregroundColor(LinearColors.primaryText)
-
+                    
                     Spacer()
-
+                    
                     Image(systemName: "chevron.down.circle.fill")
                         .foregroundColor(LinearColors.accent)
                         .font(.system(size: 20, weight: .semibold))
                         .rotationEffect(.degrees(chevronRotation))
                 }
             }
-
+            
             if isExpanded {
                 // Content
                 Text(.init(content))

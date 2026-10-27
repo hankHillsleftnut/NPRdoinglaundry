@@ -1,12 +1,11 @@
 import Foundation
 
 // MARK: - Entry Type Enum
-
 enum EntryType: String, Codable {
     case text
     case video
     case voice
-
+    
     /// Maps to the backend's expected content type string
     var backendContentType: String {
         switch self {
@@ -18,7 +17,6 @@ enum EntryType: String, Codable {
 }
 
 // MARK: - Entry Model
-
 struct Entry: Codable, Identifiable, Hashable {
     let id: UUID
     let date: Date
@@ -30,7 +28,7 @@ struct Entry: Codable, Identifiable, Hashable {
     var aiGeneratedTitle: String?
     var tags: [String]
     var isIncludedInInsights: Bool
-
+    
     init(
         id: UUID = UUID(),
         date: Date = Date(),
@@ -54,24 +52,24 @@ struct Entry: Codable, Identifiable, Hashable {
         self.tags = tags
         self.isIncludedInInsights = isIncludedInInsights
     }
-
-    /// Computed property for display title
+    
+    // Computed property for display title
     var displayTitle: String {
         if let title = aiGeneratedTitle, !title.isEmpty {
             return title
         }
-
+        
         // Fallback to date-based title
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return "Entry from \(formatter.string(from: date))"
     }
-
-    /// Whether this entry has any meaningful content worth saving
+    
+    // Whether this entry has any meaningful content worth saving
     var hasValidContent: Bool {
         let hasText = !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-
+        
         switch type {
         case .text:
             return hasText
@@ -83,12 +81,12 @@ struct Entry: Codable, Identifiable, Hashable {
             return hasText || hasVideo
         }
     }
-
-    /// Computed property for content preview (first 2 lines)
+    
+    // Computed property for content preview (first 2 lines)
     var contentPreview: String {
         let lines = content.split(separator: "\n", maxSplits: 2, omittingEmptySubsequences: true)
         if lines.count >= 2 {
-            return lines[0 ... 1].joined(separator: "\n")
+            return lines[0...1].joined(separator: "\n")
         } else if !lines.isEmpty {
             return String(lines[0])
         }
@@ -97,34 +95,33 @@ struct Entry: Codable, Identifiable, Hashable {
 }
 
 // MARK: - Entry Manager
-
 @MainActor
 class EntryManager: ObservableObject {
     @Published var entries: [Entry] = []
     static let shared = EntryManager()
-
+    
     private let fileStorage = FileStorageManager.shared
-
+    
     init() {
         loadEntries()
     }
-
+    
     // MARK: - Public Methods
-
+    
     func addEntry(_ entry: Entry) {
         guard entry.hasValidContent else {
             print("⚠️ Rejected empty entry: \(entry.id) - Type: \(entry.type.rawValue) - no content or media")
             return
         }
-
+        
         entries.append(entry)
         saveEntry(entry)
         print("✅ Added entry: \(entry.id) - Type: \(entry.type.rawValue)")
-
+        
         // Sync to backend (non-blocking)
         syncEntryToBackend(entry)
     }
-
+    
     /// Upload an entry to the Retrospect backend for the observation/insight pipeline.
     private func syncEntryToBackend(_ entry: Entry) {
         guard RetrospectAPIClient.shared.isAuthenticated else {
@@ -148,7 +145,7 @@ class EntryManager: ObservableObject {
             }
         }
     }
-
+    
     /// Resync all existing entries to the backend. Call this once to push
     /// entries that were never synced due to the content-type mismatch.
     func resyncAllEntriesToBackend() {
@@ -158,11 +155,11 @@ class EntryManager: ObservableObject {
         }
         let validEntries = entries.filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         print("🔄 Resyncing \(validEntries.count) entries to backend...")
-
+        
         Task {
             var successCount = 0
             var failCount = 0
-
+            
             for entry in validEntries {
                 do {
                     try await RetrospectAPIClient.shared.uploadContent(
@@ -175,27 +172,27 @@ class EntryManager: ObservableObject {
                     failCount += 1
                     print("❌ Resync failed for \(entry.id): \(error.localizedDescription)")
                 }
-
+                
                 // Small delay to avoid hammering the API
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
-
+            
             print("🔄 Resync complete: \(successCount) succeeded, \(failCount) failed out of \(validEntries.count)")
         }
     }
-
+    
     func getAllEntries() -> [Entry] {
         return entries.sorted(by: { $0.date > $1.date })
     }
-
+    
     func getEntries(ofType type: EntryType) -> [Entry] {
         return entries.filter { $0.type == type }.sorted(by: { $0.date > $1.date })
     }
-
+    
     func getEntry(byId id: UUID) -> Entry? {
         return entries.first(where: { $0.id == id })
     }
-
+    
     func updateEntry(_ updatedEntry: Entry) {
         if let index = entries.firstIndex(where: { $0.id == updatedEntry.id }) {
             entries[index] = updatedEntry
@@ -203,21 +200,21 @@ class EntryManager: ObservableObject {
             print("📝 Updated entry: \(updatedEntry.id)")
         }
     }
-
+    
     func deleteEntry(withId id: UUID) {
         entries.removeAll { $0.id == id }
-
+        
         do {
             try fileStorage.deleteEntry(id: id)
-            print("🗑️ Deleted entry: \(id)")
+        print("🗑️ Deleted entry: \(id)")
         } catch {
             print("❌ Failed to delete entry: \(error.localizedDescription)")
         }
     }
-
+    
     func deleteEntries(withIds ids: [UUID]) {
         entries.removeAll { ids.contains($0.id) }
-
+        
         for id in ids {
             do {
                 try fileStorage.deleteEntry(id: id)
@@ -225,10 +222,10 @@ class EntryManager: ObservableObject {
                 print("❌ Failed to delete entry \(id): \(error.localizedDescription)")
             }
         }
-
+        
         print("🗑️ Deleted \(ids.count) entries")
     }
-
+    
     func toggleInclusionStatus(for entryId: UUID) {
         if let index = entries.firstIndex(where: { $0.id == entryId }) {
             entries[index].isIncludedInInsights.toggle()
@@ -236,31 +233,31 @@ class EntryManager: ObservableObject {
             print("🔄 Toggled inclusion status for entry: \(entryId)")
         }
     }
-
+    
     func searchEntries(query: String) -> [Entry] {
         let lowercaseQuery = query.lowercased()
         return entries.filter { entry in
             entry.displayTitle.lowercased().contains(lowercaseQuery) ||
-                entry.content.lowercased().contains(lowercaseQuery) ||
-                entry.tags.contains(where: { $0.lowercased().contains(lowercaseQuery) })
+            entry.content.lowercased().contains(lowercaseQuery) ||
+            entry.tags.contains(where: { $0.lowercased().contains(lowercaseQuery) })
         }.sorted(by: { $0.date > $1.date })
     }
-
+    
     func getEntriesForWeek() -> [Entry] {
         let calendar = Calendar.current
         let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-
+        
         return entries.filter { entry in
             entry.date >= oneWeekAgo
         }
         .sorted(by: { $0.date > $1.date })
     }
-
+    
     func clearAllEntries() {
-        let entryIds = entries.map(\.id)
-
+        let entryIds = entries.map { $0.id }
+        
         entries.removeAll()
-
+        
         for id in entryIds {
             do {
                 try fileStorage.deleteEntry(id: id)
@@ -268,18 +265,18 @@ class EntryManager: ObservableObject {
                 print("❌ Failed to delete entry \(id): \(error.localizedDescription)")
             }
         }
-
+        
         print("🗑️ Cleared all entries")
     }
-
+    
     // MARK: - Storage Info
-
+    
     func getStorageInfo() -> StorageInfo {
         return fileStorage.getStorageInfo()
     }
-
+    
     // MARK: - Private Methods
-
+    
     private func loadEntries() {
         do {
             entries = try fileStorage.loadAllEntries()
@@ -289,7 +286,7 @@ class EntryManager: ObservableObject {
             entries = []
         }
     }
-
+    
     private func saveEntries() {
         // Individual entry saving is now handled by addEntry/updateEntry
         // This method is kept for backward compatibility
@@ -301,7 +298,7 @@ class EntryManager: ObservableObject {
             }
         }
     }
-
+    
     private func saveEntry(_ entry: Entry) {
         do {
             try fileStorage.saveEntry(entry)
@@ -309,13 +306,13 @@ class EntryManager: ObservableObject {
             print("❌ Failed to save entry: \(error.localizedDescription)")
         }
     }
-
+    
     // MARK: - Debug Methods
-
+    
     func debugPrintEntries() {
         print("🔍 Entry Manager Debug Info:")
         print("Total entries: \(entries.count)")
-
+        
         for (index, entry) in entries.enumerated() {
             print("  \(index + 1). ID: \(entry.id)")
             print("     Type: \(entry.type.rawValue)")
@@ -327,3 +324,4 @@ class EntryManager: ObservableObject {
         }
     }
 }
+

@@ -1,24 +1,24 @@
-import Combine
 import SwiftUI
+import Combine
 
 /// Robust keyboard management system for the entire app
 /// Provides keyboard height tracking and configurable avoidance behavior
 class KeyboardManager: ObservableObject {
     static let shared = KeyboardManager()
-
+    
     @Published var keyboardHeight: CGFloat = 0
     @Published var isKeyboardVisible: Bool = false
-
+    
     private var cancellables = Set<AnyCancellable>()
-
+    
     private init() {
         setupKeyboardObservers()
     }
-
+    
     deinit {
         cancellables.removeAll()
     }
-
+    
     private func setupKeyboardObservers() {
         // Keyboard will show
         NotificationCenter.default
@@ -37,7 +37,7 @@ class KeyboardManager: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-
+        
         // Keyboard will hide
         NotificationCenter.default
             .publisher(for: UIResponder.keyboardWillHideNotification)
@@ -57,27 +57,27 @@ class KeyboardManager: ObservableObject {
 /// View modifier that handles keyboard avoidance behavior
 struct KeyboardAware: ViewModifier {
     @StateObject private var keyboardManager = KeyboardManager.shared
-
+    
     let behavior: KeyboardAvoidanceBehavior
     let additionalPadding: CGFloat
-
+    
     init(behavior: KeyboardAvoidanceBehavior = .none, additionalPadding: CGFloat = 0) {
         self.behavior = behavior
         self.additionalPadding = additionalPadding
     }
-
+    
     func body(content: Content) -> some View {
         content
             .padding(.bottom, bottomPadding)
     }
-
+    
     private var bottomPadding: CGFloat {
         switch behavior {
         case .none:
             return additionalPadding
         case .avoidKeyboard:
             return keyboardManager.isKeyboardVisible ? keyboardManager.keyboardHeight + additionalPadding : additionalPadding
-        case let .minimumPadding(minPadding):
+        case .minimumPadding(let minPadding):
             return max(minPadding, keyboardManager.isKeyboardVisible ? keyboardManager.keyboardHeight + additionalPadding : additionalPadding)
         }
     }
@@ -85,9 +85,9 @@ struct KeyboardAware: ViewModifier {
 
 /// Keyboard avoidance behavior options
 enum KeyboardAvoidanceBehavior {
-    case none // Stay in place regardless of keyboard
-    case avoidKeyboard // Move up when keyboard appears
-    case minimumPadding(CGFloat) // Use minimum padding but move up if keyboard requires more
+    case none                           // Stay in place regardless of keyboard
+    case avoidKeyboard                  // Move up when keyboard appears
+    case minimumPadding(CGFloat)        // Use minimum padding but move up if keyboard requires more
 }
 
 /// Convenience view extension
@@ -96,3 +96,4 @@ extension View {
         modifier(KeyboardAware(behavior: behavior, additionalPadding: additionalPadding))
     }
 }
+

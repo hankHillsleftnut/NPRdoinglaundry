@@ -6,26 +6,26 @@
 //  category pie, weekly trend, and backend sync status.
 //
 
-import DeviceActivity
 import SwiftUI
+import DeviceActivity
 
 struct ScreenTimeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var service = ScreenTimeService.shared
-
+    
     var body: some View {
         ZStack {
             LinearColors.Minimal.background.ignoresSafeArea()
-
+            
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
                     header
-
+                    
                     // Embed the DeviceActivityReport to trigger the extension and display live data
                     if service.isAuthorized {
                         deviceActivityReportSection
                     }
-
+                    
                     if let summary = service.latestSummary {
                         todayCard(summary)
                         categoryBreakdown(summary)
@@ -33,13 +33,13 @@ struct ScreenTimeDetailView: View {
                     } else {
                         emptyState
                     }
-
+                    
                     if !service.weeklyHistory.isEmpty {
                         weeklyTrend
                     }
-
+                    
                     syncSection
-
+                    
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 20)
@@ -51,9 +51,9 @@ struct ScreenTimeDetailView: View {
             service.refreshData()
         }
     }
-
+    
     // MARK: - Header
-
+    
     private var header: some View {
         HStack {
             Button(action: { dismiss() }) {
@@ -61,15 +61,15 @@ struct ScreenTimeDetailView: View {
                     .font(.system(size: 17, weight: .medium))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
             }
-
+            
             Spacer()
-
+            
             Text("Screen Time")
                 .font(.custom("HedvigLettersSerif-24ptRegular", size: 24))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+            
             Spacer()
-
+            
             Button(action: { service.refreshData() }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 15, weight: .medium))
@@ -78,9 +78,9 @@ struct ScreenTimeDetailView: View {
         }
         .padding(.vertical, 8)
     }
-
+    
     // MARK: - Device Activity Report (triggers extension)
-
+    
     private var deviceActivityReportSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Live Report")
@@ -88,7 +88,7 @@ struct ScreenTimeDetailView: View {
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .textCase(.uppercase)
                 .tracking(1)
-
+            
             DeviceActivityReport(
                 DeviceActivityReport.Context("Total Activity"),
                 filter: DeviceActivityFilter(
@@ -108,26 +108,26 @@ struct ScreenTimeDetailView: View {
             )
         }
     }
-
+    
     // MARK: - Today Card
-
+    
     private func todayCard(_ summary: ScreenTimeSummary) -> some View {
         VStack(spacing: 20) {
             Text(summary.formattedTotalTime)
                 .font(.system(size: 48, weight: .bold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+            
             Text("today")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
                 .textCase(.uppercase)
                 .tracking(1.5)
-
+            
             HStack(spacing: 32) {
                 statPill(icon: "hand.tap", value: "\(summary.totalPickups)", label: "Pickups")
                 statPill(icon: "app.badge", value: "\(summary.appUsage.count)", label: "Apps")
-
-                if summary.totalPickups > 0, summary.totalScreenTimeMinutes > 0 {
+                
+                if summary.totalPickups > 0 && summary.totalScreenTimeMinutes > 0 {
                     let avgMin = summary.totalScreenTimeMinutes / summary.totalPickups
                     statPill(icon: "timer", value: "\(avgMin)m", label: "Avg Session")
                 }
@@ -145,7 +145,7 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     private func statPill(icon: String, value: String, label: String) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
@@ -159,15 +159,15 @@ struct ScreenTimeDetailView: View {
                 .foregroundColor(LinearColors.Minimal.textTertiary)
         }
     }
-
+    
     // MARK: - Category Breakdown
-
+    
     private func categoryBreakdown(_ summary: ScreenTimeSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Categories")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+            
             if summary.categoryBreakdown.isEmpty {
                 Text("No category data available yet.")
                     .font(.system(size: 14, weight: .regular))
@@ -177,36 +177,36 @@ struct ScreenTimeDetailView: View {
                     let percentage = summary.totalScreenTimeMinutes > 0
                         ? CGFloat(cat.minutes) / CGFloat(summary.totalScreenTimeMinutes)
                         : 0
-
+                    
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Image(systemName: iconForCategory(cat.categoryName))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(colorForCategory(cat.categoryName))
                                 .frame(width: 20)
-
+                            
                             Text(cat.categoryName)
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                            
                             Spacer()
-
+                            
                             Text(cat.formattedTime)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
-
+                            
                             Text("\(Int(percentage * 100))%")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                                 .frame(width: 36, alignment: .trailing)
                         }
-
+                        
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(LinearColors.Minimal.progressTrack)
                                     .frame(height: 4)
-
+                                
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(colorForCategory(cat.categoryName))
                                     .frame(width: max(geo.size.width * percentage, 4), height: 4)
@@ -227,15 +227,15 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     // MARK: - Top Apps
-
+    
     private func topAppsSection(_ summary: ScreenTimeSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Top Apps")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+            
             if summary.appUsage.isEmpty {
                 Text("No app usage data available yet.")
                     .font(.system(size: 14, weight: .regular))
@@ -247,26 +247,26 @@ struct ScreenTimeDetailView: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
                             .frame(width: 22, alignment: .center)
-
+                        
                         VStack(alignment: .leading, spacing: 2) {
                             Text(app.appName)
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                            
                             if let category = app.categoryName {
                                 Text(category)
                                     .font(.system(size: 11, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textTertiary)
                             }
                         }
-
+                        
                         Spacer()
-
+                        
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(app.formattedTime)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                            
                             if app.pickups > 0 {
                                 Text("\(app.pickups) opens")
                                     .font(.system(size: 11, weight: .regular))
@@ -275,7 +275,7 @@ struct ScreenTimeDetailView: View {
                         }
                     }
                     .padding(.vertical, 4)
-
+                    
                     if index < min(summary.appUsage.count, 10) - 1 {
                         Divider()
                             .background(LinearColors.Minimal.border)
@@ -293,18 +293,18 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     // MARK: - Weekly Trend
-
+    
     private var weeklyTrend: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("This Week")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                
                 Spacer()
-
+                
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Avg \(service.weeklyAverageMinutes / 60)h \(service.weeklyAverageMinutes % 60)m")
                         .font(.system(size: 13, weight: .medium))
@@ -314,20 +314,20 @@ struct ScreenTimeDetailView: View {
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             }
-
+            
             // Simple bar chart
             HStack(alignment: .bottom, spacing: 6) {
-                let maxMinutes = service.weeklyHistory.map(\.totalScreenTimeMinutes).max() ?? 1
-
+                let maxMinutes = service.weeklyHistory.map { $0.totalScreenTimeMinutes }.max() ?? 1
+                
                 ForEach(service.weeklyHistory.sorted(by: { $0.date < $1.date })) { day in
                     let fraction = CGFloat(day.totalScreenTimeMinutes) / CGFloat(max(maxMinutes, 1))
                     let isToday = day.date == todayString()
-
+                    
                     VStack(spacing: 4) {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(isToday ? LinearColors.Minimal.accent : LinearColors.Minimal.accent.opacity(0.4))
                             .frame(height: max(fraction * 80, 4))
-
+                        
                         Text(dayLabel(day.date))
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(isToday ? LinearColors.Minimal.textPrimary : LinearColors.Minimal.textTertiary)
@@ -347,20 +347,20 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     // MARK: - Sync Section
-
+    
     private var syncSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Data Pipeline")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(LinearColors.Minimal.textPrimary)
-
+            
             HStack(spacing: 8) {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.system(size: 13))
                     .foregroundColor(LinearColors.Minimal.iconBlue)
-
+                
                 if let lastSync = service.lastSyncDate {
                     Text("Last synced: \(lastSync, style: .relative) ago")
                         .font(.system(size: 13, weight: .regular))
@@ -371,14 +371,12 @@ struct ScreenTimeDetailView: View {
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
             }
-
-            Text(
-                "Screen time data is automatically synced daily to your analysis pipeline. It becomes part of your weekly podcast — patterns, habits, and behavioral insights included."
-            )
-            .font(.system(size: 13, weight: .regular))
-            .foregroundColor(LinearColors.Minimal.textTertiary)
-            .lineSpacing(3)
-
+            
+            Text("Screen time data is automatically synced daily to your analysis pipeline. It becomes part of your weekly podcast — patterns, habits, and behavioral insights included.")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(LinearColors.Minimal.textTertiary)
+                .lineSpacing(3)
+            
             HStack(spacing: 10) {
                 Button(action: {
                     service.syncToBackend()
@@ -406,7 +404,7 @@ struct ScreenTimeDetailView: View {
                 }
                 .disabled(service.isSyncing || service.latestSummary == nil)
                 .buttonStyle(PlainButtonStyle())
-
+                
                 Button(action: {
                     service.syncWeeklyHistoryToBackend()
                     HapticManager.shared.playLightImpact()
@@ -439,19 +437,19 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     // MARK: - Empty State
-
+    
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "hourglass")
                 .font(.system(size: 36, weight: .light))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
-
+            
             Text("No screen time data yet")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(LinearColors.Minimal.textSecondary)
-
+            
             Text("Data will appear here after your device reports its first daily summary. This usually happens overnight.")
                 .font(.system(size: 14, weight: .regular))
                 .foregroundColor(LinearColors.Minimal.textTertiary)
@@ -470,15 +468,15 @@ struct ScreenTimeDetailView: View {
                 )
         )
     }
-
+    
     // MARK: - Helpers
-
+    
     private func todayString() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: Date())
     }
-
+    
     private func dayLabel(_ dateString: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -487,7 +485,7 @@ struct ScreenTimeDetailView: View {
         dayFormatter.dateFormat = "EEE"
         return dayFormatter.string(from: date)
     }
-
+    
     private func iconForCategory(_ name: String) -> String {
         switch name.lowercased() {
         case let n where n.contains("social"): return "bubble.left.and.bubble.right"
@@ -507,7 +505,7 @@ struct ScreenTimeDetailView: View {
         default: return "square.grid.2x2"
         }
     }
-
+    
     private func colorForCategory(_ name: String) -> Color {
         switch name.lowercased() {
         case let n where n.contains("social"): return LinearColors.Minimal.iconBlue

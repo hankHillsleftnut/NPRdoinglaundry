@@ -1,16 +1,15 @@
 import SwiftUI
 
 // MARK: - Top Navigation State Management
-
 class TopNavigationState: ObservableObject {
     @Published var isShowingSettings = false
     @Published var isEditingName = false
     @Published var userName = ""
-
+    
     // Animation states
     @Published var isAppearing = true
     @Published var headerOffset: CGFloat = 50
-
+    
     func startEditingName(currentName: String) {
         userName = currentName
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -20,16 +19,15 @@ class TopNavigationState: ObservableObject {
 }
 
 // MARK: - Top Navigation Bar Component
-
 struct TopNavigationBar: View {
     @StateObject private var navState = TopNavigationState()
     @AppStorage("userName") private var storedUserName: String = ""
-
-    /// Computed property for first name (cached to avoid repeated string operations)
+    
+    // Computed property for first name (cached to avoid repeated string operations)
     private var firstName: String {
         storedUserName.components(separatedBy: " ").first ?? storedUserName
     }
-
+    
     var body: some View {
         HStack(spacing: Spacing.sm) {
             // Hello message and subtitle
@@ -40,14 +38,14 @@ struct TopNavigationBar: View {
                     .onTapGesture {
                         navState.startEditingName(currentName: storedUserName)
                     }
-
+                
                 Text("Your Weekly Life Insights")
                     .font(.serifSubheadline)
                     .foregroundColor(LinearColors.textSecondary)
             }
-
+            
             Spacer()
-
+            
             // Settings Button
             Button(action: {
                 navState.isShowingSettings = true
@@ -90,13 +88,12 @@ struct TopNavigationBar: View {
 }
 
 // MARK: - Edit Name View Component
-
 struct EditNameView: View {
     @Binding var userName: String
     @Binding var storedUserName: String
     @Binding var isPresented: Bool
     @FocusState private var isNameFieldFocused: Bool
-
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
@@ -104,7 +101,7 @@ struct EditNameView: View {
                     Text("Name")
                         .font(.serifLabel).fontWeight(.semibold)
                         .foregroundColor(LinearColors.textPrimary)
-
+                    
                     TextField("Enter your name", text: $userName)
                         .font(.serifBody)
                         .foregroundColor(LinearColors.textPrimary)
@@ -123,7 +120,7 @@ struct EditNameView: View {
                         )
                         .focused($isNameFieldFocused)
                 }
-
+                
                 Spacer()
             }
             .padding(.horizontal, 24)
@@ -138,7 +135,7 @@ struct EditNameView: View {
                     }
                     .foregroundColor(LinearColors.textSecondary)
                 }
-
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         storedUserName = userName.trimmingCharacters(in: .whitespacesAndNewlines)

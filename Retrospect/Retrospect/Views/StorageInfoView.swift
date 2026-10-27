@@ -3,7 +3,7 @@ import SwiftUI
 struct StorageInfoView: View {
     @State private var storageInfo: StorageInfo?
     @State private var showShareSheet = false
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -13,13 +13,13 @@ struct StorageInfoView: View {
                         Image(systemName: "externaldrive.fill")
                             .font(.system(size: 28, weight: .semibold))
                             .foregroundColor(LinearColors.accent)
-
+                        
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Data Storage")
                                 .font(.geistTitle)
                                 .kerning(TypographyKerning.titleKerning)
                                 .foregroundColor(LinearColors.textPrimary)
-
+                            
                             Text("Your data is safely stored on your device")
                                 .font(.serifBody)
                                 .foregroundColor(LinearColors.textSecondary)
@@ -27,7 +27,7 @@ struct StorageInfoView: View {
                     }
                 }
                 .padding(.top, 8)
-
+                
                 // Storage Stats
                 if let info = storageInfo {
                     VStack(spacing: 16) {
@@ -39,7 +39,7 @@ struct StorageInfoView: View {
                             subtitle: "\(info.textEntries) text • \(info.videoEntries) video • \(info.voiceEntries) voice",
                             color: .blue
                         )
-
+                        
                         // Storage Size Card
                         StorageStatCard(
                             icon: "folder.fill",
@@ -48,7 +48,7 @@ struct StorageInfoView: View {
                             subtitle: "On device",
                             color: .purple
                         )
-
+                        
                         // Location Card
                         VStack(alignment: .leading, spacing: 12) {
                             Label {
@@ -59,12 +59,12 @@ struct StorageInfoView: View {
                                 Image(systemName: "location.fill")
                                     .foregroundColor(LinearColors.accent)
                             }
-
+                            
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Files are stored in:")
                                     .font(.serifLabel)
                                     .foregroundColor(LinearColors.textSecondary)
-
+                                
                                 Text(info.storageLocation)
                                     .font(.system(size: 12, design: .monospaced))
                                     .foregroundColor(LinearColors.textTertiary)
@@ -79,7 +79,7 @@ struct StorageInfoView: View {
                         .coStarCard()
                     }
                 }
-
+                
                 // Data Persistence Info
                 InfoSection(
                     title: "How Your Data is Stored",
@@ -109,10 +109,10 @@ struct StorageInfoView: View {
                             icon: "arrow.clockwise",
                             title: "Persistent Storage",
                             description: "Data survives app updates and rebuilds"
-                        ),
+                        )
                     ]
                 )
-
+                
                 // Export Option
                 Button(action: {
                     showShareSheet = true
@@ -132,7 +132,7 @@ struct StorageInfoView: View {
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                 }
                 .padding(.top, 8)
-
+                
                 Spacer(minLength: 40)
             }
             .padding(.horizontal, 20)
@@ -148,21 +148,20 @@ struct StorageInfoView: View {
             }
         }
     }
-
+    
     private func loadStorageInfo() {
         storageInfo = EntryManager.shared.getStorageInfo()
     }
 }
 
 // MARK: - Storage Stat Card
-
 struct StorageStatCard: View {
     let icon: String
     let title: String
     let value: String
     let subtitle: String
     let color: Color
-
+    
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
@@ -173,21 +172,21 @@ struct StorageStatCard: View {
                     Circle()
                         .fill(color.opacity(0.1))
                 )
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.serifLabel)
                     .foregroundColor(LinearColors.textSecondary)
-
+                
                 Text(value)
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(LinearColors.textPrimary)
-
+                
                 Text(subtitle)
                     .font(.system(size: 13))
                     .foregroundColor(LinearColors.textTertiary)
             }
-
+            
             Spacer()
         }
         .padding(20)
@@ -196,12 +195,11 @@ struct StorageStatCard: View {
 }
 
 // MARK: - Info Section
-
 struct InfoSection: View {
     let title: String
     let icon: String
     let items: [InfoItem]
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label {
@@ -212,7 +210,7 @@ struct InfoSection: View {
                 Image(systemName: icon)
                     .foregroundColor(LinearColors.accent)
             }
-
+            
             VStack(spacing: 12) {
                 ForEach(items, id: \.title) { item in
                     HStack(alignment: .top, spacing: 12) {
@@ -220,17 +218,17 @@ struct InfoSection: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(LinearColors.accent)
                             .frame(width: 24, height: 24)
-
+                        
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title)
                                 .font(.geistBody)
                                 .foregroundColor(LinearColors.textPrimary)
-
+                            
                             Text(item.description)
                                 .font(.serifLabel)
                                 .foregroundColor(LinearColors.textSecondary)
                         }
-
+                        
                         Spacer()
                     }
                 }
@@ -249,3 +247,4 @@ struct InfoItem {
 #Preview {
     StorageInfoView()
 }
+

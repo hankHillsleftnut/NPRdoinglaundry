@@ -3,30 +3,30 @@ import SwiftUI
 // MARK: - Exact design tokens (from Figma oehDunVlItAgXdzLNekHon, nodes 285:263 & 303:711)
 
 private enum Pod {
-    static let bg = Color(red: 244 / 255, green: 242 / 255, blue: 238 / 255) // #f4f2ee
-    static let mono = Color(red: 158 / 255, green: 158 / 255, blue: 158 / 255) // #9e9e9e
-    static let bubble = Color(red: 234 / 255, green: 231 / 255, blue: 227 / 255) // #eae7e3
-    static let bubbleSymbol = Color(red: 160 / 255, green: 155 / 255, blue: 151 / 255) // #a09b97
-    static let blueTop = Color(red: 67 / 255, green: 183 / 255, blue: 255 / 255) // rgb(67,183,255)
-    static let blueBot = Color(red: 40 / 255, green: 153 / 255, blue: 223 / 255) // rgb(40,153,223)
-    static let blueRing = Color(red: 80 / 255, green: 164 / 255, blue: 236 / 255) // #50a4ec
-    static let blueGlow = Color(red: 47 / 255, green: 179 / 255, blue: 255 / 255) // rgba(47,179,255,.5)
-    static let cream = Color(red: 247 / 255, green: 243 / 255, blue: 238 / 255) // #f7f3ee
-    static let creamRing = Color(red: 228 / 255, green: 219 / 255, blue: 206 / 255) // #e4dbce
-    static let pill = Color(red: 249 / 255, green: 247 / 255, blue: 245 / 255) // #f9f7f5
-    static let playGray = Color(red: 198 / 255, green: 194 / 255, blue: 190 / 255) // #c6c2be
-    static let markGray = Color(red: 186 / 255, green: 184 / 255, blue: 181 / 255) // lifted logo gray
-    static let progressFill = Color(red: 158 / 255, green: 155 / 255, blue: 151 / 255)
-    static let progressTrack = Color(red: 233 / 255, green: 231 / 255, blue: 226 / 255)
+    static let bg = Color(red: 244/255, green: 242/255, blue: 238/255)        // #f4f2ee
+    static let mono = Color(red: 158/255, green: 158/255, blue: 158/255)       // #9e9e9e
+    static let bubble = Color(red: 234/255, green: 231/255, blue: 227/255)     // #eae7e3
+    static let bubbleSymbol = Color(red: 160/255, green: 155/255, blue: 151/255) // #a09b97
+    static let blueTop = Color(red: 67/255, green: 183/255, blue: 255/255)     // rgb(67,183,255)
+    static let blueBot = Color(red: 40/255, green: 153/255, blue: 223/255)     // rgb(40,153,223)
+    static let blueRing = Color(red: 80/255, green: 164/255, blue: 236/255)    // #50a4ec
+    static let blueGlow = Color(red: 47/255, green: 179/255, blue: 255/255)    // rgba(47,179,255,.5)
+    static let cream = Color(red: 247/255, green: 243/255, blue: 238/255)      // #f7f3ee
+    static let creamRing = Color(red: 228/255, green: 219/255, blue: 206/255)  // #e4dbce
+    static let pill = Color(red: 249/255, green: 247/255, blue: 245/255)       // #f9f7f5
+    static let playGray = Color(red: 198/255, green: 194/255, blue: 190/255)   // #c6c2be
+    static let markGray = Color(red: 186/255, green: 184/255, blue: 181/255)   // lifted logo gray
+    static let progressFill = Color(red: 158/255, green: 155/255, blue: 151/255)
+    static let progressTrack = Color(red: 233/255, green: 231/255, blue: 226/255)
     static let playerContentCenterX: CGFloat = 201
-    static let transcriptSideMargin: CGFloat = (402 - 326) / 2 // centered 326-wide column on the 402 surface
-    static let transportSideMargin: CGFloat = (402 - 310) / 2 // centered 310-wide controls on the 402 surface
-    static let transportCenteringNudge: CGFloat = 40 // corrects the transport's ~36pt (pre-scale ~40pt) left-anchor
-    static let paywallTranscriptRise: CGFloat = 69 // lifts the transcript in the paywall card so top margin ≈ 1.5x side (tuned vs render)
-    static let paywallContentOpacity: Double = 0.42 // podcast content fades as the paywall appears
-    static let paywallSidePadding: CGFloat = 90 // wider side margins (narrower column) inside the paywall card
-    static let playerColumnNudge: CGFloat = 4.5 // small right nudge to true-center the column (player); compensates reader's residual ~4pt
-    static let paywallColumnNudge: CGFloat = 2 // same, smaller in the scaled paywall card
+    static let transcriptSideMargin: CGFloat = (402 - 326) / 2   // centered 326-wide column on the 402 surface
+    static let transportSideMargin: CGFloat = (402 - 310) / 2    // centered 310-wide controls on the 402 surface
+    static let transportCenteringNudge: CGFloat = 40             // corrects the transport's ~36pt (pre-scale ~40pt) left-anchor
+    static let paywallTranscriptRise: CGFloat = 69               // lifts the transcript in the paywall card so top margin ≈ 1.5x side (tuned vs render)
+    static let paywallContentOpacity: Double = 0.42             // podcast content fades as the paywall appears
+    static let paywallSidePadding: CGFloat = 90                 // wider side margins (narrower column) inside the paywall card
+    static let playerColumnNudge: CGFloat = 4.5                 // small right nudge to true-center the column (player); compensates reader's residual ~4pt
+    static let paywallColumnNudge: CGFloat = 2                  // same, smaller in the scaled paywall card
     static let playerSurfaceSize = CGSize(width: 402, height: 874)
     static let transcriptSize = CGSize(width: 326, height: 570)
     static let transcriptCenterY: CGFloat = 390
@@ -49,12 +49,12 @@ struct PodcastPaywallFlow: View {
     let audioURL: URL?
     let transcript: String
     var teaseSeconds: Double = 10
-    var onClose: (() -> Void)?
-    var onFinished: (() -> Void)?
+    var onClose: (() -> Void)? = nil
+    var onFinished: (() -> Void)? = nil
     var diagnosticsEnabled: Bool = false
     var usesTransparentBackground: Bool = false
     var startWithPaywall: Bool = false
-    var onDebugGoHome: (() -> Void)?
+    var onDebugGoHome: (() -> Void)? = nil
 
     @StateObject private var playback: StreamingPodcastPlayback
     @ObservedObject private var subs = SubscriptionManager.shared
@@ -151,23 +151,15 @@ struct PodcastPaywallFlow: View {
         .onChange(of: subs.isSubscribed) { subscribed in
             if subscribed {
                 withAnimation { showPaywall = false }
-                if !playback.isPlaying {
-                    playback.toggle()
-                }
+                if !playback.isPlaying { playback.toggle() }
             }
         }
         .onChange(of: playback.didFinish) { finished in
-            if finished {
-                onFinished?()
-            }
+            if finished { onFinished?() }
         }
         .alert("Subscription Unavailable", isPresented: Binding(
             get: { subs.lastError != nil },
-            set: {
-                if !$0 {
-                    subs.lastError = nil
-                }
-            }
+            set: { if !$0 { subs.lastError = nil } }
         )) {
             Button("OK", role: .cancel) {
                 subs.lastError = nil
@@ -267,7 +259,7 @@ struct PodcastPaywallFlow: View {
                                 value: [
                                     "stage.size": "\(Int(geo.size.width))x\(Int(geo.size.height))",
                                     "stage.global": Self.frameDescription(geo.frame(in: .global)),
-                                    "canvas.global": Self.frameDescription(global),
+                                    "canvas.global": Self.frameDescription(global)
                                 ]
                             )
                     }
@@ -326,14 +318,14 @@ struct PodcastPaywallFlow: View {
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: corner, style: .continuous)
                 .fill(t > 0.001 ? Pod.cream.opacity(0.18) : Pod.bg)
-
+ 
             onboardingPlayerSurface(progress: t)
 
             LinearGradient(
                 colors: [
                     Pod.bg.opacity(0),
                     Pod.bg.opacity(Double(0.34 + 0.52 * t)),
-                    Pod.bg,
+                    Pod.bg
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -344,8 +336,8 @@ struct PodcastPaywallFlow: View {
             .allowsHitTesting(false)
 
             cardLocalProgressiveBlur(width: surfaceWidth, height: surfaceHeight, progress: t)
-                .opacity(Double(t))
-                .allowsHitTesting(false)
+            .opacity(Double(t))
+            .allowsHitTesting(false)
 
             // Transport on top of the fade/blur so the progress bar stays crisp; fades out as
             // the paywall mini-player takes over.
@@ -373,7 +365,7 @@ struct PodcastPaywallFlow: View {
         .position(x: surfaceX, y: surfaceY)
     }
 
-    /// Transcript only. The transport is rendered separately (above the blur) by `playerTransport`.
+    // Transcript only. The transport is rendered separately (above the blur) by `playerTransport`.
     private func onboardingPlayerSurface(progress t: CGFloat) -> some View {
         let transcriptTop = lerp(
             Pod.transcriptCenterY - Pod.transcriptSize.height / 2,
@@ -395,7 +387,7 @@ struct PodcastPaywallFlow: View {
             autoScroll: true,
             typography: .onboardingInky,
             surfaceStyle: .transparent,
-            contentOpacity: lerp(1, Pod.paywallContentOpacity, t) // content fades as the paywall appears
+            contentOpacity: lerp(1, Pod.paywallContentOpacity, t)   // content fades as the paywall appears
         )
         // Natural width-fill centering (mirrors DarkAudioPlayerView): no `.position(x)`, so the
         // column centers by construction in both states and on every device.
@@ -404,8 +396,8 @@ struct PodcastPaywallFlow: View {
         .offset(x: lerp(Pod.playerColumnNudge, Pod.paywallColumnNudge, t), y: transcriptTop)
     }
 
-    /// Drawn ABOVE the fade/blur so the progress bar is never obscured; cross-fades out (1 - t)
-    /// as the paywall mini-player fades in.
+    // Drawn ABOVE the fade/blur so the progress bar is never obscured; cross-fades out (1 - t)
+    // as the paywall mini-player fades in.
     private var playerTransport: some View {
         PodcastTransport(
             currentTime: playback.currentTimeNow,
@@ -602,7 +594,7 @@ struct PodcastPaywallFlow: View {
                             .init(color: .black.opacity(0.2), location: 0.18),
                             .init(color: .black, location: 0.54),
                             .init(color: .black.opacity(0.9), location: 0.86),
-                            .init(color: .clear, location: 1),
+                            .init(color: .clear, location: 1)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -614,7 +606,7 @@ struct PodcastPaywallFlow: View {
                     .init(color: Pod.bg.opacity(0), location: 0),
                     .init(color: Pod.bg.opacity(0.28), location: 0.24),
                     .init(color: Pod.bg.opacity(0.82), location: 0.58),
-                    .init(color: Pod.bg, location: 1),
+                    .init(color: Pod.bg, location: 1)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -643,7 +635,7 @@ struct PodcastPaywallFlow: View {
                             .init(color: .black.opacity(0.25), location: 0.18),
                             .init(color: .black, location: 0.44),
                             .init(color: .black, location: 0.82),
-                            .init(color: .clear, location: 1),
+                            .init(color: .clear, location: 1)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -656,7 +648,7 @@ struct PodcastPaywallFlow: View {
                     Pod.bg.opacity(0),
                     Pod.bg.opacity(0.3),
                     Pod.bg.opacity(0.86),
-                    Pod.bg,
+                    Pod.bg
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -675,7 +667,7 @@ struct PodcastPaywallFlow: View {
                             .init(color: .black.opacity(0.35), location: 0.18),
                             .init(color: .black, location: 0.52),
                             .init(color: .black.opacity(0.7), location: 0.84),
-                            .init(color: .clear, location: 1),
+                            .init(color: .clear, location: 1)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -688,7 +680,7 @@ struct PodcastPaywallFlow: View {
                     .init(color: Pod.bg.opacity(0), location: 0),
                     .init(color: Pod.bg.opacity(0.7), location: 0.18),
                     .init(color: Pod.bg, location: 0.34),
-                    .init(color: Pod.bg, location: 1),
+                    .init(color: Pod.bg, location: 1)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -724,7 +716,7 @@ struct PodcastPaywallFlow: View {
 
             HStack(spacing: 20) {
                 Button("Restore") { Task { await subs.restore() } }
-                Button("Privacy notice") {}
+                Button("Privacy notice") { }
             }
             .font(Pod.mono(12))
             .foregroundColor(Pod.mono)
@@ -809,9 +801,8 @@ struct PodcastPaywallFlow: View {
     private func bluePriceButton(_ title: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Group {
-                if subs.isPurchasing {
-                    ProgressView().tint(.white)
-                } else {
+                if subs.isPurchasing { ProgressView().tint(.white) }
+                else {
                     Text(title)
                         .font(Pod.mono(14))
                         .foregroundColor(.white)
@@ -831,11 +822,9 @@ struct PodcastPaywallFlow: View {
                         RoundedRectangle(cornerRadius: 29, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
                             .mask(
-                                LinearGradient(
-                                    colors: [.white, .clear],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                                LinearGradient(colors: [.white, .clear],
+                                               startPoint: .top,
+                                               endPoint: .bottom)
                             )
                     }
                     .overlay {
@@ -885,21 +874,11 @@ private struct CardTopEdge: Shape {
         var p = Path()
         let r = min(cornerRadius, min(rect.width, rect.height) / 2)
         p.move(to: CGPoint(x: rect.minX, y: rect.minY + r))
-        p.addArc(
-            center: CGPoint(x: rect.minX + r, y: rect.minY + r),
-            radius: r,
-            startAngle: .degrees(180),
-            endAngle: .degrees(270),
-            clockwise: false
-        )
+        p.addArc(center: CGPoint(x: rect.minX + r, y: rect.minY + r), radius: r,
+                 startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
         p.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
-        p.addArc(
-            center: CGPoint(x: rect.maxX - r, y: rect.minY + r),
-            radius: r,
-            startAngle: .degrees(270),
-            endAngle: .degrees(360),
-            clockwise: false
-        )
+        p.addArc(center: CGPoint(x: rect.maxX - r, y: rect.minY + r), radius: r,
+                 startAngle: .degrees(270), endAngle: .degrees(360), clockwise: false)
         return p
     }
 }
@@ -928,8 +907,8 @@ private struct NoiseTexture: View {
             let columns = max(1, Int(size.width / step))
             let rows = max(1, Int(size.height / step))
 
-            for row in 0 ..< rows {
-                for column in 0 ..< columns {
+            for row in 0..<rows {
+                for column in 0..<columns {
                     let value = hash(column: column, row: row)
                     guard value < density else { continue }
 
@@ -953,6 +932,6 @@ private struct NoiseTexture: View {
         var x = n
         x = (x ^ (x >> 13)) &* 1_274_126_177
         x = x ^ (x >> 16)
-        return Double(x % 10000) / 10000
+        return Double(x % 10_000) / 10_000
     }
 }

@@ -6,8 +6,8 @@
 //  continuously-rendering MTKView (time-driven, full-screen triangle).
 //
 
-import MetalKit
 import SwiftUI
+import MetalKit
 
 struct FluidDotsView: UIViewRepresentable {
     /// Name of the Metal fragment function to render. Defaults to the original orb.
@@ -46,8 +46,8 @@ struct FluidDotsView: UIViewRepresentable {
         init(fragmentName: String) {
             self.fragmentName = fragmentName
             let dev = MTLCreateSystemDefaultDevice()
-            device = dev
-            commandQueue = dev?.makeCommandQueue()
+            self.device = dev
+            self.commandQueue = dev?.makeCommandQueue()
             super.init()
             buildPipeline()
         }

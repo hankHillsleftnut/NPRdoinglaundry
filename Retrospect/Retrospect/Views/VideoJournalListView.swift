@@ -1,5 +1,5 @@
-import AVKit
 import SwiftUI
+import AVKit
 
 struct VideoJournalListView: View {
     @StateObject private var journalManager = VideoJournalManager.shared
@@ -17,7 +17,7 @@ struct VideoJournalListView: View {
                     Text("Video Journal")
                         .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                         .foregroundColor(LinearColors.primaryText)
-
+                    
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -26,7 +26,7 @@ struct VideoJournalListView: View {
             .padding(.bottom, 16)
             .background(LinearColors.background)
             .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-
+            
             if journalManager.entries.isEmpty {
                 emptyStateView
             } else {
@@ -40,7 +40,7 @@ struct VideoJournalListView: View {
                                 value: "\(journalManager.entries.count)",
                                 icon: "video.circle.fill"
                             )
-
+                            
                             StatCard(
                                 title: "This Week",
                                 value: "\(journalManager.getEntriesForWeek().count)",
@@ -49,7 +49,7 @@ struct VideoJournalListView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 24)
-
+                        
                         // Section Title
                         HStack {
                             Text("Recent Entries")
@@ -58,7 +58,7 @@ struct VideoJournalListView: View {
                             Spacer()
                         }
                         .padding(.horizontal, 16)
-
+                        
                         // Journal Entries List
                         LazyVStack(spacing: 12) {
                             ForEach(journalManager.entries.sorted(by: { $0.date > $1.date })) { entry in
@@ -69,6 +69,7 @@ struct VideoJournalListView: View {
                             }
                         }
                         .padding(.horizontal, 16)
+
                     }
                 }
             }
@@ -77,7 +78,7 @@ struct VideoJournalListView: View {
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background,
+                    LinearColors.background
                 ]),
                 center: .topLeading,
                 startRadius: 0,
@@ -122,18 +123,18 @@ struct VideoJournalListView: View {
             journalManager.debugPrintEntries()
         }
     }
-
+    
     private func playVideo(entry: VideoJournalEntry) {
         // Debug: Print video file path and check existence
         print("🎬 Attempting to play video: \(entry.videoURL.path)")
         print("🎬 File exists: \(FileManager.default.fileExists(atPath: entry.videoURL.path))")
-
+        
         // Check if video file exists
         guard FileManager.default.fileExists(atPath: entry.videoURL.path) else {
             print("❌ Video file not found at: \(entry.videoURL.path)")
             return
         }
-
+        
         print("✅ Video file found, creating player...")
         selectedEntry = entry
         avPlayer = AVPlayer(url: entry.videoURL)
@@ -165,7 +166,7 @@ struct StatCard: View {
     let title: String
     let value: String
     let icon: String
-
+    
     var body: some View {
         HStack(spacing: 12) {
             // Icon
@@ -173,12 +174,12 @@ struct StatCard: View {
                 Circle()
                     .fill(LinearColors.accent.opacity(0.15))
                     .frame(width: 40, height: 40)
-
+                
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(LinearColors.accent)
             }
-
+            
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.serifCaption)
@@ -187,7 +188,7 @@ struct StatCard: View {
                     .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                     .foregroundColor(LinearColors.primaryText)
             }
-
+            
             Spacer()
         }
         .padding(16)
@@ -215,12 +216,12 @@ struct JournalEntryCard: View {
                     Circle()
                         .fill(LinearColors.accent.opacity(0.15))
                         .frame(width: 40, height: 40)
-
+                    
                     Image(systemName: "video.circle.fill")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(LinearColors.accent)
                 }
-
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.date, style: .date)
                         .font(.serifBody).fontWeight(.semibold)
@@ -229,19 +230,19 @@ struct JournalEntryCard: View {
                         .font(.serifCaption)
                         .foregroundColor(LinearColors.secondaryText)
                 }
-
+                
                 Spacer()
-
+                
                 Image(systemName: "play.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(LinearColors.accent)
             }
-
+            
             // Divider
             Rectangle()
                 .fill(LinearColors.border.opacity(0.5))
                 .frame(height: 1)
-
+            
             // Transcription preview
             if !entry.transcription.isEmpty {
                 Text(entry.transcription)
@@ -255,7 +256,7 @@ struct JournalEntryCard: View {
                     .foregroundColor(LinearColors.secondaryText)
                     .italic()
             }
-
+            
             // Footer with insights toggle
             HStack {
                 Text("Include in Insights")
@@ -309,9 +310,9 @@ struct VideoPlayerView: View {
                         .font(.serifLabel)
                         .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.8))
                 }
-
+                
                 Spacer()
-
+                
                 Button {
                     player.pause()
                     presentationMode.wrappedValue.dismiss()
@@ -323,7 +324,7 @@ struct VideoPlayerView: View {
             }
             .padding()
             .background(LinearColors.Minimal.background)
-
+            
             // Video Player
             AVPlayerViewControllerRepresentable(player: player)
                 .onAppear {
@@ -337,7 +338,7 @@ struct VideoPlayerView: View {
                     print("🎬 VideoPlayerView disappeared, pausing...")
                     player.pause()
                 }
-
+            
             // Transcription Section
             if !entry.transcription.isEmpty {
                 ScrollView {
@@ -345,7 +346,7 @@ struct VideoPlayerView: View {
                         Text("Transcription")
                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                        
                         Text(entry.transcription)
                             .font(.serifBody)
                             .foregroundColor(LinearColors.Minimal.textPrimary.opacity(0.9))
@@ -389,4 +390,4 @@ struct VideoJournalListView_Previews: PreviewProvider {
             VideoJournalListView()
         }
     }
-}
+} 

@@ -44,15 +44,15 @@ struct ScreenTimeDailySummary: Codable {
 
 struct TotalActivityReport: DeviceActivityReportScene {
     let context: DeviceActivityReport.Context = .totalActivity
-
+    
     let content: (String) -> TotalActivityView
-
+    
     func makeConfiguration(representing data: DeviceActivityResults<DeviceActivityData>) async -> String {
         // Write a heartbeat so the main app can verify the extension was invoked
         writeExtensionDiagnostic("started", detail: "makeConfiguration entered")
 
         var totalDuration: TimeInterval = 0
-        var totalPickups = 0
+        var totalPickups: Int = 0
         var appMap: [String: (name: String, bundle: String?, minutes: Int, pickups: Int, category: String?)] = [:]
         var categoryMap: [String: Int] = [:]
         var segmentCount = 0
@@ -61,21 +61,21 @@ struct TotalActivityReport: DeviceActivityReportScene {
             for await segment in activityData.activitySegments {
                 segmentCount += 1
                 totalDuration += segment.totalActivityDuration
-
+                
                 for await categoryActivity in segment.categories {
                     let categoryName = categoryActivity.category.localizedDisplayName ?? "Other"
                     let categoryMinutes = Int(categoryActivity.totalActivityDuration / 60)
                     categoryMap[categoryName, default: 0] += categoryMinutes
-
+                    
                     for await appActivity in categoryActivity.applications {
                         let appName = appActivity.application.localizedDisplayName ?? "Unknown App"
                         let bundleId = appActivity.application.bundleIdentifier
                         let key = bundleId ?? appName
                         let minutes = Int(appActivity.totalActivityDuration / 60)
                         let pickups = appActivity.numberOfPickups
-
+                        
                         totalPickups += pickups
-
+                        
                         if var existing = appMap[key] {
                             existing.minutes += minutes
                             existing.pickups += pickups
@@ -93,21 +93,18 @@ struct TotalActivityReport: DeviceActivityReportScene {
                 }
             }
         }
-
+        
         let totalMinutes = Int(totalDuration / 60)
-
+        
         let apps = appMap.values
             .map { AppUsageData(appName: $0.name, bundleIdentifier: $0.bundle, minutes: $0.minutes, pickups: $0.pickups, categoryName: $0.category) }
             .sorted { $0.minutes > $1.minutes }
-
+        
         let categories = categoryMap
             .map { CategoryUsageData(categoryName: $0.key, minutes: $0.value) }
             .sorted { $0.minutes > $1.minutes }
 
-        writeExtensionDiagnostic(
-            "processed",
-            detail: "segments=\(segmentCount) mins=\(totalMinutes) apps=\(apps.count) cats=\(categories.count) pickups=\(totalPickups)"
-        )
+        writeExtensionDiagnostic("processed", detail: "segments=\(segmentCount) mins=\(totalMinutes) apps=\(apps.count) cats=\(categories.count) pickups=\(totalPickups)")
 
         // Save to shared App Group for the main app
         saveSummaryToAppGroup(
@@ -116,7 +113,7 @@ struct TotalActivityReport: DeviceActivityReportScene {
             apps: apps,
             categories: categories
         )
-
+        
         // Encode as JSON to pass to the view
         let viewData = ViewData(
             totalMinutes: totalMinutes,
@@ -125,15 +122,15 @@ struct TotalActivityReport: DeviceActivityReportScene {
             apps: apps,
             categories: categories
         )
-
+        
         if let jsonData = try? JSONEncoder().encode(viewData),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             return jsonString
         }
-
+        
         return formatDuration(totalDuration)
     }
-
+    
     private func formatDuration(_ duration: TimeInterval) -> String {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.hour, .minute]
@@ -141,18 +138,18 @@ struct TotalActivityReport: DeviceActivityReportScene {
         formatter.zeroFormattingBehavior = .dropAll
         return formatter.string(from: duration) ?? "\(Int(duration / 60))m"
     }
-
+    
     private func saveSummaryToAppGroup(totalMinutes: Int, totalPickups: Int, apps: [AppUsageData], categories: [CategoryUsageData]) {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let todayStr = dateFormatter.string(from: Date())
-
+        
         guard let defaults = UserDefaults(suiteName: "group.com.retrospect.shared") else {
             writeExtensionDiagnostic("error", detail: "UserDefaults(suiteName:) returned nil — App Group not accessible")
             return
         }
         let dateStr = defaults.string(forKey: "screenTimeRequestedDate") ?? todayStr
-
+        
         let summary = ScreenTimeDailySummary(
             date: dateStr,
             totalScreenTimeMinutes: totalMinutes,
@@ -161,11 +158,11 @@ struct TotalActivityReport: DeviceActivityReportScene {
             appUsage: apps,
             categoryBreakdown: categories
         )
-
+        
         do {
             let encoded = try JSONEncoder().encode(summary)
             defaults.set(encoded, forKey: "screenTimeDailySummary")
-
+            
             var history = loadHistory(from: defaults)
             history.removeAll { $0.date == dateStr }
             history.append(summary)
@@ -175,7 +172,7 @@ struct TotalActivityReport: DeviceActivityReportScene {
             if let historyData = try? JSONEncoder().encode(history) {
                 defaults.set(historyData, forKey: "screenTimeWeeklyHistory")
             }
-
+            
             defaults.synchronize()
             writeExtensionDiagnostic("saved", detail: "date=\(dateStr) mins=\(totalMinutes) apps=\(apps.count) bytes=\(encoded.count)")
         } catch {
@@ -189,13 +186,11 @@ struct TotalActivityReport: DeviceActivityReportScene {
         let entry = "[\(timestamp)] \(status): \(detail)"
         var log = defaults.stringArray(forKey: "screenTimeExtensionLog") ?? []
         log.append(entry)
-        if log.count > 20 {
-            log = Array(log.suffix(20))
-        }
+        if log.count > 20 { log = Array(log.suffix(20)) }
         defaults.set(log, forKey: "screenTimeExtensionLog")
         defaults.synchronize()
     }
-
+    
     private func loadHistory(from defaults: UserDefaults) -> [ScreenTimeDailySummary] {
         guard let data = defaults.data(forKey: "screenTimeWeeklyHistory"),
               let history = try? JSONDecoder().decode([ScreenTimeDailySummary].self, from: data) else {
@@ -205,7 +200,7 @@ struct TotalActivityReport: DeviceActivityReportScene {
     }
 }
 
-/// Internal struct used to pass structured data as JSON through the String configuration type
+// Internal struct used to pass structured data as JSON through the String configuration type
 struct ViewData: Codable {
     let totalMinutes: Int
     let totalPickups: Int

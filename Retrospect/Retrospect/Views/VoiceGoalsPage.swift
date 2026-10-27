@@ -13,7 +13,7 @@ import UIKit
 // MARK: - Question model
 
 private struct Question {
-    let text: String // may contain {name}
+    let text: String        // may contain {name}
     let placeholder: String
     let keyboardType: UIKeyboardType
     let inputType: InputType
@@ -36,9 +36,9 @@ private struct Question {
     ) {
         self.text = text
         self.placeholder = placeholder
-        keyboardType = keyboard
-        inputType = input
-        hasAcknowledgment = ack
+        self.keyboardType = keyboard
+        self.inputType = input
+        self.hasAcknowledgment = ack
         self.progress = progress
     }
 }
@@ -46,20 +46,20 @@ private struct Question {
 // MARK: - Flow phase
 
 private enum FlowPhase: Equatable {
-    case welcome(Int) // line index 0..2
-    case question(Int) // question index 0..17
-    case acknowledgment(Int) // after question index
-    case bridge(Int, Int) // (bridgeIdx, lineIdx)
+    case welcome(Int)           // line index 0..2
+    case question(Int)          // question index 0..17
+    case acknowledgment(Int)    // after question index
+    case bridge(Int, Int)       // (bridgeIdx, lineIdx)
     case processing
     case revealing
     case complete
 
     static func == (lhs: FlowPhase, rhs: FlowPhase) -> Bool {
         switch (lhs, rhs) {
-        case let (.welcome(a), .welcome(b)): return a == b
-        case let (.question(a), .question(b)): return a == b
-        case let (.acknowledgment(a), .acknowledgment(b)): return a == b
-        case let (.bridge(a, b), .bridge(c, d)): return a == c && b == d
+        case (.welcome(let a), .welcome(let b)): return a == b
+        case (.question(let a), .question(let b)): return a == b
+        case (.acknowledgment(let a), .acknowledgment(let b)): return a == b
+        case (.bridge(let a, let b), .bridge(let c, let d)): return a == c && b == d
         case (.processing, .processing), (.revealing, .revealing), (.complete, .complete): return true
         default: return false
         }
@@ -67,10 +67,10 @@ private enum FlowPhase: Equatable {
 
     var key: String {
         switch self {
-        case let .welcome(l): return "w\(l)"
-        case let .question(i): return "q\(i)"
-        case let .acknowledgment(i): return "a\(i)"
-        case let .bridge(b, l): return "br\(b)l\(l)"
+        case .welcome(let l): return "w\(l)"
+        case .question(let i): return "q\(i)"
+        case .acknowledgment(let i): return "a\(i)"
+        case .bridge(let b, let l): return "br\(b)l\(l)"
         case .processing: return "proc"
         case .revealing: return "rev"
         case .complete: return "done"
@@ -88,165 +88,87 @@ struct VoiceGoalsPage: View {
     /// no further way forward.
     var onDebugGoHome: (() -> Void)?
 
-    /// ── Questions ─────────────────────────────────────────────────────────
+    // ── Questions ─────────────────────────────────────────────────────────
     private static let questions: [Question] = [
         // Part 1 — Identity (Q1-Q6)
-        Question(
-            "First, what should I call you?",
-            placeholder: "Your name",
-            ack: true,
-            progress: 0.08
-        ),
-        Question(
-            "Where do you live, {name}?",
-            placeholder: "City, country...",
-            progress: 0.10
-        ),
-        Question(
-            "How old are you?",
-            placeholder: "Your age",
-            keyboard: .numberPad,
-            progress: 0.12
-        ),
-        Question(
-            "What's your gender?",
-            input: .pillsVertical(["Female", "Male", "Non-binary", "Prefer not to say"]),
-            progress: 0.14
-        ),
-        Question(
-            "What is your sexuality?",
-            placeholder: "e.g. Straight, Gay, Bisexual...",
-            progress: 0.16
-        ),
-        Question(
-            "What's your relationship status?",
-            input: .pillsVertical(["Single", "In a relationship", "Married", "It's complicated"]),
-            progress: 0.18
-        ),
+        Question("First, what should I call you?",
+                 placeholder: "Your name", ack: true, progress: 0.08),
+        Question("Where do you live, {name}?",
+                 placeholder: "City, country...", progress: 0.10),
+        Question("How old are you?",
+                 placeholder: "Your age", keyboard: .numberPad, progress: 0.12),
+        Question("What's your gender?",
+                 input: .pillsVertical(["Female", "Male", "Non-binary", "Prefer not to say"]), progress: 0.14),
+        Question("What is your sexuality?",
+                 placeholder: "e.g. Straight, Gay, Bisexual...", progress: 0.16),
+        Question("What's your relationship status?",
+                 input: .pillsVertical(["Single", "In a relationship", "Married", "It's complicated"]), progress: 0.18),
         // Part 2 — Work (Q7-Q8)
-        Question(
-            "What do you do for work?",
-            placeholder: "Designer, student, founder...",
-            progress: 0.20
-        ),
-        Question(
-            "How do you feel about it?",
-            input: .pillsVertical(["Love it", "It's fine for now", "I'm ready for something new", "I'm building something on the side"]),
-            progress: 0.22
-        ),
+        Question("What do you do for work?",
+                 placeholder: "Designer, student, founder...", progress: 0.20),
+        Question("How do you feel about it?",
+                 input: .pillsVertical(["Love it", "It's fine for now", "I'm ready for something new", "I'm building something on the side"]), progress: 0.22),
         // Part 3 — Depth (bridge 0 before Q9)
-        Question(
-            "Has there ever been a goal that someone told you that you couldn't achieve?",
-            placeholder: "What was it, and who said it?",
-            ack: true,
-            progress: 0.35
-        ),
-        Question(
-            "If a close friend described you in one honest sentence, what would they say?",
-            placeholder: "The real one, not the polished one.",
-            ack: true,
-            progress: 0.46
-        ),
-        Question(
-            "What's something you've been thinking about lately that you haven't really told anyone?",
-            placeholder: "Whatever keeps coming back when things get quiet.",
-            ack: true,
-            progress: 0.55
-        ),
-        Question(
-            "What's a recent moment, big or small, where you felt most like yourself?",
-            placeholder: "A place, a person, a tiny win.",
-            ack: true,
-            progress: 0.63
-        ),
-        Question(
-            "What would a version of you from a year from now tell you?",
-            placeholder: "What would future-you need you to hear right now?",
-            ack: true,
-            progress: 0.70
-        ),
+        Question("Has there ever been a goal that someone told you that you couldn't achieve?",
+                 placeholder: "What was it, and who said it?", ack: true, progress: 0.35),
+        Question("If a close friend described you in one honest sentence, what would they say?",
+                 placeholder: "The real one, not the polished one.", ack: true, progress: 0.46),
+        Question("What's something you've been thinking about lately that you haven't really told anyone?",
+                 placeholder: "Whatever keeps coming back when things get quiet.", ack: true, progress: 0.55),
+        Question("What's a recent moment, big or small, where you felt most like yourself?",
+                 placeholder: "A place, a person, a tiny win.", ack: true, progress: 0.63),
+        Question("What would a version of you from a year from now tell you?",
+                 placeholder: "What would future-you need you to hear right now?", ack: true, progress: 0.70),
         // Part 4 — Goals (bridge 1 before Q14)
-        Question(
-            "{name}, what are you hoping changes in your life right now?",
-            placeholder: "Love, confidence, peace, momentum...",
-            ack: true,
-            progress: 0.78
-        ),
-        Question(
-            "Why does this matter so much to you right now?",
-            placeholder: "What happens if nothing changes?",
-            ack: true,
-            progress: 0.84
-        ),
-        Question(
-            "What feels like the biggest thing standing in your way right now?",
-            placeholder: "Doubt, timing, money, fear...",
-            ack: true,
-            progress: 0.89
-        ),
+        Question("{name}, what are you hoping changes in your life right now?",
+                 placeholder: "Love, confidence, peace, momentum...", ack: true, progress: 0.78),
+        Question("Why does this matter so much to you right now?",
+                 placeholder: "What happens if nothing changes?", ack: true, progress: 0.84),
+        Question("What feels like the biggest thing standing in your way right now?",
+                 placeholder: "Doubt, timing, money, fear...", ack: true, progress: 0.89),
         // Part 5 — Dream life (bridge 2 before Q17)
-        Question(
-            "When you imagine your dream life, where are you living?",
-            placeholder: "New York, London, by the beach, near family...",
-            progress: 0.93
-        ),
-        Question(
-            "What kind of home would you want to live in?",
-            input: .pillsGrid([
-                "Luxury Penthouse",
-                "Beachfront Villa",
-                "Modern Loft",
-                "Cozy Cottage",
-                "Suburban Mansion",
-                "Farmhouse",
-                "Cabin",
-                "Tiny Home",
-            ]),
-            progress: 0.97
-        ),
+        Question("When you imagine your dream life, where are you living?",
+                 placeholder: "New York, London, by the beach, near family...", progress: 0.93),
+        Question("What kind of home would you want to live in?",
+                 input: .pillsGrid(["Luxury Penthouse", "Beachfront Villa", "Modern Loft", "Cozy Cottage",
+                                    "Suburban Mansion", "Farmhouse", "Cabin", "Tiny Home"]), progress: 0.97),
     ]
 
-    /// Bridge appears before these question indices
+    // Bridge appears before these question indices
     private static let bridgeBefore: [Int: Int] = [8: 0, 13: 1, 16: 2]
 
-    /// Bridge texts [bridgeIdx][lineIdx]
+    // Bridge texts [bridgeIdx][lineIdx]
     private func bridgeLines(for bridgeIdx: Int) -> [String] {
         switch bridgeIdx {
         case 0:
-            return [
-                "These next ones go a little deeper.",
-                "There are no right answers, only honest ones.",
-            ]
+            return ["These next ones go a little deeper.",
+                    "There are no right answers, only honest ones."]
         case 1:
-            return [
-                "Now, the real reason you're here\(userName.isEmpty ? "." : ", \(userName).")",
-                "What you want. Not what you're supposed to want.",
-                "The thing you'd chase if no one was watching and nothing could go wrong.",
-                "Tell me the truth. I'll hold it.",
-            ]
+            return ["Now, the real reason you're here\(userName.isEmpty ? "." : ", \(userName).")",
+                    "What you want. Not what you're supposed to want.",
+                    "The thing you'd chase if no one was watching and nothing could go wrong.",
+                    "Tell me the truth. I'll hold it."]
         case 2:
-            return [
-                "Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
-                "Don't be realistic. Don't hold back.",
-                "Pretend anything is possible, because with me, it is.",
-            ]
+            return ["Now dream a little bigger\(userName.isEmpty ? "." : ", \(userName).")",
+                    "Don't be realistic. Don't hold back.",
+                    "Pretend anything is possible, because with me, it is."]
         default: return []
         }
     }
 
-    /// Welcome lines
+    // Welcome lines
     private static let welcomeLines = [
         "Before we begin, I have a few questions for you.",
         "The more honest you are, the more personal Retrospect will feel.",
-        "Everything you share is private.",
+        "Everything you share is private."
     ]
 
     // ── Layout constants (shared so text always starts in the same place) ──
     private static let titleSize: CGFloat = 28
-    private static let textStartGap: CGFloat = 96 // fixed gap below top bar → uniform text start (higher on page)
+    private static let textStartGap: CGFloat = 96    // fixed gap below top bar → uniform text start (higher on page)
     private static let horizontalPad: CGFloat = 28
-    private static let topBarHeight: CGFloat = 32 // 10pt top pad + 22pt row
-    private static let wonderingSlotHeight: CGFloat = 88 // three lines at 21pt + 3pt leading
+    private static let topBarHeight: CGFloat = 32          // 10pt top pad + 22pt row
+    private static let wonderingSlotHeight: CGFloat = 88   // three lines at 21pt + 3pt leading
 
     // ── State ─────────────────────────────────────────────────────────────
     @State private var phase: FlowPhase = .welcome(0)
@@ -299,23 +221,23 @@ struct VoiceGoalsPage: View {
 
     @StateObject private var goalsManager = GoalsManager.shared
 
-    /// ── Body ──────────────────────────────────────────────────────────────
+    // ── Body ──────────────────────────────────────────────────────────────
     var body: some View {
         ZStack {
             OnboardingStyle.background.ignoresSafeArea()
 
             Group {
                 switch phase {
-                case let .welcome(line):
+                case .welcome(let line):
                     welcomeScreen(upTo: line)
                         .id("w\(line)")
-                case let .question(idx):
+                case .question(let idx):
                     questionScreen(idx: idx)
                         .id("q\(idx)")
-                case let .acknowledgment(idx):
+                case .acknowledgment(let idx):
                     ackScreen(idx: idx)
                         .id("ack\(idx)")
-                case let .bridge(bIdx, lIdx):
+                case .bridge(let bIdx, let lIdx):
                     bridgeScreen(bIdx: bIdx, upTo: lIdx)
                         .id("br\(bIdx)l\(lIdx)")
                 case .processing:
@@ -379,7 +301,7 @@ struct VoiceGoalsPage: View {
 
             Spacer()
 
-            if isStreamingDone, line == Self.welcomeLines.count - 1 {
+            if isStreamingDone && line == Self.welcomeLines.count - 1 {
                 OnboardingPrimaryButton(title: "Continue") {
                     HapticManager.shared.playMediumImpact()
                     startQuestion(0)
@@ -428,7 +350,7 @@ struct VoiceGoalsPage: View {
                 .padding(.horizontal, Self.horizontalPad)
                 .padding(.bottom, 20)
 
-            case let .pillsVertical(options):
+            case .pillsVertical(let options):
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(options, id: \.self) { opt in
                         pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
@@ -439,7 +361,7 @@ struct VoiceGoalsPage: View {
                 .opacity(isStreamingDone ? 1 : 0)
                 .animation(.easeIn(duration: 0.2), value: isStreamingDone)
 
-            case let .pillsGrid(options):
+            case .pillsGrid(let options):
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     ForEach(options, id: \.self) { opt in
                         pillButton(opt) { submitAnswer(idx: idx, answer: opt) }
@@ -474,7 +396,7 @@ struct VoiceGoalsPage: View {
             Spacer().frame(height: Self.textStartGap)
 
             HStack(alignment: .top) {
-                if ackLoading, ackCount == 0 {
+                if ackLoading && ackCount == 0 {
                     ThinkingDots()
                 } else {
                     ZStack(alignment: .topLeading) {
@@ -510,12 +432,8 @@ struct VoiceGoalsPage: View {
         .contentShape(Rectangle())
         .onTapGesture {
             // Ignore taps while waiting for Claude or mid-dissolve.
-            if ackLoading, ackCount == 0 {
-                return
-            }
-            if ackDissolving {
-                return
-            }
+            if ackLoading && ackCount == 0 { return }
+            if ackDissolving { return }
             guard ackDone else {
                 ackTimer?.invalidate()
                 ackCount = ackText.count
@@ -610,8 +528,8 @@ struct VoiceGoalsPage: View {
                 VStack(spacing: 24) {
                     RetrospectLoadingMark(width: 96)
                     Text(currentWondering.isEmpty
-                        ? "Understanding you\(String(repeating: ".", count: processingDotCount))"
-                        : currentWondering)
+                         ? "Understanding you\(String(repeating: ".", count: processingDotCount))"
+                         : currentWondering)
                         .font(OnboardingStyle.titleFont(size: 21))
                         .foregroundColor(OnboardingStyle.primaryText)
                         .tracking(-0.4)
@@ -679,7 +597,7 @@ struct VoiceGoalsPage: View {
 
             OnboardingPrimaryButton(title: "Continue") {
                 HapticManager.shared.playSuccessNotification()
-                finish() // hand off to integrations; closing screen comes after
+                finish()  // hand off to integrations; closing screen comes after
             }
             .padding(.horizontal, Self.horizontalPad)
             .padding(.bottom, 34)
@@ -756,7 +674,7 @@ struct VoiceGoalsPage: View {
         }
     }
 
-    /// TEMP — placeholder transcript for reviewing the player + paywall screens.
+    // TEMP — placeholder transcript for reviewing the player + paywall screens.
     private static let demoTranscript = """
     There is a version of you that already knows what to do. You have spent the last few weeks moving fast, shipping, and quietly carrying a lot. The body keeps showing up in the data even when you do not mention it. There is a thread here worth pulling, about what you are really building and who you are building it for. Let's sit with that for a moment. Because the thing standing in your way is smaller than it feels right now.
     """
@@ -798,7 +716,7 @@ struct VoiceGoalsPage: View {
             // Right slot — DEV-ONLY Skip (fast-forward through onboarding). Never ships.
             Group {
                 #if DEBUG
-                if let onSkip {
+                if let onSkip = onSkip {
                     Button("Skip") { onSkip() }
                         .font(OnboardingStyle.bodyFont(size: 14, weight: .medium))
                         .foregroundColor(OnboardingStyle.tertiaryText)
@@ -829,7 +747,7 @@ struct VoiceGoalsPage: View {
             TextField(placeholder, text: $inputText, axis: .vertical)
                 .font(OnboardingStyle.bodyFont(size: 17))
                 .foregroundColor(OnboardingStyle.primaryText)
-                .lineLimit(1 ... 6)
+                .lineLimit(1...6)
                 .keyboardType(keyboard)
                 .focused($isInputFocused)
                 // Text row is at least button-tall so the resting bar is
@@ -899,7 +817,7 @@ struct VoiceGoalsPage: View {
         "I can tell that one matters to you.",
         "That tells me something real about you.",
         "Noted. That's the kind of thing I'll remember.",
-        "That's more honest than most people get.",
+        "That's more honest than most people get."
     ]
 
     /// Builds an AttributedString where the full text is always laid out,
@@ -912,7 +830,7 @@ struct VoiceGoalsPage: View {
         attr.tracking = -0.5
         if count < full.count {
             let start = attr.index(attr.startIndex, offsetByCharacters: count)
-            attr[start ..< attr.endIndex].foregroundColor = .clear
+            attr[start..<attr.endIndex].foregroundColor = .clear
         }
         return attr
     }
@@ -986,8 +904,8 @@ struct VoiceGoalsPage: View {
                     // flow and were advancing too fast to actually land.
                     let dwell = min(4.5, max(2.6, Double(total) * 0.022))
                     DispatchQueue.main.asyncAfter(deadline: .now() + dwell) {
-                        if case let .acknowledgment(idx) = phase, ackDone, !self.ackDissolving {
-                            beginAckDissolve(idx: idx)
+                        if case .acknowledgment(let idx) = self.phase, self.ackDone, !self.ackDissolving {
+                            self.beginAckDissolve(idx: idx)
                         }
                     }
                 }
@@ -1015,9 +933,7 @@ struct VoiceGoalsPage: View {
         answers[idx] = trimmed
 
         // Store name from Q1
-        if idx == 0 {
-            userName = trimmed
-        }
+        if idx == 0 { userName = trimmed }
 
         let q = Self.questions[idx]
         if q.hasAcknowledgment {
@@ -1041,7 +957,7 @@ struct VoiceGoalsPage: View {
         // Build prior-answer context so the ack can reference what they said
         // earlier in the flow, not just the current answer.
         var priorParts: [String] = []
-        for i in 0 ..< idx where i < answers.count {
+        for i in 0..<idx where i < answers.count {
             let a = answers[i].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !a.isEmpty else { continue }
             priorParts.append("Q: \(Self.questions[i].text)\nA: \(a)")
@@ -1055,15 +971,15 @@ struct VoiceGoalsPage: View {
             priorContext: priorContext
         ) { result in
             DispatchQueue.main.async {
-                ackLoading = false
+                self.ackLoading = false
                 switch result {
-                case let .success(text):
-                    streamAck(Self.stripMarkdown(text))
-                case let .failure(error):
+                case .success(let text):
+                    self.streamAck(Self.stripMarkdown(text))
+                case .failure(let error):
                     // Never fail silently — a generic fallback here is the
                     // difference between "it sees me" and "it's a form".
                     NSLog("[OnboardingAck] q%d failed, using fallback: %@", idx, String(describing: error))
-                    streamAck(Self.fallbackAcks.randomElement() ?? "I'm taking that in.")
+                    self.streamAck(Self.fallbackAcks.randomElement() ?? "I'm taking that in.")
                 }
             }
         }
@@ -1083,15 +999,11 @@ struct VoiceGoalsPage: View {
         }
         // Leading list dashes at line starts
         out = out.replacingOccurrences(of: "\n- ", with: "\n")
-        if out.hasPrefix("- ") {
-            out = String(out.dropFirst(2))
-        }
+        if out.hasPrefix("- ") { out = String(out.dropFirst(2)) }
         // Em/en dashes read as artifacts in streamed prose — strip them.
         out = removeDashes(out)
         // Collapse whitespace left behind, trim.
-        while out.contains("  ") {
-            out = out.replacingOccurrences(of: "  ", with: " ")
-        }
+        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
         return out.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -1104,9 +1016,7 @@ struct VoiceGoalsPage: View {
         out = out.replacingOccurrences(of: " – ", with: ", ")
         out = out.replacingOccurrences(of: "—", with: ", ")
         out = out.replacingOccurrences(of: "–", with: ", ")
-        while out.contains("  ") {
-            out = out.replacingOccurrences(of: "  ", with: " ")
-        }
+        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
         return out
     }
 
@@ -1142,19 +1052,19 @@ struct VoiceGoalsPage: View {
         let h = max(size.height, 36)
         // Dense field — enough particles that the words read as dissolving into dust.
         let count = min(520, max(220, text.count * 7))
-        return (0 ..< count).map { i in
+        return (0..<count).map { i in
             // Bias toward the left/top of the text block so particles read as
             // rising out of the words rather than the empty trailing space.
-            let x = CGFloat.random(in: 0 ... (w * 0.96))
-            let y = CGFloat.random(in: 0 ... h)
-            let drift = CGFloat.random(in: -36 ... 36)
+            let x = CGFloat.random(in: 0...(w * 0.96))
+            let y = CGFloat.random(in: 0...h)
+            let drift = CGFloat.random(in: -36...36)
             let lift = CGFloat.random(in: -88 ... -22)
             return AckDissolveParticle(
                 id: i,
                 origin: CGPoint(x: x, y: y),
                 velocity: CGPoint(x: drift, y: lift),
-                size: CGFloat.random(in: 0.7 ... 2.6),
-                delay: Double.random(in: 0 ... 0.38)
+                size: CGFloat.random(in: 0.7...2.6),
+                delay: Double.random(in: 0...0.38)
             )
         }
     }
@@ -1272,7 +1182,7 @@ struct VoiceGoalsPage: View {
         processingTimer?.invalidate()
         stopWonderings()
         // The list is a prune, not a pick: everything starts kept.
-        keptGoalIDs = Set(extractedGoals.map(\.id))
+        keptGoalIDs = Set(extractedGoals.map { $0.id })
         goalsRevealed = false
         withAnimation { phase = .revealing }
         // Prefetch the first podcast NOW, while the user swipes through goal cards,
@@ -1292,9 +1202,7 @@ struct VoiceGoalsPage: View {
                 await MainActor.run {
                     prefetchedEpisode = ep
                     podcastGenerating = false
-                    if awaitingPodcast {
-                        awaitingPodcast = false; presentPodcast()
-                    }
+                    if awaitingPodcast { awaitingPodcast = false; presentPodcast() }
                 }
             } catch {
                 NSLog("[Podcast] prefetch failed: %@", error.localizedDescription)
@@ -1302,9 +1210,7 @@ struct VoiceGoalsPage: View {
                     podcastGenerating = false
                     // If the user is waiting, open anyway with the fallback transcript
                     // (no audio) rather than trapping them on a spinner.
-                    if awaitingPodcast {
-                        awaitingPodcast = false; presentPodcast()
-                    }
+                    if awaitingPodcast { awaitingPodcast = false; presentPodcast() }
                 }
             }
         }
@@ -1361,13 +1267,13 @@ struct VoiceGoalsPage: View {
         ClaudeService.shared.generateOnboardingWonderings(answersText: combined) { result in
             DispatchQueue.main.async {
                 switch result {
-                case let .success(list):
+                case .success(let list):
                     let cleaned = list.map { Self.stripMarkdown($0) }.filter { !$0.isEmpty }
-                    wonderings = cleaned.count >= 3 ? cleaned : Self.fallbackWonderings
+                    self.wonderings = cleaned.count >= 3 ? cleaned : Self.fallbackWonderings
                 case .failure:
-                    wonderings = Self.fallbackWonderings
+                    self.wonderings = Self.fallbackWonderings
                 }
-                beginWonderingCycle()
+                self.beginWonderingCycle()
             }
         }
     }
@@ -1378,10 +1284,10 @@ struct VoiceGoalsPage: View {
         wonderingIndex = 0
         withAnimation(.easeInOut(duration: 0.5)) { currentWondering = wonderings[0] }
         wonderingTimer = Timer.scheduledTimer(withTimeInterval: 3.8, repeats: true) { _ in
-            guard case .processing = phase else { wonderingTimer?.invalidate(); return }
-            wonderingIndex = (wonderingIndex + 1) % wonderings.count
+            guard case .processing = self.phase else { self.wonderingTimer?.invalidate(); return }
+            self.wonderingIndex = (self.wonderingIndex + 1) % self.wonderings.count
             withAnimation(.easeInOut(duration: 0.5)) {
-                currentWondering = wonderings[wonderingIndex]
+                self.currentWondering = self.wonderings[self.wonderingIndex]
             }
         }
     }
@@ -1394,21 +1300,11 @@ struct VoiceGoalsPage: View {
 
     private static func inferCategory(from description: String) -> String {
         let lower = description.lowercased()
-        if lower.contains("fitness") || lower.contains("exercise") || lower.contains("health") || lower.contains("sleep") {
-            return "Health & Fitness"
-        }
-        if lower.contains("career") || lower.contains("work") || lower.contains("job") || lower.contains("business") {
-            return "Career & Work"
-        }
-        if lower.contains("relationship") || lower.contains("dating") || lower.contains("friend") || lower.contains("family") {
-            return "Relationships"
-        }
-        if lower.contains("money") || lower.contains("financial") || lower.contains("saving") {
-            return "Finance"
-        }
-        if lower.contains("learn") || lower.contains("skill") || lower.contains("study") {
-            return "Skills & Learning"
-        }
+        if lower.contains("fitness") || lower.contains("exercise") || lower.contains("health") || lower.contains("sleep") { return "Health & Fitness" }
+        if lower.contains("career") || lower.contains("work") || lower.contains("job") || lower.contains("business") { return "Career & Work" }
+        if lower.contains("relationship") || lower.contains("dating") || lower.contains("friend") || lower.contains("family") { return "Relationships" }
+        if lower.contains("money") || lower.contains("financial") || lower.contains("saving") { return "Finance" }
+        if lower.contains("learn") || lower.contains("skill") || lower.contains("study") { return "Skills & Learning" }
         return "Personal Growth"
     }
 
@@ -1428,9 +1324,7 @@ struct VoiceGoalsPage: View {
 
         Task {
             let granted = await PodcastNotificationService.shared.requestAuthorization()
-            if granted {
-                PodcastNotificationService.shared.scheduleAllRecurringNotifications()
-            }
+            if granted { PodcastNotificationService.shared.scheduleAllRecurringNotifications() }
         }
 
         onComplete?(keptGoals, userName)
@@ -1439,7 +1333,7 @@ struct VoiceGoalsPage: View {
     /// A pruned goal stops being an observational lens but stays in the system as a
     /// pending candidate, so later behavior can bring it back on its own.
     private func declineGoals(_ goals: [RichGoal]) {
-        let serverIds = goals.compactMap(\.serverId)
+        let serverIds = goals.compactMap { $0.serverId }
         guard !serverIds.isEmpty else { return }
 
         Task {
@@ -1484,12 +1378,9 @@ private struct GoalChecklistRow: View {
                     .fill(OnboardingStyle.control.opacity(isKept ? 0.78 : 0.4))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(
-                                isKept
-                                    ? OnboardingStyle.primaryText.opacity(0.16)
-                                    : OnboardingStyle.hairline,
-                                lineWidth: 1
-                            )
+                            .strokeBorder(isKept
+                                ? OnboardingStyle.primaryText.opacity(0.16)
+                                : OnboardingStyle.hairline, lineWidth: 1)
                     )
                     .shadow(color: .black.opacity(isKept ? 0.10 : 0.04), radius: 8, x: 0, y: 4)
             )
@@ -1506,7 +1397,7 @@ private struct ThinkingDots: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            ForEach(0 ..< 3, id: \.self) { i in
+            ForEach(0..<3, id: \.self) { i in
                 Circle()
                     .fill(OnboardingStyle.primaryText.opacity(phase == i ? 0.75 : 0.25))
                     .frame(width: 9, height: 9)

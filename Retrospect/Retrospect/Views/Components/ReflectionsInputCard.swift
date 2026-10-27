@@ -1,51 +1,50 @@
-import Combine
 import SwiftUI
+import Combine
 
 // MARK: - Reflections Input State Management
-
 class ReflectionsInputState: ObservableObject {
     @Published var inputText = ""
     @Published var isGenerating = false
     @Published var showingErrorAlert = false
     @Published var animateGeneration = false
-
+    
     // Animation states
     @Published var isAppearing = true
     @Published var inputOffset: CGFloat = 100
-
+    
     // Debouncing
     private var debounceWorkItem: DispatchWorkItem?
     private let debounceDelay: TimeInterval = 0.3
-
+    
     init() {
         // Initialization complete - using shared KeyboardManager instead
     }
-
+    
     func onInputTextChange(_ newText: String) {
         inputText = newText
-
+        
         // Debounce expensive operations
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem { [weak self] in
             // Perform any expensive text processing here
             self?.processTextInput(newText)
         }
-
+        
         if let workItem = debounceWorkItem {
             DispatchQueue.main.asyncAfter(deadline: .now() + debounceDelay, execute: workItem)
         }
     }
-
+    
     private func processTextInput(_ text: String) {
         // Add any expensive text processing logic here
         // This runs only after user stops typing for 0.3 seconds
     }
-
+    
     func startGeneration() {
         isGenerating = true
         animateGeneration = true
     }
-
+    
     func stopGeneration() {
         isGenerating = false
         animateGeneration = false
@@ -53,22 +52,21 @@ class ReflectionsInputState: ObservableObject {
 }
 
 // MARK: - Reflections Input Card Component
-
 struct ReflectionsInputCard: View {
     @StateObject private var inputState = ReflectionsInputState()
     @ObservedObject var viewModel: TranscriptViewModel
     @ObservedObject var goalsManager: GoalsManager
     @FocusState private var focusedField: InputField?
-
-    /// Cached screen calculations
+    
+    // Cached screen calculations
     @State private var cachedScreenWidth = UIScreen.main.bounds.width
-
+    
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { geometry in
             let cardWidth = cachedScreenWidth - (Layout.cardHorizontalPadding * 2) - (Layout.cardPeekAmount * 2)
             let cardHeight = cardWidth / Layout.cardAspectRatio
             let textFieldHeight = cardHeight - 120
-
+            
             HStack {
                 VStack(spacing: 0) {
                     // Title
@@ -80,7 +78,7 @@ struct ReflectionsInputCard: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
-
+                    
                     // Enhanced Text Input
                     ZStack(alignment: .topLeading) {
                         if inputState.inputText.isEmpty {
@@ -91,7 +89,7 @@ struct ReflectionsInputCard: View {
                                 .padding(.vertical, 16)
                                 .allowsHitTesting(false)
                         }
-
+                        
                         TextEditor(text: Binding(
                             get: { inputState.inputText },
                             set: { inputState.onInputTextChange($0) }
@@ -105,7 +103,7 @@ struct ReflectionsInputCard: View {
                         .scrollContentBackground(.hidden)
                     }
                     .frame(height: textFieldHeight)
-
+                    
                     // Goals Button
                     HStack {
                         Button(action: { /* Goals action */ }) {
@@ -118,9 +116,9 @@ struct ReflectionsInputCard: View {
                             .foregroundColor(LinearColors.buttonText)
                         }
                         .coStarSecondaryButton()
-
+                        
                         Spacer()
-
+                        
                         // Generate Button
                         ClickyButton(
                             text: inputState.isGenerating ? "Generating..." : "Generate Insights",
@@ -134,7 +132,7 @@ struct ReflectionsInputCard: View {
                 }
                 .frame(width: cardWidth, height: cardHeight)
                 .padding(.leading, Layout.cardHorizontalPadding + Layout.cardPeekAmount)
-
+                
                 Spacer()
             }
         }
@@ -145,26 +143,26 @@ struct ReflectionsInputCard: View {
         .onAppear {
             // Cache screen width once
             cachedScreenWidth = UIScreen.main.bounds.width
-
+            
             withAnimation(.easeOut(duration: 0.8).delay(0.3)) {
                 inputState.isAppearing = false
             }
         }
         .alert("Error", isPresented: $inputState.showingErrorAlert) {
-            Button("OK") {}
+            Button("OK") { }
         } message: {
             Text(viewModel.errorMessage ?? "An error occurred")
         }
     }
-
+    
     private func generateTranscript() {
         guard !inputState.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
+        
         inputState.startGeneration()
         focusedField = nil // Dismiss keyboard
-
+        
         viewModel.generateTranscript(text: inputState.inputText, goals: goalsManager.goalContextForGeneration)
-
+        
         // Monitor completion
         let cancellable = viewModel.$isProcessing
             .sink { isProcessing in
@@ -175,7 +173,7 @@ struct ReflectionsInputCard: View {
                     }
                 }
             }
-
+        
         // Store cancellable to prevent deallocation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             cancellable.cancel()

@@ -5,20 +5,20 @@ import SwiftUI
 
 struct WelcomeCardScreen: View {
     let onNext: () -> Void
-
+    
     @State private var currentPage = 0
-
+    
     var body: some View {
         ZStack {
             // App's background
             LinearColors.background
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Spacer for top padding
                 Spacer()
                     .frame(height: 60)
-
+                
                 // Paginated content
                 TabView(selection: $currentPage) {
                     WelcomeFeaturePage(
@@ -35,7 +35,7 @@ struct WelcomeCardScreen: View {
                         }
                     )
                     .tag(0)
-
+                    
                     WelcomeFeaturePage(
                         iconName: "video.fill",
                         title: "Record Video Reflections",
@@ -50,7 +50,7 @@ struct WelcomeCardScreen: View {
                         }
                     )
                     .tag(1)
-
+                    
                     WelcomeFeaturePage(
                         iconName: "mic.fill",
                         title: "Capture Audio Thoughts",
@@ -72,7 +72,6 @@ struct WelcomeCardScreen: View {
 }
 
 // MARK: - Welcome Feature Page Component
-
 struct WelcomeFeaturePage: View {
     let iconName: String
     let title: String
@@ -81,13 +80,13 @@ struct WelcomeFeaturePage: View {
     let currentPage: Int
     let totalPages: Int
     let onNext: () -> Void
-
+    
     @State private var isAnimating = false
-
+    
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-
+            
             // Icon
             Image(systemName: iconName)
                 .font(.system(size: 72, weight: .regular))
@@ -95,10 +94,10 @@ struct WelcomeFeaturePage: View {
                 .scaleEffect(isAnimating ? 1.0 : 0.8)
                 .opacity(isAnimating ? 1.0 : 0.0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1), value: isAnimating)
-
+            
             Spacer()
                 .frame(height: 48)
-
+            
             // Title
             Text(title)
                 .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
@@ -109,10 +108,10 @@ struct WelcomeFeaturePage: View {
                 .offset(y: isAnimating ? 0 : 20)
                 .opacity(isAnimating ? 1.0 : 0.0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: isAnimating)
-
+            
             Spacer()
                 .frame(height: 16)
-
+            
             // Description
             Text(description)
                 .font(.system(size: 18, weight: .regular))
@@ -123,10 +122,10 @@ struct WelcomeFeaturePage: View {
                 .offset(y: isAnimating ? 0 : 20)
                 .opacity(isAnimating ? 1.0 : 0.0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3), value: isAnimating)
-
+            
             Spacer()
                 .frame(height: 24)
-
+            
             // Subtitle
             Text(subtitle)
                 .font(.system(size: 14, weight: .regular))
@@ -137,9 +136,9 @@ struct WelcomeFeaturePage: View {
                 .offset(y: isAnimating ? 0 : 20)
                 .opacity(isAnimating ? 1.0 : 0.0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.4), value: isAnimating)
-
+            
             Spacer()
-
+            
             // Next button
             nextButton
                 .padding(.horizontal, 28)
@@ -156,7 +155,7 @@ struct WelcomeFeaturePage: View {
             isAnimating = false
         }
     }
-
+    
     private var nextButton: some View {
         Button(action: {
             playButtonTapHaptic()
@@ -178,7 +177,7 @@ struct WelcomeFeaturePage: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             LinearColors.metalGray,
-                            LinearColors.charcoalCard,
+                            LinearColors.charcoalCard
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -189,11 +188,7 @@ struct WelcomeFeaturePage: View {
                         .stroke(LinearColors.warmHighlight.opacity(0.4), lineWidth: 2)
                         .blur(radius: 0.5)
                         .offset(x: 0, y: 2)
-                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
-                            gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )))
+                        .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
                 )
         )
         .overlay(
@@ -205,11 +200,7 @@ struct WelcomeFeaturePage: View {
                 .stroke(LinearColors.textPrimary.opacity(0.8), lineWidth: 2)
                 .blur(radius: 1)
                 .offset(x: 0, y: -1)
-                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(
-                    gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )))
+                .mask(RoundedRectangle(cornerRadius: 20).fill(LinearGradient(gradient: Gradient(colors: [LinearColors.textPrimary, Color.clear]), startPoint: .top, endPoint: .bottom)))
         )
         .shadow(color: LinearColors.cardShadow, radius: 17, x: 0, y: 4)
         .shadow(color: LinearColors.cardShadow, radius: 3, x: 0, y: 2)
@@ -222,19 +213,18 @@ struct WelcomeFeaturePage: View {
             }
         }, perform: {})
     }
-
+    
     // MARK: - Haptic Functions
-
     private func playButtonTapHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
     }
-
+    
     private func playButtonTouchDownHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred(intensity: 0.6)
     }
-
+    
     private func playButtonTouchUpHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
@@ -242,7 +232,6 @@ struct WelcomeFeaturePage: View {
 }
 
 // MARK: - Preview
-
 #Preview {
     WelcomeCardScreen(
         onNext: {
@@ -250,3 +239,4 @@ struct WelcomeFeaturePage: View {
         }
     )
 }
+

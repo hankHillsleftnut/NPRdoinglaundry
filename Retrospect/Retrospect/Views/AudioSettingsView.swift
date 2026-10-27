@@ -1,5 +1,5 @@
-import AVFoundation
 import SwiftUI
+import AVFoundation
 
 struct AudioSettingsView: View {
     @AppStorage("backgroundAudioEnabled") private var backgroundAudioEnabled: Bool = true
@@ -8,24 +8,24 @@ struct AudioSettingsView: View {
     @AppStorage("autoPlayEnabled") private var autoPlayEnabled: Bool = true
     @AppStorage("playbackSpeed") private var playbackSpeed: Double = 1.0
     @Environment(\.dismiss) private var dismiss
-
+    
     private let audioQualities = ["low", "medium", "high"]
     private let playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
-
+    
     var body: some View {
         ZStack {
             // Background
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background,
+                    LinearColors.background
                 ]),
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: UIScreen.main.bounds.width * 1.5
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 20) {
@@ -37,13 +37,13 @@ struct AudioSettingsView: View {
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                 .foregroundColor(LinearColors.textPrimary)
                         }
-
+                        
                         Spacer()
-
+                        
                         Text("Audio & Playback")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                             .foregroundColor(LinearColors.textPrimary)
-
+                        
                         Spacer()
                     }
                     .padding(.horizontal, 24)
@@ -52,7 +52,7 @@ struct AudioSettingsView: View {
                 .padding(.bottom, 16)
                 .background(LinearColors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-
+                
                 ScrollView {
                     VStack(spacing: 24) {
                         // Playback Controls Section
@@ -63,11 +63,11 @@ struct AudioSettingsView: View {
                                 icon: "play.circle.fill",
                                 isOn: $autoPlayEnabled
                             )
-
+                            
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-
+                            
                             SettingsToggleRow(
                                 title: "Background Audio",
                                 subtitle: "Continue playing when app is backgrounded",
@@ -75,7 +75,7 @@ struct AudioSettingsView: View {
                                 isOn: $backgroundAudioEnabled
                             )
                         }
-
+                        
                         // Quality Settings Section
                         SettingsGroup(title: "Quality Settings") {
                             SettingsRow(
@@ -84,11 +84,11 @@ struct AudioSettingsView: View {
                             ) {
                                 // Quality picker would go here
                             }
-
+                            
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-
+                            
                             SettingsToggleRow(
                                 title: "Test Mode",
                                 subtitle: "Enable for audio testing",
@@ -96,7 +96,7 @@ struct AudioSettingsView: View {
                                 isOn: $audioTestMode
                             )
                         }
-
+                        
                         // Playback Speed Section
                         SettingsGroup(title: "Playback Speed") {
                             VStack(spacing: 0) {
@@ -105,28 +105,28 @@ struct AudioSettingsView: View {
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundColor(LinearColors.accent)
                                         .frame(width: 24, height: 24)
-
+                                    
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Current Speed")
                                             .font(.geistBody).kerning(TypographyKerning.bodyKerning)
                                             .foregroundColor(LinearColors.textPrimary)
-
+                                        
                                         Text("\(String(format: "%.2fx", playbackSpeed))")
                                             .font(.serifCaption)
                                             .foregroundColor(LinearColors.textSecondary)
                                     }
-
+                                    
                                     Spacer()
                                 }
                                 .padding(.horizontal, Spacing.cardPadding)
                                 .padding(.vertical, 14)
-
+                                
                                 Divider()
                                     .background(LinearColors.cardBorder)
                                     .padding(.horizontal, Spacing.cardPadding)
-
+                                
                                 VStack(spacing: 8) {
-                                    Slider(value: $playbackSpeed, in: 0.5 ... 2.0, step: 0.25) {
+                                    Slider(value: $playbackSpeed, in: 0.5...2.0, step: 0.25) {
                                         Text("Playback Speed")
                                     } minimumValueLabel: {
                                         Text("0.5x")
@@ -150,9 +150,8 @@ struct AudioSettingsView: View {
         }
         .navigationBarHidden(true)
     }
-
+    
     // MARK: - Helper Methods
-
     private func audioQualityDescription(for quality: String) -> String {
         switch quality {
         case "low":

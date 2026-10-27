@@ -1,5 +1,5 @@
-import BackgroundTasks
 import Foundation
+import BackgroundTasks
 
 enum IntegrationBackgroundTasks {
     static let refreshIdentifier = "com.shauryanarang.Retrospect.integrations.refresh"
@@ -63,7 +63,8 @@ final class IntegrationsSyncService: ObservableObject {
     }
 
     func syncNow() async {
-        guard !isSyncing, RetrospectAPIClient.shared.isAuthenticated else { return }
+        guard !isSyncing else { return }
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
         isSyncing = true
         defer {
             isSyncing = false
@@ -74,7 +75,8 @@ final class IntegrationsSyncService: ObservableObject {
     }
 
     private func syncHealthKitIfNeeded() async {
-        guard UserDefaults.standard.bool(forKey: healthEnabledKey), HealthKitManager.shared.isHealthDataAvailable() else { return }
+        guard UserDefaults.standard.bool(forKey: healthEnabledKey) else { return }
+        guard HealthKitManager.shared.isHealthDataAvailable() else { return }
 
         let days = healthDaysToSync()
         guard !days.isEmpty else { return }
@@ -142,7 +144,7 @@ final class IntegrationsSyncService: ObservableObject {
         let pending = stringSet(forKey: healthPendingDaysKey)
         var dayKeys = pending
 
-        for offset in 1 ... 30 {
+        for offset in 1...30 {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: Date()) else { continue }
             dayKeys.insert(Self.dayKey(for: day))
         }

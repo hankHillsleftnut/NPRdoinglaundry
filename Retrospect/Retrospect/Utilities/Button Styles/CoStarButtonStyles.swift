@@ -3,10 +3,10 @@ import SwiftUI
 // === WARM TERRA-COTTA BUTTON SYSTEM ===
 // Organic, warm terra-cotta buttons with cream and white accents
 
-/// === PRIMARY BUTTON (Terra-cotta with white text) ===
+// === PRIMARY BUTTON (Terra-cotta with white text) ===
 struct CoStarPrimaryButton: ButtonStyle {
     var isDisabled: Bool = false
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.serifButton)
@@ -19,7 +19,7 @@ struct CoStarPrimaryButton: ButtonStyle {
                     .overlay(
                         RoundedRectangle(cornerRadius: BorderRadius.button)
                             .stroke(
-                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder,
+                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder, 
                                 lineWidth: 1.5
                             )
                     )
@@ -34,18 +34,18 @@ struct CoStarPrimaryButton: ButtonStyle {
             .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(Animations.buttonPress, value: configuration.isPressed)
             .disabled(isDisabled)
-            .onChange(of: configuration.isPressed) { _, newValue in
-                if newValue, !isDisabled {
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue && !isDisabled {
                     HapticManager.shared.playMediumImpact() // Enhanced for primary actions
                 }
             }
     }
 }
 
-/// === SECONDARY BUTTON (White with terra-cotta border) ===
+// === SECONDARY BUTTON (White with terra-cotta border) ===
 struct CoStarSecondaryButton: ButtonStyle {
     var isDisabled: Bool = false
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.serifButton)
@@ -58,7 +58,7 @@ struct CoStarSecondaryButton: ButtonStyle {
                     .overlay(
                         RoundedRectangle(cornerRadius: BorderRadius.button)
                             .stroke(
-                                isDisabled ? LinearColors.disabledText : LinearColors.buttonSecondaryBorder,
+                                isDisabled ? LinearColors.disabledText : LinearColors.buttonSecondaryBorder, 
                                 lineWidth: 1.5
                             )
                     )
@@ -72,18 +72,18 @@ struct CoStarSecondaryButton: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(Animations.buttonPress, value: configuration.isPressed)
             .disabled(isDisabled)
-            .onChange(of: configuration.isPressed) { _, newValue in
-                if newValue, !isDisabled {
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue && !isDisabled {
                     HapticManager.shared.playSoftImpact()
                 }
             }
     }
 }
 
-/// === PILL BUTTON (Terra-cotta pill shape for tags/chips) ===
+// === PILL BUTTON (Terra-cotta pill shape for tags/chips) ===
 struct CoStarPillButton: ButtonStyle {
     var isDisabled: Bool = false
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.serifCaption)
@@ -96,7 +96,7 @@ struct CoStarPillButton: ButtonStyle {
                     .overlay(
                         Capsule()
                             .stroke(
-                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder,
+                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder, 
                                 lineWidth: 1
                             )
                     )
@@ -110,18 +110,18 @@ struct CoStarPillButton: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
             .animation(Animations.buttonPress, value: configuration.isPressed)
             .disabled(isDisabled)
-            .onChange(of: configuration.isPressed) { _, newValue in
-                if newValue, !isDisabled {
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue && !isDisabled {
                     HapticManager.shared.playLightImpact()
                 }
             }
     }
 }
 
-/// === MINIMAL BUTTON (Text only with cool hover) ===
+// === MINIMAL BUTTON (Text only with cool hover) ===
 struct CoStarMinimalButton: ButtonStyle {
     var isDisabled: Bool = false
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.serifBody)
@@ -134,19 +134,19 @@ struct CoStarMinimalButton: ButtonStyle {
             )
             .animation(Animations.buttonPress, value: configuration.isPressed)
             .disabled(isDisabled)
-            .onChange(of: configuration.isPressed) { _, newValue in
-                if newValue, !isDisabled {
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue && !isDisabled {
                     HapticManager.shared.playLightImpact()
                 }
             }
     }
 }
 
-/// === ICON BUTTON (Rounded terra-cotta button for icons) ===
+// === ICON BUTTON (Rounded terra-cotta button for icons) ===
 struct CoStarIconButton: ButtonStyle {
     var isDisabled: Bool = false
     var size: CGFloat = 44
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(isDisabled ? LinearColors.disabledText : LinearColors.buttonText)
@@ -157,7 +157,7 @@ struct CoStarIconButton: ButtonStyle {
                     .overlay(
                         RoundedRectangle(cornerRadius: BorderRadius.button)
                             .stroke(
-                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder,
+                                isDisabled ? LinearColors.disabledText : LinearColors.buttonBorder, 
                                 lineWidth: 1
                             )
                     )
@@ -171,10 +171,11 @@ struct CoStarIconButton: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
             .animation(Animations.buttonPress, value: configuration.isPressed)
             .disabled(isDisabled)
-            .onChange(of: configuration.isPressed) { _, newValue in
-                if newValue, !isDisabled {
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue && !isDisabled {
                     HapticManager.shared.playLightImpact()
                 }
             }
     }
 }
+

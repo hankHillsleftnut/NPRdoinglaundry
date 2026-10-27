@@ -1,13 +1,13 @@
+import SwiftUI
 import AVFoundation
 import Speech
-import SwiftUI
 
 struct VideoJournalView: View {
     @StateObject private var viewModel = VideoJournalViewModel()
     @StateObject private var cameraViewModel = CameraViewModel()
     @StateObject private var journalManager = VideoJournalManager.shared
     @AppStorage("devMode") private var devMode: Bool = false
-
+    
     // Local UI State
     @State private var isRecordButtonPressed = false
     @State private var showingCountdown = false
@@ -20,22 +20,22 @@ struct VideoJournalView: View {
     @State private var recordingTimer: Timer?
     @State private var recordingDuration: TimeInterval = 0
     @State private var showingRecordingDoneChip = false
-
+    
     private let maxRecordingDuration: TimeInterval = 300 // 5 minutes
-
+    
     var body: some View {
         ZStack {
             GeometryReader { geometry in
                 let cardWidth = geometry.size.width - (Layout.cardHorizontalPadding * 2) - (Layout.cardPeekAmount * 2)
                 let cardHeight = cardWidth / Layout.cardAspectRatio // Match weekly reflections exactly
-
+                
                 HStack {
                     Spacer(minLength: Layout.cardPeekAmount)
                     VStack(spacing: 0) {
                         // Unified Video Journal Card
                         unifiedVideoCard(cardWidth: cardWidth, cardHeight: cardHeight)
                             .padding(.top, 20)
-
+                        
                         Spacer()
                     }
                     Spacer(minLength: Layout.cardPeekAmount)
@@ -43,7 +43,7 @@ struct VideoJournalView: View {
                 .padding(.bottom, 240) // 100px above generate button
                 .overlay(countdownOverlay)
             }
-
+            
             // Recording Done Notification - subtle popup style
             if showingRecordingDoneChip {
                 VStack {
@@ -51,7 +51,7 @@ struct VideoJournalView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.serifBody)
                             .foregroundColor(.green)
-
+                        
                         Text("Recording saved")
                             .font(.serifLabel)
                             .foregroundColor(.primary)
@@ -64,7 +64,7 @@ struct VideoJournalView: View {
                             .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                     )
                     .padding(.top, 60) // Position below status bar
-
+                    
                     Spacer()
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -74,11 +74,11 @@ struct VideoJournalView: View {
         .task {
             await checkPermissions()
         }
-        .onChange(of: showingRecordingDoneChip) { _, _ in
+        .onChange(of: showingRecordingDoneChip) { _, newValue in
             // Recording chip state changed
         }
         .onChange(of: viewModel.errorMessage) { _, error in
-            if let error {
+            if let error = error {
                 showError(error)
             }
         }
@@ -87,21 +87,21 @@ struct VideoJournalView: View {
         }
         .alert("Permission Required", isPresented: $viewModel.showErrorAlert) {
             Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
         .alert("End Recording?", isPresented: $showingFinishAlert) {
             Button("Stop & Save", role: .destructive) {
-                Task {
+                    Task {
                     await stopRecording()
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text("Do you want to stop recording and save your video journal?")
         }
@@ -141,15 +141,16 @@ struct VideoJournalView: View {
             }
         )
     }
-
+    
     // MARK: - UI Components
 
+    
     // MARK: - Unified Video Card
-
+    
     private func unifiedVideoCard(cardWidth: CGFloat, cardHeight: CGFloat) -> some View {
         let videoPreviewSize = cardWidth - (Spacing.listItemSpacing * 2) // Account for consistent thin padding
         let transcriptionHeight: CGFloat = 60 // Fixed height for 2-3 lines
-
+        
         return VStack(spacing: Spacing.listItemSpacing) {
             // Video Preview with Overlay Controls
             ZStack {
@@ -190,7 +191,7 @@ struct VideoJournalView: View {
                                 .stroke(.white.opacity(0.2), lineWidth: 1)
                         )
                 }
-
+                
                 // Overlay Controls
                 VStack {
                     HStack {
@@ -213,9 +214,9 @@ struct VideoJournalView: View {
                                     .fill(.black.opacity(0.6))
                             )
                         }
-
+                        
                         Spacer()
-
+                        
                         // Video Log Button (Top-right)
                         NavigationLink {
                             VideoJournalListView()
@@ -237,9 +238,9 @@ struct VideoJournalView: View {
                         }
                     }
                     .padding(Spacing.listItemSpacing)
-
+                    
                     Spacer()
-
+                    
                     // Record Button (Bottom-center)
                     Button(action: handleRecordButton) {
                         ZStack {
@@ -252,7 +253,7 @@ struct VideoJournalView: View {
                                     x: Shadows.buttonShadow.x,
                                     y: Shadows.buttonShadow.y
                                 )
-
+                            
                             if viewModel.isRecording {
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(.white)
@@ -281,7 +282,7 @@ struct VideoJournalView: View {
                 }
             }
             .frame(width: videoPreviewSize, height: videoPreviewSize)
-
+            
             // Compact Transcription Area
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 HStack {
@@ -302,7 +303,7 @@ struct VideoJournalView: View {
                         }
                     }
                 }
-
+                
                 ScrollView {
                     Text(viewModel.transcribedText.isEmpty ? "Start recording to see live transcription..." : viewModel.transcribedText)
                         .font(.serifBody)
@@ -326,7 +327,7 @@ struct VideoJournalView: View {
         .coStarCard()
         .frame(width: cardWidth, height: cardHeight)
     }
-
+    
     private func cameraPreviewView(geometry: GeometryProxy) -> some View {
         ZStack {
             if let session = cameraViewModel.captureSession {
@@ -340,7 +341,7 @@ struct VideoJournalView: View {
             }
         }
     }
-
+    
     private func cameraPlaceholder(geometry: GeometryProxy) -> some View {
         RoundedRectangle(cornerRadius: BorderRadius.card)
             .fill(LinearColors.inputBackground)
@@ -371,59 +372,63 @@ struct VideoJournalView: View {
                 }
             )
     }
-
-    @ViewBuilder
+    
     private var recordingIndicatorOverlay: some View {
-        if viewModel.isRecording {
-            VStack {
-                HStack {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(LinearColors.accent)
-                            .frame(width: 8, height: 8)
-                            .opacity(0.5)
-                            .animation(.easeInOut(duration: 0.6).repeatForever(), value: true)
-                        Text(timeString(from: recordingDuration))
-                            .font(.serifLabel).fontWeight(.semibold)
-                            .foregroundColor(LinearColors.Minimal.textPrimary)
+        Group {
+            if viewModel.isRecording {
+                VStack {
+                    HStack {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(LinearColors.accent)
+                                .frame(width: 8, height: 8)
+                                .opacity(0.5)
+                                .animation(.easeInOut(duration: 0.6).repeatForever(), value: true)
+                            Text(timeString(from: recordingDuration))
+                                .font(.serifLabel).fontWeight(.semibold)
+                                .foregroundColor(LinearColors.Minimal.textPrimary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.6))
+                                .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                        )
+                        .padding(16)
+                        Spacer()
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.6))
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                    )
-                    .padding(16)
                     Spacer()
                 }
-                Spacer()
             }
         }
     }
-
-    @ViewBuilder
+    
     private var countdownOverlay: some View {
-        if showingCountdown {
-            ZStack {
-                Color.black.opacity(0.75)
-                VStack(spacing: 8) {
-                    Text("\(countdownValue)")
-                        .font(.geistDisplay).kerning(TypographyKerning.displayKerning).fontWeight(.bold)
-                        .foregroundColor(LinearColors.Minimal.textPrimary)
-                        .contentTransition(.numericText())
-                    Text("Recording will start soon...")
-                        .font(.serifBody)
-                        .foregroundColor(.white.opacity(0.8))
+        Group {
+            if showingCountdown {
+                ZStack {
+                    Color.black.opacity(0.75)
+                    VStack(spacing: 8) {
+                        Text("\(countdownValue)")
+                            .font(.geistDisplay).kerning(TypographyKerning.displayKerning).fontWeight(.bold)
+                            .foregroundColor(LinearColors.Minimal.textPrimary)
+                            .contentTransition(.numericText())
+                        Text("Recording will start soon...")
+                            .font(.serifBody)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
+                .transition(.opacity)
+                .ignoresSafeArea()
             }
-            .transition(.opacity)
-            .ignoresSafeArea()
         }
     }
 
-    // MARK: - Helper Functions
 
+    
+    // MARK: - Helper Functions
+    
     private func handleRecordButton() {
         if viewModel.isRecording {
             Task {
@@ -433,11 +438,11 @@ struct VideoJournalView: View {
             startRecordingWithCountdown()
         }
     }
-
+    
     private func startRecordingWithCountdown() {
         showingCountdown = true
         countdownValue = 3
-
+        
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
             withAnimation {
                 if countdownValue > 0 {
@@ -452,7 +457,7 @@ struct VideoJournalView: View {
             }
         }
     }
-
+    
     private func startRecording() async {
         do {
             try await viewModel.startRecording(cameraViewModel: cameraViewModel)
@@ -461,13 +466,13 @@ struct VideoJournalView: View {
             showError(error.localizedDescription)
         }
     }
-
+    
     private func stopRecording() async {
         print("🛑 stopRecording() called")
         do {
             try await viewModel.stopRecording(cameraViewModel: cameraViewModel)
             stopRecordingTimer()
-
+            
             print("📱 About to show recording done chip")
             // Show recording done chip
             await MainActor.run {
@@ -481,36 +486,36 @@ struct VideoJournalView: View {
             showError(error.localizedDescription)
         }
     }
-
+    
     private func checkPermissions() async {
         let cameraGranted = await withCheckedContinuation { continuation in
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 continuation.resume(returning: granted)
             }
         }
-
+        
         guard cameraGranted else {
             showError("Camera permission is required.")
             return
         }
-
+        
         let microphoneGranted = await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
                 continuation.resume(returning: granted)
             }
         }
-
+        
         guard microphoneGranted else {
             showError("Microphone permission is required.")
             return
         }
-
+        
         let speechStatus = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status)
             }
         }
-
+        
         if speechStatus == .authorized {
             print("🎤 Speech recognition authorized, starting camera...")
             do {
@@ -529,7 +534,7 @@ struct VideoJournalView: View {
             showError("Speech recognition permission is required.")
         }
     }
-
+    
     private func cleanUp() {
         stopRecordingTimer()
         Task {
@@ -537,12 +542,12 @@ struct VideoJournalView: View {
         }
         cameraViewModel.stopCamera()
     }
-
+    
     private func showError(_ message: String) {
         viewModel.errorMessage = message
         viewModel.showErrorAlert = true
     }
-
+    
     private func startRecordingTimer() {
         recordingDuration = 0
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
@@ -554,13 +559,13 @@ struct VideoJournalView: View {
             }
         }
     }
-
+    
     private func stopRecordingTimer() {
         recordingTimer?.invalidate()
         recordingTimer = nil
         recordingDuration = 0
     }
-
+    
     private func timeString(from timeInterval: TimeInterval) -> String {
         let minutes = Int(timeInterval) / 60
         let seconds = Int(timeInterval) % 60
@@ -572,7 +577,7 @@ struct VideoJournalView: View {
 
 struct PulseAnimation: ViewModifier {
     @State private var isAnimating = false
-
+    
     func body(content: Content) -> some View {
         content
             .opacity(isAnimating ? 0.5 : 1)
@@ -580,7 +585,7 @@ struct PulseAnimation: ViewModifier {
             .onAppear {
                 withAnimation(
                     .easeInOut(duration: 0.8)
-                        .repeatForever(autoreverses: true)
+                    .repeatForever(autoreverses: true)
                 ) {
                     isAnimating = true
                 }
@@ -597,7 +602,7 @@ extension View {
 struct PressAction: ViewModifier {
     let onPress: () -> Void
     let onRelease: () -> Void
-
+    
     func body(content: Content) -> some View {
         content
             .simultaneousGesture(
@@ -617,10 +622,10 @@ extension Calendar {
     }
 }
 
-/// Tips View
+// Tips View
 struct TipsView: View {
     @Environment(\.presentationMode) var presentationMode
-
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -632,10 +637,10 @@ struct TipsView: View {
                             "Find a quiet, well-lit space",
                             "Position yourself at arm's length",
                             "Speak clearly and at a natural pace",
-                            "Look directly at the camera",
+                            "Look directly at the camera"
                         ]
                     )
-
+                    
                     TipCard(
                         icon: "waveform",
                         title: "Audio Tips",
@@ -643,10 +648,10 @@ struct TipsView: View {
                             "Minimize background noise",
                             "Keep a consistent distance",
                             "Pause between thoughts",
-                            "Project your voice naturally",
+                            "Project your voice naturally"
                         ]
                     )
-
+                    
                     TipCard(
                         icon: "lightbulb.fill",
                         title: "Content Tips",
@@ -654,7 +659,7 @@ struct TipsView: View {
                             "Share specific examples",
                             "Focus on key moments",
                             "Express your feelings",
-                            "Be authentic",
+                            "Be authentic"
                         ]
                     )
                 }
@@ -664,7 +669,7 @@ struct TipsView: View {
                 RadialGradient(
                     gradient: Gradient(colors: [
                         LinearColors.backgroundLight,
-                        LinearColors.background,
+                        LinearColors.background
                     ]),
                     center: .topLeading,
                     startRadius: 0,
@@ -690,7 +695,7 @@ struct TipCard: View {
     let icon: String
     let title: String
     let tips: [String]
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -702,7 +707,7 @@ struct TipCard: View {
                     .fontWeight(.bold)
                     .foregroundColor(LinearColors.primaryText)
             }
-
+            
             ForEach(tips, id: \.self) { tip in
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")

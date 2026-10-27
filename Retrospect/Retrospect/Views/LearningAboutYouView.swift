@@ -11,9 +11,9 @@
 //  NOTE: haptics only fire on a physical device, not the Simulator.
 //
 
-import CoreHaptics
-import MetalKit
 import SwiftUI
+import MetalKit
+import CoreHaptics
 
 // MARK: - Metal renderer (drives learningTouchFragment)
 
@@ -98,15 +98,13 @@ struct LearningTouchRenderer: UIViewRepresentable {
                   let cb = queue.makeCommandBuffer(),
                   let enc = cb.makeRenderCommandEncoder(descriptor: rpd) else { return }
             let s = view.drawableSize
-            var u = U(
-                iResolution: SIMD2<Float>(Float(s.width), Float(s.height)),
-                touch: touch,
-                iTime: Float(CACurrentMediaTime() - start),
-                holdProgress: holdProgress,
-                touchActive: touchActive,
-                release: release,
-                dissolve: dissolve
-            )
+            var u = U(iResolution: SIMD2<Float>(Float(s.width), Float(s.height)),
+                      touch: touch,
+                      iTime: Float(CACurrentMediaTime() - start),
+                      holdProgress: holdProgress,
+                      touchActive: touchActive,
+                      release: release,
+                      dissolve: dissolve)
             enc.setRenderPipelineState(pipeline)
             enc.setFragmentBytes(&u, length: MemoryLayout<U>.stride, index: 0)
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -122,9 +120,7 @@ struct LearningTouchRenderer: UIViewRepresentable {
 final class LearningHaptics {
     private var engine: CHHapticEngine?
     private var continuousPlayer: CHHapticAdvancedPatternPlayer?
-    private var supported: Bool {
-        CHHapticEngine.capabilitiesForHardware().supportsHaptics
-    }
+    private var supported: Bool { CHHapticEngine.capabilitiesForHardware().supportsHaptics }
 
     func prepare() {
         guard supported else { return }
@@ -140,7 +136,7 @@ final class LearningHaptics {
         guard supported, let engine else { return }
         let event = CHHapticEvent(eventType: .hapticContinuous, parameters: [
             CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.0),
-            CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3),
+            CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
         ], relativeTime: 0, duration: 120)
         do {
             let pattern = try CHHapticPattern(events: [event], parameters: [])
@@ -160,7 +156,7 @@ final class LearningHaptics {
         guard supported, let engine else { return }
         let event = CHHapticEvent(eventType: .hapticTransient, parameters: [
             CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
-            CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness),
+            CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
         ], relativeTime: 0)
         do {
             let pattern = try CHHapticPattern(events: [event], parameters: [])
@@ -198,20 +194,20 @@ struct LearningAboutYouView: View {
     @State private var lastJoinTick = 0
 
     private let haptics = LearningHaptics()
-    private let BUILD = 5.0 // seconds for the vacuum to fill (faster)
-    private let MIN_SUSTAIN = 2.0 // minimum full-intensity hold before it resolves
-    private let RELEASE = 3.5 // the grand collapse
-    private let FORMED_HOLD = 1.1 // sit, move and warp before launching up
-    private let DISSOLVE = 0.55 // the orb shoots up off the top (fast)
+    private let BUILD = 5.0         // seconds for the vacuum to fill (faster)
+    private let MIN_SUSTAIN = 2.0   // minimum full-intensity hold before it resolves
+    private let RELEASE = 3.5       // the grand collapse
+    private let FORMED_HOLD = 1.1   // sit, move and warp before launching up
+    private let DISSOLVE = 0.55     // the orb shoots up off the top (fast)
     private let calloutInterval = 3.0
 
-    /// Placeholder callouts — swap for the real "what I noticed about you" source.
+    // Placeholder callouts — swap for the real "what I noticed about you" source.
     private let callouts = [
         "Learning about you.",
         "You carry more than you let on.",
         "You move fast, and rarely stop to notice.",
         "There's a pattern in what you keep returning to.",
-        "You're harder on yourself than the evidence warrants.",
+        "You're harder on yourself than the evidence warrants."
     ]
 
     private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
@@ -290,30 +286,22 @@ struct LearningAboutYouView: View {
                 lastJoinTick = joinTick
                 haptics.transient(intensity: 0.4, sharpness: 0.55) // a droplet pooled in
             }
-            haptics.updateContinuous(
-                intensity: Float(0.12 + 0.70 * hold),
-                sharpness: Float(0.2 + 0.4 * hold)
-            )
-            if hold >= 0.9 {
-                phase = .sustaining
-            }
+            haptics.updateContinuous(intensity: Float(0.12 + 0.70 * hold),
+                                     sharpness: Float(0.2 + 0.4 * hold))
+            if hold >= 0.9 { phase = .sustaining }
         case .sustaining:
             // Keep growing — asymptotic creep, never stalls — while the podcast generates.
             hold += (0.99 - hold) * dt * 0.35
             loadProgress += (0.95 - loadProgress) * dt * 0.10 // indeterminate creep toward 95%
             sustainTime += dt
             haptics.updateContinuous(intensity: 0.82, sharpness: 0.6)
-            if sustainTime >= MIN_SUSTAIN, podcastReady {
-                phase = .releasing
-            }
+            if sustainTime >= MIN_SUSTAIN && podcastReady { phase = .releasing }
         case .releasing:
-            hold = min(1.0, hold + dt * 0.5) // finish filling smoothly
+            hold = min(1.0, hold + dt * 0.5)            // finish filling smoothly
             release = min(1.0, release + dt / RELEASE)
             loadProgress = min(1.0, loadProgress + dt * 0.7) // complete to 100%
             haptics.updateContinuous(intensity: Float(0.5 * (1.0 - release)), sharpness: 0.3)
-            if release >= 1.0 {
-                phase = .formed
-            }
+            if release >= 1.0 { phase = .formed }
         case .formed:
             // The mass sits, moving and warping, before it launches.
             loadProgress = 1.0
@@ -380,17 +368,11 @@ struct LearningTouchAutoDemo: View {
         .onReceive(timer) { _ in
             let dt = 1.0 / 60.0
             switch phase {
-            case 0: hold = min(1, hold + dt / 4); if hold >= 1 {
-                    phase = 1
-                }
-            case 1: release = min(1, release + dt / 5); if release >= 1 {
-                    phase = 2
-                }
+            case 0: hold = min(1, hold + dt / 4); if hold >= 1 { phase = 1 }
+            case 1: release = min(1, release + dt / 5); if release >= 1 { phase = 2 }
             default:
                 dissolve = min(1, dissolve + dt / 1.2)
-                if dissolve >= 1 {
-                    phase = 0; hold = 0; release = 0; dissolve = 0
-                }
+                if dissolve >= 1 { phase = 0; hold = 0; release = 0; dissolve = 0 }
             }
         }
     }

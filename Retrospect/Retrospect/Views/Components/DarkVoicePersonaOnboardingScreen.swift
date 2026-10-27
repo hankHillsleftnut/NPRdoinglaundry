@@ -1,7 +1,6 @@
 import SwiftUI
 
 // MARK: - Voice Persona Selection (Onboarding Step)
-
 // Lets the user choose how their weekly podcast should sound.
 
 struct DarkVoicePersonaOnboardingScreen: View {
@@ -9,13 +8,13 @@ struct DarkVoicePersonaOnboardingScreen: View {
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-
+    
     @State private var selectedPersona: String = "thoughtful_friend"
     @State private var isSaving = false
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
     @State private var cardsAppeared = false
-
+    
     private let personas: [(id: String, name: String, icon: String, description: String, sample: String)] = [
         (
             id: "thoughtful_friend",
@@ -39,12 +38,12 @@ struct DarkVoicePersonaOnboardingScreen: View {
             sample: "[excited, picking up pace] Okay so get this — [leaning in] your data from this week is actually kind of incredible. [genuine laugh] Seriously."
         ),
     ]
-
+    
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Top section with drag bar + progress
                 VStack(spacing: 24) {
@@ -70,7 +69,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                                     }
                             )
                     }
-
+                    
                     // Progress bar
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
@@ -88,7 +87,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 12)
-
+                
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         // Header
@@ -101,18 +100,18 @@ struct DarkVoicePersonaOnboardingScreen: View {
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
                         }
                         .padding(.top, 32)
-
+                        
                         Text("Choose Your\nPodcast Voice")
                             .font(.custom("HedvigLettersSerif-24ptRegular", size: 34))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                        
                         Text("This is who speaks to you each week. Pick the voice that feels right.")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .opacity(bodyTextAnimating ? 1 : 0.3)
                             .offset(y: bodyTextAnimating ? 0 : 10)
                             .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.15), value: bodyTextAnimating)
-
+                        
                         // Persona cards
                         VStack(spacing: 12) {
                             ForEach(Array(personas.enumerated()), id: \.element.id) { index, persona in
@@ -134,7 +133,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                                 .offset(y: cardsAppeared ? 0 : 20)
                                 .animation(
                                     .spring(response: 0.5, dampingFraction: 0.8)
-                                        .delay(Double(index) * 0.1 + 0.2),
+                                    .delay(Double(index) * 0.1 + 0.2),
                                     value: cardsAppeared
                                 )
                             }
@@ -145,7 +144,7 @@ struct DarkVoicePersonaOnboardingScreen: View {
                     .padding(.horizontal, 28)
                     .padding(.bottom, 40)
                 }
-
+                
                 // Continue button
                 VStack(spacing: 16) {
                     Button(action: {
@@ -184,16 +183,16 @@ struct DarkVoicePersonaOnboardingScreen: View {
             cardsAppeared = true
         }
     }
-
+    
     private func saveAndContinue() {
         // Save locally immediately
         UserDefaults.standard.set(selectedPersona, forKey: "voice_persona")
-
+        
         guard RetrospectAPIClient.shared.isAuthenticated else {
             onNext()
             return
         }
-
+        
         isSaving = true
         Task {
             do {
@@ -211,7 +210,6 @@ struct DarkVoicePersonaOnboardingScreen: View {
 }
 
 // MARK: - Persona Card
-
 private struct PersonaCard: View {
     let name: String
     let icon: String
@@ -219,9 +217,9 @@ private struct PersonaCard: View {
     let sample: String
     let isSelected: Bool
     let onSelect: () -> Void
-
+    
     @State private var isExpanded = false
-
+    
     var body: some View {
         Button(action: onSelect) {
             VStack(alignment: .leading, spacing: 12) {
@@ -231,25 +229,25 @@ private struct PersonaCard: View {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(isSelected ? LinearColors.Minimal.accent.opacity(0.15) : LinearColors.Minimal.backgroundCard)
                             .frame(width: 40, height: 40)
-
+                        
                         Image(systemName: icon)
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(isSelected ? LinearColors.Minimal.accent : LinearColors.Minimal.textTertiary)
                     }
-
+                    
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                        
                         Text(description)
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(LinearColors.Minimal.textSecondary)
                             .lineLimit(2)
                     }
-
+                    
                     Spacer()
-
+                    
                     // Selection indicator
                     ZStack {
                         Circle()
@@ -258,7 +256,7 @@ private struct PersonaCard: View {
                                 lineWidth: 2
                             )
                             .frame(width: 22, height: 22)
-
+                        
                         if isSelected {
                             Circle()
                                 .fill(LinearColors.Minimal.accent)
@@ -266,7 +264,7 @@ private struct PersonaCard: View {
                         }
                     }
                 }
-
+                
                 // Sample text preview (always visible when selected)
                 if isSelected {
                     VStack(alignment: .leading, spacing: 4) {
@@ -274,7 +272,7 @@ private struct PersonaCard: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(LinearColors.Minimal.textTertiary)
                             .textCase(.uppercase)
-
+                        
                         Text(sample)
                             .font(.system(size: 13, weight: .regular, design: .monospaced))
                             .foregroundColor(LinearColors.Minimal.textSecondary.opacity(0.8))

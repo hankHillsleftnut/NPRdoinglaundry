@@ -9,72 +9,72 @@ import UIKit
 
 class HapticManager {
     static let shared = HapticManager()
-
+    
     private init() {}
-
+    
     // MARK: - Impact Feedback (Physical button presses, selections)
-
+    
     func playLightImpact() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         generator.impactOccurred()
     }
-
+    
     func playSoftImpact() {
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.prepare()
         generator.impactOccurred()
     }
-
+    
     func playMediumImpact() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.prepare()
         generator.impactOccurred()
     }
-
+    
     func playHeavyImpact() {
         let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.prepare()
         generator.impactOccurred()
     }
-
+    
     @available(iOS 13.0, *)
     func playRigidImpact() {
         let generator = UIImpactFeedbackGenerator(style: .rigid)
         generator.prepare()
         generator.impactOccurred()
     }
-
+    
     // MARK: - Notification Feedback (System events, state changes)
-
+    
     func playSuccessNotification() {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
     }
-
+    
     func playWarningNotification() {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.warning)
     }
-
+    
     func playErrorNotification() {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.error)
     }
-
+    
     // MARK: - Selection Feedback (Picker changes, tab switches)
-
+    
     func playSelectionChanged() {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
         generator.selectionChanged()
     }
-
+    
     // MARK: - Custom Feedback Patterns
-
+    
     func playRecordingStart() {
         // Strong pattern for recording start
         playHeavyImpact()
@@ -82,7 +82,7 @@ class HapticManager {
             self.playMediumImpact()
         }
     }
-
+    
     func playRecordingStop() {
         // Different pattern for recording stop
         playMediumImpact()
@@ -90,12 +90,12 @@ class HapticManager {
             self.playLightImpact()
         }
     }
-
+    
     func playAudioPlayback() {
         // Gentle pattern for audio start
         playMediumImpact()
     }
-
+    
     func playGenerationComplete() {
         // Celebration pattern for completion
         playSuccessNotification()
@@ -103,12 +103,12 @@ class HapticManager {
             self.playLightImpact()
         }
     }
-
+    
     func playNavigationTransition() {
         // Subtle feedback for navigation changes
         playLightImpact()
     }
-
+    
     func playFocusChange() {
         // Very subtle feedback for input focus
         playSoftImpact()
@@ -125,27 +125,27 @@ class HapticManager {
             playSoftImpact()
         }
     }
-
+    
     func playProgressMilestone() {
         // Feedback for progress indicators
         playSelectionChanged()
     }
-
+    
     // MARK: - Progressive Hold Feedback
-
+    
     func playProgressiveHaptic(intensity: Double) {
         // Progressive haptic intensity from 0.0 to 1.0
         // Maps to different haptic types based on intensity
         switch intensity {
-        case 0.0 ..< 0.2:
+        case 0.0..<0.2:
             playSoftImpact()
-        case 0.2 ..< 0.4:
+        case 0.2..<0.4:
             playLightImpact()
-        case 0.4 ..< 0.6:
+        case 0.4..<0.6:
             playMediumImpact()
-        case 0.6 ..< 0.8:
+        case 0.6..<0.8:
             playHeavyImpact()
-        case 0.8 ... 1.0:
+        case 0.8...1.0:
             if #available(iOS 13.0, *) {
                 playRigidImpact()
             } else {
@@ -155,7 +155,7 @@ class HapticManager {
             playLightImpact()
         }
     }
-
+    
     /// Continuous, snappy pull feedback: intensity 0.0–1.0 maps to impact strength. Use for pull-to-activate.
     /// Call at small distance intervals as user pulls; intensity should increase with pull distance.
     func playPullProgressHaptic(intensity: Double) {
@@ -170,7 +170,7 @@ class HapticManager {
             playProgressiveHaptic(intensity: clamped)
         }
     }
-
+    
     func playHoldActivationSuccess() {
         // Special success pattern for hold activation
         playSuccessNotification()

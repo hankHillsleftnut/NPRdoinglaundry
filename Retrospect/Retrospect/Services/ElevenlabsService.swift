@@ -12,7 +12,7 @@ class ElevenLabsService {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300 // v3 TTS on a full transcript takes minutes
         config.timeoutIntervalForResource = 600
-        session = URLSession(configuration: config)
+        self.session = URLSession(configuration: config)
     }
 
     func generateSpeech(from text: String, completion: @escaping (Result<URL, Error>) -> Void) {
@@ -52,7 +52,7 @@ class ElevenLabsService {
             throw URLError(.badServerResponse)
         }
 
-        guard (200 ... 299).contains(httpResponse.statusCode) else {
+        guard (200...299).contains(httpResponse.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw NSError(
                 domain: "ElevenLabsService",

@@ -22,9 +22,7 @@ enum SleepMath {
         /// "awake", "in_bed", "other").
         let stage: String
 
-        var isAsleep: Bool {
-            SleepMath.asleepStages.contains(stage)
-        }
+        var isAsleep: Bool { SleepMath.asleepStages.contains(stage) }
     }
 
     static let asleepStages: Set<String> = ["core", "deep", "rem", "asleep_unspecified"]
@@ -68,15 +66,11 @@ enum SleepMath {
             if let open = current, interval.0 <= open.1 {
                 current = (open.0, max(open.1, interval.1))
             } else {
-                if let open = current {
-                    total += open.1.timeIntervalSince(open.0)
-                }
+                if let open = current { total += open.1.timeIntervalSince(open.0) }
                 current = interval
             }
         }
-        if let open = current {
-            total += open.1.timeIntervalSince(open.0)
-        }
+        if let open = current { total += open.1.timeIntervalSince(open.0) }
         return total / 3600
     }
 }

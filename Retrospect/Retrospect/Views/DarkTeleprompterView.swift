@@ -12,30 +12,30 @@ struct DarkTeleprompterView: View {
     let transcript: TranscriptModel
     @ObservedObject var audioManager: DarkAudioManager
     @Environment(\.dismiss) private var dismiss
-
+    
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isDragging = false
     @State private var scrollProxy: ScrollViewProxy?
-
+    
     private var hasAudio: Bool {
         transcript.audioFileURL != nil && audioManager.audioPlayer != nil
     }
-
+    
     private var duration: TimeInterval {
         audioManager.audioPlayer?.duration ?? 0
     }
-
+    
     private var progress: Double {
         guard duration > 0 else { return 0 }
         return currentTime / duration
     }
-
+    
     private var podcastMood: PodcastMood {
         guard let moodString = transcript.mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-
+    
     private var moodColors: [Color] {
         switch podcastMood {
         case .positive: return LinearColors.Minimal.Mood.positive
@@ -48,8 +48,8 @@ struct DarkTeleprompterView: View {
         case .melancholic: return LinearColors.Minimal.Mood.melancholic
         }
     }
-
-    /// Split script into sentences for the teleprompter
+    
+    // Split script into sentences for the teleprompter
     private var sentences: [String] {
         guard let script = transcript.processedTranscript else { return [] }
         // Clean audio tags like [laughs], [sighs], etc. for display
@@ -67,20 +67,20 @@ struct DarkTeleprompterView: View {
         }
         return results
     }
-
-    /// Which sentence index corresponds to the current playback position
+    
+    // Which sentence index corresponds to the current playback position
     private var currentSentenceIndex: Int {
         guard !sentences.isEmpty, duration > 0 else { return 0 }
         let index = Int(progress * Double(sentences.count))
         return min(index, sentences.count - 1)
     }
-
+    
     var body: some View {
         ZStack {
             // Solid dark background
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Close button
                 HStack {
@@ -101,7 +101,7 @@ struct DarkTeleprompterView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
-
+                
                 // Teleprompter text area
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
@@ -109,7 +109,7 @@ struct DarkTeleprompterView: View {
                             // Top padding to center the active text
                             Spacer()
                                 .frame(height: 40)
-
+                            
                             ForEach(Array(sentences.enumerated()), id: \.offset) { index, sentence in
                                 Text(sentence + " ")
                                     .font(.custom("HedvigLettersSerif-24ptRegular", size: 34))
@@ -119,7 +119,7 @@ struct DarkTeleprompterView: View {
                                     .id(index)
                                     .animation(.easeInOut(duration: 0.4), value: currentSentenceIndex)
                             }
-
+                            
                             // Bottom padding
                             Spacer()
                                 .frame(height: 300)
@@ -135,9 +135,9 @@ struct DarkTeleprompterView: View {
                                 endPoint: .bottom
                             )
                             .frame(height: 40)
-
+                            
                             LinearColors.Minimal.pureWhite
-
+                            
                             LinearGradient(
                                 colors: [LinearColors.Minimal.pureWhite, .clear],
                                 startPoint: .top,
@@ -153,14 +153,14 @@ struct DarkTeleprompterView: View {
                         }
                     }
                 }
-
+                
                 Spacer()
-
+                
                 // Bottom section: episode card + controls
                 VStack(spacing: 16) {
                     // Episode card
                     episodeCard
-
+                    
                     // Progress bar
                     if hasAudio {
                         VStack(spacing: 6) {
@@ -169,7 +169,7 @@ struct DarkTeleprompterView: View {
                                     RoundedRectangle(cornerRadius: 1.5)
                                         .fill(LinearColors.Minimal.progressTrack)
                                         .frame(height: 3)
-
+                                    
                                     RoundedRectangle(cornerRadius: 1.5)
                                         .fill(LinearColors.Minimal.textPrimary)
                                         .frame(width: geometry.size.width * progress, height: 3)
@@ -188,7 +188,7 @@ struct DarkTeleprompterView: View {
                                 )
                             }
                             .frame(height: 12)
-
+                            
                             HStack {
                                 Spacer()
                                 Text(formatTime(hasAudio ? duration : estimatedDuration))
@@ -198,7 +198,7 @@ struct DarkTeleprompterView: View {
                         }
                         .padding(.horizontal, 28)
                     }
-
+                    
                     // Playback controls
                     if hasAudio {
                         HStack(spacing: 44) {
@@ -212,7 +212,7 @@ struct DarkTeleprompterView: View {
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundColor(.white.opacity(0.8))
                             }
-
+                            
                             Button(action: {
                                 HapticManager.shared.playMediumImpact()
                                 audioManager.togglePlayback()
@@ -222,7 +222,7 @@ struct DarkTeleprompterView: View {
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
                                     .offset(x: audioManager.isPlaying ? 0 : 2)
                             }
-
+                            
                             Button(action: {
                                 HapticManager.shared.playLightImpact()
                                 let newTime = min(currentTime + 15, duration)
@@ -247,9 +247,9 @@ struct DarkTeleprompterView: View {
             timer = nil
         }
     }
-
+    
     // MARK: - Episode Card
-
+    
     private var episodeCard: some View {
         HStack(spacing: 14) {
             // Polaroid-style album art
@@ -259,7 +259,7 @@ struct DarkTeleprompterView: View {
                     .fill(LinearColors.Minimal.pureWhite)
                     .frame(width: 68, height: 76)
                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-
+                
                 // Mood gradient art
                 RoundedRectangle(cornerRadius: 2)
                     .fill(
@@ -273,30 +273,30 @@ struct DarkTeleprompterView: View {
                     .offset(y: -5)
             }
             .rotationEffect(.degrees(-3))
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(episodeLabel)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundColor(.white.opacity(0.5))
-
+                
                 Text(transcript.processedTranscript != nil
-                    ? extractTitle(from: transcript.processedTranscript!)
-                    : "This week's episode")
+                     ? extractTitle(from: transcript.processedTranscript!)
+                     : "This week's episode")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .lineLimit(2)
             }
-
+            
             Spacer()
         }
         .padding(.horizontal, 28)
     }
-
+    
     // MARK: - Helpers
-
+    
     private func colorForSentence(at index: Int) -> Color {
         let distance = index - currentSentenceIndex
-
+        
         if distance < 0 {
             // Already spoken — bright white
             return .white
@@ -311,20 +311,20 @@ struct DarkTeleprompterView: View {
             return .white.opacity(0.15)
         }
     }
-
+    
     private var episodeLabel: String {
         if let mood = transcript.mood {
             return mood.lowercased()
         }
         return "episode"
     }
-
+    
     private var estimatedDuration: TimeInterval {
         guard let script = transcript.processedTranscript else { return 0 }
         let wordCount = script.split(separator: " ").count
         return Double(wordCount) / 2.5 // ~150 words per minute
     }
-
+    
     private func extractTitle(from script: String) -> String {
         // Take first sentence as a rough title
         let firstSentence = script.prefix(100)
@@ -339,7 +339,7 @@ struct DarkTeleprompterView: View {
         }
         return String(firstSentence).trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
+    
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             if !isDragging {
@@ -348,7 +348,7 @@ struct DarkTeleprompterView: View {
         }
         RunLoop.current.add(timer!, forMode: .common)
     }
-
+    
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60

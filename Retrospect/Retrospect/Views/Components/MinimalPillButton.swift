@@ -16,24 +16,24 @@ struct MinimalPillButton: View {
     let title: String
     let icon: String?
     let action: () -> Void
-
+    
     init(title: String, icon: String? = nil, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.action = action
     }
-
+    
     var body: some View {
         Button(action: {
             HapticManager.shared.playMediumImpact()
             action()
         }) {
             HStack(spacing: 10) {
-                if let icon {
+                if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .semibold))
                 }
-
+                
                 Text(title)
                     .font(.system(size: 17, weight: .semibold))
             }
@@ -45,7 +45,7 @@ struct MinimalPillButton: View {
                     // 1. Base fill
                     Capsule()
                         .fill(LinearColors.Minimal.inputBackground)
-
+                    
                     // 2. Inner stroke (4pt)
                     Capsule()
                         .strokeBorder(
@@ -53,7 +53,7 @@ struct MinimalPillButton: View {
                             lineWidth: 4
                         )
                         .padding(1)
-
+                    
                     // 3. Inner shadow overlay
                     Capsule()
                         .stroke(Color.black.opacity(0.3), lineWidth: 6)
@@ -70,14 +70,14 @@ struct MinimalPillButton: View {
                                 )
                         )
                         .padding(1)
-
+                    
                     // 4. Outer stroke - gradient frame
                     Capsule()
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
                                     LinearColors.Minimal.textSecondary,
-                                    LinearColors.Minimal.textTertiary,
+                                    LinearColors.Minimal.textTertiary
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -93,29 +93,28 @@ struct MinimalPillButton: View {
 }
 
 // MARK: - Large Variant for prominent actions
-
 struct MinimalPillButtonLarge: View {
     let title: String
     let icon: String?
     let action: () -> Void
-
+    
     init(title: String, icon: String? = nil, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.action = action
     }
-
+    
     var body: some View {
         Button(action: {
             HapticManager.shared.playMediumImpact()
             action()
         }) {
             HStack(spacing: 12) {
-                if let icon {
+                if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 22, weight: .semibold))
                 }
-
+                
                 Text(title)
                     .font(.system(size: 20, weight: .bold))
             }
@@ -127,7 +126,7 @@ struct MinimalPillButtonLarge: View {
                     // 1. Base fill
                     Capsule()
                         .fill(LinearColors.Minimal.inputBackground)
-
+                    
                     // 2. Inner stroke (4pt)
                     Capsule()
                         .strokeBorder(
@@ -135,7 +134,7 @@ struct MinimalPillButtonLarge: View {
                             lineWidth: 4
                         )
                         .padding(1)
-
+                    
                     // 3. Inner shadow overlay
                     Capsule()
                         .stroke(Color.black.opacity(0.3), lineWidth: 6)
@@ -152,14 +151,14 @@ struct MinimalPillButtonLarge: View {
                                 )
                         )
                         .padding(1)
-
+                    
                     // 4. Outer stroke - gradient frame
                     Capsule()
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
                                     LinearColors.Minimal.textSecondary,
-                                    LinearColors.Minimal.textTertiary,
+                                    LinearColors.Minimal.textTertiary
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -178,19 +177,20 @@ struct MinimalPillButtonLarge: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-
+        
         VStack(spacing: 24) {
             MinimalPillButton(title: "Continue", icon: "arrow.right") {
                 print("Continue tapped")
             }
-
+            
             MinimalPillButton(title: "Get Started") {
                 print("Get Started tapped")
             }
-
+            
             MinimalPillButtonLarge(title: "Play", icon: "play.fill") {
                 print("Play tapped")
             }
         }
     }
 }
+

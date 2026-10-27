@@ -11,7 +11,7 @@ struct PaywallView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var selectedPlan: SubscriptionPlan = .yearly
     @State private var isLoading = false
-
+    
     private let benefits = [
         PaywallBenefit(
             icon: "brain.head.profile",
@@ -42,18 +42,18 @@ struct PaywallView: View {
             icon: "sparkles",
             title: "Early Access",
             description: "Be the first to try new features and AI capabilities before anyone else"
-        ),
+        )
     ]
-
+    
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
                     headerSection
-
+                    
                     // Benefits section is now the main feature
                     benefitsSection
-
+                    
                     pricingSection
                     ctaSection
                 }
@@ -63,9 +63,9 @@ struct PaywallView: View {
         .background(paywallBackground)
         .navigationBarHidden(true)
     }
-
+    
     // MARK: - Header Section
-
+    
     private var headerSection: some View {
         VStack(spacing: Spacing.md) {
             HStack {
@@ -87,15 +87,15 @@ struct PaywallView: View {
                                 .strokeBorder(LinearColors.cardBorder.opacity(0.5), lineWidth: 1)
                         )
                 }
-
+                
                 Spacer()
-
+                
                 // Smaller, subtle premium tag
                 HStack(spacing: 6) {
                     Image(systemName: "crown.fill")
                         .font(.geistCaption)
                         .foregroundColor(LinearColors.accent)
-
+                    
                     Text("Unlock Premium")
                         .geistBodyEmphasis()
                         .foregroundColor(LinearColors.textPrimary)
@@ -116,22 +116,22 @@ struct PaywallView: View {
         }
         .padding(.bottom, Spacing.md)
     }
-
+    
     // MARK: - Benefits Section
-
+    
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.xl) {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text("Premium Features")
                     .geistTitle()
                     .foregroundColor(LinearColors.textPrimary)
-
+                
                 Text("Discover everything you'll unlock with premium access")
                     .geistBody()
                     .foregroundColor(LinearColors.textSecondary)
             }
             .padding(.horizontal, Spacing.containerMargin)
-
+            
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Spacing.lg) {
                     ForEach(benefits.indices, id: \.self) { index in
@@ -143,15 +143,15 @@ struct PaywallView: View {
         }
         .padding(.bottom, Spacing.xxl)
     }
-
+    
     // MARK: - Pricing Section
-
+    
     private var pricingSection: some View {
         VStack(spacing: Spacing.lg) {
             Text("Choose Your Plan")
                 .geistSubheadline()
                 .foregroundColor(LinearColors.textSecondary)
-
+            
             VStack(spacing: Spacing.md) {
                 // Yearly Plan
                 PricingCard(
@@ -168,7 +168,7 @@ struct PaywallView: View {
                         }
                     }
                 )
-
+                
                 // Monthly Plan
                 PricingCard(
                     plan: .monthly,
@@ -189,9 +189,9 @@ struct PaywallView: View {
         }
         .padding(.bottom, Spacing.xl)
     }
-
+    
     // MARK: - CTA Section
-
+    
     private var ctaSection: some View {
         VStack(spacing: Spacing.lg) {
             Button(action: startSubscription) {
@@ -204,7 +204,7 @@ struct PaywallView: View {
                         Image(systemName: "crown.fill")
                             .font(.geistBody)
                     }
-
+                    
                     Text(isLoading ? "Processing..." : "Start Premium")
                         .font(.geistBody)
                         .fontWeight(.semibold)
@@ -227,12 +227,12 @@ struct PaywallView: View {
             .scaleEffect(isLoading ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: isLoading)
             .padding(.horizontal, Spacing.containerMargin)
-
+            
             VStack(spacing: 4) {
                 Text("Cancel anytime • No commitments")
                     .font(.serifCaption)
                     .foregroundColor(LinearColors.textSecondary)
-
+                
                 Text("Terms of Service • Privacy Policy")
                     .font(.serifCaption)
                     .foregroundColor(LinearColors.accent)
@@ -243,29 +243,29 @@ struct PaywallView: View {
         }
         .padding(.bottom, Spacing.xl)
     }
-
+    
     private var paywallBackground: some View {
         LinearGradient(
             gradient: Gradient(colors: [
                 LinearColors.cardBackground,
-                LinearColors.cardBackground.opacity(0.95),
+                LinearColors.cardBackground.opacity(0.95)
             ]),
             startPoint: .top,
             endPoint: .bottom
         )
         .edgesIgnoringSafeArea(.all)
     }
-
+    
     // MARK: - Actions
-
+    
     private func startSubscription() {
         HapticManager.shared.playMediumImpact()
-
+        
         isLoading = true
-
+        
         // TODO: Implement actual subscription logic here
         // This would typically involve StoreKit integration
-
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             isLoading = false
             // Show success or handle subscription result
@@ -277,26 +277,26 @@ struct PaywallView: View {
 
 struct BenefitCard: View {
     let benefit: PaywallBenefit
-
+    
     var body: some View {
         VStack(spacing: Spacing.md) {
             ZStack {
                 Circle()
                     .fill(LinearColors.accent.opacity(0.1))
                     .frame(width: 48, height: 48)
-
+                
                 Image(systemName: benefit.icon)
                     .font(.system(size: 24, weight: .medium))
                     .foregroundColor(LinearColors.accent)
             }
-
+            
             VStack(spacing: 6) {
                 Text(benefit.title)
                     .font(.geistBody)
                     .fontWeight(.semibold)
                     .foregroundColor(LinearColors.textPrimary)
                     .multilineTextAlignment(.center)
-
+                
                 Text(benefit.description)
                     .font(.serifCaption)
                     .foregroundColor(LinearColors.textSecondary)
@@ -322,7 +322,7 @@ struct BenefitCard: View {
 
 struct EnhancedBenefitCard: View {
     let benefit: PaywallBenefit
-
+    
     var body: some View {
         VStack(spacing: Spacing.lg) {
             ZStack {
@@ -331,7 +331,7 @@ struct EnhancedBenefitCard: View {
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 LinearColors.accent.opacity(0.2),
-                                LinearColors.accent.opacity(0.1),
+                                LinearColors.accent.opacity(0.1)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -342,18 +342,18 @@ struct EnhancedBenefitCard: View {
                         Circle()
                             .strokeBorder(LinearColors.accent.opacity(0.3), lineWidth: 1)
                     )
-
+                
                 Image(systemName: benefit.icon)
                     .font(.system(size: 28, weight: .medium))
                     .foregroundColor(LinearColors.accent)
             }
-
+            
             VStack(spacing: Spacing.sm) {
                 Text(benefit.title)
                     .geistBodyEmphasis()
                     .foregroundColor(LinearColors.textPrimary)
                     .multilineTextAlignment(.center)
-
+                
                 Text(benefit.description)
                     .geistCaption()
                     .foregroundColor(LinearColors.textSecondary)
@@ -369,7 +369,7 @@ struct EnhancedBenefitCard: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             LinearColors.cardBackground,
-                            LinearColors.cardBackground.opacity(0.98),
+                            LinearColors.cardBackground.opacity(0.98)
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -399,7 +399,7 @@ struct PricingCard: View {
     let savings: String?
     let isSelected: Bool
     let onSelect: () -> Void
-
+    
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: Spacing.md) {
@@ -409,8 +409,8 @@ struct PricingCard: View {
                             .font(.geistBody)
                             .fontWeight(.semibold)
                             .foregroundColor(LinearColors.textPrimary)
-
-                        if let savings {
+                        
+                        if let savings = savings {
                             Text(savings)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -422,24 +422,24 @@ struct PricingCard: View {
                                 )
                         }
                     }
-
+                    
                     Text(period)
                         .font(.serifCaption)
                         .foregroundColor(LinearColors.textSecondary)
                 }
-
+                
                 Spacer()
-
+                
                 HStack(spacing: 8) {
                     Text(price)
                         .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                         .foregroundColor(LinearColors.textPrimary)
-
+                    
                     ZStack {
                         Circle()
                             .fill(isSelected ? LinearColors.accent : LinearColors.cardBorder.opacity(0.3))
                             .frame(width: 20, height: 20)
-
+                        
                         if isSelected {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 12, weight: .bold))
@@ -477,9 +477,9 @@ struct PaywallBenefit {
 }
 
 enum SubscriptionPlan: String, CaseIterable {
-    case monthly
-    case yearly
-
+    case monthly = "monthly"
+    case yearly = "yearly"
+    
     var identifier: String {
         switch self {
         case .monthly: return "com.retrospect.premium.monthly"

@@ -1,6 +1,6 @@
-import AVFoundation
 import Foundation
 import Speech
+import AVFoundation
 
 class SpeechRecognizerManager: NSObject, ObservableObject {
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
@@ -33,7 +33,7 @@ class SpeechRecognizerManager: NSObject, ObservableObject {
 
     func startTranscribing() {
         guard speechRecognizer.isAvailable else {
-            errorMessage = "Speech recognizer is not available."
+            self.errorMessage = "Speech recognizer is not available."
             return
         }
 
@@ -47,44 +47,44 @@ class SpeechRecognizerManager: NSObject, ObservableObject {
             try audioSession.setCategory(.playAndRecord, mode: .measurement, options: .duckOthers)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            errorMessage = "Audio session setup error: \(error.localizedDescription)"
+            self.errorMessage = "Audio session setup error: \(error.localizedDescription)"
             print("Audio session setup error: \(error)")
             return
         }
 
         self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
 
-        guard let recognitionRequest else {
+        guard let recognitionRequest = self.recognitionRequest else {
             fatalError("Unable to create an SFSpeechAudioBufferRecognitionRequest object")
         }
 
         recognitionRequest.shouldReportPartialResults = true
 
         let inputNode = audioEngine.inputNode
-
+        
         recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
             var isFinal = false
 
-            if let result {
+            if let result = result {
                 self.transcribedText = result.bestTranscription.formattedString
                 isFinal = result.isFinal
-                print("Transcript: \(self.transcribedText)")
+                 print("Transcript: \(self.transcribedText)")
             }
 
             if error != nil || isFinal {
                 self.stopTranscribing()
-                if let error {
-                    print("Recognition error: \(error.localizedDescription)")
-                    if (error as NSError).code != 203 {
-                        self.errorMessage = "Recognition error: \(error.localizedDescription)"
-                    }
+                if let error = error {
+                     print("Recognition error: \(error.localizedDescription)")
+                     if (error as NSError).code != 203 {
+                         self.errorMessage = "Recognition error: \(error.localizedDescription)"
+                     }
                 }
             }
         }
 
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         guard recordingFormat.sampleRate > 0 else {
-            errorMessage = "Input node recording format is invalid (sample rate is 0)."
+            self.errorMessage = "Input node recording format is invalid (sample rate is 0)."
             print("Input node recording format is invalid (sample rate is 0).")
             audioEngine.stop()
             self.recognitionRequest?.endAudio()
@@ -93,8 +93,8 @@ class SpeechRecognizerManager: NSObject, ObservableObject {
             self.recognitionRequest = nil
             return
         }
-
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, _: AVAudioTime) in
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
             self.recognitionRequest?.append(buffer)
         }
 
@@ -108,15 +108,15 @@ class SpeechRecognizerManager: NSObject, ObservableObject {
             }
             print("Speech Recognizer: Audio engine started, listening...")
         } catch {
-            errorMessage = "Audio engine start error: \(error.localizedDescription)"
+            self.errorMessage = "Audio engine start error: \(error.localizedDescription)"
             print("Audio engine start error: \(error)")
-            stopTranscribing()
+            self.stopTranscribing()
         }
     }
 
     func stopTranscribing() {
         DispatchQueue.main.async {
-            if self.audioEngine.isRunning {
+             if self.audioEngine.isRunning {
                 self.audioEngine.stop()
                 self.audioEngine.inputNode.removeTap(onBus: 0)
                 print("Speech Recognizer: Audio engine stopped.")
@@ -126,7 +126,7 @@ class SpeechRecognizerManager: NSObject, ObservableObject {
             self.recognitionTask = nil
             self.recognitionRequest = nil
             self.isListening = false
-            print("Speech Recognizer: Transcription stopped.")
+             print("Speech Recognizer: Transcription stopped.")
         }
     }
 }
@@ -141,4 +141,4 @@ extension SpeechRecognizerManager: SFSpeechRecognizerDelegate {
             }
         }
     }
-}
+} 

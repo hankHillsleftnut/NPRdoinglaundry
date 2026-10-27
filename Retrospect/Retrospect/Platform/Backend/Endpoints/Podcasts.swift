@@ -296,14 +296,8 @@ extension Backend.Podcasts.Episode: Decodable {
         }
         let transcript = try container.decodeIfPresent([WireTranscriptLine].self, forKey: .transcript) ?? []
         return transcript.enumerated().map { offset, line in
-            .init(
-                index: offset,
-                text: line.text,
-                chapterIndex: chapterIndex(at: line.startSeconds, in: chapters),
-                startSeconds: line.startSeconds,
-                register: .craft,
-                claimId: nil
-            )
+            .init(index: offset, text: line.text, chapterIndex: chapterIndex(at: line.startSeconds, in: chapters), startSeconds: line.startSeconds,
+                  register: .craft, claimId: nil)
         }
     }
 

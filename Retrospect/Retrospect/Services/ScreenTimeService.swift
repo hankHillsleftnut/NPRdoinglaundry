@@ -7,18 +7,18 @@
 //  the shared App Group, and backend syncing for the AI analysis pipeline.
 //
 
-import Combine
-import DeviceActivity
-import FamilyControls
 import Foundation
+import FamilyControls
+import DeviceActivity
 import ManagedSettings
+import Combine
 
 @MainActor
 class ScreenTimeService: ObservableObject {
     static let shared = ScreenTimeService()
-
+    
     // MARK: - Published State
-
+    
     @Published var isAuthorized: Bool = false
     @Published var authorizationError: String?
     @Published var latestSummary: ScreenTimeSummary?
@@ -28,9 +28,9 @@ class ScreenTimeService: ObservableObject {
     /// True while 30-day retroactive backfill is running (hidden report in app root).
     @Published var isBackfilling: Bool = false
     @Published var backfillDayIndex: Int = 0
-
+    
     // MARK: - Private
-
+    
     private let authCenter = AuthorizationCenter.shared
     private let appGroupID = "group.com.retrospect.shared"
     private let summaryKey = "screenTimeDailySummary"
@@ -44,7 +44,7 @@ class ScreenTimeService: ObservableObject {
     private var backfillTimer: Timer?
     private let backfillTotalDays = 30
     private let backfillDelayPerDay: TimeInterval = 1.5
-
+    
     private init() {
         checkAuthorizationStatus()
         loadLatestSummary()
@@ -52,18 +52,18 @@ class ScreenTimeService: ObservableObject {
         loadLastSyncDate()
         startPeriodicRefresh()
     }
-
+    
     deinit {
         refreshTimer?.invalidate()
         backfillTimer?.invalidate()
     }
-
+    
     // MARK: - Retroactive Backfill (background, no UI)
-
+    
     /// Interval for the current backfill day; nil when not backfilling or when done.
     var currentBackfillDateInterval: DateInterval? {
-        guard isBackfilling, backfillDayIndex < backfillTotalDays,
-              let day = Calendar.current.date(byAdding: .day, value: -backfillDayIndex, to: Date()) else { return nil }
+        guard isBackfilling, backfillDayIndex < backfillTotalDays else { return nil }
+        guard let day = Calendar.current.date(byAdding: .day, value: -backfillDayIndex, to: Date()) else { return nil }
         let start = Calendar.current.startOfDay(for: day)
         if backfillDayIndex == 0 {
             return DateInterval(start: start, end: Date())
@@ -73,7 +73,7 @@ class ScreenTimeService: ObservableObject {
         }
         return DateInterval(start: start, end: end)
     }
-
+    
     /// Start 30-day retroactive backfill; runs in background via hidden report in app root.
     func startRetroactiveBackfill() {
         guard isAuthorized else { return }
@@ -88,7 +88,7 @@ class ScreenTimeService: ObservableObject {
         }
         RunLoop.main.add(backfillTimer!, forMode: .common)
     }
-
+    
     private func advanceBackfillOneDay() {
         backfillDayIndex += 1
         if backfillDayIndex >= backfillTotalDays {
@@ -102,9 +102,9 @@ class ScreenTimeService: ObservableObject {
         guard let day = Calendar.current.date(byAdding: .day, value: -backfillDayIndex, to: Date()) else { return }
         setRequestedDateForExtension(day)
     }
-
+    
     // MARK: - Authorization
-
+    
     func requestAuthorization() async {
         do {
             try await authCenter.requestAuthorization(for: .individual)
@@ -112,7 +112,7 @@ class ScreenTimeService: ObservableObject {
             UserDefaults.standard.set(true, forKey: userApprovedKey)
             authorizationError = nil
             print("✅ Screen Time: Authorization granted")
-
+            
             scheduleDailyMonitor()
         } catch {
             isAuthorized = false
@@ -120,7 +120,7 @@ class ScreenTimeService: ObservableObject {
             print("❌ Screen Time: Authorization failed — \(error.localizedDescription)")
         }
     }
-
+    
     func checkAuthorizationStatus() {
         let status = authCenter.authorizationStatus
         switch status {
@@ -142,11 +142,11 @@ class ScreenTimeService: ObservableObject {
             print("⚠️ Screen Time: Auth status = unknown (using cached=\(previouslyApproved))")
         }
     }
-
+    
     /// Set the date the extension should stamp on the next report (for 30-day backfill). Pass nil to clear.
     func setRequestedDateForExtension(_ date: Date?) {
         guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
-        if let date {
+        if let date = date {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
             defaults.set(formatter.string(from: date), forKey: requestedDateKey)
@@ -154,7 +154,7 @@ class ScreenTimeService: ObservableObject {
             defaults.removeObject(forKey: requestedDateKey)
         }
     }
-
+    
     func revokeAuthorization() {
         authCenter.revokeAuthorization(completionHandler: { result in
             Task { @MainActor in
@@ -166,24 +166,24 @@ class ScreenTimeService: ObservableObject {
                     self.latestSummary = nil
                     self.weeklyHistory = []
                     print("✅ Screen Time: Authorization revoked")
-                case let .failure(error):
+                case .failure(let error):
                     print("❌ Screen Time: Revoke failed — \(error.localizedDescription)")
                 }
             }
         })
     }
-
+    
     // MARK: - Device Activity Monitor
-
+    
     func scheduleDailyMonitor() {
         let center = DeviceActivityCenter()
-
+        
         let schedule = DeviceActivitySchedule(
             intervalStart: DateComponents(hour: 0, minute: 0),
             intervalEnd: DateComponents(hour: 23, minute: 59),
             repeats: true
         )
-
+        
         do {
             try center.startMonitoring(
                 DeviceActivityName("daily_screen_time"),
@@ -194,15 +194,15 @@ class ScreenTimeService: ObservableObject {
             print("❌ Screen Time: Failed to schedule monitor — \(error.localizedDescription)")
         }
     }
-
+    
     func cancelDailyMonitor() {
         let center = DeviceActivityCenter()
         center.stopMonitoring([DeviceActivityName("daily_screen_time")])
         print("✅ Screen Time: Daily monitor cancelled")
     }
-
+    
     // MARK: - Periodic Refresh
-
+    
     private func startPeriodicRefresh() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -210,7 +210,7 @@ class ScreenTimeService: ObservableObject {
             }
         }
     }
-
+    
     func refreshData() {
         guard isAuthorized else { return }
         loadLatestSummary()
@@ -218,26 +218,24 @@ class ScreenTimeService: ObservableObject {
         readExtensionDiagnostics()
         autoSyncIfNeeded()
     }
-
+    
     // MARK: - Data Reading (from App Group shared by extension)
-
+    
     func loadLatestSummary() {
         guard let defaults = UserDefaults(suiteName: appGroupID) else {
             print("⚠️ Screen Time: Cannot access App Group defaults")
             return
         }
-
+        
         guard let data = defaults.data(forKey: summaryKey) else {
             print("⚠️ Screen Time: No data at key '\(summaryKey)' in App Group (extension hasn't written yet)")
             return
         }
-
+        
         do {
             let summary = try JSONDecoder().decode(ScreenTimeSummary.self, from: data)
             latestSummary = summary
-            print(
-                "📊 Screen Time: Loaded summary for \(summary.date) — \(summary.totalScreenTimeMinutes)min, \(summary.totalPickups) pickups, \(summary.appUsage.count) apps"
-            )
+            print("📊 Screen Time: Loaded summary for \(summary.date) — \(summary.totalScreenTimeMinutes)min, \(summary.totalPickups) pickups, \(summary.appUsage.count) apps")
         } catch {
             print("❌ Screen Time: Failed to decode summary — \(error.localizedDescription)")
         }
@@ -254,10 +252,11 @@ class ScreenTimeService: ObservableObject {
             print("🔍 Screen Time Extension: \(entry)")
         }
     }
-
+    
     func loadWeeklyHistory() {
-        guard let defaults = UserDefaults(suiteName: appGroupID), let data = defaults.data(forKey: historyKey) else { return }
-
+        guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
+        guard let data = defaults.data(forKey: historyKey) else { return }
+        
         do {
             let history = try JSONDecoder().decode([ScreenTimeSummary].self, from: data)
             weeklyHistory = history.sorted { $0.date > $1.date }
@@ -266,39 +265,39 @@ class ScreenTimeService: ObservableObject {
             print("❌ Screen Time: Failed to decode history — \(error.localizedDescription)")
         }
     }
-
+    
     // MARK: - Backend Sync
-
+    
     private func autoSyncIfNeeded() {
         guard latestSummary != nil else { return }
-
+        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let todayStr = dateFormatter.string(from: Date())
-
+        
         if let lastSync = lastSyncDate {
             let lastSyncStr = dateFormatter.string(from: lastSync)
             if lastSyncStr == todayStr {
                 return // Already synced today
             }
         }
-
+        
         syncToBackend()
     }
-
+    
     func syncToBackend() {
         guard let summary = latestSummary else {
             print("⚠️ Screen Time: No summary to sync")
             return
         }
-
+        
         guard RetrospectAPIClient.shared.isAuthenticated else {
             print("⚠️ Screen Time: Not authenticated — skipping sync")
             return
         }
-
+        
         isSyncing = true
-
+        
         Task {
             do {
                 try await RetrospectAPIClient.shared.uploadIntegrationItems(
@@ -318,13 +317,14 @@ class ScreenTimeService: ObservableObject {
             }
         }
     }
-
+    
     /// Sync the entire weekly history to the backend (for backfill)
     func syncWeeklyHistoryToBackend() {
-        guard RetrospectAPIClient.shared.isAuthenticated, !weeklyHistory.isEmpty else { return }
-
+        guard RetrospectAPIClient.shared.isAuthenticated else { return }
+        guard !weeklyHistory.isEmpty else { return }
+        
         isSyncing = true
-
+        
         Task {
             var syncCount = 0
             for summary in weeklyHistory {
@@ -339,44 +339,44 @@ class ScreenTimeService: ObservableObject {
                 } catch {
                     print("❌ Screen Time: Failed to sync \(summary.date) — \(error.localizedDescription)")
                 }
-
+                
                 // Rate limit
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
-
+            
             isSyncing = false
             print("✅ Screen Time: Synced \(syncCount)/\(weeklyHistory.count) days of history")
         }
     }
-
+    
     // MARK: - Persistence Helpers
-
+    
     private func saveLastSyncDate() {
         UserDefaults.standard.set(lastSyncDate, forKey: lastSyncKey)
     }
-
+    
     private func loadLastSyncDate() {
         lastSyncDate = UserDefaults.standard.object(forKey: lastSyncKey) as? Date
     }
-
+    
     // MARK: - Computed Properties
-
+    
     var weeklyAverageMinutes: Int {
         guard !weeklyHistory.isEmpty else { return 0 }
         let total = weeklyHistory.reduce(0) { $0 + $1.totalScreenTimeMinutes }
         return total / weeklyHistory.count
     }
-
+    
     var weeklyAveragePickups: Int {
         guard !weeklyHistory.isEmpty else { return 0 }
         let total = weeklyHistory.reduce(0) { $0 + $1.totalPickups }
         return total / weeklyHistory.count
     }
-
+    
     var mostUsedApp: String? {
         latestSummary?.appUsage.first?.appName
     }
-
+    
     var topCategory: String? {
         latestSummary?.categoryBreakdown.first?.categoryName
     }
@@ -391,17 +391,15 @@ struct ScreenTimeSummary: Codable, Identifiable {
     let firstPickupTime: String?
     let appUsage: [AppUsageEntry]
     let categoryBreakdown: [CategoryUsageEntry]
-
-    var id: String {
-        date
-    }
-
+    
+    var id: String { date }
+    
     var dateObject: Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.date(from: date)
     }
-
+    
     var formattedTotalTime: String {
         let h = totalScreenTimeMinutes / 60
         let m = totalScreenTimeMinutes % 60
@@ -478,30 +476,30 @@ struct ScreenTimeSummary: Codable, Identifiable {
         }
         return lines.joined(separator: "\n")
     }
-
+    
     /// Convert the summary into a detailed, structured natural-language format
     /// that the AI extraction pipeline can deeply analyze for behavioral patterns.
     func toNaturalLanguage() -> String {
         var lines: [String] = []
-
+        
         let hours = totalScreenTimeMinutes / 60
         let minutes = totalScreenTimeMinutes % 60
-
+        
         lines.append("=== SCREEN TIME REPORT — \(date) ===")
         lines.append("")
         lines.append("OVERVIEW:")
         lines.append("Total screen time: \(hours)h \(minutes)m (\(totalScreenTimeMinutes) minutes)")
         lines.append("Phone pickups: \(totalPickups) times")
-
+        
         if let firstPickup = firstPickupTime {
             lines.append("First pickup of the day: \(firstPickup)")
         }
-
-        if totalPickups > 0, totalScreenTimeMinutes > 0 {
+        
+        if totalPickups > 0 && totalScreenTimeMinutes > 0 {
             let avgSessionMinutes = totalScreenTimeMinutes / max(totalPickups, 1)
             lines.append("Average session length: ~\(avgSessionMinutes) minutes per pickup")
         }
-
+        
         // Category breakdown with percentage analysis
         if !categoryBreakdown.isEmpty {
             lines.append("")
@@ -517,7 +515,7 @@ struct ScreenTimeSummary: Codable, Identifiable {
                 lines.append("  - \(cat.categoryName): \(timeStr) (\(percentage)% of total)")
             }
         }
-
+        
         // Top apps — detailed
         if !appUsage.isEmpty {
             lines.append("")
@@ -532,11 +530,11 @@ struct ScreenTimeSummary: Codable, Identifiable {
                 lines.append("  \(index + 1). \(app.appName)\(catLabel): \(timeStr)\(pickupLabel)")
             }
         }
-
+        
         // Behavioral signals for AI to pick up on
         lines.append("")
         lines.append("BEHAVIORAL SIGNALS:")
-
+        
         if totalScreenTimeMinutes > 360 {
             lines.append("  - HIGH screen time day (over 6 hours). This may indicate avoidance behavior, boredom, or a particularly demanding digital workday.")
         } else if totalScreenTimeMinutes > 240 {
@@ -544,7 +542,7 @@ struct ScreenTimeSummary: Codable, Identifiable {
         } else if totalScreenTimeMinutes < 60 {
             lines.append("  - LOW screen time day (under 1 hour). This may indicate an active day offline, digital detox, or simply a busy day.")
         }
-
+        
         if totalPickups > 80 {
             lines.append("  - VERY HIGH pickup frequency (\(totalPickups) times). This suggests habitual phone checking, potential anxiety, or restlessness.")
         } else if totalPickups > 50 {
@@ -552,25 +550,22 @@ struct ScreenTimeSummary: Codable, Identifiable {
         } else if totalPickups < 15 {
             lines.append("  - LOW pickup frequency (\(totalPickups) times). This suggests focused, intentional phone use.")
         }
-
+        
         // Social media specific insight
         let socialApps = appUsage.filter { ($0.categoryName ?? "").lowercased().contains("social") }
         let socialMinutes = socialApps.reduce(0) { $0 + $1.minutes }
         if socialMinutes > 60 {
-            let socialNames = socialApps.prefix(3).map(\.appName).joined(separator: ", ")
-            lines
-                .append(
-                    "  - Spent \(socialMinutes / 60)h \(socialMinutes % 60)m on social media (\(socialNames)). Consider: is this consumption aligned with your values and goals?"
-                )
+            let socialNames = socialApps.prefix(3).map { $0.appName }.joined(separator: ", ")
+            lines.append("  - Spent \(socialMinutes / 60)h \(socialMinutes % 60)m on social media (\(socialNames)). Consider: is this consumption aligned with your values and goals?")
         }
-
+        
         // Entertainment insight
         let entertainmentApps = appUsage.filter { ($0.categoryName ?? "").lowercased().contains("entertainment") }
         let entertainmentMinutes = entertainmentApps.reduce(0) { $0 + $1.minutes }
         if entertainmentMinutes > 90 {
             lines.append("  - \(entertainmentMinutes / 60)h \(entertainmentMinutes % 60)m on entertainment. Is this recharging or avoidance?")
         }
-
+        
         // Productivity insight
         let productivityApps = appUsage.filter { ($0.categoryName ?? "").lowercased().contains("productivity") }
         let productivityMinutes = productivityApps.reduce(0) { $0 + $1.minutes }
@@ -578,15 +573,12 @@ struct ScreenTimeSummary: Codable, Identifiable {
             let productivityRatio = totalScreenTimeMinutes > 0
                 ? Int(round(Double(productivityMinutes) / Double(totalScreenTimeMinutes) * 100))
                 : 0
-            lines
-                .append(
-                    "  - Productivity apps: \(productivityMinutes / 60)h \(productivityMinutes % 60)m (\(productivityRatio)% of screen time). This reflects intentional digital work."
-                )
+            lines.append("  - Productivity apps: \(productivityMinutes / 60)h \(productivityMinutes % 60)m (\(productivityRatio)% of screen time). This reflects intentional digital work.")
         }
-
+        
         lines.append("")
         lines.append("=== END SCREEN TIME REPORT ===")
-
+        
         return lines.joined(separator: "\n")
     }
 }
@@ -597,11 +589,9 @@ struct AppUsageEntry: Codable, Identifiable {
     let minutes: Int
     let pickups: Int
     let categoryName: String?
-
-    var id: String {
-        bundleIdentifier ?? appName
-    }
-
+    
+    var id: String { bundleIdentifier ?? appName }
+    
     var formattedTime: String {
         let h = minutes / 60
         let m = minutes % 60
@@ -615,11 +605,9 @@ struct AppUsageEntry: Codable, Identifiable {
 struct CategoryUsageEntry: Codable, Identifiable {
     let categoryName: String
     let minutes: Int
-
-    var id: String {
-        categoryName
-    }
-
+    
+    var id: String { categoryName }
+    
     var formattedTime: String {
         let h = minutes / 60
         let m = minutes % 60

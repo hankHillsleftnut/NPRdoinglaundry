@@ -10,7 +10,7 @@ struct CoStarTextInput: View {
     let field: InputField
     let isMultiline: Bool
     let minHeight: CGFloat
-
+    
     init(
         placeholder: String,
         text: Binding<String>,
@@ -20,17 +20,17 @@ struct CoStarTextInput: View {
         minHeight: CGFloat = 120
     ) {
         self.placeholder = placeholder
-        _text = text
-        _isFocused = isFocused
+        self._text = text
+        self._isFocused = isFocused
         self.field = field
         self.isMultiline = isMultiline
         self.minHeight = minHeight
     }
-
+    
     private var isActive: Bool {
         isFocused == field
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
@@ -44,7 +44,7 @@ struct CoStarTextInput: View {
                                 lineWidth: isActive ? 2 : 1
                             )
                     )
-
+                
                 // Placeholder
                 if text.isEmpty {
                     Text(placeholder)
@@ -56,7 +56,7 @@ struct CoStarTextInput: View {
                         .opacity(isActive ? 0.6 : 1)
                         .animation(Animations.focusTransition, value: isActive)
                 }
-
+                
                 // Text input
                 if isMultiline {
                     TextEditor(text: $text)
@@ -89,7 +89,7 @@ struct CoStarTextInput: View {
         .gesture(
             DragGesture(minimumDistance: 20)
                 .onEnded { gesture in
-                    if gesture.translation.height > 0, gesture.translation.width < 100 {
+                    if gesture.translation.height > 0 && gesture.translation.width < 100 {
                         isFocused = nil
                         HapticManager.shared.playLightImpact()
                     }
@@ -106,7 +106,7 @@ struct CoStarTextInput: View {
     }
 }
 
-/// === SINGLE LINE TEXT INPUT ===
+// === SINGLE LINE TEXT INPUT ===
 struct CoStarSingleLineInput: View {
     let placeholder: String
     @Binding var text: String
@@ -114,7 +114,7 @@ struct CoStarSingleLineInput: View {
     let leadingIcon: String?
     let trailingIcon: String?
     let onTrailingIconTap: (() -> Void)?
-
+    
     init(
         placeholder: String,
         text: Binding<String>,
@@ -123,29 +123,29 @@ struct CoStarSingleLineInput: View {
         onTrailingIconTap: (() -> Void)? = nil
     ) {
         self.placeholder = placeholder
-        _text = text
+        self._text = text
         self.leadingIcon = leadingIcon
         self.trailingIcon = trailingIcon
         self.onTrailingIconTap = onTrailingIconTap
     }
-
+    
     var body: some View {
         HStack(spacing: Spacing.md) {
             // Leading icon
-            if let leadingIcon {
+            if let leadingIcon = leadingIcon {
                 Image(systemName: leadingIcon)
                     .font(.serifBody)
                     .foregroundColor(LinearColors.textSecondary)
             }
-
+            
             // Text field
             TextField(placeholder, text: $text)
                 .font(.serifBody)
                 .foregroundColor(LinearColors.textPrimary)
                 .focused($isFocused)
-
+            
             // Trailing icon
-            if let trailingIcon {
+            if let trailingIcon = trailingIcon {
                 Button(action: {
                     onTrailingIconTap?()
                     HapticManager.shared.playLightImpact()
@@ -180,30 +180,30 @@ struct CoStarSingleLineInput: View {
     }
 }
 
-/// === SEARCH INPUT (Specialized for search functionality) ===
+// === SEARCH INPUT (Specialized for search functionality) ===
 struct CoStarSearchInput: View {
     @Binding var searchText: String
     @FocusState private var isFocused: Bool
     let onSearchTap: (() -> Void)?
     let onClearTap: (() -> Void)?
-
+    
     init(
         searchText: Binding<String>,
         onSearchTap: (() -> Void)? = nil,
         onClearTap: (() -> Void)? = nil
     ) {
-        _searchText = searchText
+        self._searchText = searchText
         self.onSearchTap = onSearchTap
         self.onClearTap = onClearTap
     }
-
+    
     var body: some View {
         HStack(spacing: Spacing.md) {
             // Search icon
             Image(systemName: "magnifyingglass")
                 .font(.serifBody)
                 .foregroundColor(LinearColors.textSecondary)
-
+            
             // Search field
             TextField("Search...", text: $searchText)
                 .font(.serifBody)
@@ -212,7 +212,7 @@ struct CoStarSearchInput: View {
                 .onSubmit {
                     onSearchTap?()
                 }
-
+            
             // Clear button (when there's text)
             if !searchText.isEmpty {
                 Button(action: {
@@ -249,7 +249,7 @@ struct CoStarSearchInput: View {
     }
 }
 
-/// === CONVENIENCE EXTENSIONS ===
+// === CONVENIENCE EXTENSIONS ===
 extension View {
     func coStarTextInput(
         placeholder: String,
@@ -268,4 +268,4 @@ extension View {
             minHeight: minHeight
         )
     }
-}
+} 

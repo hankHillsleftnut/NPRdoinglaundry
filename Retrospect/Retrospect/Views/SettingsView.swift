@@ -1,12 +1,11 @@
+import SwiftUI
 import AVFoundation
 import Speech
-import SwiftUI
 
 // === SETTINGS VIEW - Apple-Inspired Category Navigation ===
 // Redesigned with reduced information density and clear hierarchy
 
 // MARK: - Scroll Offset Preference Key
-
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -24,75 +23,73 @@ struct SettingsView: View {
     @State private var showOnboarding = false
     @State private var scrollOffset: CGFloat = 0
     @State private var isScrolled: Bool = false
-
+    
     // MARK: - Elegant Header Computed Properties
-
-    /// Smooth scroll progress for refined animations
+    
+    // Smooth scroll progress for refined animations
     private var scrollProgress: CGFloat {
         let threshold: CGFloat = 80
-        if scrollOffset >= 0 {
-            return 0
-        }
+        if scrollOffset >= 0 { return 0 }
         return min(abs(scrollOffset) / threshold, 1.0)
     }
-
-    /// Sophisticated title size scaling
+    
+    // Sophisticated title size scaling
     private var headerTitleSize: CGFloat {
         let minSize: CGFloat = 20
         let maxSize: CGFloat = 28
         return maxSize - (scrollProgress * (maxSize - minSize))
     }
-
-    /// Refined title kerning
+    
+    // Refined title kerning
     private var headerTitleKerning: CGFloat {
         let minKerning: CGFloat = -0.3
         let maxKerning: CGFloat = -0.8
         return maxKerning - (scrollProgress * (maxKerning - minKerning))
     }
-
-    /// Elegant positioning
+    
+    // Elegant positioning
     private var titleVerticalOffset: CGFloat {
         let maxOffset: CGFloat = -4
         return scrollProgress * maxOffset
     }
-
-    /// Sophisticated spacing
+    
+    // Sophisticated spacing
     private var horizontalPadding: CGFloat {
         let minPadding: CGFloat = 24
         let maxPadding: CGFloat = 32
         return maxPadding - (scrollProgress * (maxPadding - minPadding))
     }
-
+    
     private var topPadding: CGFloat {
         let minPadding: CGFloat = 16
         let maxPadding: CGFloat = 24
         return maxPadding - (scrollProgress * (maxPadding - minPadding))
     }
-
+    
     private var bottomPadding: CGFloat {
         let minPadding: CGFloat = 12
         let maxPadding: CGFloat = 20
         return maxPadding - (scrollProgress * (maxPadding - minPadding))
     }
-
-    /// Refined visual effects
+    
+    // Refined visual effects
     private var headerHeight: CGFloat {
         let minHeight: CGFloat = 60
         let maxHeight: CGFloat = 80
         return maxHeight - (scrollProgress * (maxHeight - minHeight))
     }
-
+    
     private var separatorOpacity: CGFloat {
         return scrollProgress * 0.4
     }
-
+    
     // MARK: - Elegant Header View
-
+    
     private var elegantHeader: some View {
         ZStack(alignment: .bottom) {
             // Sophisticated background treatment
             headerBackground
-
+            
             // Refined title with elegant positioning - transitions from left to center
             HStack {
                 if scrollProgress < 0.5 {
@@ -102,18 +99,18 @@ struct SettingsView: View {
                         .kerning(headerTitleKerning)
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleVerticalOffset)
-
+                    
                     Spacer()
                 } else {
                     // Centered when scrolled
                     Spacer()
-
+                    
                     Text("Settings")
                         .font(.custom("HedvigLettersSerif-24ptRegular", size: headerTitleSize))
                         .kerning(headerTitleKerning)
                         .foregroundColor(LinearColors.textDisplay)
                         .offset(y: titleVerticalOffset)
-
+                    
                     Spacer()
                 }
             }
@@ -124,18 +121,18 @@ struct SettingsView: View {
         .frame(height: headerHeight)
         .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2), value: scrollProgress)
     }
-
-    /// Sophisticated background system
+    
+    // Sophisticated background system
     private var headerBackground: some View {
         ZStack {
             // Base background matching main gradient
             LinearColors.background
-
+            
             // Elegant overlay with terra-cotta accent
             LinearGradient(
                 gradient: Gradient(colors: [
                     LinearColors.background.opacity(0.95),
-                    LinearColors.terraCottaSubtle.opacity(0.1),
+                    LinearColors.terraCottaSubtle.opacity(0.1)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -151,7 +148,7 @@ struct SettingsView: View {
                     LinearGradient(
                         gradient: Gradient(colors: [
                             Color.clear,
-                            LinearColors.cardShadow.opacity(0.1),
+                            LinearColors.cardShadow.opacity(0.1)
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -163,43 +160,39 @@ struct SettingsView: View {
             alignment: .bottom
         )
     }
-
+    
     var body: some View {
         ZStack {
             // Background
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background,
+                    LinearColors.background
                 ]),
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: UIScreen.main.bounds.width * 1.5
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
-
                 // MARK: - Elegant Header
-
                 elegantHeader
-
+                
                 // Elegant separator
                 Rectangle()
                     .fill(LinearColors.cardBorder.opacity(separatorOpacity))
                     .frame(height: 0.5)
                     .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2), value: scrollProgress)
-
+                
                 ScrollView {
                     GeometryReader { geometry in
                         Color.clear
-                            .preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: geometry.frame(in: .named("scroll")).minY
-                            )
+                            .preference(key: ScrollOffsetPreferenceKey.self, 
+                                       value: geometry.frame(in: .named("scroll")).minY)
                     }
                     .frame(height: 0)
-
+                    
                     VStack(spacing: 16) {
                         // Category Navigation Cards
                         VStack(spacing: 16) {
@@ -212,7 +205,7 @@ struct SettingsView: View {
                                 showProfilePersonalization = true
                             }
                             .padding(.horizontal, Spacing.containerMargin)
-
+                            
                             // Appearance
                             SettingsCategoryCard(
                                 title: "Appearance",
@@ -222,7 +215,7 @@ struct SettingsView: View {
                                 showAppearance = true
                             }
                             .padding(.horizontal, Spacing.containerMargin)
-
+                            
                             // Audio & Playback
                             SettingsCategoryCard(
                                 title: "Audio & Playback",
@@ -232,7 +225,7 @@ struct SettingsView: View {
                                 showAudioPlayback = true
                             }
                             .padding(.horizontal, Spacing.containerMargin)
-
+                            
                             // Privacy & Security
                             SettingsCategoryCard(
                                 title: "Privacy & Security",
@@ -242,7 +235,7 @@ struct SettingsView: View {
                                 showPrivacySecurity = true
                             }
                             .padding(.horizontal, Spacing.containerMargin)
-
+                            
                             // Integrations & Data
                             SettingsCategoryCard(
                                 title: "Integrations & Data",
@@ -252,7 +245,7 @@ struct SettingsView: View {
                                 showIntegrationsData = true
                             }
                             .padding(.horizontal, Spacing.containerMargin)
-
+                            
                             // Advanced
                             SettingsCategoryCard(
                                 title: "Advanced",
@@ -263,7 +256,7 @@ struct SettingsView: View {
                             }
                             .padding(.horizontal, Spacing.containerMargin)
                         }
-
+                        
                         // Onboarding Access Section
                         VStack(spacing: 12) {
                             Button(action: {
@@ -274,26 +267,26 @@ struct SettingsView: View {
                                         Circle()
                                             .fill(LinearColors.accent.opacity(0.15))
                                             .frame(width: 44, height: 44)
-
+                                        
                                         Image(systemName: "play.circle.fill")
                                             .font(.system(size: 20, weight: .medium))
                                             .foregroundColor(LinearColors.accent)
                                     }
-
+                                    
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("View Onboarding")
                                             .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                             .foregroundColor(LinearColors.textPrimary)
                                             .multilineTextAlignment(.leading)
-
+                                        
                                         Text("Replay the welcome experience")
                                             .font(.serifLabel)
                                             .foregroundColor(LinearColors.textSecondary)
                                             .multilineTextAlignment(.leading)
                                     }
-
+                                    
                                     Spacer()
-
+                                    
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(LinearColors.textTertiary)
@@ -310,32 +303,32 @@ struct SettingsView: View {
                                         )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: BorderRadius.card)
-                                                .stroke(LinearColors.cardBorder, lineWidth: BorderWidth.standard)
-                                        )
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, Spacing.containerMargin)
+                                            .stroke(LinearColors.cardBorder, lineWidth: BorderWidth.standard)
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, Spacing.containerMargin)
                         }
                         .padding(.top, 24)
-
+                        
                         // Logo Section
-                        VStack(spacing: 8) {
+                    VStack(spacing: 8) {
                             SquircleLogo.small()
-
-                            Text("Retrospect")
-                                .geistCaption()
-                                .opacity(0.6)
-                        }
+                        
+                        Text("Retrospect")
+                            .geistCaption()
+                            .opacity(0.6)
+                    }
                         .padding(.top, 32)
-                        .padding(.bottom, 100)
+                    .padding(.bottom, 100)
                     }
                     .padding(.vertical, 24)
                 }
                 .coordinateSpace(name: "scroll")
                 .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                     scrollOffset = value
-
+                    
                     // Update binary state for other UI elements if needed
                     let threshold: CGFloat = 20
                     isScrolled = value < -threshold
@@ -374,7 +367,7 @@ struct GoogleDocsSettingsView: View {
     @State private var showAnimation = true
     @State private var showError = false
     @State private var errorMessage = ""
-
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -382,14 +375,14 @@ struct GoogleDocsSettingsView: View {
                 RadialGradient(
                     gradient: Gradient(colors: [
                         LinearColors.backgroundLight,
-                        LinearColors.background,
+                        LinearColors.background
                     ]),
                     center: .topLeading,
                     startRadius: 0,
                     endRadius: UIScreen.main.bounds.width * 1.5
                 )
                 .ignoresSafeArea()
-
+                
                 VStack(spacing: 0) {
                     // Custom Header
                     VStack(spacing: 16) {
@@ -399,15 +392,15 @@ struct GoogleDocsSettingsView: View {
                             }
                             .font(.serifBody)
                             .foregroundColor(LinearColors.accent)
-
+                            
                             Spacer()
-
+                            
                             Text("Google Docs")
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(LinearColors.textPrimary)
-
+                            
                             Spacer()
-
+                            
                             // Spacer for balance
                             Text("Done")
                                 .font(.serifBody)
@@ -418,7 +411,7 @@ struct GoogleDocsSettingsView: View {
                     .padding(.top)
                     .background(LinearColors.background)
                     .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-
+                    
                     // Google Docs Integration Content - simplified view without onboarding page structure
                     VStack(spacing: 20) {
                         Text("Google Docs integration content would go here")
@@ -430,7 +423,7 @@ struct GoogleDocsSettingsView: View {
             }
             .navigationBarHidden(true)
             .alert("Google Docs Connection Error", isPresented: $showError) {
-                Button("OK", role: .cancel) {}
+                Button("OK", role: .cancel) { }
             } message: {
                 Text(errorMessage)
             }
@@ -447,13 +440,12 @@ struct GoogleDocsSettingsView: View {
 }
 
 // MARK: - Settings Section Components (Legacy)
-
 struct SettingsSection<Content: View>: View {
     let title: String
     let subtitle: String
     let icon: String
     @ViewBuilder let content: () -> Content
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Section Header
@@ -463,33 +455,33 @@ struct SettingsSection<Content: View>: View {
                         Circle()
                             .fill(LinearColors.accent.opacity(0.15))
                             .frame(width: 32, height: 32)
-
+                        
                         Image(systemName: icon)
                             .font(.serifBody).fontWeight(.semibold)
                             .foregroundColor(LinearColors.accent)
                     }
-
+                    
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                             .foregroundColor(LinearColors.textPrimary)
-
+                        
                         Text(subtitle)
                             .font(.serifLabel)
                             .foregroundColor(LinearColors.textSecondary)
                     }
-
+                    
                     Spacer()
                 }
-
+                
                 Divider()
                     .overlay(LinearColors.cardBorder.opacity(0.5))
             }
-
+            
             // Section Content
             content()
         }
-        .padding(.horizontal, Spacing.containerMargin)
+                                    .padding(.horizontal, Spacing.containerMargin)
         .padding(.vertical, 8)
     }
 }
@@ -497,13 +489,13 @@ struct SettingsSection<Content: View>: View {
 struct SettingsSubsection<Content: View>: View {
     let title: String
     @ViewBuilder let content: () -> Content
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                 .foregroundColor(LinearColors.textPrimary)
-
+            
             content()
         }
     }

@@ -70,11 +70,7 @@ struct IntegrationsDataView: View {
         }
         .alert("Integration Error", isPresented: Binding(
             get: { errorMessage != nil },
-            set: {
-                if !$0 {
-                    errorMessage = nil
-                }
-            }
+            set: { if !$0 { errorMessage = nil } }
         )) {
             Button("OK") { errorMessage = nil }
         } message: {
@@ -84,11 +80,7 @@ struct IntegrationsDataView: View {
             "Delete all data from this source?",
             isPresented: Binding(
                 get: { deletionTarget != nil },
-                set: {
-                    if !$0 {
-                        deletionTarget = nil
-                    }
-                }
+                set: { if !$0 { deletionTarget = nil } }
             ),
             titleVisibility: .visible
         ) {
@@ -110,12 +102,12 @@ struct IntegrationsDataView: View {
         ) { result in
             guard let source = importSource else { return }
             switch result {
-            case let .success(urls):
+            case .success(let urls):
                 guard let url = urls.first else { return }
                 perform(source.id) {
                     try await RetrospectAPIClient.shared.importIntegrationArchive(providerId: source.id, fileURL: url)
                 }
-            case let .failure(error):
+            case .failure(let error):
                 errorMessage = error.localizedDescription
             }
         }
@@ -226,7 +218,7 @@ struct IntegrationsDataView: View {
                 (
                     Text(statusText(source, connection: connection))
                         .foregroundColor(statusColor(source, connection: connection))
-                        + Text(" · \(modePart)")
+                    + Text(" · \(modePart)")
                         .foregroundColor(FigmaLightTheme.mutedText)
                 )
                 .font(FigmaLightTheme.mono(12))
@@ -316,12 +308,8 @@ struct IntegrationsDataView: View {
     }
 
     private func statusColor(_ source: IntegrationCatalogItem, connection: BackendIntegrationConnection?) -> Color {
-        if connection?.status == "connected" {
-            return Color.green
-        }
-        if connection?.status == "error" || connection?.status == "expired" {
-            return Color.orange
-        }
+        if connection?.status == "connected" { return Color.green }
+        if connection?.status == "error" || connection?.status == "expired" { return Color.orange }
         return localPermissionGranted(source) ? Color.orange : FigmaLightTheme.mutedText
     }
 

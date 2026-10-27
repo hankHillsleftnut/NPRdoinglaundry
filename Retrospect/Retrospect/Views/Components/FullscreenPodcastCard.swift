@@ -5,8 +5,8 @@
 //  Created by Assistant on 1/30/25.
 //
 
-import AVFoundation
 import SwiftUI
+import AVFoundation
 
 struct FullscreenPodcastCard: View {
     let transcript: String
@@ -15,27 +15,27 @@ struct FullscreenPodcastCard: View {
     @Binding var audioPlayer: AVAudioPlayer?
     @Binding var isPlaying: Bool
     let onDismiss: () -> Void
-
+    
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isDragging = false
     @State private var draggedProgress: Double = 0
     @State private var showTranscript = false
-
+    
     private var progress: Double {
         guard let duration = audioPlayer?.duration, duration > 0 else { return 0 }
         return currentTime / duration
     }
-
+    
     private var podcastMood: PodcastMood {
         guard let moodString = mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-
+    
     var body: some View {
         GeometryReader { geometry in
             mainPodcastCard(geometry: geometry)
-                .padding(.top, 60) // Space from top for status bar + breathing room
+                .padding(.top, 60)    // Space from top for status bar + breathing room
                 .padding(.bottom, 120) // Space from bottom nav + safe area
         }
         .gesture(
@@ -59,9 +59,11 @@ struct FullscreenPodcastCard: View {
             TranscriptModalView(transcript: transcript)
         }
     }
-
+    
     // MARK: - Sub Views
+    
 
+    
     private func mainPodcastCard(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
             cardHeader
@@ -73,21 +75,21 @@ struct FullscreenPodcastCard: View {
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, 12)
     }
-
+    
     private var cardHeader: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Weekly Insights")
                     .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                     .foregroundColor(LinearColors.textPrimary)
-
+                
                 Text("AI-Generated Summary")
                     .font(.geistCaption)
                     .foregroundColor(LinearColors.textSecondary)
             }
-
+            
             Spacer()
-
+            
             Button(action: onDismiss) {
                 Image(systemName: "chevron.down")
                     .font(.geistBody).kerning(TypographyKerning.bodyKerning)
@@ -98,26 +100,26 @@ struct FullscreenPodcastCard: View {
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.sm)
     }
-
+    
     private func cardContent(geometry: GeometryProxy) -> some View {
         ScrollView {
             VStack(spacing: 0) {
                 artworkSection(geometry: geometry)
                     .padding(.bottom, Spacing.xl)
-
+                
                 // Progress and controls grouped together
                 VStack(spacing: Spacing.lg) {
                     progressSection
                     controlsSection
                 }
                 .padding(.bottom, Spacing.xl)
-
+                
                 actionsSection
             }
             .padding(.vertical, Spacing.md)
         }
     }
-
+    
     private func artworkSection(geometry: GeometryProxy) -> some View {
         VStack(spacing: Spacing.md) {
             ZStack {
@@ -125,18 +127,18 @@ struct FullscreenPodcastCard: View {
                     .fill(artworkGradient)
                     .frame(width: min(geometry.size.width * 0.6, 200), height: min(geometry.size.width * 0.6, 200))
                     .shadow(color: Color.black.opacity(0.15), radius: 16, x: 0, y: 8)
-
+                
                 Image(systemName: "waveform")
                     .font(.geistHeadline)
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
             }
-
+            
             moodAndTypeInfo
         }
         .padding(.top, Spacing.sm)
     }
-
+    
     private var artworkGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: podcastMood.colors.prefix(3).map { $0 }),
@@ -144,7 +146,7 @@ struct FullscreenPodcastCard: View {
             endPoint: .bottomTrailing
         )
     }
-
+    
     private var moodAndTypeInfo: some View {
         HStack(spacing: Spacing.md) {
             Text(podcastMood.displayName)
@@ -157,7 +159,7 @@ struct FullscreenPodcastCard: View {
                     RoundedRectangle(cornerRadius: BorderRadius.small)
                         .fill(LinearColors.accent.opacity(0.1))
                 )
-
+            
             Text(generationType?.displayName ?? "Standard")
                 .font(.geistBody)
                 .fontWeight(.medium)
@@ -174,7 +176,7 @@ struct FullscreenPodcastCard: View {
                 )
         }
     }
-
+    
     private var progressSection: some View {
         VStack(spacing: Spacing.md) {
             timeDisplay
@@ -183,41 +185,41 @@ struct FullscreenPodcastCard: View {
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
     }
-
+    
     private var timeDisplay: some View {
         HStack {
             Text(formatTime(currentTime))
                 .font(.monospacedDigit(.geistCaption)())
                 .fontWeight(.medium)
                 .foregroundColor(LinearColors.textPrimary)
-
+            
             Spacer()
-
+            
             Text(formatTime(audioPlayer?.duration ?? 0))
                 .font(.monospacedDigit(.geistCaption)())
                 .fontWeight(.medium)
                 .foregroundColor(LinearColors.textSecondary)
         }
     }
-
+    
     private var progressBar: some View {
         GeometryReader { progressGeometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(LinearColors.accent.opacity(0.15))
                     .frame(height: 6)
-
+                
                 RoundedRectangle(cornerRadius: 3)
                     .fill(LinearColors.accent)
                     .frame(width: progressGeometry.size.width * (isDragging ? draggedProgress : progress), height: 6)
                     .animation(.easeInOut(duration: 0.1), value: isDragging ? draggedProgress : progress)
-
+                
                 progressHandle(progressGeometry: progressGeometry)
             }
         }
         .frame(height: 30)
     }
-
+    
     private func progressHandle(progressGeometry: GeometryProxy) -> some View {
         Circle()
             .fill(LinearColors.accent)
@@ -228,14 +230,14 @@ struct FullscreenPodcastCard: View {
             .animation(.easeInOut(duration: 0.1), value: isDragging)
             .gesture(progressDragGesture)
     }
-
+    
     private var progressDragGesture: some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { gesture in
                 isDragging = true
                 let newProgress = max(0, min(1, gesture.location.x / UIScreen.main.bounds.width))
                 draggedProgress = newProgress
-
+                
                 let progressPercent = Int(newProgress * 10)
                 let oldProgressPercent = Int(progress * 10)
                 if progressPercent != oldProgressPercent {
@@ -247,7 +249,7 @@ struct FullscreenPodcastCard: View {
                 seekToProgress(draggedProgress)
             }
     }
-
+    
     private var controlsSection: some View {
         HStack(spacing: Spacing.lg) {
             Button(action: rewind15) {
@@ -267,9 +269,9 @@ struct FullscreenPodcastCard: View {
                     )
             }
             .buttonStyle(PlainButtonStyle())
-
+            
             playPauseButton
-
+            
             Button(action: forward15) {
                 Image(systemName: "goforward.15")
                     .font(.geistBody).kerning(TypographyKerning.bodyKerning)
@@ -291,7 +293,7 @@ struct FullscreenPodcastCard: View {
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
     }
-
+    
     private var playPauseButton: some View {
         Button(action: togglePlayback) {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -307,7 +309,7 @@ struct FullscreenPodcastCard: View {
         .scaleEffect(isPlaying ? 1.05 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isPlaying)
     }
-
+    
     private var actionsSection: some View {
         VStack(spacing: Spacing.md) {
             transcriptButton
@@ -316,7 +318,7 @@ struct FullscreenPodcastCard: View {
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.md)
     }
-
+    
     private var transcriptButton: some View {
         Button(action: { showTranscript.toggle() }) {
             HStack(spacing: Spacing.sm) {
@@ -332,7 +334,7 @@ struct FullscreenPodcastCard: View {
             .background(transcriptButtonBackground)
         }
     }
-
+    
     private var transcriptButtonBackground: some View {
         RoundedRectangle(cornerRadius: BorderRadius.button)
             .stroke(LinearColors.accent.opacity(0.3), lineWidth: 1)
@@ -341,7 +343,7 @@ struct FullscreenPodcastCard: View {
                     .fill(LinearColors.accent.opacity(0.05))
             )
     }
-
+    
     private var generationInfo: some View {
         HStack {
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -353,9 +355,9 @@ struct FullscreenPodcastCard: View {
                     .fontWeight(.medium)
                     .foregroundColor(LinearColors.textPrimary)
             }
-
+            
             Spacer()
-
+            
             VStack(alignment: .trailing, spacing: Spacing.xs) {
                 Text("Duration")
                     .font(.geistCaption)
@@ -373,7 +375,7 @@ struct FullscreenPodcastCard: View {
                 .fill(LinearColors.cardBackground.opacity(0.5))
         )
     }
-
+    
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: BorderRadius.large)
             .fill(LinearColors.cardBackground)
@@ -388,16 +390,16 @@ struct FullscreenPodcastCard: View {
                     .strokeBorder(LinearColors.cardBorder.opacity(0.5), lineWidth: 1)
             )
     }
-
+    
     // MARK: - Helper Methods
-
+    
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             currentTime = audioPlayer?.currentTime ?? 0
         }
         RunLoop.current.add(timer!, forMode: .common)
     }
-
+    
     private func togglePlayback() {
         if isPlaying {
             HapticManager.shared.playMediumImpact()
@@ -408,34 +410,34 @@ struct FullscreenPodcastCard: View {
         }
         isPlaying.toggle()
     }
-
+    
     private func rewind15() {
         HapticManager.shared.playLightImpact()
         guard let player = audioPlayer else { return }
         player.currentTime = max(0, player.currentTime - 15)
         currentTime = player.currentTime
     }
-
+    
     private func forward15() {
         HapticManager.shared.playLightImpact()
         guard let player = audioPlayer else { return }
         player.currentTime = min(player.duration, player.currentTime + 15)
         currentTime = player.currentTime
     }
-
+    
     private func seekToProgress(_ progress: Double) {
         guard let player = audioPlayer else { return }
         let newTime = progress * player.duration
         player.currentTime = newTime
         currentTime = newTime
     }
-
+    
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
-
+    
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
@@ -468,7 +470,7 @@ struct LargeMediaControlStyle: ButtonStyle {
 struct TranscriptModalView: View {
     let transcript: String
     @Environment(\.presentationMode) var presentationMode
-
+    
     var body: some View {
         NavigationView {
             ScrollView {

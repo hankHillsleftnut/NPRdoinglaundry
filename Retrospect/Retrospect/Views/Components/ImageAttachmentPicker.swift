@@ -5,25 +5,25 @@
 //  Image attachment picker using PHPicker for photo library access
 //
 
-import PhotosUI
 import SwiftUI
+import PhotosUI
 
 struct ImageAttachmentPicker: View {
     @Binding var selectedImages: [UIImage]
     @Binding var isPresented: Bool
-
+    
     let maxImages: Int
-
+    
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var showCamera = false
     @State private var showSourcePicker = false
-
+    
     init(selectedImages: Binding<[UIImage]>, isPresented: Binding<Bool>, maxImages: Int = 5) {
-        _selectedImages = selectedImages
-        _isPresented = isPresented
+        self._selectedImages = selectedImages
+        self._isPresented = isPresented
         self.maxImages = maxImages
     }
-
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
@@ -32,11 +32,11 @@ struct ImageAttachmentPicker: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
                     .padding(.top, 24)
-
+                
                 Text("Attach up to \(maxImages) images to your entry")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundColor(LinearColors.Minimal.textSecondary)
-
+                
                 // Source options
                 VStack(spacing: 12) {
                     // Photo Library
@@ -51,24 +51,24 @@ struct ImageAttachmentPicker: View {
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(LinearColors.Minimal.accentSubtle)
                                     .frame(width: 44, height: 44)
-
+                                
                                 Image(systemName: "photo.on.rectangle")
                                     .font(.system(size: 20, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.accent)
                             }
-
+                            
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Photo Library")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                                
                                 Text("Choose from your photos")
                                     .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
-
+                            
                             Spacer()
-
+                            
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
@@ -96,7 +96,7 @@ struct ImageAttachmentPicker: View {
                             selectedItems.removeAll()
                         }
                     }
-
+                    
                     // Camera
                     Button(action: {
                         showCamera = true
@@ -106,24 +106,24 @@ struct ImageAttachmentPicker: View {
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(LinearColors.Minimal.backgroundCardHover)
                                     .frame(width: 44, height: 44)
-
+                                
                                 Image(systemName: "camera.fill")
                                     .font(.system(size: 20, weight: .medium))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
-
+                            
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Take Photo")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                                
                                 Text("Capture with your camera")
                                     .font(.system(size: 13, weight: .regular))
                                     .foregroundColor(LinearColors.Minimal.textSecondary)
                             }
-
+                            
                             Spacer()
-
+                            
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(LinearColors.Minimal.textTertiary)
@@ -142,7 +142,7 @@ struct ImageAttachmentPicker: View {
                     .opacity(selectedImages.count >= maxImages ? 0.5 : 1)
                 }
                 .padding(.horizontal, 20)
-
+                
                 // Selected images preview
                 if !selectedImages.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
@@ -150,9 +150,9 @@ struct ImageAttachmentPicker: View {
                             Text("Selected (\(selectedImages.count)/\(maxImages))")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(LinearColors.Minimal.textSecondary)
-
+                            
                             Spacer()
-
+                            
                             Button(action: {
                                 selectedImages.removeAll()
                             }) {
@@ -162,7 +162,7 @@ struct ImageAttachmentPicker: View {
                             }
                         }
                         .padding(.horizontal, 20)
-
+                        
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
                                 ForEach(selectedImages.indices, id: \.self) { index in
@@ -172,7 +172,7 @@ struct ImageAttachmentPicker: View {
                                             .aspectRatio(contentMode: .fill)
                                             .frame(width: 80, height: 80)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
-
+                                        
                                         Button(action: {
                                             selectedImages.remove(at: index)
                                         }) {
@@ -180,7 +180,7 @@ struct ImageAttachmentPicker: View {
                                                 Circle()
                                                     .fill(Color.black.opacity(0.6))
                                                     .frame(width: 24, height: 24)
-
+                                                
                                                 Image(systemName: "xmark")
                                                     .font(.system(size: 10, weight: .bold))
                                                     .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -194,9 +194,9 @@ struct ImageAttachmentPicker: View {
                         }
                     }
                 }
-
+                
                 Spacer()
-
+                
                 // Done button
                 Button(action: {
                     isPresented = false
@@ -221,7 +221,7 @@ struct ImageAttachmentPicker: View {
             CameraView(image: Binding(
                 get: { nil },
                 set: { image in
-                    if let image, selectedImages.count < maxImages {
+                    if let image = image, selectedImages.count < maxImages {
                         selectedImages.append(image)
                     }
                 }
@@ -231,38 +231,37 @@ struct ImageAttachmentPicker: View {
 }
 
 // MARK: - Camera View
-
 struct CameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) private var dismiss
-
+    
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.delegate = context.coordinator
         return picker
     }
-
+    
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
+    
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-
+    
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: CameraView
-
+        
         init(_ parent: CameraView) {
             self.parent = parent
         }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let image = info[.originalImage] as? UIImage {
                 parent.image = image
             }
             parent.dismiss()
         }
-
+        
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
@@ -275,3 +274,4 @@ struct CameraView: UIViewControllerRepresentable {
         isPresented: .constant(true)
     )
 }
+

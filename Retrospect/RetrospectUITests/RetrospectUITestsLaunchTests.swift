@@ -18,7 +18,7 @@ final class RetrospectUITestsLaunchTests: XCTestCase {
     }
 
     @MainActor
-    func testLaunch() {
+    func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
 

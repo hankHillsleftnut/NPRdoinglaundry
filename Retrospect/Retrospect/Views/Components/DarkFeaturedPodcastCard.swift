@@ -11,12 +11,12 @@ import SwiftUI
 struct DarkFeaturedPodcastCard: View {
     let transcript: TranscriptModel
     @ObservedObject var audioManager: DarkAudioManager
-
+    
     private var podcastMood: PodcastMood {
         guard let moodString = transcript.mood else { return .neutral }
         return PodcastMood(rawValue: moodString.lowercased()) ?? .neutral
     }
-
+    
     private var moodColors: [Color] {
         switch podcastMood {
         case .positive: return LinearColors.Minimal.Mood.positive
@@ -29,7 +29,7 @@ struct DarkFeaturedPodcastCard: View {
         case .melancholic: return LinearColors.Minimal.Mood.melancholic
         }
     }
-
+    
     var body: some View {
         Button(action: {
             HapticManager.shared.playMediumImpact()
@@ -48,35 +48,35 @@ struct DarkFeaturedPodcastCard: View {
                             )
                         )
                         .frame(width: 80, height: 80)
-
+                    
                     Image(systemName: "waveform")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                 }
-
+                
                 // Info
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Weekly Insights")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
-
+                    
                     Text(podcastMood.displayName)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(LinearColors.Minimal.textSecondary)
-
+                    
                     Text(formatDate(transcript.createdAt))
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(LinearColors.Minimal.textTertiary)
                 }
-
+                
                 Spacer()
-
+                
                 // Play button
                 ZStack {
                     Circle()
                         .fill(LinearColors.Minimal.accent)
                         .frame(width: 48, height: 48)
-
+                    
                     Image(systemName: audioManager.isPlaying && audioManager.currentTranscript?.id == transcript.id ? "pause.fill" : "play.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -95,7 +95,7 @@ struct DarkFeaturedPodcastCard: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-
+    
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -108,7 +108,7 @@ struct DarkFeaturedPodcastCard: View {
     ZStack {
         LinearColors.Minimal.background
             .ignoresSafeArea()
-
+        
         DarkFeaturedPodcastCard(
             transcript: TranscriptModel.sample,
             audioManager: DarkAudioManager.shared
@@ -116,3 +116,4 @@ struct DarkFeaturedPodcastCard: View {
         .padding()
     }
 }
+

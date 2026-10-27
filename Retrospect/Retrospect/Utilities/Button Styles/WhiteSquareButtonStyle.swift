@@ -7,10 +7,10 @@
 
 import SwiftUI
 
-/// Clean white button style for cool design system
+// Clean white button style for cool design system
 struct WhiteSquareButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(

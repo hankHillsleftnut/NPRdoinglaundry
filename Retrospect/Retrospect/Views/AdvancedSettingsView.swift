@@ -11,21 +11,21 @@ struct AdvancedSettingsView: View {
     @State private var showMinimalHomePreview = false
     @State private var showLegacyUI = false
     @Environment(\.dismiss) private var dismiss
-
+    
     var body: some View {
         ZStack {
             // Background
             RadialGradient(
                 gradient: Gradient(colors: [
                     LinearColors.backgroundLight,
-                    LinearColors.background,
+                    LinearColors.background
                 ]),
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: UIScreen.main.bounds.width * 1.5
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 20) {
@@ -37,13 +37,13 @@ struct AdvancedSettingsView: View {
                                 .font(.geistHeadline).kerning(TypographyKerning.headlineKerning)
                                 .foregroundColor(LinearColors.textPrimary)
                         }
-
+                        
                         Spacer()
-
+                        
                         Text("Advanced")
                             .font(.geistDisplay).kerning(TypographyKerning.displayKerning)
                             .foregroundColor(LinearColors.textPrimary)
-
+                        
                         Spacer()
                     }
                     .padding(.horizontal, 24)
@@ -52,7 +52,7 @@ struct AdvancedSettingsView: View {
                 .padding(.bottom, 16)
                 .background(LinearColors.background)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
-
+                
                 ScrollView {
                     VStack(spacing: 24) {
                         // Experimental Features Section
@@ -63,11 +63,11 @@ struct AdvancedSettingsView: View {
                                 icon: "flask",
                                 isOn: $experimentalViewEnabled
                             )
-
+                            
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-
+                            
                             SettingsRow(
                                 title: "Minimal Home",
                                 subtitle: "Preview the dark minimal interface",
@@ -76,11 +76,11 @@ struct AdvancedSettingsView: View {
                             ) {
                                 showMinimalHomePreview = true
                             }
-
+                            
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-
+                            
                             SettingsRow(
                                 title: "Legacy UI (UI1)",
                                 subtitle: "Original warm cream interface",
@@ -90,7 +90,7 @@ struct AdvancedSettingsView: View {
                                 showLegacyUI = true
                             }
                         }
-
+                        
                         // Developer Options Section
                         SettingsGroup(title: "Developer Options") {
                             SettingsToggleRow(
@@ -100,7 +100,7 @@ struct AdvancedSettingsView: View {
                                 isOn: $devMode
                             )
                         }
-
+                        
                         // Support & Services Section
                         SettingsGroup(title: "Support & Services") {
                             SettingsRow(
@@ -111,11 +111,11 @@ struct AdvancedSettingsView: View {
                             ) {
                                 showSupportAndData = true
                             }
-
+                            
                             Divider()
                                 .background(LinearColors.cardBorder)
                                 .padding(.horizontal, Spacing.cardPadding)
-
+                            
                             SettingsRow(
                                 title: "Subscription",
                                 subtitle: "Manage your Retrospect subscription",
@@ -125,11 +125,11 @@ struct AdvancedSettingsView: View {
                                 showPaywall = true
                             }
                         }
-
+                        
                         // Logo Section
                         VStack(spacing: 8) {
                             SquircleLogo.small()
-
+                            
                             Text("Retrospect")
                                 .geistCaption()
                                 .opacity(0.6)

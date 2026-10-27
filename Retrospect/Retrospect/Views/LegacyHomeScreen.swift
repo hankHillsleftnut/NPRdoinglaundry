@@ -13,17 +13,17 @@ import SwiftUI
 struct LegacyHomeScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var shouldStartVoiceRecording = false
-
+    
     var body: some View {
         ZStack {
             // The original HomeScreen with all its functionality
             HomeScreen(shouldStartVoiceRecording: $shouldStartVoiceRecording)
-
+            
             // Close button overlay to return to new UI
             VStack {
                 HStack {
                     Spacer()
-
+                    
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         dismiss()
@@ -56,3 +56,4 @@ struct LegacyHomeScreen: View {
 #Preview {
     LegacyHomeScreen()
 }
+

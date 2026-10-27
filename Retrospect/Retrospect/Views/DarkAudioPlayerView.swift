@@ -7,8 +7,8 @@
 //  scrolls upward into a strong blur/fade.
 //
 
-import AVFoundation
 import SwiftUI
+import AVFoundation
 
 struct DarkAudioPlayerView: View {
     let transcript: TranscriptModel
@@ -219,13 +219,11 @@ struct DarkAudioPlayerView: View {
 
             // Action buttons
             HStack(spacing: 16) {
-                if transcript.insightIds != nil, !(transcript.insightIds?.isEmpty ?? true) {
+                if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
                     Button(action: {
                         HapticManager.shared.playLightImpact()
                         showInsights = true
-                        if insights.isEmpty {
-                            loadInsights()
-                        }
+                        if insights.isEmpty { loadInsights() }
                     }) {
                         Image(systemName: "lightbulb.fill")
                             .font(.system(size: 20, weight: .medium))
@@ -303,9 +301,7 @@ struct DarkAudioPlayerView: View {
             theme: .light,
             onSeek: { newProgress in
                 currentTime = duration * newProgress
-                if hasAudio {
-                    audioManager.seekTo(progress: newProgress)
-                }
+                if hasAudio { audioManager.seekTo(progress: newProgress) }
             },
             onSkip: { seconds in
                 HapticManager.shared.playLightImpact()
@@ -316,9 +312,7 @@ struct DarkAudioPlayerView: View {
             },
             onToggle: {
                 HapticManager.shared.playMediumImpact()
-                if hasAudio {
-                    audioManager.togglePlayback()
-                }
+                if hasAudio { audioManager.togglePlayback() }
             },
             leadingAccessory: { transportMenu }
         )
@@ -336,12 +330,10 @@ struct DarkAudioPlayerView: View {
 
     private var transportMenu: some View {
         Menu {
-            if transcript.insightIds != nil, !(transcript.insightIds?.isEmpty ?? true) {
+            if transcript.insightIds != nil && !(transcript.insightIds?.isEmpty ?? true) {
                 Button(action: {
                     showInsights = true
-                    if insights.isEmpty {
-                        loadInsights()
-                    }
+                    if insights.isEmpty { loadInsights() }
                 }) {
                     Label("View Insights", systemImage: "lightbulb")
                 }
@@ -404,12 +396,12 @@ struct DarkAudioPlayerView: View {
                 let episodeInsightIds = Set(transcript.insightIds ?? [])
                 let filtered = allInsights.filter { episodeInsightIds.contains($0.id) }
                 await MainActor.run {
-                    insights = filtered.isEmpty ? allInsights : filtered
-                    isLoadingInsights = false
+                    self.insights = filtered.isEmpty ? allInsights : filtered
+                    self.isLoadingInsights = false
                 }
             } catch {
                 await MainActor.run {
-                    isLoadingInsights = false
+                    self.isLoadingInsights = false
                 }
             }
         }
@@ -448,9 +440,7 @@ private struct PodcastTranscriptSegment: Identifiable {
     let startTime: TimeInterval
     let endTime: TimeInterval
 
-    var id: String {
-        "segment-\(index)"
-    }
+    var id: String { "segment-\(index)" }
 }
 
 // MARK: - Transcript Line
@@ -461,9 +451,7 @@ private struct PodcastTranscriptLine: View {
     let ink: Color
     let muted: Color
 
-    private var distance: Int {
-        segment.index - currentIndex
-    }
+    private var distance: Int { segment.index - currentIndex }
 
     var body: some View {
         Text(segment.text)
@@ -485,7 +473,6 @@ private extension String {
 }
 
 // MARK: - Transcript Sheet
-
 struct DarkTranscriptSheet: View {
     let transcript: TranscriptModel
     @Environment(\.dismiss) private var dismiss
@@ -534,7 +521,6 @@ struct DarkTranscriptSheet: View {
 }
 
 // MARK: - Insights Sheet
-
 struct DarkInsightsSheet: View {
     let insights: [BackendInsight]
     let isLoading: Bool
@@ -611,7 +597,6 @@ struct DarkInsightsSheet: View {
 }
 
 // MARK: - Insight Card
-
 struct InsightCard: View {
     let insight: BackendInsight
     @State private var isExpanded = false

@@ -7,8 +7,8 @@
 //  SwiftUI view recreation.
 //
 
-import Foundation
 import SwiftUI
+import Foundation
 
 // MARK: - Onboarding Phase
 
@@ -112,7 +112,7 @@ final class OnboardingState: ObservableObject {
     static let goalSuggestions = [
         "Exercise more", "Better sleep", "Read daily", "Learn something new",
         "Reduce stress", "Eat healthier", "Save money", "Be more present",
-        "Improve focus", "Build habits",
+        "Improve focus", "Build habits"
     ]
 
     // MARK: Init
@@ -183,11 +183,12 @@ final class OnboardingState: ObservableObject {
         // Map legacy values (old 9-step -> 6-step -> new 4-step)
         let raw = max(1, min(stored == 0 ? 1 : stored, 9))
         let sixStep: Int = raw <= 2 ? 1 : raw == 3 ? 2 : raw <= 6 ? 3 : raw == 7 ? 4 : raw == 8 ? 5 : 6
-        let fourStep = switch sixStep {
-        case 1, 2, 3: 1 // old intro/auth/integrations -> integrations
-        case 4: 2 // voicePersona
-        case 5: 3 // goals
-        default: 4 // closing
+        let fourStep: Int
+        switch sixStep {
+        case 1, 2, 3: fourStep = 1  // old intro/auth/integrations -> integrations
+        case 4: fourStep = 2         // voicePersona
+        case 5: fourStep = 3         // goals
+        default: fourStep = 4        // closing
         }
 
         phase = OnboardingPhase(rawValue: fourStep) ?? .integrations
@@ -237,10 +238,7 @@ final class OnboardingState: ObservableObject {
             return goalsIntroMessages()
         case .closing:
             return [
-                ChatMessage(
-                    sender: .retrospect,
-                    text: "Every journal entry, voice note, and stray thought — I'll turn them into something you actually want to hear."
-                ),
+                ChatMessage(sender: .retrospect, text: "Every journal entry, voice note, and stray thought — I'll turn them into something you actually want to hear."),
                 ChatMessage(sender: .retrospect, text: "Your first podcast drops after your first week. Ready when you are."),
             ]
         }
@@ -263,7 +261,7 @@ final class OnboardingState: ObservableObject {
         messages = []
         for p in OnboardingPhase.allCases {
             if p.rawValue < phase.rawValue {
-                if p == .goals, phase == .closing {
+                if p == .goals && phase == .closing {
                     continue
                 }
                 appendPhaseMessages(for: p)
@@ -354,9 +352,7 @@ final class OnboardingState: ObservableObject {
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { $0.count > 10 }
             goals = sentences.prefix(3).map { String($0.prefix(40)) }
-            if goals.isEmpty {
-                goals = ["Personal growth"]
-            }
+            if goals.isEmpty { goals = ["Personal growth"] }
         }
         return Array(goals.prefix(3))
     }

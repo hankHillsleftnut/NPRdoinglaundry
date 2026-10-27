@@ -153,8 +153,7 @@ struct EndpointTests {
         #expect(answer.idempotencyKey == id, "the key is the answer's own id, so a retry can't make a second answer")
         #expect(answer.retry == .keyedWrite())
         let json = try #require(String(data: Backend.Coding.encoder.encode(answer.body), encoding: .utf8))
-        #expect(json ==
-            #"{"clientEntryId":"b1f0c6a2-4c1e-4a57-9d34-0f8f6f2e1a02","createdAt":"2026-10-21T13:09:40.000Z","given":"skipped","questionKey":"high.low","text":""}"#)
+        #expect(json == #"{"clientEntryId":"b1f0c6a2-4c1e-4a57-9d34-0f8f6f2e1a02","createdAt":"2026-10-21T13:09:40.000Z","given":"skipped","questionKey":"high.low","text":""}"#)
     }
 
     @Test("onboarding complete is an authenticated POST with an empty object as its body and no key")

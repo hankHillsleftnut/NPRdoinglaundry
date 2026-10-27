@@ -1,5 +1,5 @@
-import AVFoundation
 import SwiftUI
+import AVFoundation
 
 struct MiniPlayerView: View {
     @Binding var audioPlayer: AVAudioPlayer?
@@ -7,11 +7,11 @@ struct MiniPlayerView: View {
     @State private var currentTime: TimeInterval = 0
     @State private var timer: Timer?
     let onTap: () -> Void
-
+    
     private var duration: TimeInterval {
         audioPlayer?.duration ?? 0
     }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             // Progress bar
@@ -26,7 +26,7 @@ struct MiniPlayerView: View {
                     }
             }
             .frame(height: 2)
-
+            
             // Mini player content
             HStack(spacing: 16) {
                 // Waveform icon with animation
@@ -34,7 +34,7 @@ struct MiniPlayerView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(LinearColors.inputBackground)
                         .frame(width: 40, height: 40)
-
+                    
                     Image(systemName: "waveform")
                         .font(.system(size: 20))
                         .foregroundColor(LinearColors.accent)
@@ -42,19 +42,19 @@ struct MiniPlayerView: View {
                         .scaleEffect(isPlaying ? 1.1 : 1.0)
                         .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: isPlaying)
                 }
-
+                
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Weekly Reflection")
                         .font(.geistTitle).kerning(TypographyKerning.titleKerning)
                         .foregroundColor(LinearColors.primaryText)
-
+                    
                     Text("Your Personal Insights")
                         .font(.geistBodyEmphasis).kerning(TypographyKerning.bodyEmphasisKerning)
                         .foregroundColor(LinearColors.secondaryText)
                 }
-
+                
                 Spacer()
-
+                
                 // Play/Pause button
                 Button(action: togglePlayPause) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -82,14 +82,14 @@ struct MiniPlayerView: View {
             timer = nil
         }
     }
-
+    
     private func setupTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             currentTime = audioPlayer?.currentTime ?? 0
         }
         RunLoop.current.add(timer!, forMode: .common)
     }
-
+    
     private func togglePlayPause() {
         if isPlaying {
             audioPlayer?.pause()
@@ -98,4 +98,4 @@ struct MiniPlayerView: View {
         }
         isPlaying.toggle()
     }
-}
+} 

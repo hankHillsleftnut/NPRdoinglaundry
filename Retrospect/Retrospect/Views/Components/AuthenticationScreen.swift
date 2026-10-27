@@ -1,5 +1,5 @@
-import AuthenticationServices
 import SwiftUI
+import AuthenticationServices
 
 // === AUTHENTICATION SCREEN ===
 // Apple Sign-In — required step in onboarding (no skip)
@@ -9,32 +9,32 @@ struct AuthenticationScreen: View {
     let totalSteps: Int
     let onNext: () -> Void
     let onExit: (() -> Void)?
-
+    
     @State private var bodyTextAnimating = false
     @State private var dragOffset: CGFloat = 0
     @State private var isSigningIn = false
     @State private var signInError: String?
     @ObservedObject private var apiClient = RetrospectAPIClient.shared
-
+    
     init(currentStep: Int, totalSteps: Int, onNext: @escaping () -> Void, onExit: (() -> Void)? = nil) {
         self.currentStep = currentStep
         self.totalSteps = totalSteps
         self.onNext = onNext
         self.onExit = onExit
     }
-
+    
     var body: some View {
         ZStack {
             LinearColors.Minimal.background
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 topSection
-
+                
                 Spacer()
-
+                
                 mainContent
-
+                
                 Spacer()
             }
             .offset(y: dragOffset)
@@ -45,9 +45,8 @@ struct AuthenticationScreen: View {
             bodyTextAnimating = true
         }
     }
-
+    
     // MARK: - Top Section
-
     private var topSection: some View {
         VStack(spacing: 24) {
             if onExit != nil {
@@ -58,9 +57,8 @@ struct AuthenticationScreen: View {
         .padding(.horizontal, 40)
         .padding(.top, 12)
     }
-
+    
     // MARK: - Draggable Dismiss Bar
-
     private var draggableBar: some View {
         RoundedRectangle(cornerRadius: 2.5)
             .fill(LinearColors.textTertiary.opacity(0.3))
@@ -83,16 +81,15 @@ struct AuthenticationScreen: View {
                     }
             )
     }
-
+    
     // MARK: - Progress Indicator
-
     private var progressIndicator: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.textTertiary.opacity(0.2))
                     .frame(height: 3)
-
+                
                 RoundedRectangle(cornerRadius: 2)
                     .fill(LinearColors.accent)
                     .frame(width: geometry.size.width * calculateFrontLoadedProgress(), height: 3)
@@ -102,15 +99,14 @@ struct AuthenticationScreen: View {
         .frame(height: 3)
         .padding(.horizontal, 40)
     }
-
+    
     private func calculateFrontLoadedProgress() -> CGFloat {
         let progress = CGFloat(currentStep) / CGFloat(totalSteps)
         let frontLoaded = 1 - pow(1 - progress, 2.5)
         return min(frontLoaded, 1.0)
     }
-
+    
     // MARK: - Main Content
-
     private var mainContent: some View {
         VStack(spacing: 32) {
             // Icon
@@ -118,13 +114,13 @@ struct AuthenticationScreen: View {
                 .font(.system(size: 48, weight: .light))
                 .foregroundColor(LinearColors.accent)
                 .padding(.bottom, 8)
-
+            
             // Title
             Text("Sign In to Continue")
                 .font(.custom("HedvigLettersSerif-24ptRegular", size: 32))
                 .foregroundColor(LinearColors.textDisplay)
                 .multilineTextAlignment(.center)
-
+            
             // Subtitle
             Text("Your account keeps your data synced and your podcasts personalized.")
                 .font(.system(size: 16, weight: .regular))
@@ -135,7 +131,7 @@ struct AuthenticationScreen: View {
                 .blur(radius: bodyTextAnimating ? 0 : 8)
                 .opacity(bodyTextAnimating ? 1.0 : 0.3)
                 .animation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.2), value: bodyTextAnimating)
-
+            
             // Apple Sign In Button
             VStack(spacing: 12) {
                 SignInWithAppleButton(.signIn) { request in
@@ -146,7 +142,7 @@ struct AuthenticationScreen: View {
                 .signInWithAppleButtonStyle(.white)
                 .frame(height: 56)
                 .cornerRadius(16)
-
+                
                 if isSigningIn {
                     HStack(spacing: 8) {
                         ProgressView()
@@ -158,7 +154,7 @@ struct AuthenticationScreen: View {
                     }
                     .padding(.top, 4)
                 }
-
+                
                 if let error = signInError {
                     Text(error)
                         .font(.system(size: 13, weight: .medium))
@@ -167,7 +163,7 @@ struct AuthenticationScreen: View {
                         .padding(.top, 4)
                 }
             }
-
+            
             // Privacy note
             Text("We only use your Apple ID to create your account. Your data stays private.")
                 .font(.system(size: 13, weight: .regular))
@@ -177,32 +173,31 @@ struct AuthenticationScreen: View {
         }
         .padding(.horizontal, 28)
     }
-
+    
     // MARK: - Apple Sign In Handler
-
     private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
         switch result {
-        case let .success(authorization):
+        case .success(let authorization):
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
                 signInError = "Invalid credential type"
                 return
             }
-
+            
             let appleUserId = credential.user
             let email = credential.email
             let identityToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
-
+            
             isSigningIn = true
             signInError = nil
-
+            
             Task {
                 do {
-                    _ = try await apiClient.signIn(
+                    let _ = try await apiClient.signIn(
                         appleUserId: appleUserId,
                         email: email,
                         identityToken: identityToken
                     )
-
+                    
                     await MainActor.run {
                         isSigningIn = false
                         playButtonTapHaptic()
@@ -215,17 +210,16 @@ struct AuthenticationScreen: View {
                     }
                 }
             }
-
-        case let .failure(error):
+            
+        case .failure(let error):
             if (error as NSError).code == ASAuthorizationError.canceled.rawValue {
                 return
             }
             signInError = error.localizedDescription
         }
     }
-
+    
     // MARK: - Haptic
-
     private func playButtonTapHaptic() {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred(intensity: 0.8)
@@ -233,7 +227,6 @@ struct AuthenticationScreen: View {
 }
 
 // MARK: - Preview
-
 #Preview {
     AuthenticationScreen(
         currentStep: 8,

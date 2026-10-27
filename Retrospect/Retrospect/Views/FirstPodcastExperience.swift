@@ -56,8 +56,8 @@ struct FirstPodcastExperience: View {
                 PodcastPaywallFlow(
                     audioURL: audioURL,
                     transcript: transcript,
-                    onClose: { onComplete() }, // backed out without subscribing → home
-                    onFinished: { advance(to: .reflection) }, // subscribed + finished → reflect
+                    onClose: { onComplete() },                 // backed out without subscribing → home
+                    onFinished: { advance(to: .reflection) },  // subscribed + finished → reflect
                     startWithPaywall: startAtPaywall,
                     onDebugGoHome: onComplete
                 )
@@ -147,11 +147,7 @@ struct FirstReflectionView: View {
                     field: .reflections,
                     showSendButton: true,
                     isSendEnabled: canSend,
-                    onSend: {
-                        if canSend {
-                            onSubmit(text)
-                        }
-                    }
+                    onSend: { if canSend { onSubmit(text) } }
                 )
                 .frame(height: 200)
                 .padding(.horizontal, 24)

@@ -11,14 +11,13 @@ enum OpenAIError: Error {
 }
 
 // MARK: - Supercharge Support
-
 struct DeepResearchRequest {
     let query: String
     let userContext: String
     let goals: [String]
     let enableBackground: Bool
     let maxOutputTokens: Int
-
+    
     init(query: String, userContext: String, goals: [String], enableBackground: Bool = true, maxOutputTokens: Int = 32000) {
         self.query = query
         self.userContext = userContext
@@ -36,35 +35,37 @@ struct DeepResearchResponse {
 }
 
 class OpenAIService {
-    static let shared: OpenAIService = // Provider credentials are never shipped in the app. This legacy
+    static let shared: OpenAIService = {
+        // Provider credentials are never shipped in the app. This legacy
         // compatibility service remains only until all call sites use the API.
-        .init(apiKey: "")
-
+        return OpenAIService(apiKey: "")
+    }()
+    
     private let apiKey: String
     private let baseURL = URL(string: "https://api.openai.com/v1/chat/completions")!
     private let deepResearchURL = URL(string: "https://api.openai.com/v1/responses")!
-
+    
     init(apiKey: String) {
         self.apiKey = apiKey
     }
-
+    
     func validateAPIKey(completion: @escaping (Result<Bool, OpenAIError>) -> Void) {
         print("🔑 Validating OpenAI API key...")
-
+        
         // Create a minimal request to test the API key
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
-                ["role": "user", "content": "Hello, can you confirm this is a valid API key test?"],
+                ["role": "user", "content": "Hello, can you confirm this is a valid API key test?"]
             ],
-            "max_tokens": 10,
+            "max_tokens": 10
         ]
-
+        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
@@ -72,24 +73,24 @@ class OpenAIService {
             completion(.failure(.invalidKey))
             return
         }
-
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             // Check for network errors
-            if let error {
+            if let error = error {
                 print("❌ Network error: \(error.localizedDescription)")
                 completion(.failure(.networkError))
                 return
             }
-
+            
             // Validate HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("❌ Invalid response type")
                 completion(.failure(.apiError("Invalid response")))
                 return
             }
-
+            
             print("🌐 API Response Status: \(httpResponse.statusCode)")
-
+            
             switch httpResponse.statusCode {
             case 200:
                 print("✅ API key validated successfully")
@@ -100,70 +101,65 @@ class OpenAIService {
             case 429:
                 print("❌ Rate limit exceeded")
                 completion(.failure(.apiError("Rate limit exceeded")))
-            case 500 ... 599:
+            case 500...599:
                 print("❌ Server error: \(httpResponse.statusCode)")
                 completion(.failure(.apiError("Server error: \(httpResponse.statusCode)")))
             default:
                 print("❌ Unexpected status code: \(httpResponse.statusCode)")
-                if let data, let errorString = String(data: data, encoding: .utf8) {
+                if let data = data, let errorString = String(data: data, encoding: .utf8) {
                     print("Error response: \(errorString)")
                 }
                 completion(.failure(.apiError("Unexpected status code: \(httpResponse.statusCode)")))
             }
         }.resume()
     }
-
+    
     func generateTranscript(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         print("🤖 Starting OpenAI multi-pass transcript generation...")
         print("📝 Text length: \(text.count)")
         print("🎯 Goals count: \(goals.count)")
         print("🎭 Generation type: \(generationType.displayName)")
-
+        
         // Validate API key first
         validateAPIKey { [weak self] keyValidation in
             switch keyValidation {
             case .success:
                 print("✅ API key validated, proceeding with multi-pass transcript generation")
                 self?.performMultiPassGeneration(text: text, goals: goals, generationType: generationType, completion: completion)
-            case let .failure(error):
+            case .failure(let error):
                 print("❌ API key validation failed: \(error)")
                 completion(.failure(error))
             }
         }
     }
-
-    private func performTranscriptGeneration(
-        text: String,
-        goals: [String],
-        generationType: GenerationType,
-        completion: @escaping (Result<String, OpenAIError>) -> Void
-    ) {
+    
+    private func performTranscriptGeneration(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         print("🚀 Preparing OpenAI API request...")
-
+        
         // Get system prompt based on generation type
         let systemPrompt = getSystemPrompt(for: generationType)
-
+        
         print("📤 Sending request to OpenAI...")
         print("Text length: \(text.count)")
         print("Number of goals: \(goals.count)")
-
+        
         // Prepare request
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
+        
         let messages: [[String: Any]] = [
             ["role": "system", "content": systemPrompt],
             ["role": "user", "content": """
             Weekly Reflections:
             \(text)
-
+            
             Goals:
             \(goals.joined(separator: "\n- "))
-            """],
+            """]
         ]
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": messages,
@@ -171,13 +167,13 @@ class OpenAIService {
             "max_tokens": 8000,
             "top_p": 0.9,
             "frequency_penalty": 0.8,
-            "presence_penalty": 0.6,
+            "presence_penalty": 0.6
         ]
-
+        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             print("📦 Request prepared successfully")
-
+            
             if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
                 print("📦 Request body preview: \(String(bodyString.prefix(200)))...")
             }
@@ -186,43 +182,43 @@ class OpenAIService {
             completion(.failure(.parseError))
             return
         }
-
+        
         print("🌐 Starting API request...")
-
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
             // Check for network errors
-            if let error {
+            if let error = error {
                 print("❌ Network error: \(error.localizedDescription)")
                 completion(.failure(.networkError))
                 return
             }
-
+            
             // Validate HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("❌ Invalid response type")
                 completion(.failure(.apiError("Invalid response")))
                 return
             }
-
+            
             print("🌐 API Response Status: \(httpResponse.statusCode)")
             print("🌐 Response Headers: \(httpResponse.allHeaderFields)")
-
+            
             // Check response status
-            guard (200 ... 299).contains(httpResponse.statusCode) else {
-                if let data, let errorString = String(data: data, encoding: .utf8) {
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if let data = data, let errorString = String(data: data, encoding: .utf8) {
                     print("❌ API Error response: \(errorString)")
                 }
                 completion(.failure(.apiError("HTTP Error: \(httpResponse.statusCode)")))
                 return
             }
-
+            
             // Parse JSON response
-            guard let data else {
+            guard let data = data else {
                 print("❌ No data in response")
                 completion(.failure(.parseError))
                 return
             }
-
+            
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let choices = json["choices"] as? [[String: Any]],
@@ -231,7 +227,7 @@ class OpenAIService {
                    let content = message["content"] as? String {
                     print("✅ Successfully generated transcript")
                     print("📝 Response length: \(content.count)")
-
+                    
                     // Check if audio test mode is enabled and truncate if needed
                     let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
                     if audioTestMode {
@@ -259,29 +255,24 @@ class OpenAIService {
             }
         }.resume()
     }
-
+    
     // MARK: - Multi-Pass Generation System
-
-    private func performMultiPassGeneration(
-        text: String,
-        goals: [String],
-        generationType: GenerationType,
-        completion: @escaping (Result<String, OpenAIError>) -> Void
-    ) {
+    
+    private func performMultiPassGeneration(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         print("🎯 Starting 2-pass focused generation system...")
-
+        
         // Pass 1: Extract key insights and patterns
         extractKeyInsights(text: text, goals: goals, generationType: generationType) { [weak self] insightsResult in
             switch insightsResult {
-            case let .success(insights):
+            case .success(let insights):
                 print("✅ Pass 1 complete - Key insights extracted (\(insights.count) chars)")
-
+                
                 // Pass 2: Generate focused podcast using insights
                 self?.generateFocusedPodcast(text: text, goals: goals, insights: insights, generationType: generationType) { finalResult in
                     switch finalResult {
-                    case let .success(finalPodcast):
+                    case .success(let finalPodcast):
                         print("✅ Pass 2 complete - Focused podcast generated (\(finalPodcast.count) chars)")
-
+                        
                         // Check if audio test mode is enabled and truncate if needed
                         let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
                         if audioTestMode {
@@ -296,107 +287,96 @@ class OpenAIService {
                         } else {
                             completion(.success(finalPodcast))
                         }
-                    case let .failure(error):
+                    case .failure(let error):
                         print("❌ Pass 2 failed: \(error)")
                         completion(.failure(error))
                     }
                 }
-            case let .failure(error):
+            case .failure(let error):
                 print("❌ Pass 1 failed: \(error)")
                 completion(.failure(error))
             }
         }
     }
-
-    private func extractKeyInsights(
-        text: String,
-        goals: [String],
-        generationType: GenerationType,
-        completion: @escaping (Result<String, OpenAIError>) -> Void
-    ) {
+    
+    private func extractKeyInsights(text: String, goals: [String], generationType: GenerationType, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         print("🔍 Pass 1: Extracting key insights...")
-
+        
         let insightsPrompt = getInsightsPrompt(for: generationType)
         let messages: [[String: Any]] = [
             ["role": "system", "content": insightsPrompt],
             ["role": "user", "content": """
             Weekly Reflections:
             \(text)
-
+            
             Goals:
             \(goals.joined(separator: "\n- "))
-            """],
+            """]
         ]
-
+        
         makeAPICall(messages: messages, maxTokens: 1000, purpose: "key insights extraction", completion: completion)
     }
-
-    private func generateFocusedPodcast(
-        text: String,
-        goals: [String],
-        insights: String,
-        generationType: GenerationType,
-        completion: @escaping (Result<String, OpenAIError>) -> Void
-    ) {
+    
+    private func generateFocusedPodcast(text: String, goals: [String], insights: String, generationType: GenerationType, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         print("🎙️ Pass 2: Generating focused podcast...")
-
+        
         let podcastPrompt = getFocusedPodcastPrompt(for: generationType)
         let messages: [[String: Any]] = [
             ["role": "system", "content": podcastPrompt],
             ["role": "user", "content": """
             KEY INSIGHTS TO BUILD UPON:
             \(insights)
-
+            
             ORIGINAL USER DATA:
             Weekly Reflections: \(text)
             Goals: \(goals.joined(separator: ", "))
-            """],
+            """]
         ]
-
+        
         makeAPICall(messages: messages, maxTokens: 1500, purpose: "focused podcast generation", completion: completion)
     }
-
-    func makeAPICall(messages: [[String: Any]], maxTokens: Int, purpose: String, completion: @escaping (Result<String, OpenAIError>) -> Void) {
+    
+    internal func makeAPICall(messages: [[String: Any]], maxTokens: Int, purpose: String, completion: @escaping (Result<String, OpenAIError>) -> Void) {
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 90 // 1.5 minutes timeout for focused generations
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": messages,
-            "temperature": 0.3, // Slightly lower for more consistency
+            "temperature": 0.3,  // Slightly lower for more consistency
             "max_tokens": maxTokens,
             "top_p": 0.9,
-            "frequency_penalty": 0.1, // FIXED: Much lower to prevent weird vocabulary
-            "presence_penalty": 0.1, // FIXED: Much lower to maintain topic coherence
+            "frequency_penalty": 0.1,  // FIXED: Much lower to prevent weird vocabulary
+            "presence_penalty": 0.1    // FIXED: Much lower to maintain topic coherence
         ]
-
+        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
             completion(.failure(.parseError))
             return
         }
-
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error {
+            if let error = error {
                 completion(.failure(.networkError))
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse,
-                  (200 ... 299).contains(httpResponse.statusCode) else {
+                  (200...299).contains(httpResponse.statusCode) else {
                 completion(.failure(.apiError("HTTP Error")))
                 return
             }
-
-            guard let data else {
+            
+            guard let data = data else {
                 completion(.failure(.parseError))
                 return
             }
-
+            
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let choices = json["choices"] as? [[String: Any]],
@@ -413,37 +393,37 @@ class OpenAIService {
             }
         }.resume()
     }
-
+    
     func analyzeText(_ prompt: String) async throws -> String {
         // Prepare request
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
+        
         let messages: [[String: Any]] = [
-            ["role": "user", "content": prompt],
+            ["role": "user", "content": prompt]
         ]
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": messages,
-            "temperature": 0.3, // Slightly lower for more consistency
+            "temperature": 0.3,  // Slightly lower for more consistency
             "max_tokens": 8000,
             "top_p": 0.9,
-            "frequency_penalty": 0.1, // FIXED: Much lower to prevent weird vocabulary
-            "presence_penalty": 0.1, // FIXED: Much lower to maintain topic coherence
+            "frequency_penalty": 0.1,  // FIXED: Much lower to prevent weird vocabulary
+            "presence_penalty": 0.1    // FIXED: Much lower to maintain topic coherence
         ]
-
+        
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
+        
         let (data, response) = try await URLSession.shared.data(for: request)
-
+        
         guard let httpResponse = response as? HTTPURLResponse,
-              (200 ... 299).contains(httpResponse.statusCode) else {
+              (200...299).contains(httpResponse.statusCode) else {
             throw OpenAIError.apiError("Invalid response")
         }
-
+        
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let choices = json?["choices"] as? [[String: Any]],
               let firstChoice = choices.first,
@@ -451,7 +431,7 @@ class OpenAIService {
               let content = message["content"] as? String else {
             throw OpenAIError.parseError
         }
-
+        
         // Check if audio test mode is enabled and truncate if needed
         let audioTestMode = UserDefaults.standard.bool(forKey: "audioTestMode")
         if audioTestMode {
@@ -462,23 +442,23 @@ class OpenAIService {
                 return truncatedContent
             }
         }
-
+        
         return content
     }
-
+    
     // MARK: - Supercharge Methods
-
+    
     func generateDeepResearchTranscript(
-        text: String,
-        goals: [String],
+        text: String, 
+        goals: [String], 
         generationType: GenerationType,
         completion: @escaping (Result<DeepResearchResponse, OpenAIError>) -> Void
     ) {
         print("⚡ Starting Supercharge generation...")
-
+        
         let systemPrompt = getDeepResearchSystemPrompt(for: generationType)
         let userQuery = buildDeepResearchQuery(text: text, goals: goals, generationType: generationType)
-
+        
         let request = DeepResearchRequest(
             query: userQuery,
             userContext: systemPrompt,
@@ -486,10 +466,10 @@ class OpenAIService {
             enableBackground: true,
             maxOutputTokens: 32000
         )
-
+        
         performDeepResearch(request: request, completion: completion)
     }
-
+    
     private func performDeepResearch(
         request: DeepResearchRequest,
         completion: @escaping (Result<DeepResearchResponse, OpenAIError>) -> Void
@@ -499,7 +479,7 @@ class OpenAIService {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.timeoutInterval = 1800 // 30 minutes for supercharge mode
-
+        
         let requestBody: [String: Any] = [
             "model": "o3-deep-research-2025-06-26",
             "input": [
@@ -508,68 +488,68 @@ class OpenAIService {
                     "content": [
                         [
                             "type": "input_text",
-                            "text": request.userContext,
-                        ],
-                    ],
+                            "text": request.userContext
+                        ]
+                    ]
                 ],
                 [
                     "role": "user",
                     "content": [
                         [
                             "type": "input_text",
-                            "text": request.query,
-                        ],
-                    ],
-                ],
+                            "text": request.query
+                        ]
+                    ]
+                ]
             ],
             "reasoning": [
-                "summary": "auto",
+                "summary": "auto"
             ],
             "tools": [
                 [
-                    "type": "web_search_preview",
-                ],
+                    "type": "web_search_preview"
+                ]
             ],
             "background": request.enableBackground,
-            "max_output_tokens": request.maxOutputTokens,
+            "max_output_tokens": request.maxOutputTokens
         ]
-
+        
         do {
             urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
             completion(.failure(.parseError))
             return
         }
-
+        
         print("🌐 Starting Supercharge API call...")
-
+        
         URLSession.shared.dataTask(with: urlRequest) { data, response, error in
-            if let error {
+            if let error = error {
                 print("❌ Supercharge network error: \(error)")
                 completion(.failure(.networkError))
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 completion(.failure(.apiError("Invalid response")))
                 return
             }
-
+            
             print("🌐 Supercharge Response Status: \(httpResponse.statusCode)")
-
-            guard (200 ... 299).contains(httpResponse.statusCode) else {
-                if let data, let errorString = String(data: data, encoding: .utf8) {
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if let data = data, let errorString = String(data: data, encoding: .utf8) {
                     print("❌ Supercharge API Error: \(errorString)")
                 }
                 completion(.failure(.apiError("HTTP Error: \(httpResponse.statusCode)")))
                 return
             }
-
-            guard let data else {
+            
+            guard let data = data else {
                 completion(.failure(.parseError))
                 return
             }
-
+            
             do {
                 let response = try self.parseDeepResearchResponse(data: data)
                 completion(.success(response))
@@ -579,19 +559,19 @@ class OpenAIService {
             }
         }.resume()
     }
-
+    
     private func parseDeepResearchResponse(data: Data) throws -> DeepResearchResponse {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let output = json["output"] as? [[String: Any]] else {
             throw OpenAIError.parseError
         }
-
+        
         // Find the final content
         var finalContent = ""
         var citations: [Citation] = []
         var reasoningSteps: [String] = []
         var searchQueries: [String] = []
-
+        
         for item in output {
             if let type = item["type"] as? String {
                 switch type {
@@ -600,7 +580,7 @@ class OpenAIService {
                        let firstContent = content.first,
                        let text = firstContent["text"] as? String {
                         finalContent = text
-
+                        
                         // Parse citations
                         if let annotations = firstContent["annotations"] as? [[String: Any]] {
                             for annotation in annotations {
@@ -637,7 +617,7 @@ class OpenAIService {
                 }
             }
         }
-
+        
         return DeepResearchResponse(
             content: finalContent,
             citations: citations,
@@ -645,7 +625,7 @@ class OpenAIService {
             searchQueries: searchQueries
         )
     }
-
+    
     private func buildDeepResearchQuery(text: String, goals: [String], generationType: GenerationType) -> String {
         return """
         Research evidence-based CBT strategies for building self-esteem based on this scenario:
@@ -669,12 +649,12 @@ class OpenAIService {
         Format as comprehensive research report with citations, focused on ACTIONABLE CBT techniques.
         """
     }
-
+    
     private func getDeepResearchSystemPrompt(for generationType: GenerationType) -> String {
-        let basePersonality = generationType == .goodListener ?
-            "compassionate but direct CBT therapist" :
+        let basePersonality = generationType == .goodListener ? 
+            "compassionate but direct CBT therapist" : 
             "action-oriented CBT therapist focused on behavioral activation"
-
+        
         return """
         You are a \(basePersonality) and expert researcher specializing in cognitive behavioral therapy, self-esteem research, and evidence-based psychology.
 
@@ -697,9 +677,8 @@ class OpenAIService {
         Your research should provide ACTIONABLE CBT techniques backed by evidence, not generic self-help advice.
         """
     }
-
+    
     // MARK: - System Prompts
-
     private func getSystemPrompt(for generationType: GenerationType) -> String {
         switch generationType {
         case .goodListener:
@@ -708,7 +687,7 @@ class OpenAIService {
             return getGrowthMentorSystemPrompt()
         }
     }
-
+    
     private func getGoodListenerSystemPrompt() -> String {
         return """
         You are a CBT-trained therapist and guide dedicated to building the user's SELF-ESTEEM through evidence-based cognitive restructuring and behavioral activation.
@@ -750,7 +729,7 @@ class OpenAIService {
         Make this thorough, chapter-based, with great transitions and SPECIFIC evidence from their data. Play with being literal and using metaphors.
         """
     }
-
+    
     private func getGrowthMentorSystemPrompt() -> String {
         return """
         You are a CBT therapist focused on BEHAVIORAL ACTIVATION and evidence-based growth. Your philosophy: ACTION changes THOUGHTS, not the other way around.
@@ -774,14 +753,14 @@ class OpenAIService {
         Make this thorough with great transitions and deep insights. Use both literal and metaphorical language.
         """
     }
-
+    
     // MARK: - Multi-Pass Prompts
-
+    
     private func getInsightsPrompt(for generationType: GenerationType) -> String {
-        let basePersonality = generationType == .goodListener ?
-            "compassionate but direct CBT therapist" :
+        let basePersonality = generationType == .goodListener ? 
+            "compassionate but direct CBT therapist" : 
             "action-oriented CBT therapist focused on behavioral activation"
-
+        
         return """
         You are a \(basePersonality) analyzing user data to extract CBT-focused insights for a 5-8 minute podcast on building self-esteem.
 
@@ -815,12 +794,12 @@ class OpenAIService {
         Keep response under 500 words total.
         """
     }
-
+    
     private func getFocusedPodcastPrompt(for generationType: GenerationType) -> String {
-        let tone = generationType == .goodListener ?
-            "warm, direct, evidence-based — no toxic positivity" :
+        let tone = generationType == .goodListener ? 
+            "warm, direct, evidence-based — no toxic positivity" : 
             "direct, energizing, action-oriented — challenge harsh self-criticism"
-
+        
         return """
         You are creating a focused 5-8 minute CBT podcast on building self-esteem. Using the extracted insights, create an episode that challenges distortions and presents counter-evidence.
 
@@ -864,17 +843,17 @@ class OpenAIService {
         Build around the extracted insights — no filler content.
         """
     }
-
+    
     // MARK: - Entry Metadata Generation
-
+    
     struct EntryMetadata {
         let title: String
         let tags: [String]
     }
-
+    
     func analyzeEntryForMetadata(content: String, completion: @escaping (Result<EntryMetadata, OpenAIError>) -> Void) {
         print("🏷️ Generating entry metadata...")
-
+        
         let systemPrompt = """
         You are a helpful assistant that generates concise titles and relevant topic tags for journal entries.
 
@@ -892,52 +871,52 @@ class OpenAIService {
 
         Do not include any other text or explanation.
         """
-
+        
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
-
+        
         let messages: [[String: Any]] = [
             ["role": "system", "content": systemPrompt],
-            ["role": "user", "content": content],
+            ["role": "user", "content": content]
         ]
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": 100,
-            "response_format": ["type": "json_object"],
+            "response_format": ["type": "json_object"]
         ]
-
+        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
             completion(.failure(.parseError))
             return
         }
-
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error {
+            if let error = error {
                 print("❌ Metadata generation network error: \(error)")
                 completion(.failure(.networkError))
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse,
-                  (200 ... 299).contains(httpResponse.statusCode) else {
+                  (200...299).contains(httpResponse.statusCode) else {
                 print("❌ Metadata generation API error")
                 completion(.failure(.apiError("HTTP Error")))
                 return
             }
-
-            guard let data else {
+            
+            guard let data = data else {
                 completion(.failure(.parseError))
                 return
             }
-
+            
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let choices = json["choices"] as? [[String: Any]],
@@ -948,7 +927,7 @@ class OpenAIService {
                    let metadataJson = try JSONSerialization.jsonObject(with: contentData) as? [String: Any],
                    let title = metadataJson["title"] as? String,
                    let tags = metadataJson["tags"] as? [String] {
-
+                    
                     let metadata = EntryMetadata(title: title, tags: tags)
                     print("✅ Generated metadata - Title: \(title), Tags: \(tags.joined(separator: ", "))")
                     completion(.success(metadata))
@@ -962,26 +941,26 @@ class OpenAIService {
             }
         }.resume()
     }
-
+    
     // MARK: - Image Analysis (GPT-4 Vision)
-
+    
     struct ImageAnalysisResult {
         let descriptions: [String]
         let combinedContext: String
     }
-
+    
     /// Analyze images using GPT-4 Vision and return descriptions for podcast context
     func analyzeImages(_ images: [UIImage], completion: @escaping (Result<ImageAnalysisResult, OpenAIError>) -> Void) {
         print("🖼️ Analyzing \(images.count) images with GPT-4 Vision...")
-
+        
         guard !images.isEmpty else {
             completion(.success(ImageAnalysisResult(descriptions: [], combinedContext: "")))
             return
         }
-
+        
         // Limit to 5 images maximum
         let imagesToAnalyze = Array(images.prefix(5))
-
+        
         let systemPrompt = """
         You are a thoughtful assistant analyzing images attached to journal entries to provide meaningful context for personal reflection and self-esteem work.
 
@@ -1010,15 +989,12 @@ class OpenAIService {
             "combined_context": "Brief summary for reflection podcast, highlighting any capability evidence visible in images"
         }
         """
-
+        
         // Build content array with images
         var contentArray: [[String: Any]] = [
-            [
-                "type": "text",
-                "text": "Please analyze these journal entry images and provide descriptions that can be used as context for a personal reflection podcast.",
-            ],
+            ["type": "text", "text": "Please analyze these journal entry images and provide descriptions that can be used as context for a personal reflection podcast."]
         ]
-
+        
         for (index, image) in imagesToAnalyze.enumerated() {
             if let imageData = image.jpegData(compressionQuality: 0.7) {
                 let base64Image = imageData.base64EncodedString()
@@ -1026,32 +1002,32 @@ class OpenAIService {
                     "type": "image_url",
                     "image_url": [
                         "url": "data:image/jpeg;base64,\(base64Image)",
-                        "detail": "low", // Use low detail to reduce token usage
-                    ],
+                        "detail": "low" // Use low detail to reduce token usage
+                    ]
                 ])
                 print("📷 Added image \(index + 1) to request")
             }
         }
-
+        
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 60
-
+        
         let messages: [[String: Any]] = [
             ["role": "system", "content": systemPrompt],
-            ["role": "user", "content": contentArray],
+            ["role": "user", "content": contentArray]
         ]
-
+        
         let body: [String: Any] = [
             "model": "gpt-4o",
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": 1000,
-            "response_format": ["type": "json_object"],
+            "response_format": ["type": "json_object"]
         ]
-
+        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
@@ -1059,35 +1035,35 @@ class OpenAIService {
             completion(.failure(.parseError))
             return
         }
-
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error {
+            if let error = error {
                 print("❌ Image analysis network error: \(error)")
                 completion(.failure(.networkError))
                 return
             }
-
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("❌ Invalid response type")
                 completion(.failure(.apiError("Invalid response")))
                 return
             }
-
+            
             print("🌐 Image analysis response status: \(httpResponse.statusCode)")
-
-            guard (200 ... 299).contains(httpResponse.statusCode) else {
-                if let data, let errorString = String(data: data, encoding: .utf8) {
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if let data = data, let errorString = String(data: data, encoding: .utf8) {
                     print("❌ Image analysis error response: \(errorString)")
                 }
                 completion(.failure(.apiError("HTTP Error: \(httpResponse.statusCode)")))
                 return
             }
-
-            guard let data else {
+            
+            guard let data = data else {
                 completion(.failure(.parseError))
                 return
             }
-
+            
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let choices = json["choices"] as? [[String: Any]],
@@ -1096,7 +1072,7 @@ class OpenAIService {
                    let content = message["content"] as? String,
                    let contentData = content.data(using: .utf8),
                    let analysisJson = try JSONSerialization.jsonObject(with: contentData) as? [String: Any] {
-
+                    
                     var descriptions: [String] = []
                     if let imagesArray = analysisJson["images"] as? [[String: Any]] {
                         for imageInfo in imagesArray {
@@ -1105,14 +1081,14 @@ class OpenAIService {
                             }
                         }
                     }
-
+                    
                     let combinedContext = analysisJson["combined_context"] as? String ?? ""
-
+                    
                     let result = ImageAnalysisResult(
                         descriptions: descriptions,
                         combinedContext: combinedContext
                     )
-
+                    
                     print("✅ Image analysis complete - \(descriptions.count) descriptions generated")
                     completion(.success(result))
                 } else {
@@ -1125,4 +1101,5 @@ class OpenAIService {
             }
         }.resume()
     }
+
 }

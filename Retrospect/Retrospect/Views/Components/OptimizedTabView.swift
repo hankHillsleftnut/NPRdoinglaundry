@@ -1,16 +1,15 @@
 import SwiftUI
 
 // MARK: - Optimized Tab View with Lazy Loading
-
 struct OptimizedTabView: View {
     @Binding var selectedTab: HomeTab
     @ObservedObject var viewModel: TranscriptViewModel
     @ObservedObject var goalsManager: GoalsManager
-
+    
     // Cache screen calculations once
     @State private var cachedScreenWidth = UIScreen.main.bounds.width
     @State private var cachedScreenHeight = UIScreen.main.bounds.height
-
+    
     var body: some View {
         GeometryReader { geometry in
             TabView(selection: $selectedTab) {
@@ -18,7 +17,7 @@ struct OptimizedTabView: View {
                 reflectionsTabContent
                     .frame(width: cachedScreenWidth)
                     .tag(HomeTab.reflections)
-
+                
                 // Entries Tab - Lazy loaded only when selected
                 Group {
                     if selectedTab == .entries {
@@ -42,7 +41,7 @@ struct OptimizedTabView: View {
             }
         }
     }
-
+    
     private var reflectionsTabContent: some View {
         VStack(spacing: 0) {
             // Use the optimized ReflectionsInputCard
@@ -50,9 +49,9 @@ struct OptimizedTabView: View {
                 viewModel: viewModel,
                 goalsManager: goalsManager
             )
-
+            
             Spacer()
-
+            
             // Show transcript details or floating generate button
             if let transcript = viewModel.transcript {
                 TranscriptDetailsCard(transcript: transcript)
@@ -72,23 +71,22 @@ struct OptimizedTabView: View {
             }
         }
     }
-
+    
     private var shouldShowFloatingGenerateButton: Bool {
-        !viewModel.isProcessing &&
-            viewModel.transcript == nil &&
-            !goalsManager.goals.isEmpty
+        !viewModel.isProcessing && 
+        viewModel.transcript == nil && 
+        !goalsManager.goals.isEmpty
     }
 }
 
 // MARK: - Floating Generate Button (Optimized)
-
 struct FloatingGenerateButton: View {
     @ObservedObject var viewModel: TranscriptViewModel
     @ObservedObject var goalsManager: GoalsManager
-
-    /// Cached computation for ready state
+    
+    // Cached computation for ready state
     @State private var isReadyToGenerate = false
-
+    
     var body: some View {
         VStack {
             Spacer()
@@ -112,11 +110,11 @@ struct FloatingGenerateButton: View {
             updateReadyState()
         }
     }
-
+    
     private func updateReadyState() {
         isReadyToGenerate = !goalsManager.goals.isEmpty
     }
-
+    
     private func generateFromGoals() {
         let goalsText = goalsManager.goalContextForGeneration.map { "- \($0)" }.joined(separator: "\n")
         viewModel.generateTranscript(text: goalsText, goals: goalsManager.goalContextForGeneration)
@@ -124,11 +122,10 @@ struct FloatingGenerateButton: View {
 }
 
 // MARK: - Transcript Details Card (Optimized)
-
 struct TranscriptDetailsCard: View {
     let transcript: TranscriptModel
     @State private var isShowingDetails = false
-
+    
     var body: some View {
         VStack {
             Spacer()
@@ -142,13 +139,13 @@ struct TranscriptDetailsCard: View {
                             Text("Your Insights Ready")
                                 .font(.serifLabel).fontWeight(.semibold)
                                 .foregroundColor(LinearColors.textPrimary)
-
+                            
                             Text("Tap to view your personalized reflection")
                                 .font(.serifCaption)
                                 .foregroundColor(LinearColors.textSecondary)
                                 .lineLimit(1)
                         }
-
+                        
                         Image(systemName: "chevron.right")
                             .font(.serifCaption)
                             .foregroundColor(LinearColors.textSecondary)
@@ -158,7 +155,7 @@ struct TranscriptDetailsCard: View {
                 }
                 .coStarCard()
                 .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-
+                
                 Spacer()
             }
             .padding(.bottom, 100)
@@ -172,7 +169,6 @@ struct TranscriptDetailsCard: View {
 }
 
 // MARK: - Tab Item Data Structure
-
 struct TabItem {
     let tab: HomeTab
     let icon: String

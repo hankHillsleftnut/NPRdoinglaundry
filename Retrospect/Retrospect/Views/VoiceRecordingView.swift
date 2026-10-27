@@ -6,41 +6,41 @@ struct VoiceRecordingView: View {
     @State private var showCancelAlert = false
     @State private var isSaving = false
     @State private var showError = false
-
+    
     var body: some View {
         ZStack {
             // Background
             LinearGradient(
                 colors: [
                     LinearColors.backgroundGrey,
-                    LinearColors.backgroundGrey.opacity(0.95),
+                    LinearColors.backgroundGrey.opacity(0.95)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 0) {
                 // Header
                 header
-
+                
                 Spacer()
-
+                
                 // Main Content
                 VStack(spacing: 32) {
                     // Waveform/Recording Indicator
                     recordingIndicator
-
+                    
                     // Timer
                     timerDisplay
-
+                    
                     // Transcription Display
                     transcriptionDisplay
                 }
                 .padding(.horizontal, 24)
-
+                
                 Spacer()
-
+                
                 // Stop Button
                 stopButton
                     .padding(.bottom, 60)
@@ -72,9 +72,9 @@ struct VoiceRecordingView: View {
             Text("Your recording will be lost if you cancel.")
         }
     }
-
+    
     // MARK: - Header
-
+    
     private var header: some View {
         HStack {
             // Cancel Button
@@ -95,9 +95,9 @@ struct VoiceRecordingView: View {
                             )
                     )
             }
-
+            
             Spacer()
-
+            
             // Status
             HStack(spacing: 8) {
                 Circle()
@@ -105,7 +105,7 @@ struct VoiceRecordingView: View {
                     .frame(width: 8, height: 8)
                     .opacity(audioManager.isRecording ? 1 : 0)
                     .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: audioManager.isRecording)
-
+                
                 Text("Recording")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(LinearColors.textSecondary)
@@ -120,9 +120,9 @@ struct VoiceRecordingView: View {
                         radius: 8, x: 0, y: 2
                     )
             )
-
+            
             Spacer()
-
+            
             // Placeholder for symmetry
             Color.clear
                 .frame(width: 44, height: 44)
@@ -130,13 +130,13 @@ struct VoiceRecordingView: View {
         .padding(.horizontal, 20)
         .padding(.top, 16)
     }
-
+    
     // MARK: - Recording Indicator
-
+    
     private var recordingIndicator: some View {
         ZStack {
             // Pulsing circles
-            ForEach(0 ..< 3, id: \.self) { index in
+            ForEach(0..<3, id: \.self) { index in
                 Circle()
                     .stroke(LinearColors.accent.opacity(0.3), lineWidth: 2)
                     .frame(width: 120 + CGFloat(index * 40), height: 120 + CGFloat(index * 40))
@@ -144,12 +144,12 @@ struct VoiceRecordingView: View {
                     .opacity(audioManager.isRecording ? 0.0 : 0.5)
                     .animation(
                         .easeOut(duration: 1.5)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(index) * 0.3),
+                        .repeatForever(autoreverses: false)
+                        .delay(Double(index) * 0.3),
                         value: audioManager.isRecording
                     )
             }
-
+            
             // Center microphone icon
             ZStack {
                 Circle()
@@ -165,7 +165,7 @@ struct VoiceRecordingView: View {
                         color: LinearColors.accent.opacity(0.3),
                         radius: 20, x: 0, y: 10
                     )
-
+                
                 Image(systemName: "waveform")
                     .font(.system(size: 50, weight: .medium))
                     .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -174,18 +174,18 @@ struct VoiceRecordingView: View {
         }
         .padding(.top, 40)
     }
-
+    
     // MARK: - Timer Display
-
+    
     private var timerDisplay: some View {
         Text(formatDuration(audioManager.recordingDuration))
             .font(.system(size: 48, weight: .bold))
             .foregroundColor(LinearColors.textPrimary)
             .monospacedDigit()
     }
-
+    
     // MARK: - Transcription Display
-
+    
     private var transcriptionDisplay: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -193,12 +193,12 @@ struct VoiceRecordingView: View {
                     Image(systemName: "text.bubble")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(LinearColors.accent)
-
+                    
                     Text("Live Transcription")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(LinearColors.textSecondary)
                 }
-
+                
                 if audioManager.currentTranscription.isEmpty {
                     Text("Start speaking...")
                         .font(.serifBody)
@@ -233,9 +233,9 @@ struct VoiceRecordingView: View {
                 .strokeBorder(LinearColors.cardBorder, lineWidth: 1)
         )
     }
-
+    
     // MARK: - Stop Button
-
+    
     private var stopButton: some View {
         Button(action: {
             HapticManager.shared.playHeavyImpact()
@@ -249,7 +249,7 @@ struct VoiceRecordingView: View {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 24, weight: .bold))
                 }
-
+                
                 Text(isSaving ? "Saving..." : "Stop Recording")
                     .font(.system(size: 18, weight: .bold))
             }
@@ -274,9 +274,9 @@ struct VoiceRecordingView: View {
         .disabled(isSaving)
         .padding(.horizontal, 32)
     }
-
+    
     // MARK: - Private Methods
-
+    
     private func startRecording() {
         audioManager.requestPermissions { granted in
             if granted {
@@ -286,11 +286,11 @@ struct VoiceRecordingView: View {
             }
         }
     }
-
+    
     private func stopRecordingAndSave() {
         guard !isSaving else { return }
         isSaving = true
-
+        
         audioManager.stopRecording { result in
             Task { @MainActor in
                 switch result {
@@ -298,17 +298,17 @@ struct VoiceRecordingView: View {
                     let trimmed = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
                     let audioFileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int) ?? 0
                     let hasUsableAudio = FileManager.default.fileExists(atPath: audioURL.path) && audioFileSize > 1000
-
+                    
                     guard !trimmed.isEmpty || hasUsableAudio else {
                         audioManager.errorMessage = "Recording was empty — nothing to save."
                         showError = true
                         isSaving = false
                         return
                     }
-
+                    
                     await saveVoiceEntry(audioURL: audioURL, transcription: trimmed)
-
-                case let .failure(error):
+                    
+                case .failure(let error):
                     print("❌ Recording failed: \(error.localizedDescription)")
                     audioManager.errorMessage = error.localizedDescription
                     showError = true
@@ -317,11 +317,11 @@ struct VoiceRecordingView: View {
             }
         }
     }
-
+    
     private func saveVoiceEntry(audioURL: URL, transcription: String) async {
         let entryId = UUID()
         let entryDate = Date()
-
+        
         // Move audio file to permanent location
         let finalAudioURL: URL
         do {
@@ -333,12 +333,12 @@ struct VoiceRecordingView: View {
             isSaving = false
             return
         }
-
+        
         // Generate title and tags from transcription
         AIServiceManager.shared.analyzeEntryForMetadata(content: transcription) { result in
             Task { @MainActor in
                 switch result {
-                case let .success(metadata):
+                case .success(let metadata):
                     let voiceEntry = Entry(
                         id: entryId,
                         date: entryDate,
@@ -357,7 +357,7 @@ struct VoiceRecordingView: View {
                     // addEntry uploads it (as voice_recording, keyed by the entry id). A second
                     // upload here as voice_journal used to write every voice note twice.
 
-                case let .failure(error):
+                case .failure(let error):
                     print("⚠️ Failed to generate metadata: \(error), using fallback")
                     let voiceEntry = Entry(
                         id: entryId,
@@ -370,14 +370,14 @@ struct VoiceRecordingView: View {
                         tags: [],
                         isIncludedInInsights: true
                     )
-
+                    
                     EntryManager.shared.addEntry(voiceEntry)
                     print("✅ Saved voice entry (no metadata)")
                 }
-
+                
                 isSaving = false
                 HapticManager.shared.playSuccessNotification()
-
+                
                 // Dismiss with a slight delay for better UX
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     presentationMode.wrappedValue.dismiss()
@@ -385,7 +385,7 @@ struct VoiceRecordingView: View {
             }
         }
     }
-
+    
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
@@ -396,3 +396,4 @@ struct VoiceRecordingView: View {
 #Preview {
     VoiceRecordingView()
 }
+

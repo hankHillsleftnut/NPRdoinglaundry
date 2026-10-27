@@ -1,7 +1,6 @@
 import Foundation
 
 // MARK: - Backend Goal
-
 struct BackendGoal: Codable, Identifiable {
     let id: String
     let userId: String
@@ -13,7 +12,6 @@ struct BackendGoal: Codable, Identifiable {
 }
 
 // MARK: - Backend Observation
-
 struct BackendObservation: Codable, Identifiable {
     let id: String
     let userId: String
@@ -28,7 +26,6 @@ struct BackendObservation: Codable, Identifiable {
 }
 
 // MARK: - Backend Insight
-
 struct BackendInsight: Codable, Identifiable {
     let id: String
     let userId: String
@@ -46,7 +43,6 @@ struct BackendInsight: Codable, Identifiable {
 }
 
 // MARK: - Podcast Episode (from backend)
-
 struct PodcastEpisode: Codable, Identifiable {
     let id: String
     let userId: String
@@ -91,7 +87,7 @@ struct PodcastEpisode: Codable, Identifiable {
             googleDocsInfo: nil,
             isDeepResearch: true,
             citations: citations.isEmpty ? nil : citations,
-            researchQueries: researchCitations?.map(\.query),
+            researchQueries: researchCitations?.map { $0.query },
             createdAt: createdAt
         )
         model.backendEpisodeId = id
@@ -101,7 +97,6 @@ struct PodcastEpisode: Codable, Identifiable {
 }
 
 // MARK: - Podcast Citation
-
 struct PodcastCitation: Codable {
     let query: String
     let source: String
@@ -110,7 +105,6 @@ struct PodcastCitation: Codable {
 }
 
 // MARK: - Podcast Outline Data
-
 struct PodcastOutlineData: Codable {
     let theme: String?
     let segments: [PodcastSegmentData]?
@@ -125,7 +119,6 @@ struct PodcastSegmentData: Codable {
 }
 
 // MARK: - AnyCodable helper for flexible metadata
-
 struct AnyCodable: Codable {
     let value: Any
 
@@ -144,7 +137,7 @@ struct AnyCodable: Codable {
         } else if let stringVal = try? container.decode(String.self) {
             value = stringVal
         } else if let arrayVal = try? container.decode([AnyCodable].self) {
-            value = arrayVal.map(\.value)
+            value = arrayVal.map { $0.value }
         } else if let dictVal = try? container.decode([String: AnyCodable].self) {
             value = dictVal.mapValues { $0.value }
         } else {

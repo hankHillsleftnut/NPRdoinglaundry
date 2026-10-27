@@ -12,7 +12,7 @@ struct StackingScrollView<Content: View>: View {
     let content: Content
     let itemHeight: CGFloat
     let itemSpacing: CGFloat
-
+    
     init(
         itemHeight: CGFloat = 80,
         itemSpacing: CGFloat = 12,
@@ -22,7 +22,7 @@ struct StackingScrollView<Content: View>: View {
         self.itemSpacing = itemSpacing
         self.content = content()
     }
-
+    
     var body: some View {
         ScrollView {
             content
@@ -31,14 +31,13 @@ struct StackingScrollView<Content: View>: View {
 }
 
 // MARK: - Stacking Card Modifier
-
 struct StackingCardModifier: ViewModifier {
     let index: Int
     let scrollOffset: CGFloat
     let itemHeight: CGFloat
     let collapsedHeight: CGFloat
     let maxVisibleCards: Int
-
+    
     init(
         index: Int,
         scrollOffset: CGFloat,
@@ -52,48 +51,48 @@ struct StackingCardModifier: ViewModifier {
         self.collapsedHeight = collapsedHeight
         self.maxVisibleCards = maxVisibleCards
     }
-
+    
     private var cardOffset: CGFloat {
         let itemPosition = CGFloat(index) * (itemHeight + 12) // 12 is spacing
         let relativeOffset = itemPosition + scrollOffset
-
+        
         // Only apply effect when card is near the top (negative relative offset means scrolled up)
         if relativeOffset < 0 {
             // Card is above the visible area threshold
             let compressionProgress = min(1.0, abs(relativeOffset) / (itemHeight * 2))
-
+            
             // Compress the offset - cards stack tighter
             return relativeOffset * (1 - compressionProgress * 0.7)
         }
-
+        
         return 0
     }
-
+    
     private var cardScale: CGFloat {
         let itemPosition = CGFloat(index) * (itemHeight + 12)
         let relativeOffset = itemPosition + scrollOffset
-
+        
         if relativeOffset < 0 {
             let compressionProgress = min(1.0, abs(relativeOffset) / (itemHeight * 3))
             // Scale down as card goes up
             return 1.0 - (compressionProgress * 0.15)
         }
-
+        
         return 1.0
     }
-
+    
     private var cardOpacity: Double {
         let itemPosition = CGFloat(index) * (itemHeight + 12)
         let relativeOffset = itemPosition + scrollOffset
-
+        
         if relativeOffset < -itemHeight * 2 {
             let fadeProgress = min(1.0, abs(relativeOffset + itemHeight * 2) / (itemHeight * 2))
             return 1.0 - (fadeProgress * 0.6)
         }
-
+        
         return 1.0
     }
-
+    
     func body(content: Content) -> some View {
         content
             .scaleEffect(cardScale, anchor: .top)
@@ -104,16 +103,15 @@ struct StackingCardModifier: ViewModifier {
 }
 
 // MARK: - Stacking List View
-
-/// Note: ScrollOffsetPreferenceKey is defined in SettingsView.swift
+// Note: ScrollOffsetPreferenceKey is defined in SettingsView.swift
 struct StackingListView<Item: Identifiable, ItemView: View>: View {
     let items: [Item]
     let itemHeight: CGFloat
     let itemSpacing: CGFloat
     let itemView: (Item, Int) -> ItemView
-
+    
     @State private var scrollOffset: CGFloat = 0
-
+    
     init(
         items: [Item],
         itemHeight: CGFloat = 80,
@@ -125,7 +123,7 @@ struct StackingListView<Item: Identifiable, ItemView: View>: View {
         self.itemSpacing = itemSpacing
         self.itemView = itemView
     }
-
+    
     var body: some View {
         ScrollView {
             // Offset tracker
@@ -136,7 +134,7 @@ struct StackingListView<Item: Identifiable, ItemView: View>: View {
                 )
             }
             .frame(height: 0)
-
+            
             LazyVStack(spacing: itemSpacing) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     itemView(item, index)
@@ -158,14 +156,13 @@ struct StackingListView<Item: Identifiable, ItemView: View>: View {
 }
 
 // MARK: - Simple Stacking Modifier for existing ForEach
-
 extension View {
     func stackingEffect(
         index: Int,
         scrollOffset: CGFloat,
         itemHeight: CGFloat = 80
     ) -> some View {
-        modifier(StackingCardModifier(
+        self.modifier(StackingCardModifier(
             index: index,
             scrollOffset: scrollOffset,
             itemHeight: itemHeight
@@ -178,13 +175,13 @@ extension View {
         let id = UUID()
         let title: String
     }
-
-    let items = (0 ..< 20).map { PreviewItem(title: "Item \($0)") }
-
+    
+    let items = (0..<20).map { PreviewItem(title: "Item \($0)") }
+    
     return ZStack {
         LinearColors.Minimal.background.ignoresSafeArea()
-
-        StackingListView(items: items, itemHeight: 70, itemSpacing: 12) { item, _ in
+        
+        StackingListView(items: items, itemHeight: 70, itemSpacing: 12) { item, index in
             HStack {
                 Text(item.title)
                     .foregroundColor(LinearColors.Minimal.textPrimary)
@@ -200,3 +197,4 @@ extension View {
         }
     }
 }
+

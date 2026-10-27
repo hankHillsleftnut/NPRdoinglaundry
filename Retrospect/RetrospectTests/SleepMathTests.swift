@@ -1,6 +1,6 @@
 import Foundation
-@testable import Retrospect
 import Testing
+@testable import Retrospect
 
 /// The rules that decide how much someone slept. Getting these wrong once
 /// produced a portrait telling a person they never sleep.
@@ -15,9 +15,7 @@ struct SleepMathTests {
         calendar.date(from: DateComponents(year: 2026, month: 6, day: day, hour: hour, minute: minute))!
     }
 
-    private var june9Night: (start: Date, end: Date) {
-        SleepMath.nightWindow(for: at(9, 15), calendar: calendar)!
-    }
+    private var june9Night: (start: Date, end: Date) { SleepMath.nightWindow(for: at(9, 15), calendar: calendar)! }
 
     @Test func aNightRunsNoonToNoonAndBelongsToTheMorningItEnds() {
         #expect(june9Night.start == at(8, 12))
@@ -43,7 +41,7 @@ struct SleepMathTests {
     @Test func aWatchAndAPhoneRecordingTheSameNightCountItOnce() {
         let night = [
             SleepMath.Sample(start: at(8, 23), end: at(9, 6), stage: "asleep_unspecified"), // iPhone
-            SleepMath.Sample(start: at(8, 23, 30), end: at(9, 7), stage: "core"), // Watch
+            SleepMath.Sample(start: at(8, 23, 30), end: at(9, 7), stage: "core"),           // Watch
         ]
         #expect(SleepMath.hoursAsleep(night, in: june9Night) == 8)
     }

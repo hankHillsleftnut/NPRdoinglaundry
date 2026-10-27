@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-/// Enhanced Single Line Text Field
+// Enhanced Single Line Text Field
 struct EnhancedSingleLineTextField: View {
     let placeholder: String
     @Binding var text: String
     @FocusState private var isFocused: Bool
-
+    
     var body: some View {
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: BorderRadius.input)
@@ -27,7 +27,7 @@ struct EnhancedSingleLineTextField: View {
                     RoundedRectangle(cornerRadius: BorderRadius.input)
                         .stroke(isFocused ? LinearColors.inputFocusBorder : LinearColors.inputBorder, lineWidth: isFocused ? 2 : 1)
                 )
-
+            
             TextField("", text: $text)
                 .placeholder(when: text.isEmpty) {
                     Text(placeholder)
