@@ -127,15 +127,31 @@ private struct ListPill: View {
 }
 
 /// Your picture (1G7Z-0): a 36 sky disc with a warm light at its top right, a rim and a hairline. Paper
-/// says it opens settings (ST-1, another group); until the wiring PR connects the groups it is drawn as
-/// Paper but inert (YO-D14).
+/// says it opens settings (ST-1, another group): it does when a stack above can push ST-1 (the app route
+/// table, G0); otherwise it is drawn as Paper but inert (YO-D14).
 private struct YouPicture: View {
+    @Environment(\.appRouter) private var router
+
     var body: some View {
-        disc
-            .accessibilityElement()
+        if let open = router.opener(.settings(.hub)) {
+            Button(action: open) {
+                // the 36 disc, in a 44 target
+                disc
+                    .frame(width: RDimension.sizeTouchTarget, height: RDimension.sizeTouchTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(RPressStyle())
+            // the target's extra 8 overhangs the bar's layout, so the disc sits where Paper draws it
+            .padding(-(RDimension.sizeTouchTarget - RDimension.sizeControlIcon) / 2) // literal-ok: half on each side
             .accessibilityLabel("settings")
-            .accessibilityAddTraits(.isButton)
-            .youInert()
+            .accessibilityIdentifier("you.picture")
+        } else {
+            disc
+                .accessibilityElement()
+                .accessibilityLabel("settings")
+                .accessibilityAddTraits(.isButton)
+                .youInert()
+        }
     }
 
     private var disc: some View {

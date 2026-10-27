@@ -26,6 +26,8 @@ struct JournalPageContainer: View {
     /// The composer's mic. Off by default: nothing records yet, and a mic that keeps nothing
     /// would lose spoken words (decision 4, no dead controls).
     var voice = false
+    /// The brief card's sheet when the host has one (JR-2); nil: the text sheet.
+    var openBrief: (() -> Void)?
     @Environment(\.journalData) private var data
     /// The person's player (nil on the sample page: the play opens the text sheet).
     @Environment(\.playback) private var playback
@@ -46,6 +48,7 @@ extension JournalPageContainer {
     private func model(for data: any Flows.JournalData) -> JournalViewModel {
         let model = JournalViewModel(data: data, today: today)
         model.openDrawer = openDrawer
+        model.openBrief = openBrief
         model.voice = voice
         model.playback = playback
         return model

@@ -31,6 +31,8 @@ enum SettingsDestinations {
         var close: (SettingsRoute) -> Void = { _ in }
         /// Launcher stills only: ST-4 opens with this question already asked.
         var asking: SourcePage.Asking?
+        /// ST-9's sign-out flow, when the host owns one (the demo hears it end); nil: the page's own sample.
+        var signOut: (any SignOutFlowing)?
     }
 
     static func view(for page: SettingsRoute, in context: Context) -> AnyView? {

@@ -12,7 +12,7 @@ extension SettingsDestinations {
     static func trust(_ page: SettingsRoute, in context: Context) -> AnyView? {
         switch page {
         case .account:
-            AnyView(SettingsAccountPage(back: context.back))
+            AnyView(SettingsAccountPage(flow: context.signOut, back: context.back))
         case .privacy:
             trustData(context).map { AnyView(SettingsPrivacyPage(data: $0, back: context.back)) }
         case .voice:
@@ -36,13 +36,15 @@ extension SettingsDestinations {
     }
 }
 
-/// The existing account page (#173/#184/#188) on a sample flow with nothing waiting.
+/// The existing account page (#173/#184/#188) on the host's sign-out flow, or on a sample flow with
+/// nothing waiting when the host has none.
 private struct SettingsAccountPage: View {
+    let flow: (any SignOutFlowing)?
     let back: () -> Void
-    @State private var flow = SampleSignOutFlow(unsent: 0)
+    @State private var sample = SampleSignOutFlow(unsent: 0)
 
     var body: some View {
-        AccountPage(flow: flow, back: back)
+        AccountPage(flow: flow ?? sample, back: back)
             .toolbar(.hidden, for: .navigationBar)
     }
 }

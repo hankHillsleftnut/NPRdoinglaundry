@@ -129,11 +129,12 @@ struct AppRouteTableTests {
     ]
 
     /// Where the table may be named before the wiring go: the dark V2 folders (ReleaseRouteTableTests,
-    /// #205), the debug launcher and the debug demo host (`-Flow demo`, Features/Demo). The release root
+    /// #205), the debug launcher and the debug demo host (`-Flow demo`, Sandbox/Demo: every Sandbox file is DEBUG-only,
+    /// ReleaseRouteTableTests.sandboxIsDebugOnly). The release root
     /// (RetrospectApp, NewAppRoot, FirstRunRoute, LiveJournalRoot) is outside all of them.
     static let mayName = [
         "Features/Shell/", "Features/Entries/", "Features/Podcasts/", "Features/You/", "Features/Settings/",
-        "Features/Goals/", "Features/Outside/", "Features/Launcher/", "Features/Demo/",
+        "Features/Goals/", "Features/Outside/", "Features/Launcher/", "Sandbox/",
     ]
 
     @Test("the release app never names the route table (it is debug-demo only until the wiring go)")

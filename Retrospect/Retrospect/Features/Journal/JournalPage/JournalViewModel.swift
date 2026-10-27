@@ -259,7 +259,7 @@ final class JournalViewModel {
     /// sample) or no audio, or when the player can't get the sound (offline, failed), the text sheet opens.
     func play() async {
         guard let brief, let audio = brief.audio, let playback else {
-            playerShown = true
+            showBrief()
             return
         }
         if starting != nil {
@@ -284,7 +284,16 @@ final class JournalViewModel {
 
     /// The card's body: the text sheet (P10 replaces it with the brief player).
     func open() {
-        playerShown = true
+        showBrief()
+    }
+
+    /// The brief's sheet: the host's (JR-2, when it gives one: `openBrief`), else the text sheet.
+    private func showBrief() {
+        if let openBrief {
+            openBrief()
+        } else {
+            playerShown = true
+        }
     }
 
     /// Pauses or resumes the brief the player already holds; false when there is nothing of it to play
@@ -369,6 +378,8 @@ final class JournalViewModel {
     var voice = false
     /// Opens the drawer (JR-3, P11); the page's host wires it.
     var openDrawer: () -> Void = {}
+    /// Opens today's brief in the host's player sheet (JR-2, the demo's shell); nil: the text sheet.
+    var openBrief: (() -> Void)?
 
     // MARK: - The mappings (pure)
 
