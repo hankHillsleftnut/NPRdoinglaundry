@@ -15,8 +15,8 @@ concurrency:
 
 jobs:
   lint-and-format:
-    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    # Light job: always on GitHub's runner (free while public), never queued behind the iOS build; see quality.yml.
+    runs-on: ubuntu-latest
     env:
       SWIFTLINT_VERSION: 0.65.1
       SWIFTFORMAT_VERSION: 0.64.0

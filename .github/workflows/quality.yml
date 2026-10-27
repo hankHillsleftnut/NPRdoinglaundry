@@ -11,13 +11,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
-# Where CI runs is a repo variable, not a code change: `CI_HOSTED=true` (Settings → Variables)
-# sends every job to GitHub's own runners (free while the repo is public); unset, or anything
-# else, keeps them on the self-hosted Macs. Flip it back when the repo goes private again.
+# The light jobs (api, new-backend-only, changes, and lint/tokens/gitleaks/review in the other
+# workflows) always run on GitHub's ubuntu-latest: free while the repo is public, and they no
+# longer queue behind the iOS build on the Macs. Only the iOS job follows the repo variable
+# `CI_HOSTED` (Settings → Variables): `true` sends it to GitHub's macOS runner, unset or anything
+# else keeps it on the self-hosted Mac. Once the repo goes private, hosted minutes are billed:
+# revisit the light jobs' runners then.
 
 jobs:
   api:
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
@@ -41,7 +44,7 @@ jobs:
     # Founder rule: the new app talks to the new backend only (Backend.Client -> /v2 -> Session). Fails
     # when Platform/ (except Bridges.swift), Features/ or DesignSystemV2/ use the old client, a raw
     # request, or a path outside Backend.PathTemplate.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,7 +57,7 @@ jobs:
     # Decides on Linux whether the iOS build is needed, so no macOS runner is requested
     # for docs, backend or CI-only PRs (GitHub's macOS capacity is constrained). Contract
     # fixtures count as app changes: the app's tests decode every one of them.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.changed.outputs.app }}
     steps:
@@ -108,6 +111,48 @@ jobs:
       - run: |
           udid=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.name=="ci") | .udid' | head -1)
           test -n "$udid" || { echo "no simulator named ci on this runner (xcrun simctl create ci \"iPhone 17 Pro\")"; exit 1; }
+          xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect \
+            -testPlan Platform -destination "platform=iOS Simulator,id=$udid" \
+            -configuration Debug -derivedDataPath "${{ env.DERIVED_DATA }}" -disableAutomaticPackageResolution \
+            COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+  ios-hosted:
+    needs: changes
+    # A second, informational opinion: the same iOS build + Platform tests on GitHub's hosted
+    # macOS 26 image (clean build every run), next to the self-hosted `ios` gate. It never blocks
+    # a merge (continue-on-error, and it is not a required check). Switched on with the repo
+    # variable `CI_HOSTED_ALSO=true` (Settings → Variables; no PR needed), and skipped when
+    # `CI_HOSTED=true` already sends the gate itself to the hosted runner.
+    # Note: continue-on-error keeps the workflow green, but a failed run of this job still
+    # shows its own red X on the PR's checks list. Read it as "the hosted opinion disagrees",
+    # never as the merge gate; `ios` is the gate.
+    # Cost: hosted macOS minutes are free only while the repo is public. When it goes private
+    # they are billed (10x Linux rate), so set CI_HOSTED_ALSO back to false then.
+    if: needs.changes.outputs.app == 'true' && vars.CI_HOSTED_ALSO == 'true' && vars.CI_HOSTED != 'true'
+    continue-on-error: true
+    timeout-minutes: 60
+    runs-on: macos-26
+    env:
+      # Per-job: $RUNNER_TEMP is wiped between jobs on a hosted runner.
+      DERIVED_DATA: '$RUNNER_TEMP/dd-hosted'
+      XCODE_VERSION: '26.3'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode ${{ env.XCODE_VERSION }} and a `ci` simulator
+        run: |
+          if [ -d "/Applications/Xcode_${XCODE_VERSION}.app" ]; then
+            sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+          else
+            echo "Xcode ${XCODE_VERSION} is not on this image; installed:"; ls /Applications | grep -i xcode; exit 1
+          fi
+          xcodebuild -version
+          xcrun simctl create ci "iPhone 17 Pro"
+      - run: >-
+          xcodebuild -resolvePackageDependencies -project Retrospect/Retrospect.xcodeproj
+          -scheme Retrospect -derivedDataPath "${{ env.DERIVED_DATA }}"
+      - run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '.devices[][] | select(.name=="ci") | .udid' | head -1)
+          test -n "$udid" || { echo "no simulator named ci on this runner"; exit 1; }
           xcodebuild test -project Retrospect/Retrospect.xcodeproj -scheme Retrospect \
             -testPlan Platform -destination "platform=iOS Simulator,id=$udid" \
             -configuration Debug -derivedDataPath "${{ env.DERIVED_DATA }}" -disableAutomaticPackageResolution \
