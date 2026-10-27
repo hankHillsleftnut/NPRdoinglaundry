@@ -73,14 +73,7 @@ final class SampleListening: Flows.Listening {
         self.continuation = continuation
         guard !hasSpoken, !words.isEmpty else {
             if quietEnds {
-                // the questions' mic on an answer already heard: a pause, then the listen ends
-                let quiet = Task { [clock] in
-                    try? await clock.sleep(for: Self.endAfter)
-                    guard !Task.isCancelled else { return }
-                    continuation.yield(.ended)
-                    continuation.finish()
-                }
-                continuation.onTermination = { _ in quiet.cancel() }
+                endAfterQuiet(continuation)
             }
             return stream
         }
@@ -108,6 +101,17 @@ final class SampleListening: Flows.Listening {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+
+    /// The questions' mic on an answer already heard: a pause, then the listen ends.
+    private func endAfterQuiet(_ continuation: AsyncStream<Flows.Heard>.Continuation) {
+        let quiet = Task { [clock] in
+            try? await clock.sleep(for: Self.endAfter)
+            guard !Task.isCancelled else { return }
+            continuation.yield(.ended)
+            continuation.finish()
+        }
+        continuation.onTermination = { _ in quiet.cancel() }
     }
 
     func stop() {
