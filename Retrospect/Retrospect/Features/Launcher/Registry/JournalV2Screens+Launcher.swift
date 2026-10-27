@@ -25,7 +25,9 @@ enum JournalV2Screens: ScreenGroup {
         },
         LaunchableScreen(id: "JR-4", states: EntryScenario.allCases.map(\.rawValue)) { arguments in
             let entry = EntryScenario(rawValue: arguments.state) ?? .rest
-            return AnyView(EntriesLaunch(scenario: .rest, opening: entry.entryID, drawn: entry.drawnStart))
+            // offline is Paper's offline frame (N9D-0): a retry waits on the phone
+            let offline = entry == .offline || entry == .drawnOffline
+            return AnyView(EntriesLaunch(scenario: offline ? .offline : .rest, opening: entry.entryID, drawn: entry.drawnStart))
         },
     ]
 }

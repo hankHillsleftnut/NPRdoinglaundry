@@ -1,3 +1,4 @@
+import Observation
 @testable import Retrospect
 import Testing
 
@@ -121,11 +122,74 @@ struct DrawerModelTests {
         #expect(opened == [first.id])
     }
 
+    @Test("with no page to open, a sent row says so; a row that didn't send still retries")
+    func nothingToOpen() async {
+        let drawer = model(.rest)
+        await drawer.load()
+        let rows = sections(drawer).flatMap(\.rows)
+        #expect(rows.filter { $0.status == .rest }.allSatisfy { !drawer.opens($0) })
+        #expect(rows.filter { $0.status == .notSent }.allSatisfy { drawer.opens($0) })
+        drawer.onOpen = { _ in }
+        #expect(rows.allSatisfy { drawer.opens($0) })
+    }
+
+    @Test("two taps on a row that didn't send send it once")
+    func doubleTapRetriesOnce() async throws {
+        let data = CountingEntries()
+        let drawer = DrawerModel(data: data, debounce: .zero)
+        await drawer.load()
+        let row = try #require(sections(drawer).flatMap(\.rows).first { $0.status == .notSent })
+        let client = try #require(row.clientEntryId)
+        async let first: Void = drawer.retry(client)
+        async let second: Void = drawer.retry(client)
+        _ = await (first, second)
+        #expect(data.retries == 1)
+    }
+
+    @Test("pages: the last row asks for the next page; a day split across pages stays one section")
+    func pages() async throws {
+        let data = CountingEntries()
+        let drawer = DrawerModel(data: data, debounce: .zero)
+        await drawer.load()
+        #expect(sections(drawer).flatMap(\.rows).count == 2)
+        let last = try #require(sections(drawer).flatMap(\.rows).last)
+        #expect(drawer.isLast(last))
+        await drawer.loadMore()
+        #expect(sections(drawer).map(\.id) == ["2025-10-21", "2025-10-20"])
+        #expect(sections(drawer).flatMap(\.rows).count == 3)
+        #expect(!sections(drawer).flatMap(\.rows).contains { drawer.isLast($0) })
+    }
+
     @Test("delivery maps to the row's status")
     func statuses() {
         #expect(DrawerModel.status(.sent) == .rest)
         #expect(DrawerModel.status(.waiting) == .waiting)
         #expect(DrawerModel.status(.sending) == .waiting)
         #expect(DrawerModel.status(.failed(Flows.Failure(.network))) == .notSent)
+    }
+}
+
+/// Two pages (the second repeats a day from the first) and a retry counter.
+@MainActor
+@Observable
+private final class CountingEntries: EntriesData {
+    let today = SampleEntries.today
+    let timeZone = SampleEntries.london
+    let isOffline = false
+    private(set) var retries = 0
+
+    func entries(cursor: String?, query _: String?) async -> Result<Flows.Page<Flows.Journal.Entry>, Flows.Failure> {
+        let rest = SampleEntries.rest
+        if cursor == nil {
+            // today, then yesterday's unsent row
+            return .success(Flows.Page(items: [rest[0], SampleEntries.unsent], nextCursor: "next"))
+        }
+        // yesterday again, on the next page
+        return .success(Flows.Page(items: [rest[1]], nextCursor: nil))
+    }
+
+    func retry(clientEntryId _: String) async {
+        retries += 1
+        try? await Task.sleep(for: .milliseconds(20))
     }
 }

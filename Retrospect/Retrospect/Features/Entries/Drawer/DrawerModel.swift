@@ -59,12 +59,23 @@ final class DrawerModel {
 
     /// The entry the journal behind is showing ("here").
     var hereID: String?
-    /// Opening a row (JR-4 when it is built; set by the host).
-    @ObservationIgnored var onOpen: (Row) -> Void = { _ in }
+    /// Opening a row (JR-4, set by the host). Until a host sets it, sent rows don't open and say so
+    /// (no dead controls); a row that didn't send still retries.
+    var onOpen: ((Row) -> Void)?
 
     @ObservationIgnored private let data: any EntriesData
     @ObservationIgnored private let debounce: Duration
     @ObservationIgnored private var searchTask: Task<Void, Never>?
+    /// Every load gets a number; only the newest may write the list (a retry's reload, a search typed
+    /// away and back, or a page arriving late never overwrite a newer one).
+    @ObservationIgnored private var generation = 0
+    /// What the list holds so far, and the cursor for the next page (contract 02 §5 pages).
+    @ObservationIgnored private var loaded: [Entry] = []
+    @ObservationIgnored private var nextCursor: String?
+    /// The load whose next page is in flight (a newer load's page request is never blocked by an older one).
+    @ObservationIgnored private var loadingMoreFor: Int?
+    /// Entries being sent again: a second tap while one is sending doesn't send it twice.
+    @ObservationIgnored private var retrying: Set<String> = []
 
     init(data: any EntriesData, query: String = "", hereID: String? = nil, debounce: Duration = .milliseconds(250)) {
         self.data = data
@@ -76,16 +87,45 @@ final class DrawerModel {
     // MARK: - Loading and search
 
     func load() async {
+        generation += 1
+        let mine = generation
         let searched = Self.cleaned(query)
         let result = await data.entries(cursor: nil, query: searched)
-        // a newer search owns the list
-        guard Self.cleaned(query) == searched else { return }
+        // a newer load or search owns the list
+        guard mine == generation, Self.cleaned(query) == searched else { return }
         switch result {
         case let .success(page):
-            state = makeState(page.items, searched: searched)
+            loaded = page.items
+            nextCursor = page.nextCursor
+            state = makeState(loaded, searched: searched)
         case let .failure(failure):
+            loaded = []
+            nextCursor = nil
             state = .failed(failure.message ?? "couldn't load your journal. try again in a moment.")
         }
+    }
+
+    /// The next page, when the list's last row comes into view.
+    func loadMore() async {
+        let mine = generation
+        guard let cursor = nextCursor, loadingMoreFor != mine else { return }
+        loadingMoreFor = mine
+        defer {
+            if loadingMoreFor == mine {
+                loadingMoreFor = nil
+            }
+        }
+        let searched = Self.cleaned(query)
+        let result = await data.entries(cursor: cursor, query: searched)
+        guard mine == generation, Self.cleaned(query) == searched, case let .success(page) = result else { return }
+        loaded += page.items
+        nextCursor = page.nextCursor
+        state = makeState(loaded, searched: searched)
+    }
+
+    /// Whether this row is the last one loaded with more to come (its appearing asks for the next page).
+    func isLast(_ row: Row) -> Bool {
+        nextCursor != nil && loaded.last?.id == row.id
     }
 
     private func scheduleSearch() {
@@ -111,11 +151,19 @@ final class DrawerModel {
         if row.status == .notSent, let client = row.clientEntryId {
             Task { await retry(client) }
         } else {
-            onOpen(row)
+            onOpen?(row)
         }
     }
 
+    /// Whether tapping this row does something now.
+    func opens(_ row: Row) -> Bool {
+        row.status == .notSent || onOpen != nil
+    }
+
     func retry(_ clientEntryId: String) async {
+        // a second tap while the first is sending must not send the entry twice
+        guard retrying.insert(clientEntryId).inserted else { return }
+        defer { retrying.remove(clientEntryId) }
         await data.retry(clientEntryId: clientEntryId)
         await load()
     }
@@ -129,14 +177,12 @@ final class DrawerModel {
             let title = rows.count == 1 ? "1 match" : "\(rows.count) matches"
             return .list([Section(id: "matches", title: title, rows: rows)])
         }
-        var sections: [Section] = []
-        for entry in entries {
-            let made = row(entry, meta: kindAndTime(entry))
-            if let last = sections.last, last.id == entry.day {
-                sections[sections.count - 1] = Section(id: last.id, title: last.title, rows: last.rows + [made])
-            } else {
-                sections.append(Section(id: entry.day, title: dayLabel(entry.day), rows: [made]))
-            }
+        // one section per day, newest day first, each day's rows newest first, however the phone's
+        // queue and the server's pages arrive (a day never appears twice)
+        let days = Dictionary(grouping: entries, by: \.day)
+        let sections = days.keys.sorted(by: >).map { day in
+            let rows = (days[day] ?? []).sorted { $0.createdAt > $1.createdAt }.map { row($0, meta: kindAndTime($0)) }
+            return Section(id: day, title: dayLabel(day), rows: rows)
         }
         return .list(sections)
     }

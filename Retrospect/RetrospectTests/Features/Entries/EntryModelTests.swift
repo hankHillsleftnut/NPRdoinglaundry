@@ -52,6 +52,27 @@ struct EntryModelTests {
         ))
     }
 
+    @Test("a retry shows the entry waiting at once, so a second tap sends nothing")
+    func retryShowsSendingAtOnce() async {
+        let model = EntryModel(id: SampleEntries.trainID, data: SampleEntriesData(scenario: .offline, sendBeat: .milliseconds(50)))
+        await model.load()
+        async let first: Void = model.retry()
+        await Task.yield()
+        #expect(model.state == .shown(
+            words: "the train is stuck again, writing this underground",
+            meta: "today · 9:40 · waiting to send",
+            standing: .waiting
+        ))
+        await model.retry()
+        await first
+        // offline: it stays waiting on the phone
+        #expect(model.state == .shown(
+            words: "the train is stuck again, writing this underground",
+            meta: "today · 9:40 · waiting to send",
+            standing: .waiting
+        ))
+    }
+
     @Test("an entry that isn't there says so instead of a blank page")
     func missing() async {
         let model = await shown("nope")
@@ -71,8 +92,8 @@ struct EntryModelTests {
 
     @Test("day words: today, yesterday, then the short date")
     func dayWords() {
-        #expect(EntryWords.dayLabel("2026-10-21", today: "2026-10-21") == "today")
-        #expect(EntryWords.dayLabel("2026-10-20", today: "2026-10-21") == "yesterday")
-        #expect(EntryWords.dayLabel("2026-10-14", today: "2026-10-21") == "tue 14 oct")
+        #expect(EntryWords.dayLabel("2025-10-21", today: "2025-10-21") == "today")
+        #expect(EntryWords.dayLabel("2025-10-20", today: "2025-10-21") == "yesterday")
+        #expect(EntryWords.dayLabel("2025-10-14", today: "2025-10-21") == "tue 14 oct")
     }
 }
