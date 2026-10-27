@@ -36,7 +36,7 @@ extension SampleSettings {
         /// ST-9 (Paper 1GV2-0: "yearly" / "renews on 3 march · $239.99").
         var plan: Settings.Plan? = Settings.Plan(
             name: "yearly",
-            renewsOn: Calendar.current.date(from: DateComponents(year: 2027, month: 3, day: 3, hour: 12)) ?? .now,
+            renewsOn: Calendar(identifier: .gregorian).date(from: DateComponents(year: 2027, month: 3, day: 3, hour: 12)) ?? .now,
             price: "$239.99"
         )
 
@@ -46,7 +46,7 @@ extension SampleSettings {
         }
 
         /// 25 Oct 2026, a Sunday, at noon in the phone's calendar.
-        static let lastSunday = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
+        static let lastSunday = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
 
         init() {}
     }

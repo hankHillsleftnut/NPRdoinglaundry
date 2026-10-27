@@ -47,7 +47,7 @@ private struct SettingsAccountDeleteLaunch: View {
     @State private var data = SampleSettings()
 
     var body: some View {
-        AccountSettingsPage(data: data, deleting: true, back: {})
+        AccountSettingsPage(data: data, flow: SampleSignOutFlow(unsent: 0), deleting: true, back: {})
     }
 }
 #endif

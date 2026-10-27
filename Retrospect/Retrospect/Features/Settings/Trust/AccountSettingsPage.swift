@@ -23,7 +23,7 @@ struct AccountSettingsPage: View {
 
     init(
         data: any Flows.SettingsTrustData,
-        flow: any SignOutFlowing = SampleSignOutFlow(unsent: 0),
+        flow: any SignOutFlowing,
         deleting: Bool = false,
         back: @escaping () -> Void
     ) {
@@ -36,18 +36,19 @@ struct AccountSettingsPage: View {
     var body: some View {
         RSheetHost {
             SettingsPageFrame(title: "account", back: back) {
-                if let plan = data.plan {
-                    SettingsLabelledGroup(label: "your plan") {
-                        RSettingsGroup {
+                SettingsLabelledGroup(label: "your plan") {
+                    RSettingsGroup {
+                        if let plan = data.plan {
                             // information only: Paper draws no trailing part, so it isn't a button
                             SettingsControlFrame(title: plan.name, subline: Self.renewal(plan)) { EmptyView() }
                             RSettingsRow(title: "manage subscription", subline: "in apple settings", trailing: .external)
                                 .accessibilityHint("not available yet")
                                 .accessibilityIdentifier("account.manage")
-                            RSettingsRow(title: "restore purchases", trailing: .none)
-                                .accessibilityHint("not available yet")
-                                .accessibilityIdentifier("account.restore")
                         }
+                        // always there: whoever sees no plan here is who needs it (the no-plan look is undrawn, ST-D26)
+                        RSettingsRow(title: "restore purchases", trailing: .none)
+                            .accessibilityHint("not available yet")
+                            .accessibilityIdentifier("account.restore")
                     }
                 }
                 signOutBlock
@@ -114,9 +115,9 @@ struct AccountSettingsPage: View {
 
     /// "renews on 3 march · $239.99"
     static func renewal(_ plan: Flows.Settings.Plan) -> String {
-        let posix = Locale(identifier: "en_US_POSIX")
-        let day = plan.renewsOn.formatted(Date.FormatStyle(locale: posix).day(.defaultDigits))
-        let month = plan.renewsOn.formatted(Date.FormatStyle(locale: posix).month(.wide)).lowercased()
+        let style = Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX"), calendar: Calendar(identifier: .gregorian))
+        let day = plan.renewsOn.formatted(style.day(.defaultDigits))
+        let month = plan.renewsOn.formatted(style.month(.wide)).lowercased()
         return "renews on \(day) \(month) · \(plan.price)"
     }
 
@@ -137,6 +138,6 @@ struct AccountSettingsPage: View {
 
 #if DEBUG
 #Preview("ST-9 account") {
-    AccountSettingsPage(data: SampleSettings(), back: {})
+    AccountSettingsPage(data: SampleSettings(), flow: SampleSignOutFlow(unsent: 0), back: {})
 }
 #endif
