@@ -18,6 +18,17 @@ struct RComposerMicTests {
     func focus() {
         let composer = RComposer(label: "add why", placeholder: "…", text: .constant(""))
         #expect(composer.micAction == .focusField)
-        #expect(composer.onMic == nil)
+        var focused = 0
+        RComposer.micTapped(onMic: composer.onMic) { focused += 1 }
+        #expect(focused == 1)
+    }
+
+    @Test("with an action the tap talks and never focuses")
+    func tapTalks() {
+        var talks = 0
+        var focused = 0
+        RComposer.micTapped(onMic: { talks += 1 }, focus: { focused += 1 })
+        #expect(talks == 1)
+        #expect(focused == 0)
     }
 }

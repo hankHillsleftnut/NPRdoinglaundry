@@ -21,6 +21,8 @@ final class ShareModel {
     /// "add why (optional)".
     var why: String
     private let data: any ShareData
+    /// True while save is on its way, so a second tap can't save twice.
+    private(set) var isSaving = false
 
     init(data: any ShareData, why: String = "") {
         self.data = data
@@ -35,15 +37,22 @@ final class ShareModel {
     }
 
     func load() async {
-        state = await .ready(data.item())
+        let item = await data.item()
+        // a cancel (or save) while the item was loading wins
+        guard state == .idle else { return }
+        state = .ready(item)
     }
 
     func save() async {
+        guard item != nil, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         await data.save(why: why.trimmingCharacters(in: .whitespacesAndNewlines))
         state = .closed(saved: true)
     }
 
     func cancel() {
+        guard !isSaving else { return }
         state = .closed(saved: false)
     }
 }

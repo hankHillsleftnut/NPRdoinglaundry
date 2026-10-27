@@ -26,6 +26,29 @@ struct SharePage: View {
     @Bindable var model: ShareModel
 
     var body: some View {
+        VStack(spacing: RDimension.space6) {
+            // the column scrolls when the keyboard takes the room (SE, large type); "save" stays on screen
+            GeometryReader { proxy in
+                ScrollView {
+                    column
+                        .frame(minHeight: proxy.size.height, alignment: .top)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            RButton(title: "save", status: model.isSaving ? .pending : .rest) {
+                Task { await model.save() }
+            }
+        }
+        .padding(.horizontal, RDimension.spaceScreenMargin)
+        .padding(.top, RDimension.space2)
+        .padding(.bottom, RDimension.space4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .task { await model.load() }
+        .accessibilityIdentifier("share")
+    }
+
+    private var column: some View {
         VStack(alignment: .leading, spacing: RDimension.space6) {
             grabber
             header
@@ -41,16 +64,7 @@ struct SharePage: View {
                     .accessibilityHidden(true)
                 RComposer(label: "add why", placeholder: "for the raise, the bit on angels…", text: $model.why)
             }
-            RButton(title: "save") {
-                Task { await model.save() }
-            }
         }
-        .padding(.horizontal, RDimension.spaceScreenMargin)
-        .padding(.top, RDimension.space2)
-        .padding(.bottom, RDimension.space4)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .task { await model.load() }
-        .accessibilityIdentifier("share")
     }
 
     /// Paper draws its own grabber (1H2H-0): 36 × 5, border.strong, centred.
@@ -67,7 +81,7 @@ struct SharePage: View {
         HStack(spacing: RDimension.space0) {
             Button("cancel") { model.cancel() }
                 .buttonStyle(ShareTextButtonStyle())
-                .frame(width: RDimension.sizeShareHeaderSlot, alignment: .leading)
+                .frame(minWidth: RDimension.sizeShareHeaderSlot, alignment: .leading)
             Text("save to retrospect")
                 .rText(.shareSheetTitle)
                 .foregroundStyle(RColor.textPrimary)

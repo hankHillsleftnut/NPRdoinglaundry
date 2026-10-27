@@ -109,6 +109,15 @@ struct RComposer: View {
         onMic == nil ? .focusField : .talk
     }
 
+    /// The mic well's tap: the screen's voice capture when there is one, else focus the field.
+    static func micTapped(onMic: (() -> Void)?, focus: () -> Void) {
+        if let onMic {
+            onMic()
+        } else {
+            focus()
+        }
+    }
+
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -148,11 +157,7 @@ struct RComposer: View {
 
     private var micWell: some View {
         Button {
-            if let onMic {
-                onMic()
-            } else {
-                focused = true
-            }
+            Self.micTapped(onMic: onMic) { focused = true }
         } label: {
             // Paper's 18 mic, as the search field matches it (C12)
             RSymbol(name: "mic", weight: .medium, glyphScale: 0.74) // literal-ok: 18 × 0.82 in the 20 frame

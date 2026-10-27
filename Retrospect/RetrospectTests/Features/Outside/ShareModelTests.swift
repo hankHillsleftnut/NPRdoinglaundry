@@ -50,3 +50,55 @@ struct ShareModelTests {
         #expect(OutsideScreens.screens.first { $0.id == "EX-1" }?.states == ["ready", "typed"])
     }
 }
+
+/// Review on #220: closing wins over a slow read; one save per tap; no save before the item.
+@MainActor
+struct ShareModelGuardTests {
+    /// A ShareData whose read waits until the test lets it go.
+    final class SlowShare: ShareData {
+        var release: CheckedContinuation<Void, Never>?
+        private(set) var saves = 0
+        func item() async -> ShareItem {
+            await withCheckedContinuation { release = $0 }
+            return SampleShare.paper
+        }
+
+        func save(why _: String) async {
+            saves += 1
+        }
+    }
+
+    @Test("cancel while the item is loading stays cancelled")
+    func cancelDuringLoad() async {
+        let data = SlowShare()
+        let model = ShareModel(data: data)
+        let load = Task { await model.load() }
+        while data.release == nil {
+            await Task.yield()
+        }
+        model.cancel()
+        data.release?.resume()
+        await load.value
+        #expect(model.state == .closed(saved: false))
+    }
+
+    @Test("save before the item has loaded does nothing")
+    func saveBeforeLoad() async {
+        let data = SampleShare()
+        let model = ShareModel(data: data)
+        await model.save()
+        #expect(model.state == .idle)
+        #expect(data.saved == nil)
+    }
+
+    @Test("two saves at once save once")
+    func doubleSave() async {
+        let data = SampleShare()
+        let model = ShareModel(data: data)
+        await model.load()
+        async let first: Void = model.save()
+        async let second: Void = model.save()
+        _ = await (first, second)
+        #expect(model.state == .closed(saved: true))
+    }
+}
