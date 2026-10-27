@@ -7,6 +7,10 @@
 //  in SF 14, and › to open. Rows press like every list row (RListRowStyle: surface.subtle). Rows sit in one grouped panel (REvidenceGroup), 1pt border.subtle
 //  between them, never a stack of cards.
 //
+//  V2.goals.parts (GL-D8, shared with V2.you YO-D7/YO-D10): a row with nowhere to open (`action: nil`)
+//  is the same row without the › and without a button: plain text for VoiceOver, no press. Paper
+//  draws › on rows whose destination isn't drawn yet; no dead controls, so those rows say nothing more.
+//
 import SwiftUI
 
 extension RTextStyle {
@@ -18,17 +22,6 @@ extension RTextStyle {
         tracking: RNumber.fontTrackingCard,
         leading: RTextStyle.textMd.leading,
         relativeTo: .subheadline
-    )
-
-    /// A citation's number in its well (YO-2 1G9V-0: --font-mono, --text-sm, 16 line). A figure that
-    /// counts, so mono (screen rules 4).
-    static let sourceNumber = RTextStyle(
-        family: .mono,
-        size: RDimension.fontSizeSm,
-        weight: .regular,
-        tracking: RNumber.fontTrackingNone,
-        leading: 1.3,
-        relativeTo: .caption
     )
 }
 
@@ -48,26 +41,35 @@ struct REvidenceRow: View {
     let words: String
     /// On a tinted parent (a wash card, a sheet) the well lifts to surface.lifted.
     var onTint = false
-    /// What the row opens; nil: its page isn't drawn yet, so the row isn't a button and shows no ›.
-    let action: (() -> Void)?
+    /// Opens the source. Nil: nowhere to open yet, so no ›, no button (V2.goals.parts).
+    var action: (() -> Void)?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    /// Whether the row opens something (draws › and is a button).
+    var opens: Bool {
+        action != nil
+    }
+
     var body: some View {
         if let action {
-            Button(action: action) { row(chevron: true) }
-                .buttonStyle(RListRowStyle())
-                // one element: "14 oct, your words, <the full excerpt>, button"
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(spoken)
+            Button(action: action) {
+                row
+            }
+            .buttonStyle(RListRowStyle())
+            // one element: "14 oct, your words, <the full excerpt>, button"
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityText)
         } else {
-            row(chevron: false)
+            row
+                // one element, read as text: "14 oct, your words, <the full excerpt>"
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(spoken)
+                .accessibilityLabel(accessibilityText)
         }
     }
 
-    private var spoken: String {
+    /// What VoiceOver reads for the row, either way: "14 oct, your words, <the full excerpt>".
+    var accessibilityText: String {
         let lead = if case let .number(number) = leading {
             "source \(number), "
         } else {
@@ -76,7 +78,7 @@ struct REvidenceRow: View {
         return "\(lead)\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)"
     }
 
-    private func row(chevron: Bool) -> some View {
+    private var row: some View {
         HStack(spacing: RDimension.space3) {
             leadingView
             VStack(alignment: .leading, spacing: RDimension.sizeBorderRing) {
@@ -92,7 +94,7 @@ struct REvidenceRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .multilineTextAlignment(.leading)
-            if chevron {
+            if opens {
                 // Paper draws › at size.icon.chevron 14 in RSymbol's 16 frame
                 RSymbol(
                     name: "chevron.right",
@@ -119,8 +121,9 @@ struct REvidenceRow: View {
             )
             .accessibilityHidden(true)
         case let .number(number):
+            // a figure that counts, so mono (screen rules 4): the voice length's face
             Text(String(number))
-                .rText(.sourceNumber)
+                .rText(.voiceLength)
                 .foregroundStyle(RColor.textSecondary)
                 .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
                 .background(onTint ? RColor.surfaceLifted : RColor.surfaceWash, in: RShape.rect(RDimension.radiusDefault))
@@ -157,7 +160,7 @@ struct REvidenceGroup<Content: View>: View {
 }
 
 #if DEBUG
-/// Lab page "evidence": part 41's three rows, a long excerpt, search citations, a tinted parent.
+/// Lab page "evidence": part 41's three rows, a long excerpt, a tinted parent.
 struct REvidenceRowGallery: View {
     var body: some View {
         ScrollView {
@@ -181,9 +184,16 @@ struct REvidenceRowGallery: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: RDimension.space2) {
-                    caption("search citations (YO-2); a row with no page shows no ›")
+                    caption("nowhere to open yet: no ›, not a button")
                     REvidenceGroup {
-                        REvidenceRow(leading: .number(1), meta: "apple health · 14 nights", words: "you slept 40 min longer after a run", action: nil)
+                        REvidenceRow(leading: .kind(symbol: "calendar"), meta: "tue 14 oct · calendar", words: "2 hours of deep work")
+                        REvidenceRow(leading: .kind(symbol: "doc.text"), meta: "fri 17 oct · your words", words: "\"finally fixed the sync bug\"") {}
+                    }
+                }
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    caption("search citations (YO-2)")
+                    REvidenceGroup {
+                        REvidenceRow(leading: .number(1), meta: "apple health · 14 nights", words: "you slept 40 min longer after a run")
                         REvidenceRow(leading: .number(2), meta: "journal · 3 entries", words: "\"stopped at 8, slept like a rock\"") {}
                     }
                 }

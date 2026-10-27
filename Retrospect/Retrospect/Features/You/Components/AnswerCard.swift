@@ -113,7 +113,8 @@ struct SourceList: View {
     }
 }
 
-/// "only what's certain · hides the 1 guess" with its switch (1G91-0). The whole row toggles; VoiceOver
+/// "only what's certain · hides the 1 guess" with its switch (1G91-0). A tap anywhere on the wash row
+/// toggles it (as the switch does); VoiceOver
 /// reads it once, as the switch, with the subline as its hint.
 struct OnlyCertainRow: View {
     @Binding var isOn: Bool
