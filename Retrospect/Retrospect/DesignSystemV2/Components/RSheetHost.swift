@@ -14,6 +14,11 @@
 //  detent (sheetSnap haptic at rest). The drag defers to the content's scroll view unless it
 //  sits at its top. `RSheetHost` is installed once at the root of a tab; a page presents with
 //  `.rSheet(isPresented:detent:content:)`. Never two sheets at once.
+//  G0b (DISC L0-14): in the app shell one host sits above the pages AND the tab bar, so a sheet covers
+//  the bar (SCREEN-MAP §2). The shell marks its pages `rSheetHostAbove`; a page's own host (JR-1's,
+//  the account page's) then passes its content through and the request travels on to the shell's host.
+//  Outside the shell nothing changes. A full-screen cover inside the shell starts a new presentation,
+//  so its content resets the mark (`.environment(\.rSheetHostAbove, false)`) and keeps its own host.
 //
 import SwiftUI
 
@@ -136,8 +141,28 @@ extension View {
 
 // MARK: - The host
 
-/// Installed once at the root of each tab: the page as `content`, the sheet over it.
+extension EnvironmentValues {
+    /// A sheet host above this view draws its sheets (the shell's, G0b): a host here passes through.
+    @Entry var rSheetHostAbove = false
+}
+
+/// Installed once at the root of each tab: the page as `content`, the sheet over it. Under a host that
+/// is already above (`rSheetHostAbove`), it is only `content`: that host draws the sheet.
 struct RSheetHost<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.rSheetHostAbove) private var hostAbove
+
+    var body: some View {
+        if hostAbove {
+            content()
+        } else {
+            RSheetHostBody(content: content)
+        }
+    }
+}
+
+/// The host itself: the page, the scrim and the sheet.
+private struct RSheetHostBody<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     /// Where the sheet is, 0 closed to 1 at rest (past 1 while rubber-banding).
