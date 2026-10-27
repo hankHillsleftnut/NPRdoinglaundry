@@ -7,6 +7,7 @@
 //  EX-1 `ready` / `typed`: the share sheet's content over the scrim, standing in for the system's
 //  share presentation (the real one is the extension's). `typed` has your why filled in. Cancel and
 //  save close it; a quiet line says which, as the core launch stand-ins do.
+//  EX-4 `rest`: both widgets at their system sizes on the page colour (the views a widget target will show).
 //  EX-2 and EX-3 are drawn by the system: their content is code with tests, not a launcher screen.
 //
 #if DEBUG
@@ -17,6 +18,9 @@ enum OutsideScreens: ScreenGroup {
     static let screens: [LaunchableScreen] = [
         LaunchableScreen(id: "EX-1", states: ["ready", "typed"]) { arguments in
             AnyView(ShareLaunch(why: arguments.state == "typed" ? "for the raise, the bit on angels" : ""))
+        },
+        LaunchableScreen(id: "EX-4", states: ["rest"]) { _ in
+            AnyView(WidgetsPreviewPage())
         },
     ]
 }
