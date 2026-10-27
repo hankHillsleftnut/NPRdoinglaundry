@@ -48,4 +48,9 @@ struct WhatIKnowModelTests {
         #expect(YouScreens.screens.map(\.id) == ["YO-5"])
         #expect(ScreenRegistry.screen("YO-5")?.states == ["rest"])
     }
+
+    @Test("inert controls say 'not available yet'; one string for every You screen")
+    func inertCopy() {
+        #expect(YouCopy.notAvailableYet == "not available yet")
+    }
 }

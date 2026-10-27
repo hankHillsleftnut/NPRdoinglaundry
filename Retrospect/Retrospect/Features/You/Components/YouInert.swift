@@ -12,9 +12,14 @@ enum YouCopy {
 }
 
 extension View {
-    /// Drawn as Paper, inert, "not available yet" to VoiceOver; `false` leaves the view as it is.
-    func youInert(_ inert: Bool = true) -> some View {
-        allowsHitTesting(!inert)
-            .accessibilityValue(inert ? YouCopy.notAvailableYet : "")
+    /// Drawn as Paper, inert, "not available yet" to VoiceOver; `false` leaves the view exactly as it is
+    /// (no hit-testing change, no VoiceOver value).
+    @ViewBuilder func youInert(_ inert: Bool = true) -> some View {
+        if inert {
+            allowsHitTesting(false)
+                .accessibilityValue(YouCopy.notAvailableYet)
+        } else {
+            self
+        }
     }
 }
