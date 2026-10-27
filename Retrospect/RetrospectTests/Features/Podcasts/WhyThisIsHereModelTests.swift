@@ -26,8 +26,8 @@ struct WhyThisIsHereModelTests {
 
     @Test("\"and n more\" only when there are sources beyond the rows shown")
     func moreLine() {
-        #expect(WhyThisIsHereModel(content: SampleWhy.content(.more), dismiss: {}).moreLine == "and 2 more")
-        #expect(WhyThisIsHereModel(content: SampleWhy.content(.asked), dismiss: {}).moreLine == nil)
+        #expect(WhyUndrawnLines.moreLine(SampleWhy.content(.more).more) == "and 2 more")
+        #expect(WhyUndrawnLines.moreLine(SampleWhy.content(.asked).more) == nil)
     }
 
     @Test("hear it plays the player at the moment's second; with no player it does nothing")
@@ -39,8 +39,10 @@ struct WhyThisIsHereModelTests {
         #expect(heard == [252])
     }
 
-    @Test("nothing to show: no rows")
+    @Test("nothing to show: no rows, and the meta doesn't count sources it can't show")
     func nothingYet() {
-        #expect(SampleWhy.content(.nothingYet).evidence.isEmpty)
+        let content = SampleWhy.content(.nothingYet)
+        #expect(content.evidence.isEmpty)
+        #expect(content.meta == "asked · fairly sure")
     }
 }

@@ -58,7 +58,6 @@ struct WhyThisIsHere: Equatable {
 @Observable
 final class WhyThisIsHereModel {
     static let notAvailableYet = "not available yet"
-    static let nothingYet = "nothing to show yet"
 
     let content: WhyThisIsHere
     /// Back to the player (PC-2, SCREEN-MAP row 77); nil until the player hosts this page.
@@ -73,11 +72,6 @@ final class WhyThisIsHereModel {
         self.back = back
         self.dismiss = dismiss
         self.hearIt = hearIt
-    }
-
-    /// "and 2 more" under the rows; nil when every source is shown.
-    var moreLine: String? {
-        content.more > 0 ? "and \(content.more) more" : nil
     }
 
     func playMoment() {

@@ -2,7 +2,9 @@
 //  SampleWhy.swift
 //  V2.podcasts.b: PC-3's words, as Paper draws them: "asked" (1FXG-0 = 05 NDK-0) and "stated"
 //  (05 NBD-0), both resting on the same three sources and pointing at 4:12 in this week's episode.
+//  Debug builds only: it feeds the launcher and the tests, never the product.
 //
+#if DEBUG
 import Foundation
 
 /// PC-3's launcher states.
@@ -31,7 +33,7 @@ enum SampleWhy {
                 episodeTitle: episodeTitle,
                 kind: .asked,
                 claim: "are mornings when you do your best work?",
-                meta: "asked · fairly sure · rests on \(scenario == .more ? 5 : 3) mornings",
+                meta: meta(scenario),
                 evidence: scenario == .nothingYet ? [] : evidence,
                 more: scenario == .more ? 2 : 0,
                 moment: .init(quote: "“you sound sharper before nine. is that true for you?”", at: "at 4:12 in this week's", seconds: 252)
@@ -48,4 +50,14 @@ enum SampleWhy {
             )
         }
     }
+
+    /// The nothing-yet state rests on nothing it can show, so it doesn't count mornings.
+    private static func meta(_ scenario: WhyScenario) -> String {
+        switch scenario {
+        case .nothingYet: "asked · fairly sure"
+        case .more: "asked · fairly sure · rests on 5 mornings"
+        case .asked, .stated: "asked · fairly sure · rests on 3 mornings"
+        }
+    }
 }
+#endif

@@ -34,9 +34,9 @@ struct WhyThisIsHerePage: View {
                 size: .medium,
                 disabledReason: WhyThisIsHereModel.notAvailableYet
             ) {}
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, RDimension.space4)
-            .accessibilityIdentifier("why.notRight")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, RDimension.space4)
+                .accessibilityIdentifier("why.notRight")
         }
         .accessibilityAction(.escape) { model.dismiss() }
         .accessibilityIdentifier("why")
@@ -85,13 +85,13 @@ struct WhyThisIsHerePage: View {
         .frame(minHeight: RDimension.sizePlayerHeaderButton)
     }
 
-    @ViewBuilder private var restsOn: some View {
+    /// "what it rests on" and the rows. With no row to show, the section is undrawn: debug builds
+    /// show the founder-review lean ("nothing to show yet"), the shipped page leaves it out; "and n
+    /// more" under the rows is debug-only too (founder 27 Oct: state screens live in the sandbox).
+    private var restsOn: some View {
         VStack(alignment: .leading, spacing: RDimension.space2) {
-            RSectionLabel(title: "what it rests on")
-            if model.content.evidence.isEmpty {
-                REmptyLine(line: WhyThisIsHereModel.nothingYet)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
+            if !model.content.evidence.isEmpty {
+                RSectionLabel(title: "what it rests on")
                 REvidenceGroup {
                     ForEach(model.content.evidence) { row in
                         REvidenceRow(leading: .kind(symbol: row.kind.symbol), meta: row.meta, words: row.words) {}
@@ -99,14 +99,10 @@ struct WhyThisIsHerePage: View {
                             .accessibilityHint(WhyThisIsHereModel.notAvailableYet)
                     }
                 }
-                if let more = model.moreLine {
-                    Text(more)
-                        .rText(.metaLine)
-                        .foregroundStyle(RColor.textLabel)
-                        .padding(.leading, RDimension.space4)
-                        .accessibilityIdentifier("why.more")
-                }
             }
+            #if DEBUG
+            WhyUndrawnLines(evidenceShown: !model.content.evidence.isEmpty, more: model.content.more)
+            #endif
         }
     }
 }

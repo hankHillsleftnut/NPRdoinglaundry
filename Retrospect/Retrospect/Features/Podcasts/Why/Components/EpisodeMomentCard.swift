@@ -41,8 +41,8 @@ struct EpisodeMomentCard: View {
                     symbol: "play.fill",
                     disabledReason: hearIt == nil ? WhyThisIsHereModel.notAvailableYet : nil
                 ) { hearIt?() }
-                .accessibilityLabel("hear it, \(moment.at)")
-                .accessibilityIdentifier("why.hearIt")
+                    .accessibilityLabel("hear it, \(moment.at)")
+                    .accessibilityIdentifier("why.hearIt")
             }
         }
         .padding(RDimension.space4)
