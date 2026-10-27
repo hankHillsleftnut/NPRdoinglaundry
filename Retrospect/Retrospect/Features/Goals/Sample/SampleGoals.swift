@@ -22,8 +22,7 @@ final class SampleGoals: GoalsData {
     }
 
     func detail(_ goalID: String) async -> GoalDetail? {
-        guard let goal = state.goals.first(where: { $0.id == goalID }) else { return nil }
-        var detail = Self.detail(for: goal)
+        guard state.goals.contains(where: { $0.id == goalID }), var detail = Self.detail(for: goalID) else { return nil }
         if answeredPatterns.contains(goalID) {
             detail.pattern = nil
         }
@@ -99,50 +98,30 @@ final class SampleGoals: GoalsData {
     /// GL-2's pattern guess id → the goal it sits on.
     private static let patternOwner = ["pattern.late-nights": "goal.ship"]
 
-    /// GL-2 for a goal: Paper draws "ship the first version"; the others reuse its shape with their own
-    /// title and said line so every card opens somewhere real.
-    static func detail(for goal: GoalSummary) -> GoalDetail {
-        switch goal.id {
-        case "goal.ship":
-            GoalDetail(
-                id: goal.id,
-                title: goal.title,
-                saidLine: "said 6 times · first on 6 oct · last on monday",
-                didHeading: "did this week · 4 hours",
-                evidence: [
-                    GoalEvidence(id: "e1", symbol: "calendar", meta: "tue 14 oct · calendar", words: "2 hours of deep work", entryID: nil),
-                    GoalEvidence(id: "e2", symbol: "calendar", meta: "thu 16 oct · calendar", words: "demo with priya", entryID: nil),
-                    GoalEvidence(
-                        id: "e3", symbol: "doc.text", meta: "fri 17 oct · your words",
-                        words: "\"finally fixed the sync bug\"", entryID: "entry.sync-bug"
-                    ),
-                ],
-                pattern: GoalGuess(
-                    id: "pattern.late-nights",
-                    label: "a guess · a pattern",
-                    question: "you get most done after a late night, then sleep badly the next day."
-                )
+    /// The goals Paper draws a GL-2 for. Founder 27 Oct: only drawn screens; the other cards open nothing.
+    static let drawnDetails: Set<String> = ["goal.ship"]
+
+    /// GL-2 as Paper draws it (1G3Z-0), for "ship the first version" only.
+    static func detail(for goalID: String) -> GoalDetail? {
+        guard goalID == "goal.ship" else { return nil }
+        return GoalDetail(
+            id: goalID,
+            title: "ship the first version",
+            saidLine: "said 6 times · first on 6 oct · last on monday",
+            didHeading: "did this week · 4 hours",
+            evidence: [
+                GoalEvidence(id: "e1", symbol: "calendar", meta: "tue 14 oct · calendar", words: "2 hours of deep work", entryID: nil),
+                GoalEvidence(id: "e2", symbol: "calendar", meta: "thu 16 oct · calendar", words: "demo with priya", entryID: nil),
+                GoalEvidence(
+                    id: "e3", symbol: "doc.text", meta: "fri 17 oct · your words",
+                    words: "\"finally fixed the sync bug\"", entryID: "entry.sync-bug"
+                ),
+            ],
+            pattern: GoalGuess(
+                id: "pattern.late-nights",
+                label: "a guess · a pattern",
+                question: "you get most done after a late night, then sleep badly the next day."
             )
-        case "goal.sleep":
-            GoalDetail(
-                id: goal.id,
-                title: goal.title,
-                saidLine: "said 3 times · first on 2 oct · last on sunday",
-                didHeading: "did this week · 1 night",
-                evidence: [
-                    GoalEvidence(id: "e1", symbol: "moon", meta: "wed 15 oct · apple health", words: "asleep at 11:40", entryID: nil),
-                ],
-                pattern: nil
-            )
-        default:
-            GoalDetail(
-                id: goal.id,
-                title: goal.title,
-                saidLine: "said \(goal.said.label) · first this month",
-                didHeading: "did this week · too early to tell",
-                evidence: [],
-                pattern: nil
-            )
-        }
+        )
     }
 }
