@@ -406,6 +406,8 @@ public enum RColor {
     public static let depthStrokeInnerTop = dynamic(UIColor(red: 1, green: 1, blue: 1, alpha: 1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.14))
     /// Outer stroke, 0.5pt outside: the warm hairline that defines the edge on paper.
     public static let depthStrokeOuter = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.07))
+    /// The ticket's outside edge. Light: the outer stroke's warm hairline (same value). Night: a faint light rim, because a dark shadow vanishes on the night canvas and the paper would sink into it.
+    public static let depthStrokeRim = dynamic(UIColor(red: 0.1569, green: 0.1412, blue: 0.1176, alpha: 0.1), UIColor(red: 1, green: 1, blue: 1, alpha: 0.14))
     /// The shallow shadow: 0 1 1.5. Seats the object on the page. Warm, never grey.
     public static let depthShadowContact = dynamic(UIColor(red: 0.2275, green: 0.1725, blue: 0.1098, alpha: 0.1), UIColor(red: 0, green: 0, blue: 0, alpha: 0.4))
     /// The warm soft shadow: y and blur grow with height, negative spread keeps it under the object.
@@ -714,6 +716,14 @@ public enum RDimension {
     public static let motionLifeFloatAmplitude: CGFloat = 2
     /// Most a tile lags behind the scroll.
     public static let motionScrollLagMaxOffset: CGFloat = 6
+    /// The finger may wander this far off the perforation before the drag ends as a release.
+    public static let motionTearWander: CGFloat = 44
+    /// While a bridge holds, the ticket leans this far toward the finger.
+    public static let motionTearLeanMax: CGFloat = 1.5
+    /// How far the hanging stub pulls the body down while the redeem seals.
+    public static let motionTearSag: CGFloat = 1
+    /// Where the torn body settles (2 up).
+    public static let motionTearBodyRest: CGFloat = -2
     /// Tab screens: the blur band above the tab bar.
     public static let blurTabBand: CGFloat = 70
     /// Tab screens on short phones (SE): the band above the tab bar.
@@ -850,6 +860,12 @@ public enum RHaptic {
     public static let skip: SensoryFeedback = .impact(weight: .light)
     /// Retro typing out an onboarding question: one faint tick per word (not per letter), at most ~10 a second, silent on spaces and punctuation; stops when the person starts talking. Founder, 21 Oct.
     public static let typeOn: SensoryFeedback = .impact(flexibility: .soft, intensity: 0.35)
+    /// The tear front snaps through a hole: a crisp paper click, one per hole.
+    public static let tearTick: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.45)
+    /// The torn stub lands on its resting pose.
+    public static let tearLand: SensoryFeedback = .impact(flexibility: .soft, intensity: 0.5)
+    /// The last paper bridge snaps and the stub lets go (FR0.1's haptic.rip).
+    public static let rip: SensoryFeedback = .impact(flexibility: .rigid, intensity: 0.8)
 }
 
 /// Opacities, layers and durations (seconds).
@@ -944,6 +960,62 @@ public enum RNumber {
     public static let motionScrollLagMaxTilt: Double = 1.5
     /// Stagger at most this many items; the rest arrive together.
     public static let motionStaggerMax: Double = 6
+    /// A release past this share of the perforation commits the tear.
+    public static let motionTearThreshold: Double = 0.62
+    /// A rightward flick faster than this (points a second) commits the tear.
+    public static let motionTearFlickVelocity: Double = 800
+    /// At most one hole click per this long on a fast tear.
+    public static let motionTearTickGap: Double = 0.04
+    /// Degrees: the end angle of a fully torn flap (the tip's tangent; the flap curves to it).
+    public static let motionTearDroopMax: Double = 11
+    /// The droop grows with the torn length to this power (a short cantilever's sag).
+    public static let motionTearDroopExponent: Double = 1.5
+    /// The flap's bend along its length: the tangent turns as 1 - (1 - s/L)^n, so most of the curve sits at the peel and the tip runs straight (a cantilever under its own weight).
+    public static let motionTearCurveExponent: Double = 3
+    /// Degrees of extra droop when the finger pulls a full wander below the line.
+    public static let motionTearPullMax: Double = 6
+    /// Share of each paper bridge the finger travels while the bridge holds (stick).
+    public static let motionTearCatchShare: Double = 0.55
+    /// How far the tear front creeps while a bridge holds, as a share of the bridge.
+    public static let motionTearCatchGive: Double = 0.25
+    /// The first bridge (notch to first hole) holds this share of its length: the anticipation.
+    public static let motionTearBreakawayCatch: Double = 0.85
+    /// How far the front creeps on the first bridge before it gives.
+    public static let motionTearBreakawayGive: Double = 0.1
+    /// Points a second: past the threshold the front runs on by itself at least this fast.
+    public static let motionTearRunMinSpeed: Double = 320
+    /// Points a second squared: the run speeds up (paper gives faster once started).
+    public static let motionTearRunAcceleration: Double = 2600
+    /// Points a second squared: the falling stub's gravity.
+    public static let motionTearGravity: Double = 2600
+    /// Per second: the falling stub's linear air drag (terminal speed = gravity / airDrag).
+    public static let motionTearAirDrag: Double = 6
+    /// Share of the drop fallen freely before the landing spring catches the stub.
+    public static let motionTearFreeFallShare: Double = 0.7
+    /// Points a second down: the stub's speed on the frame the last bridge snaps.
+    public static let motionTearRipKick: Double = 40
+    /// Degrees: the kept stub's resting angle (Paper T4 2II7-0).
+    public static let motionTearRestAngle: Double = -14.8
+    /// Degrees a second: the in-plane turn the snap gives the stub.
+    public static let motionTearSpinKick: Double = -40
+    /// Scale of the falling stub's rock and sway (0 = none).
+    public static let motionTearFlutter: Double = 1
+    /// Degrees a second: the falling stub's rock toward you (x axis), on pop.
+    public static let motionTearFlutterTiltKick: Double = 260
+    /// Degrees a second: the falling stub's side-to-side rock in the plane, on pop.
+    public static let motionTearFlutterSpinKick: Double = 90
+    /// Points a second: the falling stub's sideways sway, on pop.
+    public static let motionTearFlutterSwayKick: Double = 70
+    /// Scale a second: the stub lifts toward you as it lets go, then lands.
+    public static let motionTearLiftKick: Double = 0.25
+    /// Scale of the body's recoil when the stub lets go (0 = none).
+    public static let motionTearRecoil: Double = 1
+    /// Points a second up: the body's recoil as the stub's weight lets go.
+    public static let motionTearRecoilKick: Double = -90
+    /// Degrees a second: the body's one small rotational shake on the recoil.
+    public static let motionTearShakeKick: Double = 28
+    /// No tear spring is damped below this (pop's damping, the system's floor).
+    public static let motionTearDampingFloor: Double = 0.6
     /// Tab screens: colour boost under the blur, so the edge never greys.
     public static let blurTabSaturation: Double = 1.5
     /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
@@ -980,6 +1052,38 @@ public enum RNumber {
     public static let opacityDeclined: Double = 0.55
     /// With Reduce Motion, skeleton bars pulse 1 → this → 1 instead of the shine.
     public static let opacitySkeletonPulseFloor: Double = 0.6
+    /// map spring: response (seconds).
+    public static let motionSpringMapResponse: Double = 0.45
+    /// map spring: damping fraction.
+    public static let motionSpringMapDamping: Double = 0.8
+    /// sheet spring: response (seconds).
+    public static let motionSpringSheetResponse: Double = 0.4
+    /// sheet spring: damping fraction.
+    public static let motionSpringSheetDamping: Double = 0.86
+    /// sheetDismiss spring: response (seconds).
+    public static let motionSpringSheetDismissResponse: Double = 0.32
+    /// sheetDismiss spring: damping fraction.
+    public static let motionSpringSheetDismissDamping: Double = 0.9
+    /// popover spring: response (seconds).
+    public static let motionSpringPopoverResponse: Double = 0.3
+    /// popover spring: damping fraction.
+    public static let motionSpringPopoverDamping: Double = 0.74
+    /// snappy spring: response (seconds).
+    public static let motionSpringSnappyResponse: Double = 0.25
+    /// snappy spring: damping fraction.
+    public static let motionSpringSnappyDamping: Double = 0.82
+    /// settle spring: response (seconds).
+    public static let motionSpringSettleResponse: Double = 0.45
+    /// settle spring: damping fraction.
+    public static let motionSpringSettleDamping: Double = 0.7
+    /// pop spring: response (seconds).
+    public static let motionSpringPopResponse: Double = 0.35
+    /// pop spring: damping fraction.
+    public static let motionSpringPopDamping: Double = 0.6
+    /// gentle spring: response (seconds).
+    public static let motionSpringGentleResponse: Double = 0.55
+    /// gentle spring: damping fraction.
+    public static let motionSpringGentleDamping: Double = 0.92
 }
 
 /// Shadow stacks from depth.* (CSS box-shadow layers, first on top: x, y, blur, spread, inset). Draw them with

@@ -567,6 +567,38 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `motion.scrollLag.maxOffset` | Most a tile lags behind the scroll. | 6pt |  | founder 21 Oct: motion-system.md |
 | `motion.scrollLag.maxTilt` | Most a tile tilts, in degrees, while the list moves. | 1.5 |  | founder 21 Oct: motion-system.md |
 | `motion.staggerMax` | Stagger at most this many items; the rest arrive together. | 6 |  | founder 21 Oct: motion-system.md |
+| `motion.tear.threshold` | A release past this share of the perforation commits the tear. | 0.62 |  | founder's board (docs/team/flows/first-run/views.md), already in TearMath |
+| `motion.tear.flickVelocity` | A rightward flick faster than this (points a second) commits the tear. | 800 |  | founder's board (docs/team/flows/first-run/views.md), already in TearMath |
+| `motion.tear.wander` | The finger may wander this far off the perforation before the drag ends as a release. | 44pt |  | founder's board (docs/team/flows/first-run/views.md), already in TearMath |
+| `motion.tear.tickGap` | At most one hole click per this long on a fast tear. | 40ms |  | founder's board (docs/team/flows/first-run/views.md), already in TearMath |
+| `motion.tear.droopMax` | Degrees: the end angle of a fully torn flap (the tip's tangent; the flap curves to it). | 11 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.droopExponent` | The droop grows with the torn length to this power (a short cantilever's sag). | 1.5 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.curveExponent` | The flap's bend along its length: the tangent turns as 1 - (1 - s/L)^n, so most of the curve sits at the peel and the tip runs straight (a cantilever under its own weight). | 3 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.pullMax` | Degrees of extra droop when the finger pulls a full wander below the line. | 6 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.leanMax` | While a bridge holds, the ticket leans this far toward the finger. | 1.5pt |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.catchShare` | Share of each paper bridge the finger travels while the bridge holds (stick). | 0.55 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.catchGive` | How far the tear front creeps while a bridge holds, as a share of the bridge. | 0.25 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.breakawayCatch` | The first bridge (notch to first hole) holds this share of its length: the anticipation. | 0.85 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.breakawayGive` | How far the front creeps on the first bridge before it gives. | 0.1 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.runMinSpeed` | Points a second: past the threshold the front runs on by itself at least this fast. | 320 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.runAcceleration` | Points a second squared: the run speeds up (paper gives faster once started). | 2600 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.gravity` | Points a second squared: the falling stub's gravity. | 2600 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.airDrag` | Per second: the falling stub's linear air drag (terminal speed = gravity / airDrag). | 6 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.freeFallShare` | Share of the drop fallen freely before the landing spring catches the stub. | 0.7 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.ripKick` | Points a second down: the stub's speed on the frame the last bridge snaps. | 40 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.restAngle` | Degrees: the kept stub's resting angle (Paper T4 2II7-0). | -14.8 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.spinKick` | Degrees a second: the in-plane turn the snap gives the stub. | -40 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.flutter` | Scale of the falling stub's rock and sway (0 = none). | 1 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.flutterTiltKick` | Degrees a second: the falling stub's rock toward you (x axis), on pop. | 260 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.flutterSpinKick` | Degrees a second: the falling stub's side-to-side rock in the plane, on pop. | 90 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.flutterSwayKick` | Points a second: the falling stub's sideways sway, on pop. | 70 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.liftKick` | Scale a second: the stub lifts toward you as it lets go, then lands. | 0.25 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.sag` | How far the hanging stub pulls the body down while the redeem seals. | 1pt |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.recoil` | Scale of the body's recoil when the stub lets go (0 = none). | 1 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.recoilKick` | Points a second up: the body's recoil as the stub's weight lets go. | -90 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.shakeKick` | Degrees a second: the body's one small rotational shake on the recoil. | 28 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.bodyRest` | Where the torn body settles (2 up). | -2pt |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `motion.tear.dampingFloor` | No tear spring is damped below this (pop's damping, the system's floor). | 0.6 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
 
 ## blur
 
@@ -612,6 +644,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `haptic.sheetSnap` | A sheet settling at a resting height after a drag. | impact.soft |  | to set: choreography |
 | `haptic.skip` | Skip back 15 or forward 30. | impact.light |  | to set: choreography |
 | `haptic.typeOn` | Retro typing out an onboarding question: one faint tick per word (not per letter), at most ~10 a second, silent on spaces and punctuation; stops when the person starts talking. Founder, 21 Oct. | impact.soft@0.35 |  | founder 21 Oct: mild haptics while questions type out |
+| `haptic.tearTick` | The tear front snaps through a hole: a crisp paper click, one per hole. | impact.rigid@0.45 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `haptic.tearLand` | The torn stub lands on its resting pose. | impact.soft@0.5 |  | founder 26 Oct: TEAR.motion proposal (pipeline/qa/TEAR.motion/PROPOSAL.md) and direct answers (droop 11° as a curve) |
+| `haptic.rip` | The last paper bridge snaps and the stub lets go (FR0.1's haptic.rip). | impact.rigid@0.8 |  | FR0.1 (TicketFeedback.rip, 0.8 rigid), now a token |
 
 ## layer
 
@@ -670,6 +705,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `depth.stroke.inner` | Inner stroke, 1pt inset all round: the lit edge of paper. Paired with the outer stroke, always. | rgba(255,255,255,0.85) | rgba(255,255,255,0.08) | to set: depth recipe (founder, 20 Oct) |
 | `depth.stroke.innerTop` | The top of the inner stroke, 1pt brighter: light from above. | #FFFFFF | rgba(255,255,255,0.14) | to set: depth recipe (founder, 20 Oct) |
 | `depth.stroke.outer` | Outer stroke, 0.5pt outside: the warm hairline that defines the edge on paper. | rgba(40,36,30,0.10) | rgba(255,255,255,0.07) | to set: depth recipe (founder, 20 Oct) |
+| `depth.stroke.rim` | The ticket's outside edge. Light: the outer stroke's warm hairline (same value). Night: a faint light rim, because a dark shadow vanishes on the night canvas and the paper would sink into it. | rgba(40,36,30,0.10) | rgba(255,255,255,0.14) | to set: TEAR.motion lead (founder 27 Oct: dark ticket to look better; Paper draws no dark ticket); question card TEAR-3 |
 | `depth.shadow.contact` | The shallow shadow: 0 1 1.5. Seats the object on the page. Warm, never grey. | rgba(58,44,28,0.10) | rgba(0,0,0,0.40) | to set: depth recipe (founder, 20 Oct) |
 | `depth.shadow.cast` | The warm soft shadow: y and blur grow with height, negative spread keeps it under the object. | rgba(70,52,30,0.16) | rgba(0,0,0,0.55) | to set: depth recipe (founder, 20 Oct) |
 | `depth.shadow.ambient` | A very wide, faint layer for floating things (mini-player, menus, sheets). | rgba(70,52,30,0.05) | rgba(0,0,0,0.25) | to set: depth recipe (founder, 20 Oct) |
