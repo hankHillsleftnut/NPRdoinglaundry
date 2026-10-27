@@ -59,8 +59,9 @@ final class DrawerModel {
 
     /// The entry the journal behind is showing ("here").
     var hereID: String?
-    /// Opening a row (JR-4 when it is built; set by the host).
-    @ObservationIgnored var onOpen: (Row) -> Void = { _ in }
+    /// Opening a row (JR-4, set by the host). Until a host sets it, sent rows don't open and say so
+    /// (no dead controls); a row that didn't send still retries.
+    var onOpen: ((Row) -> Void)?
 
     @ObservationIgnored private let data: any EntriesData
     @ObservationIgnored private let debounce: Duration
@@ -111,8 +112,13 @@ final class DrawerModel {
         if row.status == .notSent, let client = row.clientEntryId {
             Task { await retry(client) }
         } else {
-            onOpen(row)
+            onOpen?(row)
         }
+    }
+
+    /// Whether tapping this row does something now.
+    func opens(_ row: Row) -> Bool {
+        row.status == .notSent || onOpen != nil
     }
 
     func retry(_ clientEntryId: String) async {

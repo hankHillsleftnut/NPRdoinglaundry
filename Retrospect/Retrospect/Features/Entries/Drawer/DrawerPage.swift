@@ -69,6 +69,9 @@ struct DrawerPage: View {
                                     status: row.status,
                                     here: row.here
                                 ) { model.tap(row) }
+                                    // nothing to open yet: not a dead control, it says so
+                                    .disabled(!model.opens(row))
+                                    .accessibilityHint(model.opens(row) ? "" : "not available yet")
                                     .accessibilityIdentifier("drawer.row.\(row.id)")
                             }
                         }

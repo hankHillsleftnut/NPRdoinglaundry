@@ -4,8 +4,10 @@
 //  (05 · the app in order: rest MW6-0, empty MYD-0, searching MZJ-0, no results N17-0, offline N2N-0).
 //  The words are Paper's invented lines (listed in docs/design/sample-data-ledger.md); the days sit on
 //  the sample journal's day (tue 21 oct) so "today", "yesterday", "sun 19 oct" and "sat 18 oct" read
-//  as Paper draws them, and the times read in London as Paper's do.
+//  as Paper draws them, and the times read in London as Paper's do. Debug builds only: state scenes
+//  never ship (founder, 27 Oct).
 //
+#if DEBUG
 import Foundation
 
 /// The drawer's sample states (`-Screen JR-3 -State <rawValue>`).
@@ -71,6 +73,7 @@ final class SampleEntriesData: EntriesData {
 }
 
 /// Paper's drawer lines, as contract-shaped entries.
+@MainActor
 enum SampleEntries {
     typealias Entry = Flows.Journal.Entry
     typealias Seed = SampleJournalContent.Seed
@@ -214,3 +217,4 @@ enum SampleEntries {
         (try? Date(iso, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true))) ?? .distantPast
     }
 }
+#endif
