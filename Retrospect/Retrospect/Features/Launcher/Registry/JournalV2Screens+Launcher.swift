@@ -11,6 +11,8 @@
 //
 //  JR-4: `-Screen JR-4 -State rest|voiceNote|nothingTaken|offline` opens one entry pushed from the
 //  drawer (back returns to it), in the app's cut: what has no door yet stays off (EntryCapabilities).
+//  `drawn-rest|drawn-nothingTaken|drawn-offline|drawn-editing|drawn-deleteDialog` open the same page
+//  with the drawn parts on (edit, what i took, not right, delete: J-19), as Paper draws them.
 //
 #if DEBUG
 import SwiftUI
@@ -23,7 +25,7 @@ enum JournalV2Screens: ScreenGroup {
         },
         LaunchableScreen(id: "JR-4", states: EntryScenario.allCases.map(\.rawValue)) { arguments in
             let entry = EntryScenario(rawValue: arguments.state) ?? .rest
-            return AnyView(EntriesLaunch(scenario: .rest, opening: entry.entryID))
+            return AnyView(EntriesLaunch(scenario: .rest, opening: entry.entryID, drawn: entry.drawnStart))
         },
     ]
 }
@@ -31,13 +33,28 @@ enum JournalV2Screens: ScreenGroup {
 /// JR-4's launcher states: which entry opens (Paper's 05 frames).
 enum EntryScenario: String, CaseIterable {
     case rest, voiceNote, nothingTaken, offline
+    case drawnRest = "drawn-rest"
+    case drawnNothingTaken = "drawn-nothingTaken"
+    case drawnOffline = "drawn-offline"
+    case drawnEditing = "drawn-editing"
+    case drawnDeleteDialog = "drawn-deleteDialog"
 
     var entryID: String {
         switch self {
-        case .rest: SampleEntries.hereID
+        case .rest, .drawnRest, .drawnEditing, .drawnDeleteDialog: SampleEntries.hereID
         case .voiceNote: SampleEntries.walkID
-        case .nothingTaken: SampleEntries.ranID
-        case .offline: SampleEntries.trainID
+        case .nothingTaken, .drawnNothingTaken: SampleEntries.ranID
+        case .offline, .drawnOffline: SampleEntries.trainID
+        }
+    }
+
+    /// The drawn states open with every drawn part on, in Paper's state; the others are the cut.
+    var drawnStart: EntryDrawnModel.Start? {
+        switch self {
+        case .rest, .voiceNote, .nothingTaken, .offline: nil
+        case .drawnRest, .drawnNothingTaken, .drawnOffline: .rest
+        case .drawnEditing: .editing
+        case .drawnDeleteDialog: .deleteDialog
         }
     }
 }
@@ -51,9 +68,14 @@ struct EntriesLaunch: View {
     @State private var showsSettings = false
     @State private var path: [String]
     @State private var data: SampleEntriesData
+    /// Drawn parts on (J2b `drawn-*`), and the state the first opened entry starts in.
+    private let drawn: EntryDrawnModel.Start?
+    private let openingID: String?
 
-    init(scenario: EntriesScenario, opening entryID: String? = nil) {
+    init(scenario: EntriesScenario, opening entryID: String? = nil, drawn: EntryDrawnModel.Start? = nil) {
         self.scenario = scenario
+        self.drawn = drawn
+        openingID = entryID
         _isOpen = State(initialValue: scenario != .flow)
         _path = State(initialValue: entryID.map { [$0] } ?? [])
         let data = SampleEntriesData(scenario: scenario)
@@ -73,7 +95,13 @@ struct EntriesLaunch: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
-                EntryScreen(id: id, data: data) { path.removeLast() }
+                EntryScreen(
+                    id: id,
+                    data: data,
+                    capabilities: drawn == nil ? .cut : .drawn,
+                    claims: SampleTook.claims(for: id),
+                    start: id == openingID ? drawn ?? .rest : .rest
+                ) { path.removeLast() }
                     .toolbar(.hidden, for: .navigationBar)
             }
         }
@@ -87,4 +115,5 @@ struct EntriesLaunch: View {
 #Preview("JR-3 · rest") { EntriesLaunch(scenario: .rest) }
 #Preview("JR-3 · searching") { EntriesLaunch(scenario: .searching) }
 #Preview("JR-4 · rest") { EntriesLaunch(scenario: .rest, opening: SampleEntries.hereID) }
+#Preview("JR-4 · drawn") { EntriesLaunch(scenario: .rest, opening: SampleEntries.hereID, drawn: .rest) }
 #endif

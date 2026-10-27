@@ -11,10 +11,12 @@ import SwiftUI
 struct EntryPage: View {
     let model: EntryModel
     let back: () -> Void
+    /// The drawn parts (J2b), present only when `model.capabilities` turns any on.
+    var drawn: EntryDrawnModel?
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
-            RTopBar(variant: .entry(.back(back: back)))
+            RTopBar(variant: .entry(barVariant))
             ScrollView {
                 content
                     .padding(.top, RDimension.space4)
@@ -22,10 +24,12 @@ struct EntryPage: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
+            deleteRow
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .accessibilityAction(.escape, back)
         .task { await model.load() }
+        .modifier(EntryDrawnPresentation(model: model, drawn: drawn))
     }
 
     @ViewBuilder private var content: some View {
@@ -35,16 +39,20 @@ struct EntryPage: View {
         case let .failed(reason):
             REmptyLine(line: reason)
         case let .shown(words, meta, standing):
-            VStack(alignment: .leading, spacing: RDimension.space2) {
-                REntryWords(text: words, draft: .constant(words))
-                    .accessibilityIdentifier("entry.words")
-                metaLine(meta, standing: standing)
+            if let drawn {
+                drawnContent(drawn, words: words, meta: meta, standing: standing)
+            } else {
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    REntryWords(text: words, draft: .constant(words))
+                        .accessibilityIdentifier("entry.words")
+                    metaLine(meta, standing: standing)
+                }
             }
         }
     }
 
     @ViewBuilder
-    private func metaLine(_ meta: String, standing: EntryModel.Standing) -> some View {
+    func metaLine(_ meta: String, standing: EntryModel.Standing) -> some View {
         switch standing {
         case .notSent:
             // Paper N9D-0: the retry glyph and the line in danger text; the line retries
@@ -95,14 +103,24 @@ struct EntryPage: View {
 /// JR-4 as a pushed page: owns its model, so the page keeps its state while the stack redraws.
 struct EntryScreen: View {
     @State private var model: EntryModel
+    @State private var drawn: EntryDrawnModel?
     let back: () -> Void
 
-    init(id: String, data: any EntriesData, capabilities: EntryCapabilities = .cut, back: @escaping () -> Void) {
+    init(
+        id: String,
+        data: any EntriesData,
+        capabilities: EntryCapabilities = .cut,
+        claims: [TookClaim] = [],
+        start: EntryDrawnModel.Start = .rest,
+        back: @escaping () -> Void
+    ) {
         _model = State(initialValue: EntryModel(id: id, data: data, capabilities: capabilities))
+        // the drawn parts exist only when a capability is on (all off = the app's cut)
+        _drawn = State(initialValue: capabilities == .cut ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: back))
         self.back = back
     }
 
     var body: some View {
-        EntryPage(model: model, back: back)
+        EntryPage(model: model, back: back, drawn: drawn)
     }
 }
