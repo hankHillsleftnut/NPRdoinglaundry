@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**618 tokens** · 542 semantic · 276 marked *to set*
+**620 tokens** · 544 semantic · 276 marked *to set*
 
 ## palette
 
@@ -482,6 +482,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `size.emptyMark` | The raised mark above an empty state line. | 52pt |  | Paper G7Y-0 / G8F-0 (52 × 52, radius.control) |
 | `size.widget.mark` | The mark at the top of a home-screen widget. | 16pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
 | `size.widget.markGlyph` | The brush glyph's width inside the widget mark. | 9pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.small` | A small home-screen widget's side, for the preview (the system sets the real size). | 164pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
+| `size.widget.mediumWidth` | A medium home-screen widget's width, for the preview (the system sets the real size). | 344pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
 | `size.share.headerSlot` | The share sheet header's side slots (cancel, and the empty one opposite). | 72pt |  | Paper EX-1 1H2G-0 / 1H2E-0 (V2.outside, 26 Oct) |
 
 ## radius

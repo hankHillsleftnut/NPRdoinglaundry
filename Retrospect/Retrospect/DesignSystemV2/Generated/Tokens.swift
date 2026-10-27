@@ -664,6 +664,10 @@ public enum RDimension {
     public static let sizeWidgetMark: CGFloat = 16
     /// The brush glyph's width inside the widget mark.
     public static let sizeWidgetMarkGlyph: CGFloat = 9
+    /// A small home-screen widget's side, for the preview (the system sets the real size).
+    public static let sizeWidgetSmall: CGFloat = 164
+    /// A medium home-screen widget's width, for the preview (the system sets the real size).
+    public static let sizeWidgetMediumWidth: CGFloat = 344
     /// The share sheet header's side slots (cancel, and the empty one opposite).
     public static let sizeShareHeaderSlot: CGFloat = 72
     /// Small marks and tags.
