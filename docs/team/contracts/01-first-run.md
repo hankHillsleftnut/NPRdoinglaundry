@@ -50,6 +50,7 @@ type QuestionKey =
   | "year.from.now"     // best possible self
   | "care.most"         // values
   | "on.your.mind"      // what's taking up your head
+  | "struggle"          // PENDING (founder, 26 Oct): "what's one thing you're really struggling with these days that could be really important?", asked after on.your.mind. App sample only today; the backend door refuses it until the attach phase adds the key and the profile composer reads it
   | "working.on"        // what you're working on, and how it's going
   | "keep.meaning"      // the change you keep meaning to make
   | "high.low"          // a high point and a low point

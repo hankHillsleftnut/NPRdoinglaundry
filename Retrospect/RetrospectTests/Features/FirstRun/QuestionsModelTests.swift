@@ -10,15 +10,23 @@ import Testing
 struct QuestionsModelTests {
     typealias Key = Flows.QuestionKey
 
-    private let coreKeys: [Key] = [.namePlace, .yearFromNow, .careMost, .onYourMind, .workingOn, .keepMeaning, .highLow, .people]
+    private let coreKeys: [Key] = [.namePlace, .yearFromNow, .careMost, .onYourMind, .struggle, .workingOn, .keepMeaning, .highLow, .people]
 
     // MARK: Order and resume
 
-    @Test("0.1 asks the 8 core keys in the contract's order, each with words")
+    @Test("0.1 asks the 9 core keys in order (the struggle question right after on.your.mind), each with words")
     func coreOrder() {
         #expect(Flows.FirstRunQuestion.core.map(\.key) == coreKeys)
         #expect(Flows.FirstRunQuestion.core.allSatisfy { !$0.text.isEmpty })
         #expect(Flows.FirstRunQuestion.core.first?.text == "first, what should i call you, and where are you based?")
+        #expect(
+            Flows.FirstRunQuestion.core.first { $0.key == .struggle }?.text
+                == "what's one thing you're really struggling with these days that could be really important?"
+        )
+        // the new key round-trips by its contract name (the sample flow keeps answers by key)
+        #expect(Key(rawValue: "struggle") == .struggle)
+        let data = try? JSONEncoder().encode([Key.struggle])
+        #expect(data.flatMap { try? JSONDecoder().decode([Key].self, from: $0) } == [.struggle])
     }
 
     @Test("fresh starts at the first question; resume starts at the first key not answered")
@@ -40,16 +48,16 @@ struct QuestionsModelTests {
         #expect(model.draft.isEmpty)
     }
 
-    @Test("the bar is the whole first run's: 14% on the first question to 41% on the last; VoiceOver reads 'step n of 8'")
+    @Test("the bar is the whole first run's: 14% on the first question to 41% on the last; VoiceOver reads 'step n of 9'")
     func progress() async {
         let model = QuestionsModel(data: ScriptedFirstRun(answered: Set(coreKeys.dropFirst().dropLast())))
-        #expect(model.stepLabel == "step 1 of 8")
+        #expect(model.stepLabel == "step 1 of 9")
         #expect(abs(model.progress - 0.14) < 0.0001)
         await model.send("sam.")
-        #expect(model.stepLabel == "step 8 of 8")
+        #expect(model.stepLabel == "step 9 of 9")
         #expect(abs(model.progress - 0.41) < 0.0001)
         // even steps between, and a host can hand the page its own part of the bar
-        #expect(abs(QuestionsModel.progress(index: 1, count: 8) - (0.14 + 0.27 / 7)) < 0.0001)
+        #expect(abs(QuestionsModel.progress(index: 1, count: 9) - (0.14 + 0.27 / 8)) < 0.0001)
         #expect(QuestionsModel(data: ScriptedFirstRun(), flowRange: 0.2 ... 0.6).progress == 0.2)
     }
 
@@ -107,7 +115,7 @@ struct QuestionsModelTests {
     func announcement() async {
         let model = QuestionsModel(data: ScriptedFirstRun())
         await model.send("sam.")
-        #expect(model.announcement == "step 2 of 8. \(Flows.FirstRunQuestion.core[1].text)")
+        #expect(model.announcement == "step 2 of 9. \(Flows.FirstRunQuestion.core[1].text)")
     }
 
     @Test("words typed but not sent stay with their question when going back and forth")

@@ -16,6 +16,9 @@ extension Flows {
         case yearFromNow = "year.from.now"
         case careMost = "care.most"
         case onYourMind = "on.your.mind"
+        /// Founder, 26 Oct (DECISIONS "new onboarding question"): asked right after `onYourMind`.
+        /// App sample only until the attach phase: the backend door refuses keys it doesn't know yet.
+        case struggle
         case workingOn = "working.on"
         case keepMeaning = "keep.meaning"
         case highLow = "high.low"
@@ -42,9 +45,10 @@ extension Flows {
             key
         }
 
-        /// The 8 core questions, in the order they are asked (docs/second-brain/
+        /// The 9 core questions, in the order they are asked (docs/second-brain/
         /// brief-onboarding-questions.md v2; founder may change the words: founder-review
-        /// "RELEASE 0.1" Q2). The first is Paper ON-3–9's frame.
+        /// "RELEASE 0.1" Q2). The first is Paper ON-3–9's frame. The struggle question (founder,
+        /// 26 Oct) is the founder's words lowercased; its wording is to be adjusted later.
         static let core: [Self] = [
             Self(key: .namePlace, text: "first, what should i call you, and where are you based?"),
             Self(
@@ -53,6 +57,10 @@ extension Flows {
             ),
             Self(key: .careMost, text: "what do you care about most: the things you'd protect even if they cost you?"),
             Self(key: .onYourMind, text: "what's been taking up most of your head lately?"),
+            Self(
+                key: .struggle,
+                text: "what's one thing you're really struggling with these days that could be really important?"
+            ),
             Self(key: .workingOn, text: "what are you working on right now, and how is it actually going?"),
             Self(key: .keepMeaning, text: "what's one thing you keep meaning to change, and what's gotten in the way so far?"),
             Self(key: .highLow, text: "a high point and a low point from the last few months?"),
