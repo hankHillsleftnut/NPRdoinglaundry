@@ -18,11 +18,11 @@ The core flow is the first run, from the splash to first home, on sample data. I
 | # | Screen | What you do | What happens next |
 |---|---|---|---|
 | 1 | Splash + sign-in | tap **Sign in with Apple** (sample: no Apple sheet opens) | the invite gate |
-| 2 | Invite gate | type any 13 letters or digits | the ticket prints |
+| 2 | Invite gate | type the sample code **7KQ2M9XD4RTAB** (the field refuses letters a code never has, such as U) | the ticket prints |
 | 3 | The ticket | **swipe along the line** to tear the stub (the hint says "swipe along the line to tear") | "you're in" |
 | 4 | You're in | tap **begin** | the first question |
-| 5 | The questions | type an answer, tap send; the back arrow goes to the previous question | the next question; after the last one, privacy |
-| 6 | Privacy | wait about 8 seconds while Retro reads, or tap anywhere to move on; the back arrow returns to the last question | **the end for now**: the page stays until connect is built |
+| 5 | The questions | answer each question and send it; the back arrow goes to the previous question | the next question; after the last one, privacy (once PR #238 is in; before that the flow ends at the last question) |
+| 6 | Privacy (needs PR #238) | wait about 8 seconds while Retro reads, or tap anywhere to move on; the back arrow returns to the last question | **the end for now**: the page stays until connect is built |
 Coming next, in this order, as each one is built: connect → getting ready → the tease (the episode plays for 10 seconds) → the paywall (both prices are dummies; nothing is charged) → first home.
 
 Close the app and open it again from Xcode, and it comes back on the same screen with your answers kept.
