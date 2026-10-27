@@ -39,6 +39,8 @@ struct WhatIKnowModelTests {
     func spoken() {
         let answer = SampleYou.whatIKnow.areas[0].answers[0]
         #expect(AnswerRow.spoken(answer) == "what drives you most? building things people use. fairly sure, 3 of 4, from 9 things")
+        #expect(AnswerRow.things(1) == "1 thing")
+        #expect(AnswerRow.things(6) == "6 things")
     }
 
     @Test("YO-5 is registered in the you group, dark, with its state")

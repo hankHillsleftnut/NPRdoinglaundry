@@ -31,7 +31,8 @@ struct WhatIKnowPage: View {
             if let line = WhatIKnowModel.changedLine(known.changedThisWeek) {
                 MovedThisWeekRow(subline: line)
             }
-            ForEach(known.areas) { area in
+            // an area with nothing to say is left out, never an orphan title
+            ForEach(known.areas.filter { !$0.answers.isEmpty || $0.quietLine != nil }) { area in
                 AreaBlock(area: area)
             }
         }
