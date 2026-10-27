@@ -67,18 +67,20 @@ final class SampleSettings: Flows.SettingsData {
     }
 
     func connect(_ id: Settings.Source.ID) async {
-        update(id) { $0.status = .syncing }
-        await sleep(settle)
-        update(id) { source in
-            source.status = .connected
-            source.lastRead = "last read just now"
-        }
+        await read(id)
     }
 
     func sync(_ id: Settings.Source.ID) async {
+        await read(id)
+    }
+
+    /// Syncing for a moment, then connected and read just now. If the source changed meanwhile (a
+    /// disconnect while it was reading), the finished read leaves it as it is: it never brings it back.
+    private func read(_ id: Settings.Source.ID) async {
         update(id) { $0.status = .syncing }
         await sleep(settle)
         update(id) { source in
+            guard source.status == .syncing else { return }
             source.status = .connected
             source.lastRead = "last read just now"
         }

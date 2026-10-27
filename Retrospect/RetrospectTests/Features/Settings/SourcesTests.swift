@@ -50,6 +50,20 @@ struct SourcesTests {
         #expect(!SettingsDestinations.isBuilt(.source("calendar"), data: data))
     }
 
+    @Test("a disconnect during sync now stays disconnected: the finishing read doesn't bring it back")
+    func disconnectDuringSync() async {
+        let data = SampleSettings(sleep: { _ in try? await Task.sleep(for: .milliseconds(50)) })
+        let reading = Task { await data.sync("calendar") }
+        for _ in 0 ..< 100 where data.source("calendar")?.status != .syncing {
+            await Task.yield()
+        }
+        #expect(data.source("calendar")?.status == .syncing)
+        await data.disconnect("calendar")
+        await reading.value
+        #expect(data.source("calendar")?.status == .notConnected)
+        #expect(data.source("calendar")?.lastRead == "last read 2 min ago")
+    }
+
     @Test("ST-3 and ST-4 are in the launcher, ST-4 with its two questions")
     func registered() {
         #expect(ScreenRegistry.screen("ST-3")?.states == ["rest"])
