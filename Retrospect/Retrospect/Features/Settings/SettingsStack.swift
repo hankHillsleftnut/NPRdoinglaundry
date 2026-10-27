@@ -64,8 +64,9 @@ struct SettingsStack: View {
     let data: any Flows.SettingsData
     /// ST-1's back: where settings was opened from.
     var leave: () -> Void = {}
-    /// Launcher stills only: ST-4 opens with this question already asked.
-    var asking: SourcePage.Asking?
+    /// Launcher stills only: ST-4 opens with this question already asked, once. Any move in the
+    /// stack spends it, so pushing ST-4 again doesn't ask again.
+    @State private var asking: SourcePage.Asking?
     @State private var path: [SettingsRoute]
 
     init(
@@ -76,7 +77,7 @@ struct SettingsStack: View {
     ) {
         self.data = data
         self.leave = leave
-        self.asking = asking
+        _asking = State(initialValue: asking)
         _path = State(initialValue: path)
     }
 
@@ -87,6 +88,7 @@ struct SettingsStack: View {
                     SettingsDestinations.view(for: page, in: context)
                 }
         }
+        .onChange(of: path) { asking = nil }
     }
 
     private var context: SettingsDestinations.Context {
