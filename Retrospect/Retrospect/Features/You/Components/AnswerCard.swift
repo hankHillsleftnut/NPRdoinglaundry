@@ -12,7 +12,6 @@
 //  - "only what's certain": a wash panel (radius.panel, min 56, padding 8 / 16) with a switch; on, the
 //    guess line and the source that only backs it fold away.
 //
-import Accessibility
 import SwiftUI
 
 struct AnswerCard: View {
@@ -61,7 +60,6 @@ struct AnswerCard: View {
             if let source = run.source {
                 var mark = AttributedString(superscript(source))
                 mark.link = URL(string: "\(citeScheme)://\(source)")
-                mark.accessibilityLabel = "source \(source)"
                 text += mark
             }
         }

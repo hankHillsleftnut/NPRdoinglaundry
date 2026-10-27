@@ -3,8 +3,8 @@
 //  V2.journal J2b (dark) · JR-4's drawn parts, built ahead of their doors (J-19, founder "all the code
 //  ready"): "edit" and the editing bar (N8R-0, BE1.5b), "what i took from this" with "not right"
 //  (N51-0, N7R-0, N9D-0, BE1.7) and "delete entry" with its dialog (NAB-0, BE1.6). The page shows them
-//  only where `EntryCapabilities` turns them on: off in the app's cut, on under the launcher's `drawn-*`
-//  states. On sample data the actions stay on the phone (no Backend.Client): "not right" strikes the
+//  only where `EntryCapabilities` turns them on: the app's cut has edit on (founder 27 Oct) and the
+//  rest off; the launcher's `drawn-*` states turn them all on. On sample data the actions stay on the phone (no Backend.Client): "not right" strikes the
 //  claim and notes it, save keeps the new words, delete pops back.
 //
 import Foundation
