@@ -56,6 +56,8 @@ struct SignInScreen: View {
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.phase)
         // "new here?" turns welcome back into the splash in place: the same crossfade as a phase change
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.look)
+        // the focused link is gone and the page is new: VoiceOver starts again on the splash's title
+        .onChange(of: model.look) { AccessibilityNotification.ScreenChanged().post() }
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationBase), value: model.isOnline)
         .sensoryFeedback(RHaptic.error, trigger: model.failures)
         // Every failure is said as well as felt (checklist 2), each time, not only the first.
@@ -210,7 +212,7 @@ struct SignInScreen: View {
             .disabled(!model.newHereEnabled)
             .accessibilityRemoveTraits(.isButton)
             .accessibilityAddTraits(.isLink)
-            .accessibilityHint("starts retrospect from the beginning")
+            .accessibilityHint("shows the first-time sign-in")
             .accessibilityIdentifier("signin.newHere")
     }
 
