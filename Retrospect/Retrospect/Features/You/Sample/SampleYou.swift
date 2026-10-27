@@ -2,9 +2,11 @@
 //  SampleYou.swift
 //  V2.you: the You tab's sample, word for word as Paper draws it (YO-5 1SZX-0, YO-3 1GAS-0). Dark: only the launcher
 //  reads it. The live answers come from the brain later (the attach phase); nothing here persists.
+//  Sandbox (founder 27 Oct): debug builds only, never in the product.
 //
 import Foundation
 
+#if DEBUG
 @MainActor
 final class SampleYou: YouData {
     func source(id: String) async -> Flows.SourceEntry? {
@@ -75,3 +77,4 @@ final class SampleYou: YouData {
         ]
     )
 }
+#endif
