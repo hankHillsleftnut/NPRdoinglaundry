@@ -75,9 +75,10 @@ extension Flows {
             /// "last read 2 min ago".
             var lastRead: String?
 
-            /// Whether this source has its own page (ST-4).
+            /// Whether this source has its own page (ST-4): one is drawn for it, and it is connected
+            /// (a disconnected source only offers "connect").
             var hasPage: Bool {
-                reads != nil && helpsMeSee != nil
+                reads != nil && helpsMeSee != nil && status != .notConnected
             }
         }
     }
