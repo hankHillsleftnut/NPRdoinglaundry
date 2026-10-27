@@ -24,7 +24,7 @@ The core flow is the first run, from the splash to first home, on sample data. M
 | 4 | You're in | tap **begin** | the first question |
 | 5 | The questions | answer each question and send it (today you type; once the simulated listening lands, PRs #242/#244, the sample fills in spoken words and quick-answer chips, and this row will be updated); the back arrow goes to the previous question | the next question; after the last one, privacy |
 | 6 | Privacy | there is no button on purpose: wait about 8 seconds while "retro is speaking…", or tap anywhere to move on; the back arrow returns to the last question | connect |
-| 7 | Connect | tap **+ connect** on any source (sample: nothing leaves the phone), then **continue**, or tap **later**; the back arrow returns to privacy | getting ready |
+| 7 | Connect | the sample starts with 1 of 6 sources connected. Tap **later** to move on at once, or tap **+ connect** on two more sources (sample: nothing leaves the phone): **continue** appears at 3 of 6, then tap it. The back arrow returns to privacy | getting ready |
 | 8 | Getting ready | answer the question if you like; the sample episode finishes on its own | **the end of what's built**: a small pill at the top says "end of what's built · tap to start over". Tap it to walk again from the splash with nothing kept |
 
 Coming next, in this order, as each one is built: the tease (the episode plays for 10 seconds) → the paywall (both prices are dummies; nothing is charged) → first home. Each one moves the "end of what's built" pill one screen further.
