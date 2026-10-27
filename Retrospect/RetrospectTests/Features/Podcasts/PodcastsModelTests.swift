@@ -102,4 +102,25 @@ struct PodcastsModelTests {
         #expect(hero.art == .first)
         #expect(hero.subline == nil)
     }
+
+    @Test("a contract day is read strictly: impossible days and stray parts are refused, never rolled over")
+    func strictDays() {
+        let calendar = SamplePodcastsData.words.calendar
+        #expect(EpisodeWords.isoDay("2025-10-21", calendar: calendar) != nil)
+        #expect(EpisodeWords.isoDay("2025-02-31", calendar: calendar) == nil)
+        #expect(EpisodeWords.isoDay("2025-x-10-21", calendar: calendar) == nil)
+        #expect(EpisodeWords.isoDay("2025-10-", calendar: calendar) == nil)
+        #expect(EpisodeWords.isoDay("2025-13-01", calendar: calendar) == nil)
+    }
+
+    @Test("a newest weekly older than a week says its day, not \"this week\"")
+    func olderHero() {
+        let words = SamplePodcastsData.words
+        let old = Flows.Podcasts.EpisodeSummary(
+            id: "o", kind: .weekly, number: 1, title: "an older week", about: nil, durationSeconds: 600,
+            timing: .measured, createdAt: SamplePodcastsData.now.addingTimeInterval(-10 * 86400), coversFrom: nil, coversTo: nil, hasAudio: true
+        )
+        #expect(words.hero(old).label == "sat 11 oct · 10 min")
+        #expect(words.hero(SamplePodcastsData.hero).label == "this week · 12 min")
+    }
 }

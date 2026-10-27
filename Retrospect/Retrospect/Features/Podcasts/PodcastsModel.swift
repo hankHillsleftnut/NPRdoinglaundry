@@ -97,9 +97,19 @@ final class PodcastsModel {
 
 /// Words for the library's dates and lengths, in the page's lowercase voice.
 struct EpisodeWords {
-    /// "Today" for the brief titles ("today's brief").
-    var now: Date = .now
-    var calendar: Calendar = .current
+    /// "Today" for the brief titles ("today's brief") and the hero's "this week".
+    let now: Date
+    let calendar: Calendar
+    /// One formatter per pattern, made once (a library re-words on every read).
+    private let dayFormatter: DateFormatter
+    private let weekdayFormatter: DateFormatter
+
+    init(now: Date = .now, calendar: Calendar = .current) {
+        self.now = now
+        self.calendar = calendar
+        dayFormatter = Self.formatter("EEE d MMM", calendar: calendar)
+        weekdayFormatter = Self.formatter("EEEE", calendar: calendar)
+    }
 
     func content(_ library: Flows.Podcasts.Library) -> PodcastsContent {
         PodcastsContent(
@@ -109,7 +119,8 @@ struct EpisodeWords {
     }
 
     func hero(_ episode: Flows.Podcasts.EpisodeSummary) -> EpisodeHero {
-        let when = episode.kind == .first ? "your first episode" : "this week"
+        // "this week" only while it is this week's; an older newest episode says its day
+        let when = episode.kind == .first ? "your first episode" : (isThisWeek(episode.createdAt) ? "this week" : day(episode.createdAt))
         return EpisodeHero(
             id: episode.id,
             label: "\(when) · \(minutes(episode.durationSeconds))",
@@ -143,12 +154,18 @@ struct EpisodeWords {
         if calendar.isDate(date, inSameDayAs: now) {
             return "today's brief"
         }
-        return "\(format(date, "EEEE"))'s brief"
+        return "\(weekdayFormatter.string(from: date).lowercased())'s brief"
     }
 
     /// "tue 21 oct".
     func day(_ date: Date) -> String {
-        format(date, "EEE d MMM")
+        dayFormatter.string(from: date).lowercased()
+    }
+
+    /// Made within the last seven days.
+    func isThisWeek(_ date: Date) -> Bool {
+        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) else { return false }
+        return date > weekAgo && date <= now
     }
 
     /// Whole minutes, never "0 min".
@@ -156,19 +173,28 @@ struct EpisodeWords {
         "\(max(1, Int((seconds / 60).rounded()))) min"
     }
 
-    private func format(_ date: Date, _ pattern: String) -> String {
+    private static func formatter(_ pattern: String, calendar: Calendar) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = pattern
-        return formatter.string(from: date).lowercased()
+        return formatter
     }
 
-    /// A contract `YYYY-MM-DD` day, at the start of that day in the person's zone.
+    /// A contract `YYYY-MM-DD` day, at the start of that day in the person's zone. Anything else
+    /// (extra or non-numeric parts, an impossible day like 31 feb) is refused, never rolled over.
     static func isoDay(_ text: String, calendar: Calendar) -> Date? {
-        let parts = text.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        let parts = text.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }) else {
+            return nil
+        }
+        let numbers = parts.compactMap { Int($0) }
+        guard numbers.count == 3 else { return nil }
+        let components = DateComponents(year: numbers[0], month: numbers[1], day: numbers[2])
+        guard let date = calendar.date(from: components) else { return nil }
+        let back = calendar.dateComponents([.year, .month, .day], from: date)
+        guard back.year == numbers[0], back.month == numbers[1], back.day == numbers[2] else { return nil }
+        return date
     }
 }
