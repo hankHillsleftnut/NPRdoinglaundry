@@ -41,6 +41,13 @@ struct EpisodePlayerTests {
         #expect(sheet.currentLine == 1)
         sheet.playback.seek(to: 0)
         #expect(sheet.currentLine == 0)
+        // chapter 2 and its first line start together: the lit line and the scrubber's chapter agree
+        sheet.playback.seek(to: 176)
+        #expect(sheet.currentLine == 2)
+        #expect(sheet.playback.currentPart == 1)
+        sheet.playback.seek(to: 175.9)
+        #expect(sheet.currentLine == 1)
+        #expect(sheet.playback.currentPart == 0)
         sheet.playback.seek(to: 300)
         #expect(sheet.currentLine == 3)
         sheet.playback.seek(to: 690)
@@ -54,6 +61,13 @@ struct EpisodePlayerTests {
         let fraction = try #require(weekly.buffered)
         #expect(abs(fraction - 391.0 / 690.0) < 0.0001)
         #expect(SamplePlayback(scenario: .teaseStill, clock: clock).buffered == 1)
+    }
+
+    @Test("a weekly player that loads another episode reports that episode's download, never the weekly's")
+    func bufferedFollowsTheLoadedEpisode() async {
+        let player = SamplePlayback(scenario: .weeklyEpisodeStill, clock: clock)
+        await player.load(SamplePlayback.tease)
+        #expect(player.buffered == 1)
     }
 
     @Test("the weekly episode plays from 04:12 on the clock")

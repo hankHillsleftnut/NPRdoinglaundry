@@ -72,13 +72,20 @@ struct EpisodePlayerLaunch: View {
         } else if let model {
             PlayerSheetScreen {
                 PlayerSheet(model: model, partLabel: .counted) { line in
+                    // nothing plays behind the stand-in
+                    model.playback.pause()
                     exit = .whyThisIsHere(line: line)
                 }
             }
         } else {
             RColor.backgroundUnderlay
                 .ignoresSafeArea()
-                .onAppear { model = Self.makeModel(scenario) { exit = .collapsed } }
+                .onAppear {
+                    model = Self.makeModel(scenario) {
+                        model?.playback.pause()
+                        exit = .collapsed
+                    }
+                }
         }
     }
 

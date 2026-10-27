@@ -67,9 +67,10 @@ final class SamplePlayback: Flows.Playback {
     /// Episodes show how much is downloaded; briefs are short enough not to.
     var buffered: Double? {
         guard item?.kind == .episode, let duration, duration > 0 else { return nil }
-        if Self.weeklyScenarios.contains(scenario) {
-            // Paper 1FV9-0 draws the downloaded stretch ending inside chapter 2
-            return Self.weeklyBuffered / duration
+        if item?.id == Self.weeklyEpisodeID {
+            // Paper 1FV9-0 draws the downloaded stretch ending inside chapter 2 (by the loaded episode,
+            // so a later `load(_:)` of another episode never borrows it)
+            return min(Self.weeklyBuffered / duration, 1)
         }
         return 1
     }
