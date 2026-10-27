@@ -85,6 +85,34 @@ enum RInferenceEdge {
     }
 }
 
+/// The guess look's paper: inference.surface with the dashed inference.border edge inside, closing
+/// without a stub (guess-card.md). One home for the guess card and the asked claim; Increase Contrast
+/// thickens the dash to size.inference.edgeIncreased.
+struct RInferenceSurface: View {
+    var cornerRadius: CGFloat = RDimension.radiusCard
+    let increasedContrast: Bool
+
+    private var line: CGFloat {
+        increasedContrast ? RDimension.sizeInferenceEdgeIncreased : RDimension.sizeBorderDefault
+    }
+
+    var body: some View {
+        RShape.rect(cornerRadius)
+            .fill(RColor.inferenceSurface)
+            .overlay {
+                GeometryReader { proxy in
+                    RShape.rect(cornerRadius).strokeBorder(
+                        RColor.inferenceBorder,
+                        style: StrokeStyle(
+                            lineWidth: line,
+                            dash: [RInferenceEdge.dash(around: proxy.size, cornerRadius: cornerRadius, line: line)]
+                        )
+                    )
+                }
+            }
+    }
+}
+
 #if DEBUG
 struct RTagGallery: View {
     var body: some View {
