@@ -4,7 +4,7 @@
 //  "c:claim/asked · a pattern" 1G45-0). Integrator 26 Oct (GL-D5): build the plain card the screens draw,
 //  not the components page's dashed one (RClaim .asked, IYO-0); the mismatch is the founder's to settle.
 //  surface.wash, radius.card, 12 between parts: a 32 well (background.canvas, radius.control, a 0.5
-//  outer line) holding the guess glyph in accent.text, beside "a guess · a goal?"; the question in the
+//  outer line) holding the guess glyph in ink (Paper: accent.text; GL-D13), beside "a guess · a goal?"; the question in the
 //  inky card face; then "yes" and "not quite" (Paper 1G3A-0 / 1G38-0 copy), 8 apart, 4 below the question,
 //  as the shared raised pill (RPill .raised .medium, the current look: founder 26 Oct), not Paper's two
 //  stretched 44 buttons (consistency audit #8; GL-D12).
@@ -32,7 +32,8 @@ struct GoalGuessCard: View {
             HStack(spacing: RDimension.space2) {
                 RIconWell(
                     symbol: "sparkles",
-                    tint: RColor.accentText,
+                    // ink, not Paper's accent blue: blue is the active colour (founder 27 Oct, GL-D13)
+                    tint: RColor.textPrimary,
                     fill: RColor.backgroundCanvas,
                     glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconInWell / RDimension.sizeIconDefault
                 )
