@@ -18,7 +18,7 @@ struct DrawerFoot: View {
             HStack(spacing: RDimension.space3) {
                 RSymbol(name: "slider.horizontal.3", size: .regular)
                 Text("settings")
-                    .rText(.drawerFoot)
+                    .rText(.drawerFootText)
                     .foregroundStyle(RColor.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(Self.version)
@@ -49,7 +49,7 @@ struct DrawerFoot: View {
 
 extension RTextStyle {
     /// The drawer foot's "settings" (Paper 1FOU-0: --font-label, --text-md, medium, leading snug).
-    static let drawerFoot = RTextStyle(
+    static let drawerFootText = RTextStyle(
         family: .label,
         size: RDimension.fontSizeMd,
         weight: .medium,
