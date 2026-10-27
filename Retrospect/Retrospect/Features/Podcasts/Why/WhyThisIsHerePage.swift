@@ -21,18 +21,9 @@ struct WhyThisIsHerePage: View {
             header
                 .padding(.top, RDimension.space1)
             ScrollView {
-                VStack(alignment: .leading, spacing: RDimension.space8) {
-                    RClaim(kind: model.content.kind, text: model.content.claim, meta: model.content.meta)
-                    restsOn
-                    if let moment = model.content.moment {
-                        VStack(alignment: .leading, spacing: RDimension.space2) {
-                            RSectionLabel(title: model.content.momentLabel)
-                            EpisodeMomentCard(moment: moment, hearIt: model.hearIt == nil ? nil : model.playMoment)
-                        }
-                    }
-                }
-                .padding(.top, RDimension.space6)
-                .padding(.bottom, RDimension.space4)
+                columnContent
+                    .padding(.top, RDimension.space6)
+                    .padding(.bottom, RDimension.space4)
             }
             .scrollClipDisabled()
             .scrollIndicators(.hidden)
@@ -49,6 +40,26 @@ struct WhyThisIsHerePage: View {
         }
         .accessibilityAction(.escape) { model.dismiss() }
         .accessibilityIdentifier("why")
+    }
+
+    /// The claim, what it rests on, and the moment (Paper 1FY0-0: 32 between groups).
+    private var columnContent: some View {
+        VStack(alignment: .leading, spacing: RDimension.space8) {
+            RClaim(kind: model.content.kind, text: model.content.claim, meta: model.content.meta)
+            restsOn
+            if let moment = model.content.moment {
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    RSectionLabel(title: model.content.momentLabel)
+                    EpisodeMomentCard(moment: moment, hearIt: hearIt)
+                }
+            }
+        }
+    }
+
+    /// "hear it" plays only once the player hosts the page.
+    private var hearIt: (() -> Void)? {
+        guard model.hearIt != nil else { return nil }
+        return { model.playMoment() }
     }
 
     /// Paper 1FZA-0: back and the title 8 apart on the left, collapse on the right.
