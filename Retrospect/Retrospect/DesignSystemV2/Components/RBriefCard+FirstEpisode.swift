@@ -194,7 +194,13 @@ struct RFirstEpisodeReadyCard: View {
     var celebrate = false
 
     @State private var popped = 0
+    @State private var celebrated = false
     @Environment(\.colorSchemeContrast) private var contrast
+
+    /// The pop plays once per card: only when asked and not yet played.
+    static func shouldPop(celebrate: Bool, celebrated: Bool) -> Bool {
+        celebrate && !celebrated
+    }
 
     /// What VoiceOver reads: the title, then the line with " · " as a pause and "min" said in full.
     static func spoken(title: String, line: String) -> String {
@@ -228,14 +234,18 @@ struct RFirstEpisodeReadyCard: View {
             .padding(.leading, RDimension.space3)
             .padding(.trailing, RDimension.space4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .rRaised(RDimension.radiusCard)
+            // Paper 1FJL-0's stack layer for layer: one cast pulled in by its spread, no ambient
+            .background(RColor.backgroundRaised, in: shape)
+            .rBoxShadows(RElevation.boxShadowFirstHomeEpisodeCard, radius: RDimension.radiusCard)
             .overlay(shape.strokeBorder(RColor.borderControl, lineWidth: contrast == .increased ? RDimension.sizeBorderDefault : RDimension.space0))
             .contentShape(shape)
         }
         .buttonStyle(RPressStyle())
         .rPop(trigger: popped, haptic: RHaptic.reveal)
         .onAppear {
-            if celebrate {
+            // once: coming back to the page (another tab, a sheet) never replays it
+            if Self.shouldPop(celebrate: celebrate, celebrated: celebrated) {
+                celebrated = true
                 popped += 1
             }
         }

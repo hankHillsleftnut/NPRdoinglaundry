@@ -93,4 +93,25 @@ struct FirstHomeTests {
     func launcherStates() {
         #expect(FirstHomeScenario.allCases.map(\.rawValue) == ["first-home", "first-home-still"])
     }
+
+    @Test("the ready card pops once: not when it isn't asked, never again after it played")
+    func popsOnce() {
+        #expect(RFirstEpisodeReadyCard.shouldPop(celebrate: true, celebrated: false))
+        #expect(!RFirstEpisodeReadyCard.shouldPop(celebrate: true, celebrated: true))
+        #expect(!RFirstEpisodeReadyCard.shouldPop(celebrate: false, celebrated: false))
+    }
+
+    @Test("without a first day the journal is JR-1 as before: no first day, a working drawer")
+    func journalUnchangedWithoutFirstDay() {
+        let model = JournalViewModel(data: SampleJournalData(scenario: .full), today: SampleJournalContent.today)
+        #expect(model.firstDay == nil)
+        #expect(model.openDrawer != nil)
+        let container = JournalPageContainer(today: SampleJournalContent.today)
+        #expect(container.firstDay == nil)
+        #expect(container.openDrawer != nil)
+        // the brief card's other states keep their play and labels
+        #expect(RBriefCard.hasPlay(.rest))
+        #expect(!RBriefCard.hasPlay(.firstEpisodeMaking(line: "", progress: 0)))
+        #expect(RBriefCard.label(date: "tue 21 oct", length: "2 min", state: .rest) == "tue 21 oct · 2 min")
+    }
 }

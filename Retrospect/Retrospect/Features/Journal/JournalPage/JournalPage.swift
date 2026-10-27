@@ -65,6 +65,7 @@ private struct PageIdentity: Hashable {
 struct JournalPage: View {
     @State private var model: JournalViewModel
     @Environment(\.rCompactHeight) private var compactHeight
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(model: JournalViewModel) {
@@ -133,9 +134,12 @@ struct JournalPage: View {
             .padding(.horizontal, margin)
             .padding(.top, RDimension.space3)
             .accessibilityIdentifier("journal.brief")
-            FirstDayWelcome(name: firstDay.recap.name)
-                .padding(.horizontal, margin)
-                .padding(.top, RDimension.space6)
+            // at accessibility sizes the welcome scrolls with the thread, so the composer stays on screen
+            if !dynamicTypeSize.isAccessibilitySize {
+                FirstDayWelcome(name: firstDay.recap.name)
+                    .padding(.horizontal, margin)
+                    .padding(.top, RDimension.space6)
+            }
         } else if let card = model.briefCard {
             RBriefCard(
                 date: card.date,
@@ -207,6 +211,9 @@ struct JournalPage: View {
         } else if let firstDay = model.firstDay {
             // ON-13 1FIZ-0: the recap at the bottom of the first day, today's entries after it (FH-Q4 A)
             VStack(spacing: RDimension.space5) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    FirstDayWelcome(name: firstDay.recap.name)
+                }
                 SetupRecapCard(recap: firstDay.recap)
                 threadItems
             }

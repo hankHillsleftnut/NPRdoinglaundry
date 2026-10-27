@@ -1079,4 +1079,12 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 10, blur: 24, spread: -12),
     ]
+    /// The ready first episode card on first home: top light, inner ring, outer hairline, contact, and one cast pulled in by its spread (no ambient).
+    public static let boxShadowFirstHomeEpisodeCard: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeInner, x: 0, y: 0, blur: 0, spread: 1, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 12, blur: 28, spread: -12),
+    ]
 }
