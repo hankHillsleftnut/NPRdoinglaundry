@@ -25,6 +25,9 @@ enum OutsideScreens: ScreenGroup {
 struct ShareLaunch: View {
     @State private var model: ShareModel
 
+    /// Paper 1H1M-0: the system share sheet starts 28 under the status bar (the app behind shows in that strip).
+    private static let sheetTop = RDimension.space6 + RDimension.space1
+
     init(why: String) {
         _model = State(initialValue: ShareModel(data: SampleShare(), why: why))
     }
@@ -43,10 +46,10 @@ struct ShareLaunch: View {
                 // the sheet's paper runs under the home indicator; its content stays above it
                 RShape.top(RDimension.radiusSheet)
                     .fill(RColor.backgroundCanvas)
-                    .padding(.top, RDimension.layoutSheetTop)
+                    .padding(.top, Self.sheetTop)
                     .ignoresSafeArea(.container, edges: .bottom)
                 SharePage(model: model)
-                    .padding(.top, RDimension.layoutSheetTop)
+                    .padding(.top, Self.sheetTop)
             }
             .background(RColor.backgroundCanvas.ignoresSafeArea())
         }
