@@ -120,8 +120,14 @@ jobs:
     # a merge (continue-on-error, and it is not a required check). Switched on with the repo
     # variable `CI_HOSTED_ALSO=true` (Settings → Variables; no PR needed), and skipped when
     # `CI_HOSTED=true` already sends the gate itself to the hosted runner.
+    # Note: continue-on-error keeps the workflow green, but a failed run of this job still
+    # shows its own red X on the PR's checks list. Read it as "the hosted opinion disagrees",
+    # never as the merge gate; `ios` is the gate.
+    # Cost: hosted macOS minutes are free only while the repo is public. When it goes private
+    # they are billed (10x Linux rate), so set CI_HOSTED_ALSO back to false then.
     if: needs.changes.outputs.app == 'true' && vars.CI_HOSTED_ALSO == 'true' && vars.CI_HOSTED != 'true'
     continue-on-error: true
+    timeout-minutes: 60
     runs-on: macos-26
     env:
       # Per-job: $RUNNER_TEMP is wiped between jobs on a hosted runner.
