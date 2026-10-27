@@ -20,6 +20,9 @@ final class SampleFlowModel {
     private(set) var step: FlowStep
     /// The words sent for each question, kept across launches.
     private(set) var answers: [Key: String]
+    /// The step on screen was reached by a page's back (ON-5 back to the questions), not forward or a
+    /// relaunch: the questions then open on the last one instead of finishing at once.
+    private(set) var cameBack = false
 
     /// PI0 on the sample sign-in: the first tap signs in (no scripted failure in the flow).
     let signIn: SignInModel
@@ -84,6 +87,7 @@ final class SampleFlowModel {
     /// A screen handed off: move where the table says, or stay (no edge: the flow ends here).
     func send(_ event: FlowEvent) {
         guard let next = FlowStep.next(from: step, event: event, table: table) else { return }
+        cameBack = event == .back
         step = next
         save()
     }
@@ -93,6 +97,17 @@ final class SampleFlowModel {
         if phase == .torn || phase == .youreIn {
             send(.ticketTorn)
         }
+    }
+
+    /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
+    /// so each visit gets a fresh model: Retro finishing (or a tap) sends `privacyDone`, the back chevron
+    /// sends `back` to the last question. `clock` is the page's reading clock (tests pass an instant one).
+    func makePrivacy(clock: any Clock<Duration> = ContinuousClock()) -> PrivacyModel {
+        PrivacyModel(
+            readAloud: SamplePrivacyReadAloud(clock: clock),
+            onAdvance: { [weak self] in self?.send(.privacyDone) },
+            onBack: { [weak self] in self?.send(.back) }
+        )
     }
 
     /// An answer the questions page's seam kept.
@@ -119,13 +134,19 @@ final class SampleFlowModel {
         return answers
     }
 
+    /// A step's place in the app's order (`FlowStep` lists them in order).
+    private static func order(of step: FlowStep) -> Int {
+        FlowStep.allCases.firstIndex(of: step) ?? 0
+    }
+
     /// The gate opens at the typed ticket (signed in, no code), as the live root does; a relaunch after the
     /// tear comes back at "you're in" (the ticket is already spent, `InviteModel.relaunched`).
     private static func inviteModel(at step: FlowStep, sleep: @escaping Sleep) -> InviteModel {
         var script = SampleInviteSource.Script()
         script.acceptsAnyCode = true
         let source = SampleInviteSource(script: script, sleep: sleep)
-        let torn = step == .youreIn || step == .questions
+        // every step from "you're in" on comes after the tear
+        let torn = Self.order(of: step) >= Self.order(of: .youreIn)
         // already torn on an earlier launch: shown still, not replayed
         let sample = SampleInvite.youreIn
         let stub = Session.YoureIn(invitedBy: sample.invitedBy, serial: sample.serial, redeemedOn: sample.redeemedOn, animate: false)

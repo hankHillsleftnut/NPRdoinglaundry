@@ -36,6 +36,8 @@ struct QuestionsPageContainer: View {
     var kept: [Flows.QuestionKey: String] = [:]
     /// Each answer the seam kept, for a host that keeps the words.
     var onAnswered: (Flows.QuestionKey, String) -> Void = { _, _ in }
+    /// Opened by the next page's back (the sample flow, FLOW.edges): on the last question, words kept.
+    var cameBack = false
     var onDone: () -> Void = {}
 
     var body: some View {
@@ -44,7 +46,7 @@ struct QuestionsPageContainer: View {
     }
 
     private func model() -> QuestionsModel {
-        let model = QuestionsModel(data: data, flowRange: flowRange, kept: kept)
+        let model = QuestionsModel(data: data, flowRange: flowRange, kept: kept, cameBack: cameBack)
         model.onAnswered = onAnswered
         model.onDone = onDone
         return model
