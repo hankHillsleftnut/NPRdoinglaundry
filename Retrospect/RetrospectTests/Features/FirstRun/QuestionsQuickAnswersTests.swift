@@ -128,6 +128,34 @@ struct QuestionsQuickAnswersTests {
         await send.value
     }
 
+    @Test("a chip whose words hold a comma ('friends, family') shows chosen, and a second tap removes it, never a duplicate")
+    func chipWithAComma() {
+        let question = Flows.FirstRunQuestion(
+            key: .people,
+            text: "who would you call?",
+            quickAnswers: ["friends, family", "family", "nobody"]
+        )
+        let model = QuestionsModel(data: ChipFirstRun(ear: nil, questions: [question]))
+        model.toggle("friends, family")
+        #expect(model.draft == "friends, family")
+        #expect(model.isChosen("friends, family"))
+        // its words are its own: "family" inside it is not the "family" chip
+        #expect(!model.isChosen("family"))
+        model.toggle("nobody")
+        #expect(model.draft == "friends, family, nobody")
+        model.toggle("friends, family")
+        #expect(model.draft == "nobody")
+        #expect(!model.isChosen("friends, family"))
+        // the family chip on its own, then the comma chip: both chosen, each removed alone
+        model.toggle("family")
+        model.toggle("friends, family")
+        #expect(model.isChosen("family"))
+        #expect(model.isChosen("friends, family"))
+        model.toggle("friends, family")
+        #expect(model.draft == "nobody, family")
+        #expect(model.isChosen("family"))
+    }
+
     @Test("chips match the field whatever the case: 'Tech' chooses tech, and a tap removes it, never a duplicate")
     func caseInsensitive() {
         let (model, _) = quickModel()
@@ -181,14 +209,15 @@ private final class WordsEar: Flows.Listening {
 @MainActor
 @Observable
 private final class ChipFirstRun: Flows.FirstRun {
-    let questions = [Flows.FirstRunQuestion.paperQuickAnswers]
+    let questions: [Flows.FirstRunQuestion]
     var answeredKeys: Set<Flows.QuestionKey> = []
     @ObservationIgnored private let ear: WordsEar?
     @ObservationIgnored var holds = false
     @ObservationIgnored private var waiting: CheckedContinuation<Void, Never>?
 
-    init(ear: WordsEar?) {
+    init(ear: WordsEar?, questions: [Flows.FirstRunQuestion] = [.paperQuickAnswers]) {
         self.ear = ear
+        self.questions = questions
     }
 
     var isHolding: Bool {
