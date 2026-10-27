@@ -188,8 +188,13 @@ struct RTopBar: View {
     /// and ON-6 21CA-0 draw one path in a 20 frame; founder, 27 Oct). Only the circle differs: 36 here.
     static let backGlyphScale = RIconButton.backChevronGlyphScale
 
+    /// The bar's back button: the top-bar circle with the chevron at `backGlyphScale`.
+    static func back(_ action: @escaping () -> Void) -> RIconButton {
+        RIconButton(symbol: "chevron.left", label: "back", glyphScale: backGlyphScale, action: action)
+    }
+
     private func backButton(_ action: @escaping () -> Void) -> some View {
-        RIconButton(symbol: "chevron.left", label: "back", glyphScale: Self.backGlyphScale, action: action)
+        Self.back(action)
     }
 
     /// The 44 slot opposite the leading button, so the centred name sits on the bar's centre.

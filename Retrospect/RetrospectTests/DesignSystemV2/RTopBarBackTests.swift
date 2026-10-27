@@ -11,6 +11,11 @@ struct RTopBarBackTests {
     func backScale() {
         #expect(RTopBar.backGlyphScale == RIconButton.backChevronGlyphScale)
         #expect(RTopBar.backGlyphScale < RSymbol.defaultGlyphScale)
+        // the button the bar really draws (backButton returns this), not just the constant
+        let back = RTopBar.back {}
+        #expect(back.glyphScale == RIconButton.backChevronGlyphScale)
+        #expect(back.role == .topBar)
+        #expect(back.symbol == "chevron.left")
     }
 
     /// The chevron's inked height in points: the glyph drawn at `scale` of the 20 frame, rows with any ink counted.
@@ -18,7 +23,7 @@ struct RTopBarBackTests {
         let points = RIconButton.Role.topBar.glyph.points * scale
         let image = try #require(UIImage(
             systemName: "chevron.left",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: points, weight: .regular)
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: points, weight: RIconButton.Role.topBar.weight.uiKit)
         )?.withTintColor(.black, renderingMode: .alwaysOriginal))
         let format = UIGraphicsImageRendererFormat()
         format.scale = 4
@@ -53,5 +58,12 @@ struct RTopBarBackTests {
     func circle() {
         #expect(RIconButton.Role.topBar.visible == RDimension.sizeControlIcon)
         #expect(RDimension.sizeControlIcon == 36)
+    }
+}
+
+private extension Font.Weight {
+    /// The UIKit weight for a symbol drawn outside SwiftUI (only the weights the roles use).
+    var uiKit: UIImage.SymbolWeight {
+        self == .semibold ? .semibold : .regular
     }
 }
