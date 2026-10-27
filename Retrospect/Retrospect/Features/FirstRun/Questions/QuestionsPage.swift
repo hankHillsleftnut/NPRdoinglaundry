@@ -171,6 +171,9 @@ struct QuestionsPage: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("questions.answer")
                 }
+                if !model.quickAnswers.isEmpty {
+                    quickAnswers
+                }
                 if model.offline {
                     Text(QuestionsModel.offlineLine)
                         .rText(.textMd)
@@ -187,6 +190,25 @@ struct QuestionsPage: View {
             // the offline line comes and goes with its own blur; what's around it moves on the spring
             .animation(motion, value: model.offline)
         }
+    }
+
+    /// Paper c:onboarding/quick-answers (MH9-0): chips wrapping 8 apart both ways.
+    private let chipFlow = WordFlow(spacing: RDimension.space2, lineSpacing: RDimension.space2)
+
+    private var quickAnswers: some View {
+        chipFlow {
+            ForEach(model.quickAnswers, id: \.self) { chip in
+                RChoicePill(title: chip, isOn: model.isChosen(chip)) {
+                    withAnimation(motion) {
+                        model.toggle(chip)
+                    }
+                }
+                .accessibilityIdentifier("questions.chip.\(chip)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // toggle refuses a tap while an answer is on its way: don't offer one (no stray haptic)
+        .disabled(model.isSending || model.isFinished)
     }
 
     // MARK: - The composer
