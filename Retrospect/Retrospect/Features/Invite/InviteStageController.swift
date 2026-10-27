@@ -31,6 +31,8 @@ final class InviteStageController {
     var stubLandings = 0
     /// Whether the tear's clock must keep running.
     var moving = false
+    /// Where the run has the handle once the tear commits (observed, so the handle glides with the front).
+    var handleFinger: CGFloat?
 
     let model: InviteModel
     @ObservationIgnored private var ticker = HoleTicker()

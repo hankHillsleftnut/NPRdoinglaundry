@@ -54,7 +54,8 @@ struct ShareModelTests {
 /// Review on #220: closing wins over a slow read; one save per tap; no save before the item.
 @MainActor
 struct ShareModelGuardTests {
-    /// A ShareData whose read (and, when `holdSave`, save) waits until the test lets it go; counts saves.
+    /// A ShareData that holds only the FIRST read (and, when `holdSave`, the first save) until the test lets
+    /// it go; later calls return at once, so a missing guard fails the count instead of hanging. Counts saves.
     final class SlowShare: ShareData {
         var release: CheckedContinuation<Void, Never>?
         var holdItem = true
@@ -62,7 +63,7 @@ struct ShareModelGuardTests {
         private(set) var saves = 0
         func item() async -> ShareItem {
             if holdItem {
-                await withCheckedContinuation { release = $0 }
+                await holdFirst()
             }
             return SampleShare.paper
         }
@@ -70,8 +71,16 @@ struct ShareModelGuardTests {
         func save(why _: String) async {
             saves += 1
             if holdSave {
-                await withCheckedContinuation { release = $0 }
+                await holdFirst()
             }
+        }
+
+        private var held = false
+
+        private func holdFirst() async {
+            guard !held else { return }
+            held = true
+            await withCheckedContinuation { release = $0 }
         }
     }
 

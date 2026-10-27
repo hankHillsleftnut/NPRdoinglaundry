@@ -36,7 +36,7 @@ enum TookSection: Equatable, Sendable {
         }
     }
 
-    static func forStanding(_ standing: EntryModel.Standing, claims: [TookClaim]) -> TookSection {
+    static func forStanding(_ standing: EntryPageModel.Standing, claims: [TookClaim]) -> TookSection {
         switch standing {
         case .read: .claims(claims)
         case .sent: .notReadYet
@@ -122,7 +122,7 @@ final class EntryDrawnModel {
 
     // MARK: took
 
-    func section(for standing: EntryModel.Standing) -> TookSection {
+    func section(for standing: EntryPageModel.Standing) -> TookSection {
         TookSection.forStanding(standing, claims: claims)
     }
 

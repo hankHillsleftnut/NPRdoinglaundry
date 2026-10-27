@@ -4,7 +4,7 @@
 //  voice and listening, ST-8 what i've learned, ST-9 account, opened with
 //  `-Screen ST-<n> -State <state> -Data sample`. Dark: listed here and nowhere in the release root.
 //  The built account page keeps its own `-Screen account` in `Features/Account`.
-//  Each page opens inside the first half's settings stack (SettingsLaunch) on the sample, over ST-1,
+//  Each page opens inside the first half's settings stack (`delete` opens the danger dialog over it) (SettingsLaunch) on the sample, over ST-1,
 //  so its back returns there and what it changes shows on ST-1.
 //
 #if DEBUG
@@ -14,7 +14,10 @@ enum SettingsTrustScreens: ScreenGroup {
     static let name = "settings · trust"
     static let screens: [LaunchableScreen] = [
         LaunchableScreen(id: "ST-5", states: ["rest", "delete"]) { arguments in
-            arguments.state == "delete" ? AnyView(SettingsPrivacyDeleteLaunch()) : AnyView(SettingsLaunch(path: [.privacy]))
+            AnyView(
+                SettingsLaunch(path: [.privacy])
+                    .environment(\.settingsLaunchDialog, SettingsLaunchDialog(arguments.state == "delete"))
+            )
         },
         LaunchableScreen(id: "ST-6", states: ["rest"]) { _ in
             AnyView(SettingsLaunch(path: [.howStraight]))
@@ -26,14 +29,5 @@ enum SettingsTrustScreens: ScreenGroup {
             AnyView(SettingsLaunch(path: [.learned]))
         },
     ]
-}
-
-/// ST-5 with "delete my data?" already up, for stills: the page on its own (back does nothing here).
-private struct SettingsPrivacyDeleteLaunch: View {
-    @State private var data = SampleSettings()
-
-    var body: some View {
-        SettingsPrivacyPage(data: data, deleting: true, back: {})
-    }
 }
 #endif

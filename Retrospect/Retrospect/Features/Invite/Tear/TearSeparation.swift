@@ -36,6 +36,11 @@ struct TearFrame: Equatable {
     var lean: Double
     var hiddenHoles: Int
     var separated: Bool
+    /// 0 while the stub is joined, easing to 1 as it lands: the shadow hands over from the whole
+    /// ticket's (one shadow round both pieces) to each piece's own, so no shadow ever pops.
+    var apart: Double
+    /// Whole and still: nothing torn (the page draws the same paper as before the touch).
+    var whole: Bool
 }
 
 /// Everything after the rip, from the hanging pose, as a function of time.
@@ -50,6 +55,44 @@ struct TearSeparation: Equatable {
     /// The hanging flap's tip angle (the curve's end tangent).
     let hangAngle: Double
     let hangTilt: Double
+    /// Fixed at the rip, so computed once (the fall reads them every frame).
+    let hangChord: Double
+    let startOffset: CGSize
+    let handOff: (t: Double, v: Double)
+    private(set) var landsAt: Double
+    private(set) var settledAt: Double
+
+    init(
+        p: TearParameters, width: CGFloat, perforationY: CGFloat, stubHeight: CGFloat, dropGap: CGFloat,
+        pivotX: CGFloat, hangAngle: Double, hangTilt: Double
+    ) {
+        self.p = p
+        self.width = width
+        self.perforationY = perforationY
+        self.stubHeight = stubHeight
+        self.dropGap = dropGap
+        self.pivotX = pivotX
+        self.hangAngle = hangAngle
+        self.hangTilt = hangTilt
+        let center = CGPoint(x: width / 2, y: perforationY + stubHeight / 2)
+        let curve = TearCurve(front: pivotX, pivotY: perforationY, angle: hangAngle, length: pivotX, exponent: p.curveExponent)
+        hangChord = curve.chordAngle(at: pivotX - center.x)
+        let toCenter = CGSize(width: center.x - pivotX, height: center.y - perforationY)
+        let turned = tearRotate(toCenter, hangChord)
+        startOffset = CGSize(width: turned.width - toCenter.width, height: turned.height - toCenter.height)
+        let fall = TearFall(gravity: p.gravity, drag: p.airDrag)
+        let t = fall.time(toCover: Double(dropGap - startOffset.height) * p.freeFallShare, velocity: p.ripKick)
+        handOff = (t, fall.state(velocity: p.ripKick, at: t).v)
+        landsAt = 0
+        settledAt = 0
+        landsAt = findLanding()
+        settledAt = findRest()
+    }
+
+    static func == (a: TearSeparation, b: TearSeparation) -> Bool {
+        a.p == b.p && a.width == b.width && a.perforationY == b.perforationY && a.stubHeight == b.stubHeight
+            && a.dropGap == b.dropGap && a.pivotX == b.pivotX && a.hangAngle == b.hangAngle && a.hangTilt == b.hangTilt
+    }
 
     /// The stub's centre (the keepsake rotates about it).
     var center: CGPoint {
@@ -61,29 +104,13 @@ struct TearSeparation: Equatable {
         TearCurve(front: pivotX, pivotY: perforationY, angle: hangAngle, length: pivotX, exponent: p.curveExponent)
     }
 
-    /// The rigid turn about the pivot that puts the centre's column where the curve has it: the
-    /// sheet's overall angle on the rip frame, from which it turns to rest.
-    var hangChord: Double {
-        hangCurve.chordAngle(at: pivotX - center.x)
-    }
-
-    /// The offset that makes "rotate about the centre" equal "rotate about the pivot" at the snap.
-    var startOffset: CGSize {
-        let pivot = CGPoint(x: pivotX, y: perforationY)
-        let toCenter = CGSize(width: center.x - pivot.x, height: center.y - pivot.y)
-        let turned = tearRotate(toCenter, hangChord)
-        return CGSize(width: turned.width - toCenter.width, height: turned.height - toCenter.height)
-    }
+    // `hangChord` is the rigid turn about the pivot that puts the centre's column where the curve has
+    // it (the sheet's overall angle on the rip frame, from which it turns to rest); `startOffset` makes
+    // "rotate about the centre" equal "rotate about the pivot" at the snap; `handOff` is when free fall
+    // hands over to the landing spring.
 
     private var fall: TearFall {
         TearFall(gravity: p.gravity, drag: p.airDrag)
-    }
-
-    /// When free fall hands over to the landing spring.
-    var handOff: (t: Double, v: Double) {
-        let drop = Double(dropGap - startOffset.height)
-        let t = fall.time(toCover: drop * p.freeFallShare, velocity: p.ripKick)
-        return (t, fall.state(velocity: p.ripKick, at: t).v)
     }
 
     /// Where the stub's centre has moved to (from where it sits joined): gravity and drag, then the
@@ -122,8 +149,14 @@ struct TearSeparation: Equatable {
         let offset = CGSize(width: Double(moved.width) - a.width - b.width, height: Double(moved.height) - a.height - b.height)
         return TearStubPose(
             bendFront: pivotX, bendAngle: hangAngle * relax, bendLength: pivotX, anchor: center, angle: rigid,
-            tilt: tilt, lift: 1 + lift, offset: offset, shadow: 0
+            tilt: tilt, lift: 1 + lift, offset: offset, shadow: Double(pivotX / width)
         )
+    }
+
+    /// How far the shadow has handed over to the pieces: a smoothstep over the fall, done as it lands.
+    func apart(at t: Double) -> Double {
+        let share = min(max(t / max(landsAt, TearSimulation.step), 0), 1)
+        return share * share * (3 - 2 * share) // literal-ok: smoothstep
     }
 
     func body(at t: Double) -> TearBodyPose {
@@ -133,7 +166,7 @@ struct TearSeparation: Equatable {
     }
 
     /// When the stub has come to rest (within half a point and a tenth of a degree).
-    var settledAt: Double {
+    private func findRest() -> Double {
         var t = 0.0
         let rest = stub(at: 10)
         while t < 3 {
@@ -148,7 +181,7 @@ struct TearSeparation: Equatable {
     }
 
     /// The frame the stub lands: the first time it reaches its resting height (the landing tap).
-    var landsAt: Double {
+    private func findLanding() -> Double {
         var t = handOff.t
         while t < 2 {
             if centre(at: t).height >= dropGap {

@@ -294,6 +294,81 @@ struct TearPhysicsTests {
         }.count >= 6)
     }
 
+    @Test("pulled below the line, the flap still never droops past the founder's 11° tip")
+    func droopClamped() {
+        var sim = simulation()
+        sim.advance(to: 0)
+        for frame in 1 ... 240 {
+            sim.touch(x: 340 * CGFloat(frame) / 240, dy: TearMath.wander)
+            sim.advance(to: Double(frame) / 240)
+        }
+        sim.advance(to: 3)
+        #expect(sim.curve.tipAngle <= RNumber.motionTearDroopMax + 0.001)
+        #expect(sim.curve.tipAngle > RNumber.motionTearDroopMax - 0.5)
+    }
+
+    @Test("nothing flashes: at 60 fps every shadow and pose moves a little each frame, through the whole tear")
+    func shadowsContinuous() {
+        var sim = simulation()
+        var last: TearFrame?
+        var worst = (group: 0.0, piece: 0.0, shade: 0.0, offset: 0.0, angle: 0.0)
+        var t = 0.0
+        var ripDue: Double?
+        while t < 3 {
+            for _ in 0 ..< 4 { // the script at 240 Hz, read at 60 fps
+                t += 1.0 / 240
+                let finger = TearScript.finger(at: t, width: 354)
+                if finger.down {
+                    sim.touch(x: finger.x, dy: finger.dy)
+                } else if t >= TearScript.releaseAt, sim.phase == .dragging {
+                    sim.release(velocity: TearScript.releaseVelocity(width: 354))
+                }
+                sim.advance(to: t)
+                if ripDue == nil, sim.isRunning {
+                    ripDue = t + TearScript.redeem
+                }
+                if let due = ripDue, t >= due {
+                    sim.rip()
+                }
+            }
+            let frame = sim.frame
+            if let last {
+                worst.group = max(worst.group, abs((1 - frame.apart) - (1 - last.apart)))
+                worst.piece = max(worst.piece, abs(frame.apart - last.apart))
+                let shade = { (f: TearFrame) in f.stub.shadow * 0.6 * (1 - f.apart) }
+                worst.shade = max(worst.shade, abs(shade(frame) - shade(last)))
+                worst.offset = max(worst.offset, abs(frame.stub.offset.height - last.stub.offset.height))
+                worst.angle = max(worst.angle, abs(frame.stub.angle - last.stub.angle))
+            }
+            last = frame
+        }
+        #expect(sim.isSeparated)
+        // the hand-over takes the whole fall (a smoothstep): never more than 15% of a shadow in one frame
+        #expect(worst.group < 0.15 && worst.piece < 0.15)
+        #expect(worst.shade < 0.05)
+        // and the stub itself never jumps: the fall's fastest frame stays a few points
+        #expect(worst.offset < 12 && worst.angle < 3)
+    }
+
+    @Test("back from a pause the app replays at most a quarter second, not the whole time away")
+    func catchUp() {
+        var sim = simulation()
+        sim.advance(to: 0)
+        sim.autoRun() // the app goes away mid-run, for a minute
+        sim.advance(to: 60, catchUp: TearSimulation.catchUp)
+        // only the last quarter second was stepped: no click from the minute away was replayed
+        let clicks = sim.events.filter {
+            if case .tick = $0.0 {
+                true
+            } else {
+                false
+            }
+        }
+        #expect(!clicks.isEmpty)
+        #expect(clicks.allSatisfy { $0.1 >= 60 - TearSimulation.catchUp - TearSimulation.step })
+        #expect(sim.time >= 60 - TearSimulation.step)
+    }
+
     @Test("the run speeds up: every step forward is longer than the one before (no linear run)")
     func runAccelerates() {
         var sim = simulation()

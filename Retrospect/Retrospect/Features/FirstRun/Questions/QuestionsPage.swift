@@ -41,6 +41,8 @@ struct QuestionsPageContainer: View {
     var onAnswered: (Flows.QuestionKey, String) -> Void = { _, _ in }
     /// Opened by the next page's back (the sample flow, FLOW.edges): on the last question, words kept.
     var cameBack = false
+    /// The seam's `finishQuestions()` already ran (the sample flow's earlier pass).
+    var seamFinished = false
     var onDone: () -> Void = {}
 
     var body: some View {
@@ -49,7 +51,7 @@ struct QuestionsPageContainer: View {
     }
 
     private func model() -> QuestionsModel {
-        let model = QuestionsModel(data: data, flowRange: flowRange, kept: kept, cameBack: cameBack)
+        let model = QuestionsModel(data: data, flowRange: flowRange, kept: kept, cameBack: cameBack, seamFinished: seamFinished)
         model.onAnswered = onAnswered
         model.onDone = onDone
         return model
@@ -209,6 +211,8 @@ struct QuestionsPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // toggle refuses a tap while an answer is on its way: don't offer one (no stray haptic)
+        .disabled(model.isSending || model.isFinished)
     }
 
     // MARK: - The composer

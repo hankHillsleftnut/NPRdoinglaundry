@@ -126,6 +126,8 @@ private struct CurrentTear: View {
     @State private var rips = 0
     @State private var marker: (String, Double)?
     @State private var released = false
+    /// The script time played up to (stepped at 240 Hz, so a frozen still replays the whole script).
+    @State private var played = -TearScript.lead
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -148,7 +150,12 @@ private struct CurrentTear: View {
             }
             .onChange(of: context.date) { _, date in
                 if scripted {
-                    play(clock(date) - TearScript.lead)
+                    var at = played
+                    while at + 1.0 / 240 <= clock(date) - TearScript.lead {
+                        at += 1.0 / 240
+                        play(at)
+                    }
+                    played = at
                 }
             }
         }
@@ -240,7 +247,7 @@ private struct ProposedTear: View {
             VStack(spacing: RDimension.space4) {
                 TicketStage(
                     geometry: geometry, face: SampleInvite.face, tiles: SampleInvite.code, date: "21 oct 2026",
-                    stub: model.isSeparated ? .fallen : .joined, tear: model.phase == .idle ? nil : model.frame
+                    stub: model.isSeparated ? .fallen : .joined, tear: model.frame
                 )
                 .animation(RMotion.settle, value: model.isSeparated)
                 .overlay(alignment: .topLeading) {

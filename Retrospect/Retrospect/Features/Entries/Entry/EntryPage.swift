@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct EntryPage: View {
-    let model: EntryModel
+    let model: EntryPageModel
     let back: () -> Void
     /// The drawn parts (J2b), present only when `model.capabilities` turns any on.
     var drawn: EntryDrawnModel?
@@ -59,7 +59,7 @@ struct EntryPage: View {
     }
 
     @ViewBuilder
-    func metaLine(_ meta: String, standing: EntryModel.Standing) -> some View {
+    func metaLine(_ meta: String, standing: EntryPageModel.Standing) -> some View {
         switch standing {
         case .notSent:
             // Paper N9D-0: the retry glyph and the line in danger text; the line retries
@@ -109,7 +109,7 @@ struct EntryPage: View {
 
 /// JR-4 as a pushed page: owns its model, so the page keeps its state while the stack redraws.
 struct EntryScreen: View {
-    @State private var model: EntryModel
+    @State private var model: EntryPageModel
     @State private var drawn: EntryDrawnModel?
     let back: () -> Void
 
@@ -122,7 +122,7 @@ struct EntryScreen: View {
         onDelete: (() -> Void)? = nil,
         back: @escaping () -> Void
     ) {
-        _model = State(initialValue: EntryModel(id: id, data: data, capabilities: capabilities))
+        _model = State(initialValue: EntryPageModel(id: id, data: data, capabilities: capabilities))
         // the drawn parts exist only when a capability is on (all off = the app's cut)
         // the edit and the drawn parts live here; nil only when every capability is off
         _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))

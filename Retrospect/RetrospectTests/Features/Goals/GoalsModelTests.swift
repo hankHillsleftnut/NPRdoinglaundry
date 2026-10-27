@@ -110,7 +110,8 @@ struct GoalsModelTests {
     }
 }
 
-/// A GoalsData whose answer waits until the test lets it go, and counts how often it was asked.
+/// A GoalsData that holds only the FIRST answer or turn-off until the test lets it go (a second call
+/// returns at once, so a missing guard fails the count instead of hanging), and counts the calls.
 @MainActor
 final class SlowGoals: GoalsData {
     private let sample = SampleGoals()
@@ -128,13 +129,21 @@ final class SlowGoals: GoalsData {
 
     func answer(guess guessID: String, accepted: Bool) async -> GoalsOverview {
         answers += 1
-        await withCheckedContinuation { release = $0 }
+        await holdFirst()
         return await sample.answer(guess: guessID, accepted: accepted)
+    }
+
+    private var held = false
+
+    private func holdFirst() async {
+        guard !held else { return }
+        held = true
+        await withCheckedContinuation { release = $0 }
     }
 
     func turnOff(_ goalID: String) async -> GoalsOverview {
         turnOffs += 1
-        await withCheckedContinuation { release = $0 }
+        await holdFirst()
         return await sample.turnOff(goalID)
     }
 }
