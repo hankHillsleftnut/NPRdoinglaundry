@@ -30,6 +30,15 @@ struct YouMap: View {
     ] // literal-ok: Paper orb centres
 
     var body: some View {
+        // the column's width and the map's height only: the wider window sits in an overlay, which bleeds
+        // past the margins without widening the page (a fixed 390 child would push the whole page right)
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.window.height * scale)
+            .overlay(alignment: .top) { window }
+    }
+
+    private var window: some View {
         ZStack(alignment: .topLeading) {
             RYouMapRest(scale: scale, labels: true)
             if let open {
@@ -53,8 +62,5 @@ struct YouMap: View {
         }
         .frame(width: Self.window.width * scale, height: Self.window.height * scale, alignment: .topLeading)
         .clipped()
-        // the window is wider than the column: centre it and let it bleed past the margins (1G6Y-0)
-        .frame(maxWidth: .infinity)
-        .frame(height: Self.window.height * scale)
     }
 }
