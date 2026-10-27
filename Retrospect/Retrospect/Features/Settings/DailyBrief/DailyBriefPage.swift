@@ -43,6 +43,7 @@ struct DailyBriefPage: View {
                     .rText(.label)
                     .foregroundStyle(RColor.textLabel)
                     .contentTransition(.interpolate)
+                    .animation(RMotion.standard(RNumber.motionDurationFast), value: data.brief.length)
                     .padding(.top, RDimension.space2)
             }
             .padding(.horizontal, RDimension.spaceScreenMargin)
@@ -63,8 +64,8 @@ struct DailyBriefPage: View {
 
     /// "standard is about 4 minutes."
     static func caption(for brief: Settings.Brief) -> String {
-        let minutes = brief.minutes[brief.length] ?? 0
-        return "\(brief.length.rawValue) is about \(minutes) minutes."
+        guard let minutes = brief.minutes[brief.length] else { return "" }
+        return "\(brief.length.rawValue) is about \(minutes) \(minutes == 1 ? "minute" : "minutes")."
     }
 
     private var isOn: Binding<Bool> {
