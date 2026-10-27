@@ -213,6 +213,11 @@ private final class CountingEntries: EntriesData {
         return .success(Flows.Page(items: [rest[1]], nextCursor: nil))
     }
 
+    func entry(id: String) async -> Result<Flows.Journal.Entry, Flows.Failure> {
+        let found = SampleEntries.rest.first { $0.id == id }
+        return found.map { .success($0) } ?? .failure(Flows.Failure(.notFound))
+    }
+
     func retry(clientEntryId _: String) async {
         retries += 1
         try? await Task.sleep(for: .milliseconds(20))
