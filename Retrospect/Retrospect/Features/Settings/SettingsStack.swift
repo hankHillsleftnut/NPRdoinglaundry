@@ -26,6 +26,9 @@ enum SettingsDestinations {
         let data: any Flows.SettingsData
         let open: (SettingsRoute) -> Void
         let back: () -> Void
+        /// Closes this route only if it is still the top page (an awaited action ending after the
+        /// person already went back must not pop the page under it).
+        var close: (SettingsRoute) -> Void = { _ in }
         /// Launcher stills only: ST-4 opens with this question already asked.
         var asking: SourcePage.Asking?
     }
@@ -52,7 +55,7 @@ enum SettingsDestinations {
             AnyView(SourcesPage(data: context.data, open: context.open, back: context.back))
         case let .source(id):
             context.data.source(id)?.hasPage == true
-                ? AnyView(SourcePage(data: context.data, id: id, asking: context.asking, back: context.back))
+                ? AnyView(SourcePage(data: context.data, id: id, asking: context.asking, back: context.back) { context.close(.source(id)) })
                 : nil
         default:
             nil
@@ -92,12 +95,17 @@ struct SettingsStack: View {
     }
 
     private var context: SettingsDestinations.Context {
-        SettingsDestinations.Context(data: data, open: open, back: back, asking: asking)
+        SettingsDestinations.Context(data: data, open: open, back: back, close: close, asking: asking)
     }
 
     private func open(_ page: SettingsRoute) {
         guard SettingsDestinations.isBuilt(page, data: data) else { return }
         path.append(page)
+    }
+
+    private func close(_ route: SettingsRoute) {
+        guard path.last == route else { return }
+        path.removeLast()
     }
 
     private func back() {

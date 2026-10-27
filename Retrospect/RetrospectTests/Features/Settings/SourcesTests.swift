@@ -46,6 +46,8 @@ struct SourcesTests {
         await data.disconnect("calendar")
         #expect(data.source("calendar")?.status == .notConnected)
         #expect(data.sources.count == 4)
+        // a disconnected source only offers connect: no page until it's connected again
+        #expect(!SettingsDestinations.isBuilt(.source("calendar"), data: data))
     }
 
     @Test("ST-3 and ST-4 are in the launcher, ST-4 with its two questions")

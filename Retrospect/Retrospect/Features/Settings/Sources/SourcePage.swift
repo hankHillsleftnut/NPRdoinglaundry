@@ -16,13 +16,22 @@ struct SourcePage: View {
     let data: any Flows.SettingsData
     let id: Flows.Settings.Source.ID
     let back: () -> Void
+    /// After a disconnect: leave this page, if it is still the one showing.
+    var leave: () -> Void = {}
     @State private var asking: Asking?
     @State private var syncing = false
 
-    init(data: any Flows.SettingsData, id: Flows.Settings.Source.ID, asking: Asking? = nil, back: @escaping () -> Void) {
+    init(
+        data: any Flows.SettingsData,
+        id: Flows.Settings.Source.ID,
+        asking: Asking? = nil,
+        back: @escaping () -> Void,
+        leave: @escaping () -> Void = {}
+    ) {
         self.data = data
         self.id = id
         self.back = back
+        self.leave = leave
         _asking = State(initialValue: asking)
     }
 
@@ -35,7 +44,7 @@ struct SourcePage: View {
                 SettingsActionRow(
                     title: source.lastRead ?? "",
                     pill: "sync now",
-                    pending: syncing,
+                    pending: syncing || source.status == .syncing,
                     action: sync
                 )
             }
@@ -125,7 +134,7 @@ struct SourcePage: View {
         asking = nil
         Task {
             await data.disconnect(id)
-            back()
+            leave()
         }
     }
 
