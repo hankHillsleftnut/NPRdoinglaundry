@@ -19,7 +19,8 @@ import SwiftUI
 
 enum JournalV2Screens: ScreenGroup {
     static let name = "journal · v2"
-    static let screens: [LaunchableScreen] = [
+    /// JR-2 (today's brief) lists itself in `Features/Entries/Brief/BriefLaunch.swift`.
+    static let screens: [LaunchableScreen] = briefScreens + [
         LaunchableScreen(id: "JR-3", states: EntriesScenario.allCases.map(\.rawValue)) { arguments in
             AnyView(EntriesLaunch(scenario: EntriesScenario(rawValue: arguments.state) ?? .rest))
         },
