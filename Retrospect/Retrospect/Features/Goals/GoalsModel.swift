@@ -31,16 +31,16 @@ final class GoalsModel {
     }
 
     func load() async {
-        state = .rest(await data.overview())
+        state = await .rest(data.overview())
     }
 
     /// "yes" / "not quite" on GL-1's guess: the card leaves; a "yes" leaves a too-early goal behind.
     func answer(_ guess: GoalGuess, accepted: Bool) async {
-        state = .rest(await data.answer(guess: guess.id, accepted: accepted))
+        state = await .rest(data.answer(guess: guess.id, accepted: accepted))
     }
 
     /// Back from GL-2 after "turn off": read the list again (the goal is gone, the ended row counts it).
     func refresh() async {
-        state = .rest(await data.overview())
+        state = await .rest(data.overview())
     }
 }
