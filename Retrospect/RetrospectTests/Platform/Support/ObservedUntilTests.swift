@@ -22,9 +22,19 @@ private final class Woke {
 @Suite(.timeLimit(.minutes(1)))
 struct ObservedUntilTests {
     /// Lets the waiting task run until it has read its condition at least `count` times.
+    /// Stops at the time limit too (it cancels the test), so a regression fails instead of hanging.
     private func untilRead(_ reads: Reads, _ count: Int) async {
-        while reads.count < count {
+        while reads.count < count, !Task.isCancelled {
             await Task.yield()
+        }
+    }
+
+    /// Waits for `task`, passing the test's cancellation (the time limit) on to it.
+    private func finished(_ task: Task<Void, Never>) async {
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
         }
     }
 
@@ -55,7 +65,7 @@ struct ObservedUntilTests {
         await untilRead(reads, 4)
         #expect(!woke.yes, "a change that doesn't meet the condition doesn't end the wait")
         counter.value = 2
-        await waiting.value
+        await finished(waiting)
         #expect(woke.yes)
     }
 
@@ -71,7 +81,7 @@ struct ObservedUntilTests {
         }
         await untilRead(reads, 2)
         waiting.cancel()
-        await waiting.value
+        await finished(waiting)
         #expect(counter.value == 0)
     }
 }
