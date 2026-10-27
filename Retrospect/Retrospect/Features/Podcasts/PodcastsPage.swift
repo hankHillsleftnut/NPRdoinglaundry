@@ -66,11 +66,13 @@ struct PodcastsPage: View {
     /// ends above the safe area (the bottom inset is kept as a content margin). In the shell the
     /// page ends at the tab bar, so the inset there is the bar's business (V2.tabbar-blend).
     private func scroll(@ViewBuilder _ rows: () -> some View) -> some View {
-        GeometryReader { proxy in
+        // built here, outside the reader's escaping closure
+        let column = VStack(alignment: .leading, spacing: RDimension.space8) {
+            rows()
+        }
+        return GeometryReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: RDimension.space8) {
-                    rows()
-                }
+                column
                 .padding(.horizontal, RDimension.spaceScreenMargin)
                 .padding(.top, RDimension.space3)
                 .padding(.bottom, RDimension.space8)
