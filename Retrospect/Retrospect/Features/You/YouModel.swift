@@ -11,8 +11,9 @@ import Foundation
 final class YouModel {
     enum Phase: Equatable {
         case rest
-        /// Waiting for the answer (the sample answers at once; nothing is drawn for this).
-        case asking
+        /// Waiting for the answer; a re-ask keeps the answer before it on screen (only clearing brings the
+        /// map back). Nothing is drawn for waiting; the sample answers at once.
+        case asking(previous: Flows.Answer?)
         case answered(Flows.Answer)
     }
 
@@ -39,10 +40,10 @@ final class YouModel {
         guard !question.isEmpty else { return }
         onlyCertain = false
         highlighted = nil
-        phase = .asking
+        phase = .asking(previous: answer)
         let answer = await data.ask(question)
-        // the field may have been cleared while waiting: then stay at rest
-        guard phase == .asking else { return }
+        // a newer question or a cleared field wins: drop an answer for words no longer in the field
+        guard case .asking = phase, query.trimmingCharacters(in: .whitespacesAndNewlines) == question else { return }
         phase = .answered(answer)
     }
 

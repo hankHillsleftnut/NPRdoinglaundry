@@ -7,8 +7,8 @@
 //  V2.you.a: YO-5 `rest`. V2.you.b: YO-3 `rest`, `editing`. Until YO-1 and YO-2 are built (V2.you.c, d)
 //  each page opens at its stack's root, so back has nowhere to go in the launcher (as the account page's
 //  launcher). V2.you.c: YO-1 `rest` and YO-2 `found`, `nothing` (c:answer/abstained K24-0): the tab
-//  page under a static tab bar (the shell joins in a wiring PR, integrator 26 Oct). Another group's screen opens only when the registry has it (integrator
-//  rule, YO-D14).
+//  page under a static tab bar (the shell joins in a wiring PR, integrator 26 Oct). Another group's screens
+//  (a goal, settings) are not opened from here until the wiring PR (YO-D14).
 //
 #if DEBUG
 import SwiftUI
@@ -29,17 +29,6 @@ enum YouScreens: ScreenGroup {
             AnyView(SourceLaunch(editing: arguments.state == "editing"))
         },
     ]
-
-    /// This build registers that screen id (a lookup, nothing built).
-    static func has(_ id: String) -> Bool {
-        ScreenRegistry.screen(id) != nil
-    }
-
-    /// Another group's screen by its launcher id, in its first state, when this build registers it.
-    static func elsewhere(_ id: String) -> AnyView? {
-        guard let screen = ScreenRegistry.screen(id), let state = screen.states.first else { return nil }
-        return screen.build(LaunchArguments(screen: id, state: state))
-    }
 }
 
 /// YO-2's launcher states.
@@ -52,7 +41,7 @@ enum YouSearchState: String, CaseIterable {
 private struct YouTabLaunch: View {
     let asking: YouSearchState?
     @State private var data = SampleYou()
-    @State private var navigator = YouNavigator(has: YouScreens.has, elsewhere: YouScreens.elsewhere)
+    @State private var navigator = YouNavigator()
     @State private var model: YouModel?
 
     var body: some View {
@@ -86,7 +75,7 @@ private struct YouTabLaunch: View {
 private struct SourceLaunch: View {
     let editing: Bool
     @State private var data = SampleYou()
-    @State private var navigator = YouNavigator(has: YouScreens.has, elsewhere: YouScreens.elsewhere)
+    @State private var navigator = YouNavigator()
 
     var body: some View {
         YouStack(data: data, navigator: navigator) {

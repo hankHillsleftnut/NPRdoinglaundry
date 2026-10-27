@@ -40,6 +40,14 @@ struct YouModelTests {
         #expect(!model.offersOnlyCertain)
     }
 
+    @Test("asking again from an answer replaces it with the new one (never back to the map)")
+    func reask() async {
+        let model = await asked(SampleYou.sleepQuestion)
+        model.query = SampleYou.unansweredQuestion
+        await model.ask()
+        #expect(model.answer == SampleYou.nothingFound)
+    }
+
     @Test("an empty field asks nothing")
     func empty() async {
         let model = await asked("   ")
@@ -79,11 +87,6 @@ struct YouModelTests {
         #expect(String(text.characters) == "after days you run¹, and when work stops before 9².")
         let links = text.runs.compactMap(\.link)
         #expect(links == [URL(string: "retro-cite://1"), URL(string: "retro-cite://2")])
-    }
-
-    @Test("your picture opens settings only when the settings group registers ST-1")
-    func settings() {
-        #expect(YouNavigator().opener(elsewhere: YouNavigator.settingsScreenID) == nil)
     }
 
     @Test("YO-1 and YO-2 are registered with their states")
