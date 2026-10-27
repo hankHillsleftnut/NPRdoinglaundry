@@ -51,6 +51,7 @@ struct WhatIKnowModelTests {
 
     @Test("inert controls say 'not available yet'; one string for every You screen")
     func inertCopy() {
-        #expect(YouCopy.notAvailableYet == "not available yet")
+        #expect(YouCopy.inertValue(true) == "not available yet")
+        #expect(YouCopy.inertValue(false) == nil)
     }
 }
