@@ -34,6 +34,8 @@ struct ReleaseRouteTableTests {
     ]
 
     /// V2 homes (plan-v2.md §3): screens built here are dark until their group's wiring PR.
+    /// `Features/Entries` holds the journal's V2 screens: JR-2 today's brief (`Entries/Brief`), JR-3 all
+    /// entries (`Entries/Drawer`), JR-4 one entry (`Entries/Entry`). JR-1 stays in `Features/Journal` (core).
     static let darkFolders = [
         "Features/Shell", "Features/Entries", "Features/Podcasts", "Features/You", "Features/Settings",
         "Features/Goals", "Features/Outside",
@@ -141,12 +143,27 @@ struct ReleaseRouteTableTests {
         extension PodcastsPage {
             var body: some View { EmptyView() }
         }
+        @available(iOS 18, *) extension JournalScreen {
+            var gatedRow: some View { PodcastsPage() }
+        }
+        @available(iOS 18, *)
+        @MainActor public extension JournalScreen {
+            static func splitRow() -> some View { PodcastsPage() }
+        }
+        extension JournalScreen { var oneLineRow: Int { 1 } }
+        private extension JournalScreen {
+            var fileOnly: Int { 1 }
+        }
         """
         let types = Self.declaredTypes(in: darkFile)
         #expect(types == ["PodcastsPage", "PodcastsModel", "GatedPage", "OpenPage", "PackagePage", "TreePage"])
         let dark = Self.darkNames(in: [darkFile])
         // the back doors: a top-level function, and a member added to a type declared outside the fence
         #expect(dark.isSuperset(of: ["makePodcastsTab", "podcastsRow"]))
+        // ... also behind attributes with arguments, on the line before, and on the opener's own line
+        #expect(dark.isSuperset(of: ["gatedRow", "splitRow", "oneLineRow"]))
+        // a private extension's members can't be reached from another file
+        #expect(!dark.contains("fileOnly"))
         // private helpers, locals and members of the dark types themselves stay out
         #expect(!dark.contains("privateHelper") && !dark.contains("hiddenRow") && !dark.contains("local") && !dark.contains("body"))
         #expect(Self.names(in: "case .podcasts: PodcastsPage()", from: dark) == ["PodcastsPage"])
@@ -156,6 +173,18 @@ struct ReleaseRouteTableTests {
         // a "//" inside a string is not a comment: the mount after it is still seen
         #expect(Self.names(in: "let url = \"https://example.com\"; PodcastsPage()", from: dark) == ["PodcastsPage"])
         #expect(Self.names(in: "struct PodcastsPageTitle {}", from: dark).isEmpty)
+        // the scanner keeps its place through every literal Swift has (a slip blanks the real code after it)
+        #expect(Self.names(in: ##"let path = #"C:\"#; PodcastsPage()"##, from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: ##"let s = #"PodcastsModel \(x) \" still raw"#; PodcastsPage()"##, from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: ##"let s = #"\#(PodcastsPage())"#"##, from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: #"let s = "a\"PodcastsModel\\"; PodcastsPage()"#, from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: "let s = \"\"\"\nsay \"hi\n\"\"\"\nPodcastsPage()", from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: "let s = \"\"; PodcastsPage()", from: dark) == ["PodcastsPage"])
+        // an interpolation is code: a mount inside one is seen, a string inside it is not
+        #expect(Self.names(in: #"Text("\(presenter.show(PodcastsPage()))")"#, from: dark) == ["PodcastsPage"])
+        #expect(Self.names(in: #"let s = "\(f("PodcastsModel", (1)))"; PodcastsPage()"#, from: dark) == ["PodcastsPage"])
+        // block comments nest
+        #expect(Self.names(in: "/* a /* b */ PodcastsPage() */ let x = 1", from: dark).isEmpty)
     }
 
     // MARK: the scanner
@@ -195,20 +224,32 @@ struct ReleaseRouteTableTests {
         let code = texts.map(stripped)
         let types = code.reduce(into: Set<String>()) { $0.formUnion(declaredTypes(in: $1)) }
         let member = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"(?:func|var|let)\s+(\w+)"#)
-        let opener = try? NSRegularExpression(pattern: #"^\s*(?:@\w+\s+)*(?:public |internal |package )?extension\s+([A-Z]\w*)"#)
+        // attributes with arguments too (`@available(iOS 18, *) extension …`), and any access modifier
+        let opener = try? NSRegularExpression(pattern: #"^\s*"# + modifiers + #"extension\s+([A-Z]\w*)[^{\n]*\{?"#)
         var names = types
+        func collect(_ line: String) {
+            let range = NSRange(line.startIndex..., in: line)
+            guard let decl = member?.firstMatch(in: line, range: range),
+                  let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
+                  !line[mods].contains("private") else { return }
+            names.insert(String(line[name]))
+        }
         for text in code {
             var depth = 0
             var outsideExtension = false
             for line in text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
                 let range = NSRange(line.startIndex..., in: line)
-                if depth == 0, let open = opener?.firstMatch(in: line, range: range), let name = Range(open.range(at: 1), in: line) {
-                    outsideExtension = !types.contains(String(line[name]))
-                } else if depth == 0 || (depth == 1 && outsideExtension),
-                          let decl = member?.firstMatch(in: line, range: range),
-                          let mods = Range(decl.range(at: 1), in: line), let name = Range(decl.range(at: 2), in: line),
-                          !line[mods].contains("private") {
-                    names.insert(String(line[name]))
+                if depth == 0, let open = opener?.firstMatch(in: line, range: range),
+                   let mods = Range(open.range(at: 1), in: line), let name = Range(open.range(at: 2), in: line),
+                   let whole = Range(open.range, in: line) {
+                    // a `private extension` adds nothing another file can reach
+                    outsideExtension = !types.contains(String(line[name])) && !line[mods].contains("private")
+                    // a one-line `extension JournalScreen { var row … }`: the member after the brace
+                    if outsideExtension, line[whole].hasSuffix("{") {
+                        collect(String(line[whole.upperBound...]))
+                    }
+                } else if depth == 0 || (depth == 1 && outsideExtension) {
+                    collect(line)
                 }
                 depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
                 if depth == 0 {
@@ -231,27 +272,90 @@ struct ReleaseRouteTableTests {
     }
 
     /// The code with comments and string literals blanked out (a `//` inside a string is not a comment),
-    /// keeping the line breaks so line-based scans still line up.
+    /// keeping the line breaks so line-based scans still line up. It knows Swift's literals well enough not to
+    /// lose its place: raw strings (`#"C:\"#`, no escapes inside), multi-line strings (a lone `"` inside them),
+    /// nested block comments, and interpolations, whose contents are code (`"\(show(PodcastsPage()))"`).
     static func stripped(_ text: String) -> String {
-        enum Mode { case code, line, block, string }
-        var mode = Mode.code
+        enum Frame {
+            case code(interpolation: Bool, parens: Int)
+            case string(hashes: Int, multiline: Bool)
+            case block(depth: Int)
+        }
+        let chars = Array(text)
+        var stack: [Frame] = [.code(interpolation: false, parens: 0)]
         var out = ""
-        var chars = Array(text)
-        chars.append(" ")
         var index = 0
-        while index < chars.count - 1 {
-            let char = chars[index], next = chars[index + 1]
-            switch mode {
-            case .code:
-                if char == "/", next == "/" { mode = .line; index += 1 } else if char == "/", next == "*" { mode = .block; index += 1 } else if char == "\"" { mode = .string } else { out.append(char) }
-            case .line:
-                if char == "\n" { mode = .code; out.append(char) }
-            case .block:
-                if char == "*", next == "/" { mode = .code; index += 1 } else if char == "\n" { out.append(char) }
-            case .string:
-                if char == "\\" { index += 1 } else if char == "\"" { mode = .code; out.append(" ") } else if char == "\n" { out.append(char) }
+        func at(_ offset: Int) -> Character? {
+            index + offset < chars.count ? chars[index + offset] : nil
+        }
+        func hashes(from start: Int) -> Int {
+            var count = 0
+            while start + count < chars.count, chars[start + count] == "#" { count += 1 }
+            return count
+        }
+        while index < chars.count {
+            let char = chars[index]
+            switch stack[stack.count - 1] {
+            case let .code(interpolation, parens):
+                let pounds = hashes(from: index)
+                if char == "/", at(1) == "/" {
+                    while index < chars.count, chars[index] != "\n" { index += 1 }
+                    continue
+                } else if char == "/", at(1) == "*" {
+                    stack.append(.block(depth: 1))
+                    index += 2
+                    continue
+                } else if (char == "\"" || char == "#"), at(pounds) == "\"" {
+                    let multiline = at(pounds + 1) == "\"" && at(pounds + 2) == "\""
+                    stack.append(.string(hashes: pounds, multiline: multiline))
+                    index += pounds + (multiline ? 3 : 1)
+                    out.append(" ")
+                    continue
+                } else if interpolation, char == "(" {
+                    stack[stack.count - 1] = .code(interpolation: true, parens: parens + 1)
+                } else if interpolation, char == ")" {
+                    if parens == 0 {
+                        stack.removeLast()
+                        out.append(" ")
+                        index += 1
+                        continue
+                    }
+                    stack[stack.count - 1] = .code(interpolation: true, parens: parens - 1)
+                }
+                out.append(char)
+                index += 1
+            case let .string(pounds, multiline):
+                if char == "\\", hashes(from: index + 1) >= pounds {
+                    // an escape only counts with the string's own number of `#`s after the backslash
+                    if at(1 + pounds) == "(" {
+                        stack.append(.code(interpolation: true, parens: 0))
+                        out.append(" ")
+                    }
+                    index += 2 + pounds
+                    continue
+                }
+                let closer = multiline ? 3 : 1
+                if char == "\"", (0..<closer).allSatisfy({ at($0) == "\"" }), hashes(from: index + closer) >= pounds {
+                    stack.removeLast()
+                    out.append(" ")
+                    index += closer + pounds
+                    continue
+                }
+                if char == "\n" { out.append(char) }
+                index += 1
+            case let .block(depth):
+                if char == "/", at(1) == "*" {
+                    stack[stack.count - 1] = .block(depth: depth + 1)
+                    index += 2
+                } else if char == "*", at(1) == "/" {
+                    stack[stack.count - 1] = .block(depth: depth - 1)
+                    if depth == 1 { stack.removeLast() }
+                    index += 2
+                } else {
+                    if char == "\n" { out.append(char) }
+                    index += 1
+                }
             }
-            index += 1
         }
         return out
     }
