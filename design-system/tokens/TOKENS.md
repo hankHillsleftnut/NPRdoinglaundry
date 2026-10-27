@@ -2,7 +2,7 @@
 
 Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 
-**617 tokens** · 541 semantic · 276 marked *to set*
+**620 tokens** · 544 semantic · 276 marked *to set*
 
 ## palette
 
@@ -199,6 +199,9 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand.
 | `color.orb.glow` | A purpose page's orb, the wide light around the wash (sky.400 at 32%; 0 0 70 −10, Paper ON-5 1F82-0). | rgba(67,183,255,0.32) | rgba(35,154,222,0.32) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow pool night value, FOUNDER to confirm |
 | `color.orb.ringEdge` | A purpose page's orb, the 0.5 inner edge of its ring (sky.300 at 60%, Paper ON-5 1F83-0). | rgba(127,205,255,0.60) | rgba(80,164,236,0.30) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: glow.primary.ring's night value, FOUNDER to confirm |
 | `color.orb.ringShadow` | A purpose page's orb, the light its ring casts below it (sky.500 at 40%; 0 14 34 −10, Paper ON-5 1F83-0). | rgba(47,168,240,0.40) | rgba(2,141,209,0.38) | Paper ON-5 16FA-0 (everything · latest); dark not drawn: the voice-glow under night value, FOUNDER to confirm |
+| `color.firstEpisode.base` | The first episode's artwork well, its base (Paper ON-10 26MR-0 background). | {palette.sky.500} | {palette.sky.500} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
+| `color.firstEpisode.light` | The first episode's artwork well, the warm light at its top trailing corner (radial at 85% 10% to 55%, Paper 26MR-0). | {palette.amber.300} | {palette.amber.300} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
+| `color.firstEpisode.shade` | The first episode's artwork well, the deep sky pooling at its bottom leading corner (radial at 0% 100% to 80%, Paper 26MR-0). | {palette.sky.800} | {palette.sky.800} | Paper ON-10 26LG-0 (everything · latest); artwork keeps its colours in dark |
 | `color.player.progress` | How far through an episode or brief you are. (3.6:1 against the track: WCAG 1.4.11.) | {palette.sky.700} | {palette.sky.300} | to set: app need |
 | `color.player.buffered` | How much has loaded ahead. | {color.surface.trackFill} | {color.surface.trackFill} | to set: app need |
 | `color.player.chapterMark` | A chapter tick on the progress bar. | {palette.paper.0} | {palette.night.900} | to set: app need |
