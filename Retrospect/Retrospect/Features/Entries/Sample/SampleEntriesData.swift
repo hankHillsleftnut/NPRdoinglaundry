@@ -180,15 +180,15 @@ enum SampleEntries {
                 client: nil,
                 kind: .typed,
                 text: "ran 5k without stopping",
-                at: "2026-10-21T07:02:00.000Z",
+                at: "2025-10-21T07:02:00.000Z",
                 reading: .waiting
             ).entry,
             Entry(
                 local: trainID,
                 kind: .typed,
                 text: "the train is stuck again, writing this underground",
-                createdAt: date("2026-10-21T08:40:00.000Z"),
-                day: "2026-10-21",
+                createdAt: date("2025-10-21T08:40:00.000Z"),
+                day: "2025-10-21",
                 delivery: .failed(Flows.Failure(.network))
             ),
         ]
