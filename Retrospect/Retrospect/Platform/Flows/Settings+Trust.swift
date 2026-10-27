@@ -42,6 +42,25 @@ extension Flows.Settings {
         }
     }
 
+    /// How fast briefs and episodes play (ST-7 "speed"). Paper draws only "1×"; the other speeds are
+    /// provisional (ST-D24).
+    enum Speed: Double, CaseIterable, Sendable {
+        case slower = 0.8
+        case normal = 1
+        case faster = 1.25
+        case fastest = 1.5
+
+        /// "1×", "1.25×"
+        var label: String {
+            switch self {
+            case .slower: "0.8×"
+            case .normal: "1×"
+            case .faster: "1.25×"
+            case .fastest: "1.5×"
+            }
+        }
+    }
+
     /// What retro has learned about how you answer (ST-8), in three lines.
     struct Learned: Equatable, Sendable {
         /// The display sentence ("you answer questions about work most, 8 of 10.").
@@ -63,7 +82,17 @@ extension Flows {
         var retroReason: String { get }
         /// Nil until retro has learned something (that page is undrawn: ST-D25).
         var learned: Settings.Learned? { get }
+        /// ST-5 "read in the background": your own ambient switch. Off, retro learns only from what you send.
+        var readsInBackground: Bool { get }
+        /// ST-5 "where it's processed" ("europe · named providers").
+        var processedWhere: String { get }
+        /// ST-7: how briefs and episodes play.
+        var speed: Settings.Speed { get }
 
         func setStraightness(_ value: Settings.Straightness)
+        func setReadsInBackground(_ isOn: Bool)
+        func setSpeed(_ value: Settings.Speed)
+        /// ST-5 "delete my data…", confirmed in its dialog.
+        func deleteMyData() async
     }
 }

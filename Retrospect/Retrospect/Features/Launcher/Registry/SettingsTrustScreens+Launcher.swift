@@ -13,12 +13,27 @@ import SwiftUI
 enum SettingsTrustScreens: ScreenGroup {
     static let name = "settings · trust"
     static let screens: [LaunchableScreen] = [
+        LaunchableScreen(id: "ST-5", states: ["rest", "delete"]) { arguments in
+            arguments.state == "delete" ? AnyView(SettingsPrivacyDeleteLaunch()) : AnyView(SettingsLaunch(path: [.privacy]))
+        },
         LaunchableScreen(id: "ST-6", states: ["rest"]) { _ in
             AnyView(SettingsLaunch(path: [.howStraight]))
+        },
+        LaunchableScreen(id: "ST-7", states: ["rest"]) { _ in
+            AnyView(SettingsLaunch(path: [.voice]))
         },
         LaunchableScreen(id: "ST-8", states: ["rest"]) { _ in
             AnyView(SettingsLaunch(path: [.learned]))
         },
     ]
+}
+
+/// ST-5 with "delete my data?" already up, for stills: the page on its own (back does nothing here).
+private struct SettingsPrivacyDeleteLaunch: View {
+    @State private var data = SampleSettings()
+
+    var body: some View {
+        SettingsPrivacyPage(data: data, deleting: true, back: {})
+    }
 }
 #endif

@@ -4,7 +4,7 @@
 //  never edit the same file. Each case returns its page once that page is built; until then nil,
 //  and ST-1's row for it does nothing (listed in the PR). Account already has a page (P33's
 //  AccountPage, the partial ST-9), on a sample sign-out flow. Built: ST-6 how straight, ST-8 what
-//  i've learned (B1). Waiting: ST-5 privacy, ST-7 voice (B2).
+//  i've learned (B1), ST-5 privacy, ST-7 voice and listening (B2).
 //
 import SwiftUI
 
@@ -13,18 +13,20 @@ extension SettingsDestinations {
         switch page {
         case .account:
             AnyView(SettingsAccountPage(back: context.back))
+        case .privacy:
+            trustData(context).map { AnyView(SettingsPrivacyPage(data: $0, back: context.back)) }
+        case .voice:
+            trustData(context).map { AnyView(VoiceListeningPage(data: $0, back: context.back)) }
         case .howStraight:
             trustData(context).map { AnyView(HowStraightPage(data: $0, back: context.back)) }
         case .learned:
             trustData(context).map { AnyView(LearnedPage(data: $0, back: context.back)) }
-        default:
-            nil
         }
     }
 
     /// The second half's values, when the settings data carries them (the sample does; live data will).
-    private static func trustData(_ context: Context) -> (any Flows.SettingsTrustData)? {
-        context.data as? any Flows.SettingsTrustData
+    private static func trustData(_ context: Context) -> (any Flows.SettingsData & Flows.SettingsTrustData)? {
+        context.data as? any Flows.SettingsData & Flows.SettingsTrustData
     }
 }
 

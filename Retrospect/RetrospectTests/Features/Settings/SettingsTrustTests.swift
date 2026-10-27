@@ -46,16 +46,43 @@ struct SettingsTrustTests {
         #expect(learned?.changed == "last changed on sunday")
     }
 
-    @Test("ST-1's how straight and what i've learned rows open their pages")
+    @Test("ST-5 starts as Paper draws it and its switch applies at once")
+    func privacy() async {
+        let data = SampleSettings(sleep: Self.instant)
+        #expect(data.readsInBackground)
+        #expect(data.processedWhere == "europe · named providers")
+        data.setReadsInBackground(false)
+        #expect(!data.readsInBackground)
+        await data.deleteMyData()
+        #expect(!data.readsInBackground)
+    }
+
+    @Test("ST-7: speed starts at 1×, picks apply, talk or read is ST-1's value")
+    func voice() {
+        let data = SampleSettings(sleep: Self.instant)
+        #expect(data.speed.label == "1×")
+        #expect(Flows.Settings.Speed.allCases.map(\.label) == ["0.8×", "1×", "1.25×", "1.5×"])
+        data.setSpeed(.faster)
+        #expect(data.speed == .faster)
+        data.setTalkOrRead(.read)
+        #expect(data.talkOrRead == .read)
+        #expect(data.voiceName == "warm")
+    }
+
+    @Test("ST-1's second-half rows all open their pages")
     func routes() {
         let data = SampleSettings(sleep: Self.instant)
+        #expect(SettingsDestinations.isBuilt(.privacy, data: data))
+        #expect(SettingsDestinations.isBuilt(.voice, data: data))
         #expect(SettingsDestinations.isBuilt(.howStraight, data: data))
         #expect(SettingsDestinations.isBuilt(.learned, data: data))
         #expect(SettingsDestinations.isBuilt(.account, data: data))
     }
 
-    @Test("the trust group registers ST-6 and ST-8 in the launcher")
+    @Test("the trust group registers ST-5 … ST-8 in the launcher")
     func registered() {
+        #expect(ScreenRegistry.screen("ST-5")?.states == ["rest", "delete"])
+        #expect(ScreenRegistry.screen("ST-7")?.states == ["rest"])
         #expect(ScreenRegistry.screen("ST-6")?.states == ["rest"])
         #expect(ScreenRegistry.screen("ST-8")?.states == ["rest"])
     }

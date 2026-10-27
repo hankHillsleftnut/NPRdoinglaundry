@@ -26,6 +26,13 @@ extension SampleSettings {
             changed: "last changed on sunday"
         )
 
+        /// ST-5's ambient switch (Paper 1GPZ-0: on).
+        var readsInBackground = true
+        /// Paper 1GPU-0.
+        let processedWhere = "europe · named providers"
+        /// ST-7 (Paper 1GSK-0: "1×").
+        var speed: Settings.Speed = .normal
+
         /// ST-1's "how straight i am with you" value.
         var straightnessName: String {
             straightness.shortName
@@ -52,7 +59,30 @@ extension SampleSettings: Flows.SettingsTrustData {
         trust.learned
     }
 
+    var readsInBackground: Bool {
+        trust.readsInBackground
+    }
+
+    var processedWhere: String {
+        trust.processedWhere
+    }
+
+    var speed: Settings.Speed {
+        trust.speed
+    }
+
     func setStraightness(_ value: Settings.Straightness) {
         trust.straightness = value
     }
+
+    func setReadsInBackground(_ isOn: Bool) {
+        trust.readsInBackground = isOn
+    }
+
+    func setSpeed(_ value: Settings.Speed) {
+        trust.speed = value
+    }
+
+    /// Nothing after a delete is drawn (ST-D19): the sample keeps its values and the dialog closes.
+    func deleteMyData() async {}
 }
