@@ -98,43 +98,81 @@ struct EpisodePlayerTests {
         }
     }
 
-    // Paper 1FV9-0's column is 513 tall; its lines' middles sit at 53, 131, 238, 345 and 423 (QA batch 4).
+    // Paper 1FV9-0's column is 513 tall; its five lines sit at 24, 102, 209, 316 and 394 (1FWZ-0 … 1FWV-0),
+    // 58, 87, 87, 58 and 58 tall.
     private static let column: CGFloat = 513
-    private static let middles: [CGFloat] = [53, 131, 238, 345, 423]
-
-    @Test("at rest, as Paper draws it: the first and last lines blur under the bands, the middle three stay sharp")
-    func edgesBlurTheFirstAndLastLine() {
-        let edges = TranscriptEdges()
-        let strengths = Self.middles.map { edges.strength(mid: $0, viewport: Self.column) }
-        #expect(strengths[0] > 0.5)
-        #expect(strengths[4] > 0.5)
-        #expect(strengths[1 ... 3].allSatisfy { $0 == 0 })
-        // the radius peaks at the token's 8 and never goes past it
-        #expect(edges.radius(line: CGRect(x: 0, y: 0, width: 10, height: 10), viewport: Self.column) == RDimension.blurTranscriptTopMax)
-        #expect(edges.radius(line: CGRect(x: 0, y: 505, width: 10, height: 8), viewport: Self.column) == RDimension.blurTranscriptBottomMax)
+    private static let lines: [CGRect] = [(24, 58), (102, 87), (209, 87), (316, 58), (394, 58)].map {
+        CGRect(x: 0, y: $0.0, width: 346, height: $0.1)
     }
 
-    @Test("the blur eases: full only near the edge, sharp at each band's inner edge")
+    @Test("at rest, as Paper draws it: the first and last lines soften only toward the edge, the middle three are sharp")
+    func edgesSoftenOnlyTowardTheEdge() throws {
+        let edges = TranscriptEdges()
+        let first = edges.softness(line: Self.lines[0], viewport: Self.column)
+        let last = edges.softness(line: Self.lines[4], viewport: Self.column)
+        // the first line: soft at its top, its bottom row nearly sharp (readable)
+        #expect(try #require(first.first) == 1)
+        #expect(try #require(first.last) < 0.3)
+        // the last line: its top row nearly sharp, soft toward the bottom edge
+        #expect(try #require(last.first) < 0.3)
+        #expect(try #require(last.last) == 1)
+        // the softness falls off down the first line and rises down the last, never jumps
+        #expect(first == first.sorted(by: >))
+        #expect(last == last.sorted())
+        // the middle three stay sharp (the fourth's last pixel grazes the bottom band by 1pt in Paper too)
+        #expect(Self.lines[1 ... 3].allSatisfy { (edges.softness(line: $0, viewport: Self.column).max() ?? 0) < 0.05 })
+        // the blurred copy is the band's 8; the mask does the easing
+        #expect(edges.radius(line: Self.lines[0], viewport: Self.column) == RDimension.blurTranscriptTopMax)
+        #expect(edges.radius(line: Self.lines[4], viewport: Self.column) == RDimension.blurTranscriptBottomMax)
+    }
+
+    @Test("the line being read never softens, wherever it sits (QA batch 6: tease-ended, SE, AX3)")
+    func currentLineStaysSharp() {
+        let edges = TranscriptEdges()
+        #expect(edges.softness(line: Self.lines[0], viewport: Self.column, isCurrent: true).isEmpty)
+        #expect(edges.softness(line: Self.lines[4], viewport: Self.column, isCurrent: true).isEmpty)
+        #expect(edges.stops(line: Self.lines[4], viewport: Self.column, isCurrent: true).isEmpty)
+    }
+
+    @Test("the masks run the whole line, top to bottom, one stop per sample")
+    func masksCoverTheLine() {
+        let edges = TranscriptEdges()
+        let soft = edges.stops(line: Self.lines[0], viewport: Self.column)
+        let sharp = edges.stops(line: Self.lines[0], viewport: Self.column, sharp: true)
+        #expect(soft.count == TranscriptEdges.samples + 1)
+        #expect(soft.map(\.location) == sharp.map(\.location))
+        #expect(soft.first?.location == 0)
+        #expect(soft.last?.location == 1)
+    }
+
+    @Test("the sheet colour rises over the soft part toward each edge, as Paper's bands lay it, and clears inside")
+    func fadeTowardTheEdges() {
+        let edges = TranscriptEdges()
+        #expect(edges.fade(y: 0, viewport: Self.column) == 1)
+        #expect(edges.fade(y: Self.column, viewport: Self.column) == 1)
+        #expect(edges.fade(y: RDimension.blurTranscriptTopBand, viewport: Self.column) == 0)
+        #expect(edges.fade(y: Self.column / 2, viewport: Self.column) == 0)
+        #expect(edges.fade(y: 48, viewport: Self.column) == 0.5)
+    }
+
+    @Test("the ramp: full only near the edge, sharp at each band's inner edge")
     func edgesEase() {
         let edges = TranscriptEdges()
-        #expect(edges.strength(mid: 10, viewport: Self.column) == 1)
-        #expect(edges.strength(mid: RDimension.blurTranscriptTopBand, viewport: Self.column) == 0)
-        #expect(edges.strength(mid: Self.column - RDimension.blurTranscriptBottomBand, viewport: Self.column) == 0)
-        #expect(edges.strength(mid: Self.column - 5, viewport: Self.column) == 1)
-        #expect(edges.radius(line: .zero, viewport: nil) == 0)
+        #expect(edges.strength(y: 10, viewport: Self.column) == 1)
+        #expect(edges.strength(y: RDimension.blurTranscriptTopBand, viewport: Self.column) == 0)
+        #expect(edges.strength(y: Self.column - RDimension.blurTranscriptBottomBand, viewport: Self.column) == 0)
+        #expect(edges.strength(y: Self.column - 5, viewport: Self.column) == 1)
     }
 
-    @Test("Reduce Transparency: no line blurs (the sheet tint carries the edges)")
-    func reduceTransparencyBlursNothing() {
+    @Test("Reduce Transparency: no line softens (the sheet tint carries the edges)")
+    func reduceTransparencySoftensNothing() {
         let edges = TranscriptEdges(reduceTransparency: true)
-        #expect(Self.middles.allSatisfy { edges.strength(mid: $0, viewport: Self.column) == 0 })
+        #expect(Self.lines.allSatisfy { edges.softness(line: $0, viewport: Self.column).isEmpty })
     }
 
-    @Test("on a short phone the smaller bands blur less of the column")
+    @Test("on a short phone the smaller bands soften less of the column")
     func compactBands() {
-        let regular = TranscriptEdges()
-        let compact = TranscriptEdges(compact: true)
-        #expect(compact.strength(mid: 70, viewport: Self.column) == 0)
-        #expect(regular.strength(mid: 70, viewport: Self.column) > 0)
+        #expect(TranscriptEdges(compact: true).strength(y: 70, viewport: Self.column) == 0)
+        #expect(TranscriptEdges().strength(y: 70, viewport: Self.column) > 0)
     }
 }

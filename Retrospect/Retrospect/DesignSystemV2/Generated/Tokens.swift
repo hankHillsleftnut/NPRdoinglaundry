@@ -518,6 +518,8 @@ public enum RDimension {
     public static let sizeIconInWell: CGFloat = 18
     /// The › at the end of a row.
     public static let sizeIconChevron: CGFloat = 14
+    /// The check before a chosen quick answer (c:pill/choice/on).
+    public static let sizeIconCheck: CGFloat = 14
     /// Artwork in a list row.
     public static let sizeArtworkRow: CGFloat = 40
     /// Artwork in a card or on the player header.
@@ -946,11 +948,11 @@ public enum RNumber {
     public static let blurTabSaturation: Double = 1.5
     /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
     public static let blurTranscriptTopTint: Double = 0.3
-    /// Player transcript, top: a line under the band is blurred in full within this outer fraction of the band; it eases to sharp at the band's inner edge.
+    /// Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens).
     public static let blurTranscriptTopLineSolid: Double = 0.3
     /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
     public static let blurTranscriptBottomTint: Double = 0.15
-    /// Player transcript, bottom: a line under the band is blurred in full once this fraction of the band is above it; it eases from sharp at the band's inner edge.
+    /// Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens).
     public static let blurTranscriptBottomLineSolid: Double = 0.55
     /// The page.
     public static let layerBase: Double = 0
@@ -1073,6 +1075,13 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 0.5, blur: 1, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 1, blur: 2, spread: -1),
+    ]
+    /// A quick answer chosen on an onboarding question (c:pill/choice/on): top light, the outer hairline, contact and a small cast pulled in by its spread; no inner ring.
+    public static let boxShadowPillChoiceOn: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
     ]
     /// The mini-player floating over the tabs: top light, outer hairline, contact, and the cast and ambient pulled in by their spreads so nothing climbs above the top edge (no inner ring).
     public static let boxShadowMiniPlayer: [RShadowLayer] = [
