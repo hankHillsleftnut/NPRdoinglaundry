@@ -59,6 +59,10 @@ protocol YouData: AnyObject {
     func atRest() async -> Flows.YouAtRest
     /// YO-2: what asking about yourself finds (or that nothing answers it).
     func ask(_ question: String) async -> Flows.Answer
+    /// YO-4: a named node of the map.
+    func node(named name: String) async -> Flows.Node?
+    /// Your answer to a node's sheet.
+    func answer(_ answer: Flows.NodeAnswer, node id: String) async
     /// YO-5's areas and answers.
     func whatIKnow() async -> Flows.WhatIKnow
     /// YO-3: one source by id; nil when it doesn't exist.

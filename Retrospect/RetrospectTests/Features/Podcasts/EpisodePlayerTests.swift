@@ -175,4 +175,29 @@ struct EpisodePlayerTests {
         #expect(TranscriptEdges(compact: true).strength(y: 70, viewport: Self.column) == 0)
         #expect(TranscriptEdges().strength(y: 70, viewport: Self.column) > 0)
     }
+
+    @Test("SE (QA batch 8): the column centres the line being read, every line it moves to, the tease's last too")
+    func seFollowsTheLineBeingRead() {
+        let se = TranscriptEdges(compact: true)
+        let weekly = SampleEpisodeTranscript.weekly
+        #expect(se.followedLine(current: 2, in: weekly) == weekly.lines[2].id)
+        let tease = SampleTranscript.tease
+        #expect(se.followedLine(current: tease.lines.count - 1, in: tease) == tease.lines.last?.id)
+        #expect(se.followedLine(current: nil, in: weekly) == nil)
+        #expect(se.followedLine(current: 99, in: weekly) == nil)
+        // and the line being read never softens there, wherever it lands, even in the bottom band
+        let inBand = CGRect(x: 0, y: 190, width: 300, height: 87)
+        #expect(se.softness(line: inBand, viewport: 300, isCurrent: true).isEmpty)
+    }
+
+    @Test("17 Pro: the words stay where Paper draws them (nothing is centred)")
+    func proKeepsPapersPlacement() {
+        #expect(TranscriptEdges().followedLine(current: 2, in: SampleEpisodeTranscript.weekly) == nil)
+    }
+
+    @Test("SE leaves the bottom band as room under the last line, so it can rise out of it; the 17 Pro none")
+    func bottomRoom() {
+        #expect(TranscriptEdges().followRoom == 0)
+        #expect(TranscriptEdges(compact: true).followRoom == RDimension.blurTranscriptBottomBandCompact)
+    }
 }

@@ -247,18 +247,18 @@ struct FlowHostTests {
 
     // MARK: The end of what's built
 
-    @Test("getting ready's 'made' ends the walk: the start-over pill shows there, and starting over is a fresh splash")
+    @Test("the tease's end ends the walk: the start-over pill shows there, and starting over is a fresh splash")
     func endOfWhatsBuilt() {
         let store = MemoryFlowStore()
-        let model = flow(store, start: .gettingReady)
+        let model = flow(store, start: .tease)
         model.answered(.namePlace, words: "sam.")
         #expect(model.isAtEnd == false)
-        model.send(.episodeReady)
-        #expect(model.step == .gettingReady)
-        #expect(model.endedAt == .gettingReady)
+        model.send(.teaseEnded)
+        #expect(model.step == .tease)
+        #expect(model.endedAt == .tease)
         #expect(model.isAtEnd)
         // a relaunch at the end shows the pill at once
-        #expect(store.saved?.endedAt == .gettingReady)
+        #expect(store.saved?.endedAt == .tease)
         #expect(flow(store).isAtEnd)
 
         let fresh = model.startedOver()
@@ -266,6 +266,53 @@ struct FlowHostTests {
         #expect(fresh.answers.isEmpty)
         #expect(fresh.isAtEnd == false)
         #expect(store.saved == SampleFlowSaved(step: .splash))
+    }
+
+    // MARK: The tease (J2)
+
+    @Test("the tease plays on its own from 0:00 and its end hands on once: the walk ends there for now")
+    func teasePlaysAndEnds() async {
+        let model = flow(MemoryFlowStore(), start: .gettingReady)
+        model.send(.episodeReady)
+        #expect(model.step == .tease)
+        let sheet = model.teaseSheet()
+        #expect(model.teaseSheet() === sheet)
+        // it rises playing, from 0:00
+        #expect(sheet.state == .playing)
+        #expect(sheet.playback.position == 0)
+        // its end, without racing 40 beats against a bounded settle
+        sheet.playback.seek(to: 10)
+        await settle { model.isAtEnd }
+        #expect(sheet.state == .ended)
+        #expect(model.step == .tease)
+        #expect(model.endedAt == .tease)
+    }
+
+    @Test("while the tease is up, the sheet covers getting ready (hidden, out of touch, modal); never before or on other steps")
+    func sheetCoversOnlyDuringTheTease() {
+        let model = flow(MemoryFlowStore(), start: .gettingReady)
+        #expect(model.sheetCoversPage == false)
+        model.send(.episodeReady)
+        #expect(model.sheetCoversPage)
+        // the end of the tease keeps the sheet up (the pill shows over it)
+        model.send(.teaseEnded)
+        #expect(model.sheetCoversPage)
+        for step in FlowStep.allCases where step != .tease {
+            #expect(flow(MemoryFlowStore(), start: step).sheetCoversPage == false, "\(step)")
+        }
+    }
+
+    @Test("the tease's collapse hands on like its end (row 39 default until the founder answers)")
+    func teaseCollapseHandsOn() {
+        let model = flow(MemoryFlowStore(), start: .tease)
+        let sheet = model.teaseSheet()
+        sheet.collapse()
+        #expect(model.endedAt == .tease)
+        // the tease stops as it hands on
+        #expect(sheet.state == .paused)
+        // a second tap does nothing more
+        sheet.collapse()
+        #expect(sheet.hasCollapsed)
     }
 
     @Test("a stray event with no planned hand-off never shows the pill (the invite's phase after 'you're in')")
@@ -379,7 +426,7 @@ struct FlowHostTests {
 
     // MARK: Getting ready (GR.ready)
 
-    @Test("getting ready: the answer is kept on the flow and comes back after a relaunch; made ends the flow there")
+    @Test("getting ready: the answer is kept on the flow and comes back after a relaunch; made raises the tease")
     func gettingReadyKeepsAndEnds() async {
         let store = MemoryFlowStore(SampleFlowSaved(step: .gettingReady))
         let model = flow(store)
@@ -401,11 +448,12 @@ struct FlowHostTests {
         #expect(model.answers[.thisWeek] == "the investor call on thursday")
         await page.run()
         #expect(made == 1)
-        // no row to the tease yet: the flow ends cleanly here
-        #expect(model.step == .gettingReady)
+        // made: the tease rises over getting ready
+        #expect(model.step == .tease)
 
+        // a relaunch at the tease keeps getting ready's words under it
         let again = flow(store)
-        #expect(again.step == .gettingReady)
+        #expect(again.step == .tease)
         let resumed = GettingReadyModel(
             firstRun: again.firstRun,
             episode: again.gettingReadyEpisode(),

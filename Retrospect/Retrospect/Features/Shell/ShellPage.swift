@@ -24,6 +24,14 @@
 //  The strip under the bar is opaque canvas (build notes, podcasts bottom edge). A tab change cross-fades
 //  the page over motion.duration.fast (Reduce Motion: none); the bar plays haptic.tab for a tap.
 //
+//  G0b (plan-glue.md §1c; DISC L0-14, PCD-10): the sheet host and the mini-player are the shell's.
+//  One RSheetHost wraps the pages AND the bar, so a sheet (an `AppSheet` from any page, or a page's
+//  own `.rSheet`, whose host passes through here) covers the tab bar and the whole shell recedes
+//  behind it (SCREEN-MAP §2). The mini-player, when the host gives one, floats space3 (12) above the
+//  bar on the 24 margins on every tab (part 45; mini-player.md), stays put on a tab change, rises
+//  space3 and fades in over motion.duration.slow (280, Reduce Motion: fade only) and steps aside with
+//  the bar for the keyboard. Pages end above it, so it never covers their content.
+//
 import SwiftUI
 import UIKit
 
@@ -42,9 +50,24 @@ final class ShellModel {
     private(set) var visited: Set<RTab>
     /// Counts re-taps of the selected tab, per tab (tab-bar.md rule 4).
     private(set) var reselects: [RTab: Int] = [:]
+    /// The sheet over the shell (G0b); one at a time, and only one whose page is built.
+    private(set) var sheet: AppSheet?
+    /// The last sheet presented, kept after it is dismissed so it doesn't vanish while it slides away.
+    private(set) var presented: AppSheet?
+    /// Counts presentations: each one is its own request to the sheet host.
+    private(set) var presentation = 0
 
     /// Opens on `selection` if it has a page, else on the first tab that does (journal first).
-    init(selection: RTab = .journal, available: Set<RTab> = Set(RTab.allCases)) {
+    /// Whether a sheet has a page (the route table's answer; tests stand in for groups not built yet).
+    private let sheetIsBuilt: (AppSheet) -> Bool
+
+    init(
+        selection: RTab = .journal,
+        available: Set<RTab> = Set(RTab.allCases),
+        sheetIsBuilt: ((AppSheet) -> Bool)? = nil
+    ) {
+        // the default is formed here, on the main actor (a default argument isn't)
+        self.sheetIsBuilt = sheetIsBuilt ?? { AppRoutes.isBuilt($0) }
         let start = available.contains(selection) ? selection : RTab.allCases.first(where: available.contains) ?? selection
         self.available = available
         self.selection = start
@@ -59,6 +82,23 @@ final class ShellModel {
 
     func reselect(_ tab: RTab) {
         reselects[tab, default: 0] += 1
+    }
+
+    /// Shows `sheet` over the shell (tab bar included). A sheet with nothing built, or a second sheet
+    /// while one is up, is ignored (never two sheets at once).
+    func present(_ sheet: AppSheet) {
+        guard self.sheet == nil, sheetIsBuilt(sheet) else { return }
+        self.sheet = sheet
+        presented = sheet
+        presentation += 1
+    }
+
+    /// Dismisses the sheet up, or only if it is still `presentation` (a late close never takes the next one).
+    func dismissSheet(_ presentation: Int? = nil) {
+        if let presentation, presentation != self.presentation {
+            return
+        }
+        sheet = nil
     }
 
     /// What a tab's page is told.
@@ -83,17 +123,31 @@ extension EnvironmentValues {
 
 struct ShellPage: View {
     @Bindable var model: ShellModel
+    /// What's playing, floating above the bar on every tab (an RMiniPlayer); nil when nothing is loaded.
+    var miniPlayer: AnyView?
     /// The page for a tab; nil when that tab has nothing built yet (the shell shows the canvas).
     let page: (RTab, ShellTabContext) -> AnyView?
 
     /// The keyboard is up: the bar steps aside so it never rides on the keys, and the page keeps the room.
     @State private var keyboardUp = false
+    /// The mini-player's height, so the pages end above it.
+    @State private var miniPlayerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // the screen's bottom inset: the home indicator's, 0 on a phone with a home button (iPhone SE)
-        GeometryReader { proxy in
-            shell(bottomInset: proxy.safeAreaInsets.bottom)
+        // one host over the pages and the bar: every sheet covers the tab bar (L0-14)
+        RSheetHost {
+            // the screen's bottom inset: the home indicator's, 0 on a phone with a home button (iPhone SE)
+            GeometryReader { proxy in
+                shell(bottomInset: proxy.safeAreaInsets.bottom)
+            }
+            // the shell's own request sits BESIDE the pages, not on them: a preference set on a view
+            // replaces the ones its subtree sent, so on the pages it would hide every page's sheet
+            // (the same reason AccountPage asks from a background). One request per presentation.
+            .background {
+                ShellSheetRequest(model: model, presentation: model.presentation)
+                    .id(model.presentation)
+            }
         }
     }
 
@@ -113,6 +167,9 @@ struct ShellPage: View {
                             }
                         }
                         .environment(\.shellTab, context)
+                        // the shell's host draws the page's sheets (over the bar); pages present AppSheets here
+                        .environment(\.rSheetHostAbove, true)
+                        .appSheetPresent { model.present($0) }
                         .opacity(context.isShown ? 1 : 0)
                         .allowsHitTesting(context.isShown)
                         .accessibilityHidden(!context.isShown)
@@ -120,6 +177,18 @@ struct ShellPage: View {
                 }
             }
             .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: model.selection)
+            // the pages end above the mini-player: it never covers their content (mini-player.md rule)
+            .safeAreaPadding(.bottom, floatingMiniPlayer == nil ? RDimension.space0 : miniPlayerHeight + RDimension.space3)
+            .overlay(alignment: .bottom) {
+                if let floatingMiniPlayer {
+                    floatingMiniPlayer
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
+                        .padding(.horizontal, RDimension.spaceScreenMargin)
+                        .padding(.bottom, RDimension.space3)
+                        .transition(miniPlayerArrives)
+                }
+            }
+            .animation(RMotion.standard(RNumber.motionDurationSlow), value: floatingMiniPlayer == nil)
             if !keyboardUp {
                 RTabBar(
                     selection: Binding(get: { model.selection }, set: { model.select($0) }),
@@ -136,5 +205,41 @@ struct ShellPage: View {
             keyboardUp = false
         }
         .accessibilityIdentifier("shell")
+    }
+
+    /// The mini-player while it may show: something is loaded and the keyboard is down.
+    private var floatingMiniPlayer: AnyView? {
+        keyboardUp ? nil : miniPlayer
+    }
+
+    /// Rises space3 and fades in (mini-player.md motion); Reduce Motion: the fade only.
+    private var miniPlayerArrives: AnyTransition {
+        reduceMotion ? .opacity : .opacity.combined(with: .offset(y: RDimension.space3))
+    }
+}
+
+/// The shell's request for one presentation of an AppSheet. Keyed by the presentation, so a sheet asked
+/// for while the last one slides away is a new request (the host opens it once the last has closed), and
+/// the closing one keeps its own page and can only dismiss itself.
+private struct ShellSheetRequest: View {
+    let model: ShellModel
+    let presentation: Int
+
+    var body: some View {
+        let sheet = model.presented
+        Color.clear
+            .rSheet(isPresented: shown, detent: sheet.map { AppRoutes.detent(for: $0) } ?? .full) {
+                if let sheet {
+                    AppRoutes.sheet(for: sheet, in: AppRouteContext(back: { model.dismissSheet(presentation) }))
+                }
+            }
+    }
+
+    private var shown: Binding<Bool> {
+        Binding(get: { model.sheet != nil && model.presentation == presentation }, set: { isShown in
+            if !isShown {
+                model.dismissSheet(presentation)
+            }
+        })
     }
 }

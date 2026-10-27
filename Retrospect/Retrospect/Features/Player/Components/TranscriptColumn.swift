@@ -29,6 +29,13 @@ struct TranscriptColumn: View {
 
     @Environment(\.rCompactHeight) private var compactHeight
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The line the column is centred on; nil leaves the words where they lie (the 17 Pro, as drawn).
+    @State private var position: Int?
+
+    private var edges: TranscriptEdges {
+        TranscriptEdges(compact: compactHeight, reduceTransparency: reduceTransparency)
+    }
 
     var body: some View {
         ScrollView {
@@ -48,20 +55,30 @@ struct TranscriptColumn: View {
                     }
                 }
             }
+            .scrollTargetLayout()
             .padding(.top, RDimension.space6)
         }
         .scrollIndicators(.hidden)
+        // on a short phone, room under the last line so the last line read can rise out of the bottom
+        // band (at rest the words sit where they did: the margin only adds scroll room below them)
+        .contentMargins(.bottom, edges.followRoom, for: .scrollContent)
+        .scrollPosition(id: $position, anchor: .center)
+        // on a short phone the column is too short for the bands to leave the line being read alone, so
+        // the column centres it, between the bands, whole and sharp (QA batch 8); on the 17 Pro the words
+        // stay where Paper draws them. The follow glides (no motion under Reduce Motion).
+        .onChange(of: current, initial: true) { _, line in
+            guard let id = edges.followedLine(current: line, in: transcript) else { return }
+            withAnimation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationTranscriptFollow)) {
+                position = id
+            }
+        }
         .rProgressiveBlur(.transcriptTop)
         .rProgressiveBlur(.transcriptBottom)
         .accessibilityIdentifier("player.transcript")
     }
 
     private func lineText(_ line: Flows.TranscriptLine, index: Int) -> some View {
-        TranscriptLineText(
-            text: line.text,
-            isCurrent: index == current,
-            edges: TranscriptEdges(compact: compactHeight, reduceTransparency: reduceTransparency)
-        )
+        TranscriptLineText(text: line.text, isCurrent: index == current, edges: edges)
     }
 }
 
@@ -97,7 +114,12 @@ private struct TranscriptLineText: View {
                     .mask { LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom) }
             }
         }.onGeometryChange(for: TranscriptEdges.Place.self) { proxy in
-            TranscriptEdges.Place(line: proxy.frame(in: .scrollView), viewport: proxy.bounds(of: .scrollView)?.height ?? 0)
+            // the scroll view's bounds leave out its bottom content margin: add it back, so the bands
+            // are measured from the column's real bottom edge
+            TranscriptEdges.Place(
+                line: proxy.frame(in: .scrollView),
+                viewport: (proxy.bounds(of: .scrollView)?.height ?? 0) + edges.followRoom
+            )
         } action: { place = $0 }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(text)
@@ -136,7 +158,7 @@ struct TranscriptEdges: Equatable {
         compact ? RDimension.blurTranscriptTopBandCompact : RDimension.blurTranscriptTopBand
     }
 
-    private var bottomBand: CGFloat {
+    var bottomBand: CGFloat {
         compact ? RDimension.blurTranscriptBottomBandCompact : RDimension.blurTranscriptBottomBand
     }
 
@@ -185,6 +207,19 @@ struct TranscriptEdges: Equatable {
             let opacity = sharp ? 1 - value : value * (1 - Double(fade(y: y, viewport: viewport)))
             return Gradient.Stop(color: .black.opacity(opacity), location: location)
         }
+    }
+
+    /// Scroll room under the last line: the bottom band on a short phone (so the last line read can be
+    /// centred), none on the 17 Pro (the words stay where Paper draws them).
+    var followRoom: CGFloat {
+        compact ? bottomBand : 0
+    }
+
+    /// The line the column centres on: the line being read, on a short phone only (its column is too
+    /// short for the bands to leave that line alone; on the 17 Pro the words stay where Paper draws them).
+    func followedLine(current: Int?, in transcript: Flows.Transcript) -> Int? {
+        guard compact, let current, transcript.lines.indices.contains(current) else { return nil }
+        return transcript.lines[current].id
     }
 
     /// The blurred copy's radius: the band's full 8 (the mask does the easing).

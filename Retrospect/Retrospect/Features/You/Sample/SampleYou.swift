@@ -19,6 +19,38 @@ final class SampleYou: YouData {
         Self.asksSleep(question) ? Self.sleepAnswer : Self.nothingFound
     }
 
+    /// Every named orb opens the one person Paper draws (priya, 1GC2-0): the map's names and the sheet's
+    /// don't match in Paper (YO-D3).
+    func node(named _: String) async -> Flows.Node? {
+        Self.priya
+    }
+
+    func answer(_ answer: Flows.NodeAnswer, node id: String) async {
+        answered[id] = answer
+        answerCount += 1
+    }
+
+    /// How many answers were sent (sample memory only).
+    private(set) var answerCount = 0
+
+    /// What you answered, by node (sample memory only).
+    private(set) var answered: [String: Flows.NodeAnswer] = [:]
+
+    /// YO-4 as drawn (1GC2-0).
+    static let priya = Flows.Node(
+        id: "person-priya",
+        kind: "person",
+        name: "priya",
+        belief: "a close colleague. you come back lighter after time with her.",
+        meta: "fairly sure · from 5 things · moved last week",
+        restsOn: [
+            .init(id: "e1", kind: .yourWords, meta: "12 oct · your words", words: "\"coffee with priya, felt lighter\""),
+            .init(id: "e2", kind: .yourWords, meta: "16 oct · your words", words: "\"the demo with priya went well\""),
+            .init(id: "e3", kind: .calendar, meta: "18 oct · calendar", words: "lunch with priya, an hour"),
+        ],
+        linked: ["work", "ship the first version"]
+    )
+
     static let sleepQuestion = "when do i sleep best?"
     /// A question nothing answers, for the launcher's `nothing` state (sample words, not drawn).
     static let unansweredQuestion = "how is my sister doing?"
