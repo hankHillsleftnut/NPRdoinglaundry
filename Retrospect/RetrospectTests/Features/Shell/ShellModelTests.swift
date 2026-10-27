@@ -1,4 +1,5 @@
 @testable import Retrospect
+import SwiftUI
 import Testing
 
 /// V2 lane 0 · the shell, dark: the launcher opens it on the journal, only tabs with a page are live,
@@ -6,10 +7,10 @@ import Testing
 /// #205, fences Features/Shell).
 @MainActor
 struct ShellModelTests {
-    @Test("-Screen shell has one state per tab with a page: today only the journal")
+    @Test("-Screen shell opens on a tab with a page: the journal, alone or with the mini-player (G0b)")
     func launches() {
         let screen = ScreenRegistry.screen("shell")
-        #expect(screen?.states == ["tabs"])
+        #expect(screen?.states == ["tabs", "miniPlayer", "sheet"])
         // no launch state opens on a tab with nothing built (no blank pages)
         for scenario in ShellScenario.allCases {
             #expect(ShellLaunch.pages.contains(scenario.tab), "-State \(scenario.rawValue) opens on an unbuilt tab")
@@ -61,5 +62,77 @@ struct ShellModelTests {
         model.select(.you)
         model.select(.podcasts)
         #expect(model.visited == [.podcasts, .you])
+    }
+
+    @Test("G0b: the shell shows a sheet only when its page is built, and never two at once")
+    func sheets() {
+        let model = ShellModel()
+        for kind in AppSheet.Kind.allCases {
+            let sheet = AppRouteTableTests.sample(kind)
+            model.present(sheet)
+            #expect((model.sheet == sheet) == AppRoutes.isBuilt(sheet), "sheet \(kind.rawValue)")
+            let first = model.sheet
+            // a second request while one is up waits (RSheetHost never stacks two)
+            for other in AppSheet.Kind.allCases.map(AppRouteTableTests.sample) where other != sheet {
+                model.present(other)
+                #expect(first == nil || model.sheet == first)
+            }
+            model.dismissSheet()
+            #expect(model.sheet == nil)
+        }
+    }
+
+    @Test("G0b: each presentation is its own; a late close from the last one never takes the next")
+    func presentations() {
+        let model = ShellModel(sheetIsBuilt: { _ in true })
+        model.present(.episode(id: "a"))
+        #expect(model.sheet == .episode(id: "a"))
+        #expect(model.presentation == 1)
+        // never two at once
+        model.present(.node(id: "b"))
+        #expect(model.sheet == .episode(id: "a"))
+        model.dismissSheet(1)
+        #expect(model.sheet == nil)
+        // the page stays on the panel while it slides away
+        #expect(model.presented == .episode(id: "a"))
+        // asked for while A is still closing: a new presentation
+        model.present(.node(id: "b"))
+        #expect(model.presentation == 2)
+        // A's close finishing late (its binding set to false) leaves B up
+        model.dismissSheet(1)
+        #expect(model.sheet == .node(id: "b"))
+        model.dismissSheet(2)
+        #expect(model.sheet == nil)
+    }
+
+    @Test("G0b: a passed-through sheet host clears the mark for what it holds (covers inside keep their sheets)")
+    func hostAboveDoesNotLeak() {
+        let seen = HostAboveSeen()
+        let underShell = RSheetHost { HostAboveProbe(seen: seen) }
+            .environment(\.rSheetHostAbove, true)
+            .frame(width: 40, height: 40)
+        _ = ImageRenderer(content: underShell).uiImage
+        #expect(!seen.values.isEmpty && !seen.values.contains(true), "a page inside a passed-through host still sees the shell's host above")
+        let alone = HostAboveSeen()
+        _ = ImageRenderer(content: RSheetHost { HostAboveProbe(seen: alone) }.frame(width: 40, height: 40)).uiImage
+        #expect(!alone.values.isEmpty && !alone.values.contains(true))
+        let bare = HostAboveSeen()
+        _ = ImageRenderer(content: HostAboveProbe(seen: bare).environment(\.rSheetHostAbove, true)).uiImage
+        #expect(!bare.values.isEmpty && !bare.values.contains(false), "the probe reads the mark")
+    }
+}
+
+/// What the probe saw, each time it was built.
+private final class HostAboveSeen {
+    var values: [Bool] = []
+}
+
+private struct HostAboveProbe: View {
+    let seen: HostAboveSeen
+    @Environment(\.rSheetHostAbove) private var hostAbove
+
+    var body: some View {
+        seen.values.append(hostAbove)
+        return Color.clear
     }
 }
