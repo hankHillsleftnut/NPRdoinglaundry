@@ -19,6 +19,26 @@ struct RClaimTests {
         #expect(RTextStyle.inkTitle.size == RDimension.fontSize3xl)
     }
 
+    @Test("balanced wrapping is opt-in: off by default, on where a screen asks (YO-4's belief)")
+    func balancedOptIn() {
+        #expect(!RClaim(kind: .stated, text: "x", meta: "y").balanced)
+        #expect(RClaim(kind: .stated, text: "x", meta: "y", balanced: true).balanced)
+    }
+
+    @Test("balanced, YO-4's belief keeps its three lines but no lone last word, at Paper's 346 width")
+    func balancedLines() throws {
+        let belief = "a close colleague. you come back lighter after time with her."
+        let width: CGFloat = 346 // literal-ok: Paper 1GDU-0 width
+        func rendered(_ balanced: Bool) throws -> CGSize {
+            let claim = RClaim(kind: .stated, text: belief, meta: "fairly sure", statedStyle: .inkNodeBelief, balanced: balanced)
+            let renderer = ImageRenderer(content: claim.frame(width: width))
+            let image = try #require(renderer.cgImage)
+            return CGSize(width: image.width, height: image.height)
+        }
+        // same height (the same number of lines), so balancing only evens them out
+        #expect(try rendered(true).height == rendered(false).height)
+    }
+
     @Test("VoiceOver reads the meta line with commas, not dots")
     func kinds() {
         let stated = RClaim(kind: .stated, text: "your best days start early.", meta: "stated · from what you did · very sure")

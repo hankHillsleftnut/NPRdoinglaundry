@@ -71,7 +71,8 @@ struct NodeSheet: View {
 
     private var belief: some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
-            RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief)
+            // balanced, as Paper sets it (1GDU-0 text-wrap: balance): three even lines, no lone "her."
+            RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief, balanced: true)
             if !node.restsOn.isEmpty {
                 VStack(alignment: .leading, spacing: RDimension.space1) {
                     RSectionLabel(title: "what it rests on")
