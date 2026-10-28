@@ -37,32 +37,32 @@ struct YouPage: View {
                 title: "you",
                 trailing: .content(Self.trailing.map(\.view))
             ))
-            ScrollViewReader { reader in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: model.answer == nil ? RDimension.space6 : RDimension.space8) {
-                        RSearchField(
-                            placeholder: "ask anything about yourself",
-                            text: $model.query,
-                            onSubmit: { Task { await model.ask() } }
-                        )
-                        Group {
-                            if let answer = model.answer {
-                                found(answer, reader: reader)
-                            } else {
-                                rest
-                            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: model.answer == nil ? RDimension.space6 : RDimension.space8) {
+                    RSearchField(
+                        placeholder: "ask anything about yourself",
+                        text: $model.query,
+                        onSubmit: { Task { await model.ask() } },
+                        // no listening for search is drawn: the mic opens the field and its dictation (YO-D6)
+                        micFocusesField: true
+                    )
+                    Group {
+                        if let answer = model.answer {
+                            found(answer)
+                        } else {
+                            rest
                         }
-                        .transition(.rBlurReplace(reduceMotion: reduceMotion))
                     }
-                    .padding(.top, RDimension.space5)
-                    .padding(.horizontal, RDimension.spaceScreenMargin)
-                    .padding(.bottom, RDimension.space8)
-                    .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.answer)
-                    .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.onlyCertain)
+                    .transition(.rBlurReplace(reduceMotion: reduceMotion))
                 }
-                .scrollDismissesKeyboard(.interactively)
-                .rProgressiveBlur(.tabEdge)
+                .padding(.top, RDimension.space5)
+                .padding(.horizontal, RDimension.spaceScreenMargin)
+                .padding(.bottom, RDimension.space8)
+                .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.answer)
+                .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.snappy, value: model.onlyCertain)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .rProgressiveBlur(.tabEdge)
         }
         .background(RColor.backgroundCanvas)
         // YO-4: a node's sheet over the page, at the full detent (a sibling, so it never nests another request)
@@ -104,16 +104,11 @@ struct YouPage: View {
 
     // MARK: YO-2 found
 
-    private func found(_ answer: Flows.Answer, reader: ScrollViewProxy) -> some View {
+    private func found(_ answer: Flows.Answer) -> some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
-            AnswerCard(answer: answer, secondLine: model.secondLine) { number in
-                model.highlighted = number
-                withAnimation(reduceMotion ? nil : RMotion.snappy) {
-                    reader.scrollTo(SourceList.rowID(number), anchor: .center)
-                }
-            }
+            AnswerCard(answer: answer, secondLine: model.secondLine)
             if !model.sources.isEmpty {
-                SourceList(sources: model.sources, highlighted: $model.highlighted) { id in
+                SourceList(sources: model.sources) { id in
                     navigator.push(.source(id))
                 }
             }

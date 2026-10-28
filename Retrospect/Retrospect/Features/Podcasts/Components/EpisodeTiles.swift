@@ -36,7 +36,8 @@ extension RTextStyle {
 extension EpisodeArt {
     var recipe: RArtworkRecipe {
         switch self {
-        case .weekly: RArtworkRecipes.weekly
+        // Paper 1FUP-0's dark brown to amber (QA batch 6); the shared `weekly` renders a lighter wash (PCD-15)
+        case .weekly: RArtworkRecipes.weeklyLibrary
         case .brief: RArtworkRecipes.brief
         case .first: RArtworkRecipes.first
         case .calls: RArtworkRecipes.calls

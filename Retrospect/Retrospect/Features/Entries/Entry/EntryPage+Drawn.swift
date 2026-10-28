@@ -51,12 +51,15 @@ extension EntryPage {
         .onAppear { drawn.applyStart(words: kept) }
     }
 
-    /// "delete entry" at the foot, outside the scroll (N52-0: 32 off the bottom, the screen margin each side).
-    @ViewBuilder var deleteRow: some View {
+    /// "delete entry" at the foot, outside the scroll (N52-0: 32 off the screen's bottom edge, the screen
+    /// margin each side). Paper measures the 32 from the frame's bottom, so the safe area's bottom inset is
+    /// taken back (the 44 row still clears the home indicator; on SE, with no inset, it is 32 as drawn).
+    @ViewBuilder
+    func deleteRow(bottomInset: CGFloat) -> some View {
         if let drawn, model.capabilities.delete, !drawn.edit.editing, case .shown = model.state {
             DestructiveRow(title: "delete entry") { drawn.askDelete() }
                 .padding(.horizontal, RDimension.spaceScreenMargin)
-                .padding(.bottom, RDimension.space8)
+                .padding(.bottom, RDimension.space8 - bottomInset)
                 .transition(.opacity)
         }
     }
@@ -72,6 +75,8 @@ struct EntryDrawnPresentation: ViewModifier {
         if let drawn {
             @Bindable var drawn = drawn
             content
+                // the page behind the dialog is out of VoiceOver's reach while it asks (modal)
+                .accessibilityHidden(drawn.hidesPageFromVoiceOver)
                 .rDialog(isPresented: $drawn.showsDelete) {
                     RDialog(
                         title: EntryDrawnModel.dialogTitle,

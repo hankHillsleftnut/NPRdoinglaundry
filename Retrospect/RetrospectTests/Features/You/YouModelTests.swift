@@ -48,6 +48,27 @@ struct YouModelTests {
         #expect(model.answer == SampleYou.nothingFound)
     }
 
+    @Test("the same question asked twice: only the latest answer lands, whichever returns first", arguments: [false, true])
+    func latestSubmissionWins(newerReturnsFirst: Bool) async {
+        let data = SteppedYou()
+        let model = YouModel(data: data)
+        model.query = SampleYou.sleepQuestion
+        let first = Task { await model.ask() }
+        await data.waitForPending(1)
+        let second = Task { await model.ask() }
+        await data.waitForPending(2)
+        if newerReturnsFirst {
+            data.reply(at: 1, SampleYou.sleepAnswer)
+            data.reply(at: 0, SampleYou.nothingFound)
+        } else {
+            data.reply(at: 0, SampleYou.nothingFound)
+            data.reply(at: 1, SampleYou.sleepAnswer)
+        }
+        await first.value
+        await second.value
+        #expect(model.phase == .answered(SampleYou.sleepAnswer))
+    }
+
     @Test("an empty field asks nothing")
     func empty() async {
         let model = await asked("   ")
@@ -66,12 +87,10 @@ struct YouModelTests {
     func clear() async {
         let model = await asked(SampleYou.sleepQuestion)
         model.onlyCertain = true
-        model.highlighted = 2
         model.clear()
         #expect(model.phase == .rest)
         #expect(model.query.isEmpty)
         #expect(!model.onlyCertain)
-        #expect(model.highlighted == nil)
     }
 
     @Test("only the journal source opens a page (YO-3); the others open nothing yet")
@@ -79,14 +98,11 @@ struct YouModelTests {
         #expect(SampleYou.sleepAnswer.sources.map(\.sourceID) == [nil, SampleYou.sleepEntry.id, nil])
     }
 
-    @Test("citations: unicode superscripts that link to their source")
+    @Test("citations: unicode superscripts as Paper writes them, words not links (the source rows are the way in)")
     func citations() {
         #expect(AnswerCard.superscript(1) == "¹")
         #expect(AnswerCard.superscript(12) == "¹²")
-        let text = AnswerCard.attributed(SampleYou.sleepAnswer.headline)
-        #expect(String(text.characters) == "after days you run¹, and when work stops before 9².")
-        let links = text.runs.compactMap(\.link)
-        #expect(links == [URL(string: "retro-cite://1"), URL(string: "retro-cite://2")])
+        #expect(AnswerCard.written(SampleYou.sleepAnswer.headline) == "after days you run¹, and when work stops before 9².")
     }
 
     @Test("YO-1 and YO-2 are registered with their states")
@@ -114,6 +130,14 @@ struct YouModelTests {
     @Test("YO-4 is registered with its drawn state")
     func nodeRegistered() {
         #expect(ScreenRegistry.screen("YO-4")?.states == ["person"])
+    }
+
+    @Test("VoiceOver reads each citation as 'source n', never a bare superscript")
+    func spokenCitations() {
+        let answer = SampleYou.sleepAnswer
+        #expect(AnswerCard.spoken(answer.headline, answer.secondLine) ==
+            "what i found. after days you run, source 1, and when work stops before 9, source 2. a guess: weekends help less than you think, source 3.")
+        #expect(AnswerCard.spoken(answer.headline, nil) == "what i found. after days you run, source 1, and when work stops before 9, source 2.")
     }
 
     @Test("the title bar carries Paper's 'list' pill, then your picture (1G7Y-0)")

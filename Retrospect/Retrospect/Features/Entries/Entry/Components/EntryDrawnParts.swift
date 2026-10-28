@@ -48,8 +48,10 @@ struct TookRow: View {
                 .rText(.textMd)
                 .foregroundStyle(claim.noted ? RColor.textTertiary : RColor.textPrimary)
                 .strikethrough(claim.noted, color: RColor.textTertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
+                // Paper N5J-0: text-wrap balance ("the monday standup / is hard for you")
+                .rBalancedLines()
+                .frame(maxWidth: .infinity, alignment: .leading)
             trailing
                 .frame(minHeight: RDimension.sizeTouchTarget)
         }
