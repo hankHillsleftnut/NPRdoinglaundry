@@ -36,7 +36,8 @@ struct DemoAppHost: View {
                     // a fresh first run is a new model: the host takes it, not the last one's
                     .id(ObjectIdentifier(demo.flow))
             case .app:
-                DemoShell()
+                // straight from the first run, the journal tab is first home (ON-13) until the next launch
+                DemoShell(firstHome: demo.firstDay ? demo.flow : nil)
                     // a new session builds every page again on fresh samples
                     .id(demo.session)
             case .returning:
@@ -56,19 +57,45 @@ struct DemoAppHost: View {
 /// Each page is its group's own stack, so the joins inside a group work as that group built them; the
 /// joins between groups come through G0's route table (DEMO.app.b).
 struct DemoShell: View {
+    /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
+    /// flow does (FirstHomePage); nil on any later launch (JR-1).
+    var firstHome: SampleFlowModel?
     @State private var model = ShellModel(selection: .journal, available: Set(RTab.allCases))
 
     var body: some View {
-        ShellPage(model: model) { tab, _ in
+        ShellPage(model: model) { tab, context in
             switch tab {
-            // JR-1 with the drawer (JR-3) and one entry (JR-4), as the journal lane mounts them
-            case .journal: AnyView(EntriesLaunch(scenario: .flow))
+            case .journal:
+                if let flow = firstHome {
+                    AnyView(DemoFirstHome(flow: flow, isShown: context.isShown))
+                } else {
+                    // JR-1 with the drawer (JR-3) and one entry (JR-4), as the journal lane mounts them
+                    AnyView(EntriesLaunch(scenario: .flow))
+                }
             // PC-1 on the sample library
             case .podcasts: AnyView(PodcastsLaunch(scenario: .rest))
             case .goals: AnyView(DemoGoalsTab())
             case .you: AnyView(DemoYouTab())
             }
         }
+    }
+}
+
+/// ON-13 first home, built exactly as the core flow builds it (SampleFlowHost's `.firstHome`): the
+/// celebration, the recap of the person's own answers, the first-episode card that plays the tease.
+private struct DemoFirstHome: View {
+    let flow: SampleFlowModel
+    let isShown: Bool
+
+    var body: some View {
+        FirstHomePage(
+            recap: flow.firstHomeRecap,
+            celebrate: flow.arrivedHome,
+            today: SampleJournalContent.today,
+            makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
+            isShown: isShown
+        )
+        .environment(\.journalData, flow.journalDay)
     }
 }
 
