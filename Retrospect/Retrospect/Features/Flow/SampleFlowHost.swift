@@ -133,6 +133,8 @@ private struct FlowPaywallVisit: View {
     var body: some View {
         if let model {
             PaywallPage(model: model)
+                // the tease's modal sheet just left: tell VoiceOver a new screen is up
+                .onAppear { AccessibilityNotification.ScreenChanged(nil).post() }
         } else {
             RColor.backgroundCanvas
                 .ignoresSafeArea()
