@@ -638,6 +638,8 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `blur.transcriptBottom.lineSolid` | Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens). | 0.55 |  | Paper PC-2 1FWM-0 edge · bottom: mask transparent 0% → black 55% (QA batch 4, #236) |
 | `blur.drawerFoot.band` | Drawer: the band under the foot. | 56pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (56pt) |
 | `blur.drawerFoot.max` | Drawer: blur at the foot band's outer edge. | 6pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (6pt) |
+| `blur.tabBlend.rise` | The shell's tab bar: how far above the bar's top the content starts to dissolve (blur up to blur.tab.max, canvas easing to opaque at the bar). | 90pt |  | components/tab-bar.md ("a progressive blur that starts 90pt above the tabs"); founder 27 Oct (content fades into the bar, never a hard edge) |
+| `blur.tabBlend.riseCompact` | The shell's tab bar on short phones (SE): the dissolve above the bar. | 72pt |  | blur.tab.band's 17 Pro : SE ratio (70 : 60) applied to the 90pt rise, on the 8pt grid |
 
 ## haptic
 
