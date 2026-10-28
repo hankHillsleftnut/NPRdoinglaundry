@@ -30,11 +30,18 @@ struct TranscriptColumn: View {
     @Environment(\.rCompactHeight) private var compactHeight
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The line the column is centred on; nil leaves the words where they lie (the 17 Pro, as drawn).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The line the column is brought to; nil leaves the words where they lie (the 17 Pro, as drawn).
     @State private var position: Int?
+    /// The column's own height (the scroll room an accessibility size needs under the last line).
+    @State private var columnHeight: CGFloat = 0
 
     private var edges: TranscriptEdges {
-        TranscriptEdges(compact: compactHeight, reduceTransparency: reduceTransparency)
+        TranscriptEdges(
+            compact: compactHeight,
+            reduceTransparency: reduceTransparency,
+            accessibilitySize: dynamicTypeSize.isAccessibilitySize
+        )
     }
 
     var body: some View {
@@ -59,26 +66,48 @@ struct TranscriptColumn: View {
             .padding(.top, RDimension.space6)
         }
         .scrollIndicators(.hidden)
-        // on a short phone, room under the last line so the last line read can rise out of the bottom
-        // band (at rest the words sit where they did: the margin only adds scroll room below them)
-        .contentMargins(.bottom, edges.followRoom, for: .scrollContent)
-        .scrollPosition(id: $position, anchor: .center)
-        // on a short phone the column is too short for the bands to leave the line being read alone, so
-        // the column centres it, between the bands, whole and sharp (QA batch 8); on the 17 Pro the words
-        // stay where Paper draws them. The follow glides (no motion under Reduce Motion).
+        // room under the last line so the last line read can be brought into view (at rest the words sit
+        // where they did: the margin only adds scroll room below them)
+        .contentMargins(.bottom, edges.followRoom(column: columnHeight), for: .scrollContent)
+        .scrollPosition(id: $position, anchor: edges.followAnchor)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { columnHeight = $0 }
+        // the line being read is brought into view, whole and sharp: centred between the bands on a short
+        // phone (QA batch 8), its first row at the top of the column at accessibility sizes, where the
+        // bands are off (QA batch 9). Otherwise (the 17 Pro at Paper's sizes) the words stay where Paper
+        // draws them. The follow glides (no motion under Reduce Motion).
         .onChange(of: current, initial: true) { _, line in
             guard let id = edges.followedLine(current: line, in: transcript) else { return }
             withAnimation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationTranscriptFollow)) {
                 position = id
             }
         }
-        .rProgressiveBlur(.transcriptTop)
-        .rProgressiveBlur(.transcriptBottom)
+        .onChange(of: dynamicTypeSize) { _, _ in
+            guard let id = edges.followedLine(current: current, in: transcript) else { return }
+            position = id
+        }
+        // at accessibility sizes the column's bands (blur and sheet tint) are off: lines several rows
+        // tall can't keep the line being read out of them, and readability comes first (PCD-16)
+        .modifier(TranscriptBands(shown: !edges.accessibilitySize))
         .accessibilityIdentifier("player.transcript")
     }
 
     private func lineText(_ line: Flows.TranscriptLine, index: Int) -> some View {
         TranscriptLineText(text: line.text, isCurrent: index == current, edges: edges)
+    }
+}
+
+/// The column's top and bottom progressive blur with the sheet tint, or neither.
+private struct TranscriptBands: ViewModifier {
+    let shown: Bool
+
+    func body(content: Content) -> some View {
+        if shown {
+            content
+                .rProgressiveBlur(.transcriptTop)
+                .rProgressiveBlur(.transcriptBottom)
+        } else {
+            content
+        }
     }
 }
 
@@ -118,7 +147,7 @@ private struct TranscriptLineText: View {
             // are measured from the column's real bottom edge
             TranscriptEdges.Place(
                 line: proxy.frame(in: .scrollView),
-                viewport: (proxy.bounds(of: .scrollView)?.height ?? 0) + edges.followRoom
+                viewport: (proxy.bounds(of: .scrollView)?.height ?? 0) + edges.followRoom(column: 0)
             )
         } action: { place = $0 }
             .accessibilityElement(children: .ignore)
@@ -153,6 +182,8 @@ struct TranscriptEdges: Equatable {
     static let samples = 8 // literal-ok: mask resolution, not a size
     var compact = false
     var reduceTransparency = false
+    /// An accessibility text size: the bands are off, nothing softens, the line being read is followed.
+    var accessibilitySize = false
 
     private var topBand: CGFloat {
         compact ? RDimension.blurTranscriptTopBandCompact : RDimension.blurTranscriptTopBand
@@ -179,7 +210,7 @@ struct TranscriptEdges: Equatable {
     /// Empty when no point of the line is under a band, and always for the line being read (QA batch 6:
     /// it must stay legible wherever it sits): the line is drawn once, sharp.
     func softness(line: CGRect, viewport: CGFloat, isCurrent: Bool = false) -> [Double] {
-        guard !isCurrent, line.height > 0 else { return [] }
+        guard !isCurrent, !accessibilitySize, line.height > 0 else { return [] }
         let values = (0 ... Self.samples).map { step in
             Double(strength(y: line.minY + CGFloat(step) / CGFloat(Self.samples) * line.height, viewport: viewport))
         }
@@ -212,14 +243,24 @@ struct TranscriptEdges: Equatable {
 
     /// Scroll room under the last line: the bottom band on a short phone (so the last line read can be
     /// centred), none on the 17 Pro (the words stay where Paper draws them).
-    var followRoom: CGFloat {
-        compact ? bottomBand : 0
+    /// At an accessibility size, a whole column (so even the last line can reach the top).
+    func followRoom(column: CGFloat) -> CGFloat {
+        if accessibilitySize {
+            return column
+        }
+        return compact ? bottomBand : 0
+    }
+
+    /// Where the followed line lands: centred between the bands on a short phone; at an accessibility
+    /// size (no bands, lines several rows tall) its first row at the top of the column, so no row is cut.
+    var followAnchor: UnitPoint {
+        accessibilitySize ? .top : .center
     }
 
     /// The line the column centres on: the line being read, on a short phone only (its column is too
     /// short for the bands to leave that line alone; on the 17 Pro the words stay where Paper draws them).
     func followedLine(current: Int?, in transcript: Flows.Transcript) -> Int? {
-        guard compact, let current, transcript.lines.indices.contains(current) else { return nil }
+        guard compact || accessibilitySize, let current, transcript.lines.indices.contains(current) else { return nil }
         return transcript.lines[current].id
     }
 

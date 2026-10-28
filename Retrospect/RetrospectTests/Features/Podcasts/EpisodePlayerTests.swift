@@ -197,7 +197,25 @@ struct EpisodePlayerTests {
 
     @Test("SE leaves the bottom band as room under the last line, so it can rise out of it; the 17 Pro none")
     func bottomRoom() {
-        #expect(TranscriptEdges().followRoom == 0)
-        #expect(TranscriptEdges(compact: true).followRoom == RDimension.blurTranscriptBottomBandCompact)
+        #expect(TranscriptEdges().followRoom(column: 513) == 0)
+        #expect(TranscriptEdges(compact: true).followRoom(column: 300) == RDimension.blurTranscriptBottomBandCompact)
+        #expect(TranscriptEdges(compact: true).followAnchor == .center)
+    }
+
+    @Test("AX3 on both phones (QA batch 9): the line being read is followed to the top of the column, whole; nothing softens")
+    func accessibilitySizes() {
+        for compact in [false, true] {
+            let ax = TranscriptEdges(compact: compact, accessibilitySize: true)
+            let weekly = SampleEpisodeTranscript.weekly
+            #expect(ax.followedLine(current: 2, in: weekly) == weekly.lines[2].id)
+            let tease = SampleTranscript.tease
+            #expect(ax.followedLine(current: tease.lines.count - 1, in: tease) == tease.lines.last?.id)
+            // its first row lands at the top of the column, so no row is cut under the header
+            #expect(ax.followAnchor == .top)
+            // a whole column of room, so even the last line can reach the top
+            #expect(ax.followRoom(column: 420) == 420)
+            // no line softens (the bands are off at accessibility sizes)
+            #expect(Self.lines.allSatisfy { ax.softness(line: $0, viewport: Self.column).isEmpty })
+        }
     }
 }
