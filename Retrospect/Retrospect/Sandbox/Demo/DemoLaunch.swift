@@ -35,12 +35,12 @@ struct DemoLaunch: Equatable {
     var start: DemoStage?
     /// `-DemoTab <tab>`: the app opens on that tab (journal by default), as if it had been tapped.
     var tab: RTab?
+    /// `-DemoOutside <way>`: the system opened the signed-in app this way.
+    var outside: DemoOutside?
 
     static let current = parse(ProcessInfo.processInfo.arguments)
 
-    /// An unknown stage or tab is ignored.
-    /// `-DemoOutside <way>`: the system opened the signed-in app this way.
-    var outside: DemoOutside?
+    /// An unknown stage, tab or way is ignored.
     static func parse(_ arguments: [String]) -> Self {
         var launch = Self()
         for (index, flag) in arguments.enumerated() {
