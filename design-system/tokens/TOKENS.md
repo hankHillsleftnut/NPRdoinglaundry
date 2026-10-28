@@ -415,6 +415,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `size.artwork.card` | Artwork in a card or on the player header. | 64pt |  | to set |
 | `size.artwork.player` | A show or episode page. | 120pt |  | to set |
 | `size.artwork.hero` | A full-bleed moment. | 240pt |  | to set |
+| `size.artwork.shareItem` | The shared thing's artwork in the share sheet. | 56pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
 | `size.mark` | The Retrospect mark disc. | 38pt |  | paywall |
 | `size.miniPlayer` | Height of the mini-player. | 42pt |  | paywall |
 | `size.progress` | Thickness of progress and scrubber tracks. | 3pt |  | paywall |
@@ -492,6 +493,11 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `size.saveBadgeHeight` | The "save" badge height (it sits half above the plan button). | 22pt |  | paper: ON-12 c:badge/save 22MI-0 |
 | `size.benefitTile` | The small raised art tile at the start of a paywall benefit row. | 56pt |  | paper: ON-12 c:benefit-row tiles 22S5-0, 22RR-0, 22RG-0, 22R2-0, 22QR-0, 22QE-0 |
 | `size.firstEpisodeWell` | The ready first episode's artwork well on first home (with a 16 play inside). | 40pt |  | paper: ON-13 1FJP-0 |
+| `size.share.headerSlot` | The share sheet header's side slots (cancel, and the empty one opposite). | 72pt |  | Paper EX-1 1H2G-0 / 1H2E-0 (V2.outside, 26 Oct) |
+| `size.widget.mark` | The mark at the top of a home-screen widget. | 16pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.markGlyph` | The brush glyph's width inside the widget mark. | 9pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.small` | A small home-screen widget's side, for the preview (the system sets the real size). | 164pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
+| `size.widget.mediumWidth` | A medium home-screen widget's width, for the preview (the system sets the real size). | 344pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
 
 ## radius
 
@@ -624,10 +630,12 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `blur.transcriptTop.bandCompact` | Player transcript on short phones: the top band. | 64pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (SE 64pt) |
 | `blur.transcriptTop.max` | Player transcript: blur at the top band's outer edge. | 8pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (8pt) |
 | `blur.transcriptTop.tint` | Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band. | 0.3 |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (tint over the top 30%) |
+| `blur.transcriptTop.lineSolid` | Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens). | 0.3 |  | Paper PC-2 1FWN-0 edge · top: mask black 0–30%, transparent at 100% (QA batch 4, #236) |
 | `blur.transcriptBottom.band` | Player transcript: the bottom band, into the transport. | 140pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (140pt) |
 | `blur.transcriptBottom.bandCompact` | Player transcript on short phones: the bottom band. | 80pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (SE 80pt) |
 | `blur.transcriptBottom.max` | Player transcript: blur at the bottom band's outer edge. | 8pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (8pt) |
 | `blur.transcriptBottom.tint` | Player transcript, bottom: the sheet tint is solid over this fraction of the band. | 0.15 |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (solid for the bottom 15%) |
+| `blur.transcriptBottom.lineSolid` | Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens). | 0.55 |  | Paper PC-2 1FWM-0 edge · bottom: mask transparent 0% → black 55% (QA batch 4, #236) |
 | `blur.drawerFoot.band` | Drawer: the band under the foot. | 56pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (56pt) |
 | `blur.drawerFoot.max` | Drawer: blur at the foot band's outer edge. | 6pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (6pt) |
 
