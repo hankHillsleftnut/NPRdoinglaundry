@@ -12,8 +12,8 @@ extension Flows {
             case yourWords, calendar
 
             /// The kind well's glyph. Paper 1GCZ-0 draws your words as the journal's page glyph (the tab bar's
-            /// `text.page`); its calendar has no grid, which SF Symbols doesn't offer, so `calendar` stands in
-            /// (repo rule: SF Symbols, DISCREPANCIES L0-10 / YO-D29).
+            /// `text.page`); its calendar has no grid, which SF Symbols doesn't offer, so YO-4 draws it with the
+            /// design system's `RCalendarGlyph` (REvidenceRow `.calendar`, YO-D29); `calendar` is the SF fallback.
             var symbol: String {
                 switch self {
                 case .yourWords: "text.page"
