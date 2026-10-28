@@ -83,7 +83,24 @@ struct FlowLaunch: Equatable {
     /// `-FlowStart <step>`: start there with nothing kept. Nil resumes (or starts at the splash).
     var start: FlowStep?
 
-    static let current = parse(ProcessInfo.processInfo.arguments)
+    static let current = resolve(ProcessInfo.processInfo.arguments, environment: ProcessInfo.processInfo.environment)
+
+    /// FLOW.debug-launch (founder, DECISIONS 27 Oct; debug builds only, this whole file is DEBUG): a launch
+    /// from the home-screen icon carries no arguments, and then the sample flow opens, so the founder can
+    /// walk the first run on his phone without Xcode. Any explicit argument wins: `-Flow sample` turns it on,
+    /// `-Flow` with anything else (`-Flow live`) keeps it off, and any other flag (`-Screen`, `-DesignLab`,
+    /// `-OldHome`, Xcode's own `-NSDocumentRevisionsDebugMode`) means the launch asked for something else.
+    /// A test run (an XCTest host) never opens it by default.
+    static func resolve(_ arguments: [String], environment: [String: String]) -> Self {
+        var launch = parse(arguments)
+        let flags = arguments.dropFirst().filter { $0.hasPrefix("-") }
+        let testKeys = ["XCTestConfigurationFilePath", "XCTestSessionIdentifier", "XCTestBundlePath", "XCInjectBundleInto"]
+        let underTest = testKeys.contains { environment[$0] != nil }
+        if flags.isEmpty, !underTest {
+            launch.isRequested = true
+        }
+        return launch
+    }
 
     /// Reads the arguments only (never UserDefaults). An unknown step is ignored: the flow resumes.
     static func parse(_ arguments: [String]) -> Self {

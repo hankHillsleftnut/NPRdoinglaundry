@@ -20,8 +20,8 @@ It uses the same screens as the real app and the same first run as the Core Flow
 
 | Part | Start | What to try |
 |---|---|---|
-| The first run | the splash (the first time) | exactly as the Core Flow guide: sign in, the invite code **7KQ2M9XD4RTAB**, tear the stub, begin, the questions, privacy, then each screen as it is built. It ends at the last built screen; when first home is built, it carries on into the app |
-| The app | `-DemoStart app` (below), or the end of the first run once first home is built | the tab bar at the bottom: each tab keeps its place when you come back to it |
+| The first run | the splash (the first time) | exactly as the Core Flow guide: sign in, the invite code **7KQ2M9XD4RTAB**, tear the stub, begin, the questions, privacy, connect, getting ready, the tease, the paywall (both prices are dummies), then first home, which opens inside the app with every tab live |
+| The app | the end of the first run (first home in the journal tab), or `-DemoStart app` (below) | the tab bar at the bottom: each tab keeps its place when you come back to it |
 | Journal | the journal tab | the drawer button (or swipe from the left edge) opens all entries; an entry opens it; back returns |
 | Podcasts | the podcasts tab | the library on the sample |
 | Goals | the goals tab | "ship the first version" opens the goal; back returns |
@@ -41,5 +41,5 @@ In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick 
 The quickest full reset: press and hold the Retrospect icon, tap **Remove App**, then press ⌘R.
 
 ## Good to know
-- **Always start it from Xcode.** The home-screen icon opens the normal app, not the demo, because it doesn't pass the `-Flow demo` setting.
+- **Start the Full Demo from Xcode** (this scheme passes `-Flow demo`). The home-screen icon carries no setting: in a debug build what it opens is decided by the debug-launch rule (today the Core Flow's first run, not the Full Demo; that rule may become opt-in), so use Xcode for the demo.
 - The demo keeps its place apart from the Core Flow scheme: walking one never moves the other.

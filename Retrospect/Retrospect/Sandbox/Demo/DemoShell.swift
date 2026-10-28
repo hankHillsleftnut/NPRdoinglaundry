@@ -11,21 +11,30 @@
 import SwiftUI
 
 struct DemoShell: View {
+    /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
+    /// flow does (FirstHomePage); nil on any later launch (JR-1 with its drawer and joins).
+    var firstHome: SampleFlowModel?
     /// ST-9's sign-out reached its end: the demo shows AC-1 welcome back.
     var signedOut: () -> Void = {}
     @State private var model: ShellModel
     @State private var samples = DemoSamples()
 
     /// Opens on `tab` (`-DemoTab`, journal by default).
-    init(tab: RTab = .journal, signedOut: @escaping () -> Void = {}) {
+    init(tab: RTab = .journal, firstHome: SampleFlowModel? = nil, signedOut: @escaping () -> Void = {}) {
+        self.firstHome = firstHome
         self.signedOut = signedOut
         _model = State(initialValue: ShellModel(selection: tab, available: Set(RTab.allCases)))
     }
 
     var body: some View {
-        ShellPage(model: model) { tab, _ in
+        ShellPage(model: model) { tab, context in
             switch tab {
-            case .journal: AnyView(DemoJournalTab(samples: samples))
+            case .journal:
+                if let flow = firstHome {
+                    AnyView(DemoFirstHome(flow: flow, isShown: context.isShown))
+                } else {
+                    AnyView(DemoJournalTab(samples: samples))
+                }
             // PC-1 on the sample library (its play joins the player once the shared play button lands)
             case .podcasts: AnyView(PodcastsLaunch(scenario: .rest))
             case .goals: AnyView(DemoGoalsTab(samples: samples))
@@ -38,6 +47,24 @@ struct DemoShell: View {
                 signedOut()
             }
         }
+    }
+}
+
+/// ON-13 first home, built exactly as the core flow builds it (SampleFlowHost's `.firstHome`): the
+/// celebration, the recap of the person's own answers, the first-episode card that plays the tease.
+private struct DemoFirstHome: View {
+    let flow: SampleFlowModel
+    let isShown: Bool
+
+    var body: some View {
+        FirstHomePage(
+            recap: flow.firstHomeRecap,
+            celebrate: flow.arrivedHome,
+            today: SampleJournalContent.today,
+            makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
+            isShown: isShown
+        )
+        .environment(\.journalData, flow.journalDay)
     }
 }
 
