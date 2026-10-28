@@ -29,6 +29,8 @@ enum SettingsDestinations {
         /// Closes this route only if it is still the top page (an awaited action ending after the
         /// person already went back must not pop the page under it).
         var close: (SettingsRoute) -> Void = { _ in }
+        /// ST-9's sign-out flow, when the host owns one (the demo hears it end); nil: the page's own sample.
+        var signOut: (any SignOutFlowing)?
     }
 
     static func view(for page: SettingsRoute, in context: Context) -> AnyView? {

@@ -12,7 +12,9 @@ extension SettingsDestinations {
     static func trust(_ page: SettingsRoute, in context: Context) -> AnyView? {
         switch page {
         case .account:
-            trustData(context).map { AnyView(AccountSettingsPage(data: $0, flow: SampleSignOutFlow(unsent: 0), back: context.back)) }
+            trustData(context).map {
+                AnyView(AccountSettingsPage(data: $0, flow: context.signOut ?? SampleSignOutFlow(unsent: 0), back: context.back))
+            }
         case .privacy:
             trustData(context).map { AnyView(SettingsPrivacyPage(data: $0, back: context.back)) }
         case .voice:

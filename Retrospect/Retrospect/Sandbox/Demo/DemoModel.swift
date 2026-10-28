@@ -27,6 +27,8 @@ final class DemoModel {
     private(set) var returning: SignInModel?
     /// Counts signed-in sessions: the app's pages are rebuilt for each, so nothing from the last one shows.
     private(set) var session = 0
+    /// The tab the app opens on (`-DemoTab`), journal when none was asked for.
+    let startTab: RTab
     /// The app was entered from first home in this launch: its journal tab is ON-13 (FirstHomePage), as the
     /// core flow shows it, not JR-1. A later launch (or welcome back) opens on JR-1.
     private(set) var firstDay = false
@@ -60,6 +62,7 @@ final class DemoModel {
         self.sleep = sleep
         self.clock = clock
         self.stage = stage
+        startTab = launch.tab ?? .journal
         flow = SampleFlowModel(store: flowStore, start: start, sleep: sleep, clock: clock)
         if stage == .returning {
             returning = makeReturning()
@@ -94,6 +97,24 @@ final class DemoModel {
         stage = .returning
         store.save(stage)
         followReturning()
+    }
+
+    /// Follows the session's ST-9 sign-out flow: when AC-2 reaches its end, welcome back. A flow from an
+    /// earlier session (its shell gone) is ignored.
+    func follow(signOut flow: any SignOutFlowing) {
+        let session = session
+        withObservationTracking {
+            _ = flow.state
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.session == session else { return }
+                if flow.state == .done {
+                    signedOut()
+                } else {
+                    follow(signOut: flow)
+                }
+            }
+        }
     }
 
     // MARK: - Private

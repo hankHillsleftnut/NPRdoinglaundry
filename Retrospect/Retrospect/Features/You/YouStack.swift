@@ -5,6 +5,8 @@
 //  pushed from here: the registry holds those groups' launchers (each with its own stack and tab bar), not
 //  pushable pages, so those controls aren't buttons until the wiring PR connects the groups (YO-D14).
 //  The system bar is hidden: every page draws its own RTopBar; the edge swipe still goes back.
+//  DEMO.app.b: another group's page comes through the app route table (G0): `.app(route)` is built by its
+//  owning group and pushed here, and pages under the stack's root push one with the environment's router.
 //
 import SwiftUI
 
@@ -13,6 +15,8 @@ enum YouRoute: Hashable {
     case whatIKnow
     /// YO-3, by source id.
     case source(String)
+    /// Another group's page (ST-1 from your picture), built by its owner (AppRoutes).
+    case app(AppRoute)
 }
 
 @MainActor
@@ -32,6 +36,13 @@ final class YouNavigator {
         _ = path.popLast()
     }
 
+    /// Back from `route`: removes it and anything pushed above it (a late back never pops another page).
+    func pop(to route: YouRoute) {
+        if let index = path.lastIndex(of: route) {
+            path.removeSubrange(index...)
+        }
+    }
+
     /// What a "this supports" row opens: YO-5 for an answer; a goal (GL-2, another group) nothing yet.
     func opener(for supported: Flows.Supported) -> (() -> Void)? {
         switch supported.kind {
@@ -46,7 +57,12 @@ final class YouNavigator {
 struct YouStack<Root: View>: View {
     let data: any YouData
     @Bindable var navigator: YouNavigator
+    /// Pages under the root may push another group's page (`.app`): only where the host gives those
+    /// pages their data (the demo). Off: your picture and the rest stay inert, as drawn (YO-D14).
+    var joinsApp = false
     @ViewBuilder let root: () -> Root
+
+    @Environment(\.appRouter) private var router
 
     var body: some View {
         NavigationStack(path: $navigator.path) {
@@ -57,7 +73,17 @@ struct YouStack<Root: View>: View {
                         .toolbar(.hidden, for: .navigationBar)
                 }
         }
+        // another group's page lands on this stack, so its back returns here (only where the host joins it)
+        .transformEnvironment(\.appRouter) { router in
+            router.push = joinsApp ? { navigator.push(.app($0)) } : nil
+        }
+        .environment(\.youAppPresent, router.present)
     }
+}
+
+extension EnvironmentValues {
+    /// The shell's sheet presenter, kept for the app pages this stack pushes.
+    @Entry var youAppPresent: ((AppSheet) -> Void)?
 }
 
 /// One pushed page; each owns its model for as long as it is on the stack.
@@ -72,7 +98,24 @@ private struct YouDestination: View {
             WhatIKnowDestination(data: data, back: navigator.pop)
         case let .source(id):
             YouSourceScreen(sourceID: id, data: data, navigator: navigator)
+        case let .app(route):
+            YouAppDestination(route: route, navigator: navigator)
         }
+    }
+}
+
+/// Another group's page on the You stack: back pops it, and it pushes further pages onto this stack.
+private struct YouAppDestination: View {
+    let route: AppRoute
+    let navigator: YouNavigator
+    @Environment(\.youAppPresent) private var present
+
+    var body: some View {
+        AppRoutes.page(for: route, in: AppRouteContext(
+            back: { navigator.pop(to: .app(route)) },
+            open: { navigator.push(.app($0)) },
+            present: present
+        ))
     }
 }
 

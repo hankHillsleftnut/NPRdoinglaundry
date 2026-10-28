@@ -8,7 +8,15 @@
 //  Features/Account is core (the release app's sign-out), so it may not name the table: the sheet is
 //  built here and gets its actions as plain closures.
 //
+//  DEMO.app.b: `\.signOutFlow` is the host's sign-out flow for ST-9 (the demo hears it end and shows
+//  AC-1 welcome back); the AC-2 sheet itself is still presented by the account page.
+//
 import SwiftUI
+
+extension EnvironmentValues {
+    /// The sign-out flow ST-9 runs on, when the host owns one; nil: the page's own sample.
+    @Entry var signOutFlow: (any SignOutFlowing)?
+}
 
 extension AppDestinations {
     enum Account: AppDestinationGroup {

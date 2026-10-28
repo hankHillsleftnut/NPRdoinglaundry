@@ -36,6 +36,7 @@ In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick 
 - **`-DemoStart app`**: straight into the app.
 - **`-DemoStart returning`**: "welcome back", as after signing out.
 - **`-FlowStart questions`**: the first run at that screen (change the word to `inviteGate`, `youreIn`, `privacy`, `gettingReady`).
+- **`-DemoTab podcasts`**: the app opens on that tab (change the word to `journal`, `goals` or `you`).
 
 The quickest full reset: press and hold the Retrospect icon, tap **Remove App**, then press ⌘R.
 

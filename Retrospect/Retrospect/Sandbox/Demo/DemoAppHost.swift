@@ -4,8 +4,8 @@
 //  the demo's stage mounts what already exists, and nothing drawn of its own:
 //  - the first run: the core flow's `SampleFlowHost` on the demo's `SampleFlowModel` (same steps, same
 //    edges as the Core Flow scheme);
-//  - the app: the shell (#213) with each tab's page on its group's sample, as each group's own stack
-//    builds it (`DemoShell`);
+//  - the app: the shell (#213) with each tab's page on its group's own stack, joined through the app
+//    route table (G0), on one set of samples per session (`DemoShell`, `DemoSamples`);
 //  - welcome back: AC-1 (`SignInScreen`, returning look) on sample taps.
 //  Every backend guard of `-Flow sample` applies (the demo is a sample flow to `RetrospectApp`): no
 //  session, no Keychain, no outbox, no addresses. Sandbox: never in a release build.
@@ -37,7 +37,7 @@ struct DemoAppHost: View {
                     .id(ObjectIdentifier(demo.flow))
             case .app:
                 // straight from the first run, the journal tab is first home (ON-13) until the next launch
-                DemoShell(firstHome: demo.firstDay ? demo.flow : nil)
+                DemoShell(tab: demo.startTab, firstHome: demo.firstDay ? demo.flow : nil) { demo.follow(signOut: $0) }
                     // a new session builds every page again on fresh samples
                     .id(demo.session)
             case .returning:
@@ -50,80 +50,6 @@ struct DemoAppHost: View {
         .animation(RMotion.snappy, value: demo.stage)
         // the kept model only: a model SwiftUI built and dropped never writes
         .onAppear { demo.started() }
-    }
-}
-
-/// The app after the first run: the shell over the four tabs, every tab live, each on its group's sample.
-/// Each page is its group's own stack, so the joins inside a group work as that group built them; the
-/// joins between groups come through G0's route table (DEMO.app.b).
-struct DemoShell: View {
-    /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
-    /// flow does (FirstHomePage); nil on any later launch (JR-1).
-    var firstHome: SampleFlowModel?
-    @State private var model = ShellModel(selection: .journal, available: Set(RTab.allCases))
-
-    var body: some View {
-        ShellPage(model: model) { tab, context in
-            switch tab {
-            case .journal:
-                if let flow = firstHome {
-                    AnyView(DemoFirstHome(flow: flow, isShown: context.isShown))
-                } else {
-                    // JR-1 with the drawer (JR-3) and one entry (JR-4), as the journal lane mounts them
-                    AnyView(EntriesLaunch(scenario: .flow))
-                }
-            // PC-1 on the sample library
-            case .podcasts: AnyView(PodcastsLaunch(scenario: .rest))
-            case .goals: AnyView(DemoGoalsTab())
-            case .you: AnyView(DemoYouTab())
-            }
-        }
-    }
-}
-
-/// ON-13 first home, built exactly as the core flow builds it (SampleFlowHost's `.firstHome`): the
-/// celebration, the recap of the person's own answers, the first-episode card that plays the tease.
-private struct DemoFirstHome: View {
-    let flow: SampleFlowModel
-    let isShown: Bool
-
-    var body: some View {
-        FirstHomePage(
-            recap: flow.firstHomeRecap,
-            celebrate: flow.arrivedHome,
-            today: SampleJournalContent.today,
-            makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
-            isShown: isShown
-        )
-        .environment(\.journalData, flow.journalDay)
-    }
-}
-
-/// GL-1 → GL-2 on the goals stack, on the sample. Only the goal Paper draws a GL-2 for opens (GL-D11).
-private struct DemoGoalsTab: View {
-    @State private var model = GoalsModel(data: SampleGoals())
-
-    var body: some View {
-        GoalsStack(model: model, canOpen: SampleGoals.drawnDetails.contains)
-    }
-}
-
-/// YO-1 and the pages it opens (YO-2 in place, YO-3, YO-4 sheet, YO-5) on the You stack, on the sample.
-private struct DemoYouTab: View {
-    @State private var data = SampleYou()
-    @State private var navigator = YouNavigator()
-    @State private var model: YouModel?
-
-    var body: some View {
-        YouStack(data: data, navigator: navigator) {
-            RSheetHost {
-                if let model {
-                    YouPage(model: model, navigator: navigator)
-                } else {
-                    RColor.backgroundCanvas.onAppear { model = YouModel(data: data) }
-                }
-            }
-        }
     }
 }
 
