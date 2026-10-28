@@ -69,6 +69,17 @@ struct NodeSheet: View {
         .padding(.top, RDimension.space1)
     }
 
+    /// The evidence row's leading well, by the evidence's kind: Paper's gridless calendar for calendar
+    /// evidence (1GD7-0, YO-D29); your words keep the page glyph (`symbol`). On the sheet, not on the kind:
+    /// You is a dark folder, and a member added to a Flows type from here would be a back door past the
+    /// fence (ReleaseRouteTableTests). The switch is exhaustive, so a new kind has to choose.
+    static func leading(for kind: Flows.Evidence.Kind) -> REvidenceRow.Leading {
+        switch kind {
+        case .calendar: .calendar
+        case .yourWords: .kind(symbol: kind.symbol)
+        }
+    }
+
     private var belief: some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
             RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief)
@@ -78,7 +89,7 @@ struct NodeSheet: View {
                     REvidenceGroup {
                         ForEach(node.restsOn) { evidence in
                             REvidenceRow(
-                                leading: evidence.kind.leading,
+                                leading: Self.leading(for: evidence.kind),
                                 meta: evidence.meta,
                                 // Paper draws the 32 wash well behind each glyph (1GCZ-0), as on the canvas
                                 // panel anywhere else: not the lifted well (that one vanished, QA batch 5)
@@ -108,14 +119,6 @@ struct NodeSheet: View {
                 .youInert()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-extension Flows.Evidence.Kind {
-    /// The evidence row's leading well on YO-4: Paper's gridless calendar for calendar evidence (1GD7-0,
-    /// YO-D29); your words keep the page glyph (`symbol`). Here, not in Flows, so the flow stays free of views.
-    var leading: REvidenceRow.Leading {
-        self == .calendar ? .calendar : .kind(symbol: symbol)
     }
 }
 

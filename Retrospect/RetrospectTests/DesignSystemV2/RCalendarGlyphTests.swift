@@ -64,8 +64,8 @@ struct RCalendarGlyphTests {
 
     @Test("YO-4 picks the well by the evidence's kind: calendar draws it, your words keep the page glyph")
     func kindLeading() {
-        #expect(Flows.Evidence.Kind.calendar.leading == .calendar)
-        #expect(Flows.Evidence.Kind.yourWords.leading == .kind(symbol: "text.page"))
+        #expect(NodeSheet.leading(for: .calendar) == .calendar)
+        #expect(NodeSheet.leading(for: .yourWords) == .kind(symbol: "text.page"))
     }
 
     /// Pixels with any opacity in an RGBA image.
