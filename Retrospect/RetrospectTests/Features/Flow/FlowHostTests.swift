@@ -247,20 +247,23 @@ struct FlowHostTests {
 
     // MARK: The end of what's built
 
-    @Test("a paywall price ends the walk: the start-over pill shows there, and starting over is a fresh splash")
-    func endOfWhatsBuilt() {
-        let store = MemoryFlowStore()
-        let model = flow(store, start: .paywall)
-        model.answered(.namePlace, words: "sam.")
-        #expect(model.isAtEnd == false)
+    @Test("the whole first run is joined: no hand-off ends the walk early, and a stale saved end is dropped")
+    func noEndLeft() {
+        // every planned hand-off now has a row: the pill never shows on the walk
+        let model = flow(MemoryFlowStore(), start: .paywall)
         model.send(.subscribed)
-        #expect(model.step == .paywall)
-        #expect(model.endedAt == .paywall)
-        #expect(model.isAtEnd)
-        // a relaunch at the end shows the pill at once
-        #expect(store.saved?.endedAt == .paywall)
-        #expect(flow(store).isAtEnd)
+        #expect(model.step == .firstHome)
+        #expect(model.endedAt == nil)
+        // an end saved by an older build (the paywall before first home joined) is dropped on launch
+        let store = MemoryFlowStore(SampleFlowSaved(step: .paywall, endedAt: .paywall))
+        #expect(flow(store).isAtEnd == false)
+    }
 
+    @Test("starting over is a fresh splash with nothing kept")
+    func startOver() {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .firstHome)
+        model.answered(.namePlace, words: "sam.")
         let fresh = model.startedOver()
         #expect(fresh.step == .splash)
         #expect(fresh.answers.isEmpty)
@@ -291,7 +294,7 @@ struct FlowHostTests {
 
     // MARK: The paywall (J3a)
 
-    @Test("the paywall: either dummy price hands on once (nothing charged); the walk ends there until first home")
+    @Test("the paywall: either dummy price hands on once (nothing charged) to first home")
     func paywallChoosesAndEnds() async {
         for choice: PaywallModel.Choice in [.yearly, .monthly] {
             let model = flow(MemoryFlowStore(), start: .paywall)
@@ -300,12 +303,48 @@ struct FlowHostTests {
             #expect(page.offer != nil)
             await page.choose(choice)
             #expect(page.phase == .left(choice))
-            #expect(model.step == .paywall)
-            #expect(model.endedAt == .paywall)
+            #expect(model.step == .firstHome)
+            #expect(model.arrivedHome)
+            #expect(model.endedAt == nil)
             // a second tap after leaving does nothing
             await page.choose(.yearly)
             #expect(page.phase == .left(choice))
         }
+    }
+
+    // MARK: First home (J3b)
+
+    @Test("first home: the recap is the person's own answers; its card plays the tease from 0:00; the card pops only on arrival")
+    func firstHomeFromTheWalk() {
+        let store = MemoryFlowStore(SampleFlowSaved(step: .paywall, answers: ["name.place": "sam, in london. and more."]))
+        let model = flow(store)
+        model.send(.subscribed)
+        #expect(model.step == .firstHome)
+        #expect(model.arrivedHome)
+        let recap = SetupRecap.make(answers: [.namePlace: "sam, in london. and more."])
+        #expect(model.firstHomeRecap == recap)
+        #expect(recap != SetupRecap.paper)
+        var collapsed = 0
+        let player = model.makeFirstEpisodePlayer { collapsed += 1 }
+        #expect(player.state == .playing)
+        #expect(player.playback.position == 0)
+        player.collapse()
+        #expect(collapsed == 1)
+        // a relaunch at first home comes back to it, recap kept, without the arrival pop
+        let again = flow(store)
+        #expect(again.step == .firstHome)
+        #expect(again.arrivedHome == false)
+        #expect(again.firstHomeRecap == recap)
+    }
+
+    @Test("first home is the end of the first run: nothing moves it, and it never shows the start-over pill")
+    func firstHomeIsTheEnd() {
+        let model = flow(MemoryFlowStore(), start: .firstHome)
+        for event in FlowEvent.allCases {
+            model.send(event)
+        }
+        #expect(model.step == .firstHome)
+        #expect(model.isAtEnd == false)
     }
 
     @Test("no way back from the paywall, and a relaunch there comes back to it with the answers kept")

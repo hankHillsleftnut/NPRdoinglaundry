@@ -45,8 +45,9 @@ struct FlowPlanTests {
                 #expect(FlowStep.next(from: from, event: event) == nil, "\(edge.from) \(edge.event)")
             }
         }
-        // today: a paywall price waits for first home (ON-13)
-        #expect(FlowStep.next(from: .paywall, event: .subscribed) == nil)
+        // today: every first-run screen is a step, so no planned edge is left unbuilt
+        #expect(FirstRunScreen.allCases.allSatisfy { $0.step != nil })
+        #expect(FlowPlan.edges.allSatisfy { $0.to.step != nil })
     }
 
     @Test("no way back through the host where none is drawn or decided (getting ready: decision 10)")
