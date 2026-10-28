@@ -210,11 +210,15 @@ struct LiveFirstRunDataTests {
             try await Task.sleep(for: .milliseconds(5))
         }
 
-        let opening = Task { await data.open() }
-        try await Task.sleep(for: .milliseconds(20)) // past the registration, inside the reads at worst
+        // the send is parked at the gate while the seam opens whole: it registers its listener, then reads a row that is
+        // not done yet. Only then does the send land. Deterministic: no timing.
+        await data.open()
+        #expect(data.isLoaded)
+        #expect(!data.isComplete, "the row was still in flight when the seam read it")
+        #expect(access.values.isEmpty)
+
         gate.open()
         await drain.value
-        await opening.value
 
         try await settle { data.isComplete }
         #expect(access.values == [.member])
