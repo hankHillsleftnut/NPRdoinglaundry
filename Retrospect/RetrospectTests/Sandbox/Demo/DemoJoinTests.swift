@@ -76,6 +76,37 @@ struct DemoJoinTests {
         #expect(DemoModel(store: MemoryDemoStore(), flowStore: MemoryFlowStore(), launch: DemoLaunch(start: .app), sleep: { _ in }).startTab == .journal)
     }
 
+    @Test("ST-9 sign out → AC-2 runs to its end → AC-1 welcome back, end to end on the sample flow")
+    func signOutReachesWelcomeBack() async {
+        let model = DemoModel(store: MemoryDemoStore(), flowStore: MemoryFlowStore(), launch: DemoLaunch(start: .app), sleep: { _ in })
+        model.started()
+        let flow = SampleSignOutFlow(unsent: 0, sleep: { _ in })
+        model.follow(signOut: flow)
+        flow.begin()
+        for _ in 0 ..< 400 where model.stage != .returning {
+            await Task.yield()
+        }
+        #expect(flow.state == .done)
+        #expect(model.stage == .returning)
+        #expect(model.returning?.look == .returning)
+    }
+
+    @Test("a sign-out flow from an earlier session doesn't move the demo")
+    func staleSignOutIgnored() async {
+        let model = DemoModel(store: MemoryDemoStore(), flowStore: MemoryFlowStore(), launch: DemoLaunch(start: .returning), sleep: { _ in })
+        model.started()
+        let old = SampleSignOutFlow(unsent: 0, sleep: { _ in })
+        model.follow(signOut: old)
+        // a new session starts before the old flow ends
+        await model.returning?.appleFinished(.failure(SampleTap()))
+        old.begin()
+        for _ in 0 ..< 200 {
+            await Task.yield()
+        }
+        #expect(old.state == .done)
+        #expect(model.stage == .app)
+    }
+
     @Test("one set of samples per session: every page reads the same seam, a new session has new ones")
     func samplesPerSession() {
         let first = DemoSamples()

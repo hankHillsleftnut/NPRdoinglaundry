@@ -19,7 +19,7 @@ struct DemoOutsideTests {
     func arguments() {
         #expect(DemoLaunch.parse(["-DemoOutside", "brief"]).outside == .brief)
         #expect(DemoLaunch.parse(["-DemoOutside", "brief", "-DemoStart", "app"]) == DemoLaunch(start: .app, outside: .brief))
-        #expect(DemoLaunch.parse(["-DemoOutside", "share"]).outside == nil) // joins with the outside stack
+        #expect(DemoLaunch.parse(["-DemoOutside", "share"]).outside == .share)
         #expect(DemoLaunch.parse(["-DemoOutside", "fax"]).outside == nil)
         #expect(DemoLaunch.parse(["-DemoOutside"]).outside == nil)
     }
@@ -49,5 +49,6 @@ struct DemoOutsideTests {
     @Test("what each way in raises is built by its owner")
     func sheetsAreBuilt() {
         #expect(AppRoutes.isBuilt(.brief(id: nil)))
+        #expect(AppRoutes.isBuilt(.share))
     }
 }

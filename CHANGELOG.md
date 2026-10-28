@@ -2,6 +2,10 @@
 
 What changed, in plain words, newest first. Every merged PR that changes what the app, the backend or the team does gets a line here, in the same PR or the integrator's next one. Big changes get a short paragraph: what a person will notice, and what to watch. (Founder, 22 Oct: "always have a changelog for every massive change".)
 
+## 27 Oct 2026
+
+- **Content fades into the tab bar (TABBAR.blend):** inside the app shell, every tab page now dissolves into the tab bar over its last 90pt (72 on SE) with a progressive blur and an eased canvas gradient, light and dark, instead of being cut by a hard edge; the mini-player floats on the opaque end, sheets still cover the bar, Reduce Transparency keeps the fade alone. New tokens `blur.tabBlend.rise/riseCompact`; nothing existing changed.
+
 ## 22 Oct 2026 · evening
 
 - **Signing in works end to end in the app:** Sign in with Apple with a one-time nonce, silent refresh (one refresh at a time, a clock that's wrong doesn't loop), sign-out, and a retry that can't sign you out by accident; the old screens' 401s are bridged to the new session (#134, #142). One bump of a person's session version now ends their phones' sessions (#137).

@@ -196,7 +196,41 @@ final class QuestionsModel {
     /// A chip is chosen while its words are one of the field's comma-separated parts, so the field is
     /// the one truth: editing the words by hand chooses or clears chips too.
     func isChosen(_ chip: String) -> Bool {
-        Self.parts(of: draft).contains { Self.same($0, chip) }
+        !runs(of: chip, in: Self.parts(of: draft)).isEmpty
+    }
+
+    /// Where `chip` stands in the field's parts. A chip's own words may hold a comma ("friends,
+    /// family"), so a chip is a run of parts; the question's chips claim runs longest first and runs
+    /// never overlap, so the "family" inside "friends, family" is not the "family" chip.
+    private func runs(of chip: String, in parts: [String]) -> [Range<Int>] {
+        Self.runs(of: quickAnswers.contains(chip) ? quickAnswers : quickAnswers + [chip], in: parts)[chip] ?? []
+    }
+
+    /// Every chip's runs in `parts` (case-insensitive), longest chips first (ties in the question's
+    /// order, so the claim is deterministic), no run overlapping another.
+    static func runs(of chips: [String], in parts: [String]) -> [String: [Range<Int>]] {
+        var taken = Set<Int>()
+        var found: [String: [Range<Int>]] = [:]
+        let ordered = chips.enumerated()
+            .sorted { (Self.parts(of: $0.element).count, $1.offset) > (Self.parts(of: $1.element).count, $0.offset) }
+            .map(\.element)
+        for chip in ordered {
+            let words = Self.parts(of: chip)
+            guard !words.isEmpty, words.count <= parts.count else { continue }
+            var start = 0
+            while start + words.count <= parts.count {
+                let run = start ..< start + words.count
+                let free = run.allSatisfy { !taken.contains($0) }
+                if free, zip(parts[run], words).allSatisfy({ Self.same($0, $1) }) {
+                    found[chip, default: []].append(run)
+                    taken.formUnion(run)
+                    start += words.count
+                } else {
+                    start += 1
+                }
+            }
+        }
+        return found
     }
 
     /// A chip's words and a part of the field match whatever their case ("Tech" from the keyboard).
@@ -324,11 +358,17 @@ final class QuestionsModel {
             stopHearing()
         }
         var parts = Self.parts(of: draft)
+        let found = runs(of: chip, in: parts)
         if wasChosen {
-            // every spelling of it ("tech, Tech" typed by hand), so the chip really turns off
-            parts.removeAll { Self.same($0, chip) }
-        } else if !parts.contains(where: { Self.same($0, chip) }) {
-            parts.append(chip)
+            // every run of it ("tech, Tech" typed by hand), so the chip really turns off
+            for run in found.reversed() {
+                parts.removeSubrange(run)
+            }
+        } else if found.isEmpty, Self.runs(of: [chip], in: parts)[chip] == nil {
+            // never a duplicate: words already in the field that a longer chip claims ("friends,
+            // family" holding "family") stay as they are; offering a comma chip beside the single
+            // chips it is made of is a QC-1 question, not something a tap can untangle
+            parts += Self.parts(of: chip)
         }
         draft = parts.joined(separator: ", ")
     }

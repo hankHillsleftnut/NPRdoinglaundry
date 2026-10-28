@@ -58,8 +58,9 @@ struct PlannedEdge: Equatable, Sendable {
 
 enum FlowPlan {
     /// Splash to first home. Back edges only where a page draws a back that leaves it; getting ready has
-    /// no back (decision 10), the paywall draws none, first home is the end. Open, not planned: the
-    /// tease's collapse (row 39, question), the splash's terms/privacy and the paywall's restore (inert).
+    /// no back (decision 10), the paywall draws none, first home is the end. The tease's collapse (row 39)
+    /// rides on `teaseEnded` (the provisional default in DECISIONS). Not planned: the splash's
+    /// terms/privacy and the paywall's restore (inert).
     static let edges: [PlannedEdge] = [
         PlannedEdge(.splash, "signedIn", .inviteGate, "row 7; decisions 6, 12"),
         PlannedEdge(.inviteGate, "ticketTorn", .youreIn, "row 12"),

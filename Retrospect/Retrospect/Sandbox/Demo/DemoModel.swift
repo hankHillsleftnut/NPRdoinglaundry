@@ -4,11 +4,11 @@
 //  a first-run step itself. The first run is the core flow's `SampleFlowModel` on its `FlowEdge.table`
 //  (the FlowPlan engine), so the demo walks exactly the steps and edges the Core Flow scheme walks. The
 //  demo's only edges are its own three hand-offs:
-//  - first home (`FirstRunScreen.firstHome`, once FH.home.b makes it a step) → the app, journal first;
+//  - first home (`FirstRunScreen.firstHome`, a step since #267) → the app, its journal tab on first home
+//    (ON-13, as the core flow shows it) for the rest of that launch;
 //  - AC-1 welcome back, signed in → the app;
 //  - AC-1 "new here? get started" → the first run from the splash, nothing kept.
-//  Until first home is a step the first run ends where the core flow ends (`-DemoStart app` opens the
-//  app). No bridge edge, no placeholder page. Every move is saved, so a relaunch lands where it was.
+//  No bridge edge, no placeholder page. Every move is saved, so a relaunch lands where it was.
 //
 #if DEBUG
 import Foundation
@@ -31,6 +31,9 @@ final class DemoModel {
     let startTab: RTab
     /// How the system opened the app (`-DemoOutside`), until the app has acted on it once.
     private(set) var outside: DemoOutside?
+    /// The app was entered from first home in this launch: its journal tab is ON-13 (FirstHomePage), as the
+    /// core flow shows it, not JR-1. A later launch (or welcome back) opens on JR-1.
+    private(set) var firstDay = false
 
     @ObservationIgnored private let store: any DemoStageStore
     @ObservationIgnored private let flowStore: any SampleFlowStore
@@ -85,10 +88,11 @@ final class DemoModel {
         followReturning()
     }
 
-    /// The first run reached its hand-off step: the app, journal first.
+    /// The first run reached its hand-off step (first home): the app, its journal tab on first home, so ON-13
+    /// is seen with every tab live and every join working.
     func flowMoved(to step: FlowStep) {
         guard stage == .firstRun, let handOff, step == handOff else { return }
-        enterApp()
+        enterApp(firstDay: true)
     }
 
     /// The app acts on how it was opened once: later calls return nil.
@@ -106,9 +110,28 @@ final class DemoModel {
         followReturning()
     }
 
+    /// Follows the session's ST-9 sign-out flow: when AC-2 reaches its end, welcome back. A flow from an
+    /// earlier session (its shell gone) is ignored.
+    func follow(signOut flow: any SignOutFlowing) {
+        let session = session
+        withObservationTracking {
+            _ = flow.state
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.session == session else { return }
+                if flow.state == .done {
+                    signedOut()
+                } else {
+                    follow(signOut: flow)
+                }
+            }
+        }
+    }
+
     // MARK: - Private
 
-    private func enterApp() {
+    private func enterApp(firstDay: Bool = false) {
+        self.firstDay = firstDay
         session += 1
         returning = nil
         stage = .app
