@@ -10,6 +10,11 @@
 //  page (PX) replaces whatever was showing, signed in or not. Nothing is erased or signed out: the store and
 //  the paused outbox stay as they are, so queued words send from the updated build (decision 3).
 //
+//  FR.b1.root (founder go 28 Oct): the first run (ON-3–9) sits between "begin" and the journal, routed on the
+//  person's flags (`PersonFlags.FirstRun`): "begin" starts it, leaving it marks it done. An existing member
+//  never sees it. The flags are read with the person's store; until they are known an approved person waits
+//  on the canvas, as for "you're in".
+//
 //  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
 //  with `-OldHome`.
 //
@@ -29,9 +34,17 @@ struct NewAppRoot: View {
         case paused
         /// The person's store could not be opened.
         case storeFailed
+        /// ON-3–9: the first run's questions on the live seam (FR.b1.root).
+        case firstRun
         case journal
         /// PX: this build is too old for the server. Shown over every other case, whatever the session is doing.
         case updateRequired
+    }
+
+    /// The person's flags the root routes on, read together from their store: nil fields while not known.
+    struct Flags: Equatable {
+        var youreInSeen: Bool?
+        var firstRun: Store.PersonFlags.FirstRun?
     }
 
     /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
@@ -41,12 +54,15 @@ struct NewAppRoot: View {
     /// wins over all of it: an old build can't do anything useful in any of those pages.
     static func screen(
         for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true,
-        updateRequired: Bool = false
+        firstRun: Store.PersonFlags.FirstRun? = nil, updateRequired: Bool = false
     ) -> Screen {
         if updateRequired {
             return .updateRequired
         }
-        return sessionScreen(for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen)
+        return sessionScreen(
+            for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed,
+            flags: Flags(youreInSeen: youreInSeen, firstRun: firstRun)
+        )
     }
 
     /// VoiceOver is told the screen changed when the update page replaces a page (it would otherwise keep
@@ -65,17 +81,17 @@ struct NewAppRoot: View {
     }
 
     /// What the body routes on, read off the app's environment, so the version floor can't be left out of the call.
-    static func screen(on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?) -> Screen {
+    static func screen(on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?, firstRun: Store.PersonFlags.FirstRun? = nil) -> Screen {
         screen(
             for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen, firstRun: firstRun,
             updateRequired: platform.updateRequired
         )
     }
 
     /// The page for the session alone (the version floor is down).
     private static func sessionScreen(
-        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, flags: Flags
     ) -> Screen {
         guard let state else { return .blank }
         if case .locked = state {
@@ -84,10 +100,18 @@ struct NewAppRoot: View {
         if case .signedOut = state, pendingCode == nil {
             return .blank
         }
-        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen) {
+        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, flags: flags) {
             return early
         }
-        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && youreInSeen == true) {
+        let route = FirstRunRoute.route(
+            session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && flags.youreInSeen == true, firstRun: flags.firstRun
+        )
+        return mounted(route, state: state, storeOpenFailed: storeOpenFailed)
+    }
+
+    /// The page for a launch-table route (the table decides where; this says what page shows there).
+    private static func mounted(_ route: FirstRunRoute, state: Session.State, storeOpenFailed: Bool) -> Screen {
+        switch route {
         case .blank:
             return .blank
         case let .signIn(returning):
@@ -99,19 +123,25 @@ struct NewAppRoot: View {
             return .inviteGate
         case .paused:
             return .paused
+        case .firstRun:
+            return storeOpenFailed ? .storeFailed : .firstRun
         case .journal:
             return storeOpenFailed ? .storeFailed : .journal
         }
     }
 
-    /// An approved person whose store failed gets the retry page; one whose flag is not known yet waits (never the
-    /// journal, never the moment again), unless the gate is already up for them.
-    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?) -> Screen? {
+    /// An approved person whose store failed gets the retry page; one whose flags are not known yet waits (never the
+    /// journal, never the moment again, never the first question for someone past it), unless the gate is already up
+    /// for them. Members never wait: an existing account goes to the journal.
+    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, flags: Flags) -> Screen? {
         guard case .signedIn(_, .approved) = state, !gateHeld else { return nil }
         if storeOpenFailed {
             return .storeFailed
         }
-        return youreInSeen == nil ? .blank : nil
+        if flags.youreInSeen == nil {
+            return .blank
+        }
+        return flags.youreInSeen == true && flags.firstRun == nil ? .blank : nil
     }
 
     /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
@@ -124,9 +154,11 @@ struct NewAppRoot: View {
     @State private var gateHeld = false
     /// This person's persisted "begin pressed" flag (`PersonFlags`, per person, erased on Log Out); nil until the store is open.
     @State private var youreInSeen: Bool?
+    /// This person's first-run flags (started by "begin", done on leaving it); nil until the store is open.
+    @State private var firstRun: Store.PersonFlags.FirstRun?
 
     var body: some View {
-        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen)
+        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen, firstRun: firstRun)
         Group {
             switch screen {
             case .updateRequired:
@@ -142,6 +174,9 @@ struct NewAppRoot: View {
                 PausedView()
             case .storeFailed:
                 StoreFailedView { platform.retryOpeningStore() }
+            case .firstRun:
+                LiveFirstRunHost { finishFirstRun() }
+                    .accessibilityIdentifier("newapp.firstrun")
             case .journal:
                 LiveJournalRoot()
                     .accessibilityIdentifier("newapp.signedin")
@@ -165,7 +200,10 @@ struct NewAppRoot: View {
             }
         }
         .task { await platform.pendingInvite.refresh() }
-        .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
+        .task(id: flagsIdentity) {
+            youreInSeen = await platform.youreInSeen()
+            firstRun = await platform.personFlags?.firstRun()
+        }
         // the waiting code is read again whenever something that can change it happens
         .onChange(of: platform.sessionState) { _, state in
             if case .signedOut? = state {
@@ -190,8 +228,20 @@ struct NewAppRoot: View {
                 platform.retryOpeningStore() // no store open: ask for it again, so 'begin' has a way forward
                 return
             }
+            // and the first run starts here (a member made mid-flow is routed on this, not on access)
+            await platform.personFlags?.markFirstRunStarted()
+            firstRun = await platform.personFlags?.firstRun() ?? Store.PersonFlags.FirstRun(started: true, done: false)
             youreInSeen = true
             gateHeld = false
+        }
+    }
+
+    /// The first run is over for this person on this phone: remembered, then the journal. Not remembered (no store):
+    /// the questions page stays, as "begin" does.
+    private func finishFirstRun() {
+        Task {
+            guard await platform.personFlags?.markFirstRunDone() == true else { return }
+            firstRun = Store.PersonFlags.FirstRun(started: firstRun?.started ?? true, done: true)
         }
     }
 }

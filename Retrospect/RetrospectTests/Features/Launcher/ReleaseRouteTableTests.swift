@@ -16,15 +16,17 @@ import Testing
 /// folder out of `darkFolders`, quoting the founder's go in the PR body.
 @Suite(.timeLimit(.minutes(1)))
 struct ReleaseRouteTableTests {
+
     // MARK: the approved tables (core-12 + the screens built before V2)
 
-    /// What the release root may show: PI0/AC-1, PI1/PI2, paused, the store retry, JR-1 and PX.
+    /// What the release root may show: PI0/AC-1, PI1/PI2, paused, the store retry, the first run's questions
+    /// (ON-3–9, FR.b1.root: founder go 28 Oct, DECISIONS.md "start the real work"), JR-1 and PX.
     static let approvedRoot: Set<String> = [
-        "blank", "locked", "PI0", "PI1-PI2", "paused", "storeFailed", "JR-1", "PX",
+        "blank", "locked", "PI0", "PI1-PI2", "paused", "storeFailed", "ON-3-9", "JR-1", "PX",
     ]
 
-    /// Where the launch table may send a person.
-    static let approvedLaunch: Set<String> = ["blank", "PI0", "PI1", "PI2", "paused", "JR-1"]
+    /// Where the launch table may send a person (ON-3-9 between "begin" and JR-1: FR.b1.root, founder go 28 Oct).
+    static let approvedLaunch: Set<String> = ["blank", "PI0", "PI1", "PI2", "paused", "ON-3-9", "JR-1"]
 
     /// The core 12, splash to first home (SCREEN-MAP §1 first run): the only steps the sample flow may have.
     /// The core lane adds these steps one PR at a time without touching this file; a V2 step fails.
@@ -57,6 +59,7 @@ struct ReleaseRouteTableTests {
         case .inviteGate: "PI1-PI2"
         case .paused: "paused"
         case .storeFailed: "storeFailed"
+        case .firstRun: "ON-3-9"
         case .journal: "JR-1"
         case .updateRequired: "PX"
         }
@@ -69,6 +72,7 @@ struct ReleaseRouteTableTests {
         case .inviteGate: "PI1"
         case .paused: "paused"
         case .youreIn: "PI2"
+        case .firstRun: "ON-3-9"
         case .journal: "JR-1"
         }
     }
@@ -77,7 +81,7 @@ struct ReleaseRouteTableTests {
     func releaseRoot() {
         let every: [NewAppRoot.Screen] = [
             .blank, .locked, .signIn(returning: false, endedByServer: false), .signIn(returning: true, endedByServer: true),
-            .inviteGate, .paused, .storeFailed, .journal, .updateRequired,
+            .inviteGate, .paused, .storeFailed, .firstRun, .journal, .updateRequired,
         ]
         let routes = Set(every.map(Self.route))
         #expect(routes == Self.approvedRoot, "release root routes \(routes.sorted()) != approved \(Self.approvedRoot.sorted())")
@@ -85,7 +89,9 @@ struct ReleaseRouteTableTests {
 
     @Test("the launch table sends people only to approved screens")
     func launchTable() {
-        let every: [FirstRunRoute] = [.blank, .signIn(returning: false), .signIn(returning: true), .inviteGate, .paused, .youreIn, .journal]
+        let every: [FirstRunRoute] = [
+            .blank, .signIn(returning: false), .signIn(returning: true), .inviteGate, .paused, .youreIn, .firstRun, .journal,
+        ]
         let routes = Set(every.map(Self.route))
         #expect(routes == Self.approvedLaunch)
     }
@@ -105,7 +111,7 @@ struct ReleaseRouteTableTests {
     // MARK: guard 2: the fenced folders
 
     @Test("nothing the app can reach names a screen from a dark folder")
-    func darkFoldersAreFenced() throws {
+    func darkFoldersAreFenced() {
         let app = Self.appRoot
         #expect(FileManager.default.fileExists(atPath: app.appendingPathComponent("RetrospectApp.swift").path), "source tree not found at \(app.path)")
         let darkFiles = Self.darkFolders.flatMap { Self.swiftFiles(in: app.appendingPathComponent($0, isDirectory: true)) }
@@ -124,7 +130,10 @@ struct ReleaseRouteTableTests {
         }
         #expect(mounts.isEmpty, "a dark V2 screen is reachable outside the launcher/lab (wiring PR only):\n\(mounts.joined(separator: "\n"))")
         let unnamed = Self.unnamedBackDoors(in: darkFiles.map(\.text))
-        #expect(unnamed.isEmpty, "a dark folder adds an init/subscript to an outside type (release code could reach a dark screen through it):\n\(unnamed.joined(separator: "\n"))")
+        #expect(
+            unnamed.isEmpty,
+            "a dark folder adds an init/subscript to an outside type (release code could reach a dark screen through it):\n\(unnamed.joined(separator: "\n"))"
+        )
     }
 
     @Test("the fence itself works: mounts and back doors are caught; comments, strings and private helpers are not")
@@ -332,7 +341,9 @@ struct ReleaseRouteTableTests {
                     if line[whole].hasSuffix("{") {
                         outsideExtension = outside
                         // a one-line `extension JournalScreen { var row … }`: the member after the brace
-                        if outside { collect(line[whole.upperBound...]) }
+                        if outside {
+                            collect(line[whole.upperBound...])
+                        }
                     } else {
                         pending = outside
                     }
@@ -340,7 +351,9 @@ struct ReleaseRouteTableTests {
                     if let brace = line.firstIndex(of: "{") {
                         pending = nil
                         outsideExtension = outside
-                        if outside { collect(line[line.index(after: brace)...]) }
+                        if outside {
+                            collect(line[line.index(after: brace)...])
+                        }
                     }
                 } else if depth == 0 || (depth == 1 && outsideExtension) {
                     collect(line[...], outside: depth == 1)
@@ -373,7 +386,9 @@ struct ReleaseRouteTableTests {
         }
         func hashes(from start: Int) -> Int {
             var count = 0
-            while start + count < chars.count, chars[start + count] == "#" { count += 1 }
+            while start + count < chars.count, chars[start + count] == "#" {
+                count += 1
+            }
             return count
         }
         while index < chars.count {
@@ -382,13 +397,15 @@ struct ReleaseRouteTableTests {
             case let .code(interpolation, parens):
                 let pounds = hashes(from: index)
                 if char == "/", at(1) == "/" {
-                    while index < chars.count, chars[index] != "\n" { index += 1 }
+                    while index < chars.count, chars[index] != "\n" {
+                        index += 1
+                    }
                     continue
                 } else if char == "/", at(1) == "*" {
                     stack.append(.block(depth: 1))
                     index += 2
                     continue
-                } else if (char == "\"" || char == "#"), at(pounds) == "\"" {
+                } else if char == "\"" || char == "#", at(pounds) == "\"" {
                     let multiline = at(pounds + 1) == "\"" && at(pounds + 2) == "\""
                     stack.append(.string(hashes: pounds, multiline: multiline))
                     index += pounds + (multiline ? 3 : 1)
@@ -418,13 +435,15 @@ struct ReleaseRouteTableTests {
                     continue
                 }
                 let closer = multiline ? 3 : 1
-                if char == "\"", (0..<closer).allSatisfy({ at($0) == "\"" }), hashes(from: index + closer) >= pounds {
+                if char == "\"", (0 ..< closer).allSatisfy({ at($0) == "\"" }), hashes(from: index + closer) >= pounds {
                     stack.removeLast()
                     out.append(" ")
                     index += closer + pounds
                     continue
                 }
-                if char == "\n" { out.append(char) }
+                if char == "\n" {
+                    out.append(char)
+                }
                 index += 1
             case let .block(depth):
                 if char == "/", at(1) == "*" {
@@ -432,10 +451,14 @@ struct ReleaseRouteTableTests {
                     index += 2
                 } else if char == "*", at(1) == "/" {
                     stack[stack.count - 1] = .block(depth: depth - 1)
-                    if depth == 1 { stack.removeLast() }
+                    if depth == 1 {
+                        stack.removeLast()
+                    }
                     index += 2
                 } else {
-                    if char == "\n" { out.append(char) }
+                    if char == "\n" {
+                        out.append(char)
+                    }
                     index += 1
                 }
             }
