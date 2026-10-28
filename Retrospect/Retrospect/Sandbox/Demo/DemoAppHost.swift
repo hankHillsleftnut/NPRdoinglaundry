@@ -37,7 +37,7 @@ struct DemoAppHost: View {
                     .id(ObjectIdentifier(demo.flow))
             case .app:
                 // straight from the first run, the journal tab is first home (ON-13) until the next launch
-                DemoShell(tab: demo.startTab, firstHome: demo.firstDay ? demo.flow : nil) { demo.signedOut() }
+                DemoShell(tab: demo.startTab, firstHome: demo.firstDay ? demo.flow : nil) { demo.follow(signOut: $0) }
                     // a new session builds every page again on fresh samples
                     .id(demo.session)
             case .returning:

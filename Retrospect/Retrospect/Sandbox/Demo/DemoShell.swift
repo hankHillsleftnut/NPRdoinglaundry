@@ -14,15 +14,19 @@ struct DemoShell: View {
     /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
     /// flow does (FirstHomePage); nil on any later launch (JR-1 with its drawer and joins).
     var firstHome: SampleFlowModel?
-    /// ST-9's sign-out reached its end: the demo shows AC-1 welcome back.
-    var signedOut: () -> Void = {}
+    /// Hands the session's ST-9 sign-out flow to the host once, which follows it to AC-1 welcome back.
+    var followSignOut: (any SignOutFlowing) -> Void = { _ in }
     @State private var model: ShellModel
     @State private var samples = DemoSamples()
 
     /// Opens on `tab` (`-DemoTab`, journal by default).
-    init(tab: RTab = .journal, firstHome: SampleFlowModel? = nil, signedOut: @escaping () -> Void = {}) {
+    init(
+        tab: RTab = .journal,
+        firstHome: SampleFlowModel? = nil,
+        followSignOut: @escaping (any SignOutFlowing) -> Void = { _ in }
+    ) {
         self.firstHome = firstHome
-        self.signedOut = signedOut
+        self.followSignOut = followSignOut
         _model = State(initialValue: ShellModel(selection: tab, available: Set(RTab.allCases)))
     }
 
@@ -42,11 +46,8 @@ struct DemoShell: View {
             }
         }
         .demoSamples(samples)
-        .onChange(of: samples.signOut.state) { _, state in
-            if state == .done {
-                signedOut()
-            }
-        }
+        // the session's sign-out, followed by the demo model (tested there end to end)
+        .onAppear { followSignOut(samples.signOut) }
     }
 }
 

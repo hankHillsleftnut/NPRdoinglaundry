@@ -99,6 +99,24 @@ final class DemoModel {
         followReturning()
     }
 
+    /// Follows the session's ST-9 sign-out flow: when AC-2 reaches its end, welcome back. A flow from an
+    /// earlier session (its shell gone) is ignored.
+    func follow(signOut flow: any SignOutFlowing) {
+        let session = session
+        withObservationTracking {
+            _ = flow.state
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.session == session else { return }
+                if flow.state == .done {
+                    signedOut()
+                } else {
+                    follow(signOut: flow)
+                }
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func enterApp(firstDay: Bool = false) {
