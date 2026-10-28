@@ -94,6 +94,26 @@ struct FlowStepTests {
         #expect(Set(rows).count == rows.count)
     }
 
+    @Test("debug: a launch with no arguments (the home-screen icon) opens the sample flow; any explicit flag wins")
+    func iconLaunchOpensTheSampleFlow() {
+        let app = "/private/var/containers/Bundle/Application/X/Retrospect.app/Retrospect"
+        // the icon: no arguments, not a test run
+        #expect(FlowLaunch.resolve([app], environment: [:]) == FlowLaunch(isRequested: true, start: nil))
+        // explicit arguments win
+        #expect(FlowLaunch.resolve([app, "-Flow", "live"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-Flow", "sample", "-FlowStart", "questions"], environment: [:]) == FlowLaunch(isRequested: true, start: .questions))
+        #expect(FlowLaunch.resolve([app, "-Screen", "PI0", "-State", "splash"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-DesignLab"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-OldHome"], environment: [:]).isRequested == false)
+        // Xcode's own run arguments mean the launch came from Xcode's plain scheme: the live root, as before
+        #expect(FlowLaunch.resolve([app, "-NSDocumentRevisionsDebugMode", "YES"], environment: [:]).isRequested == false)
+        // a test host never opens it by default
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestConfigurationFilePath": "/x"]).isRequested == false)
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestSessionIdentifier": "x"]).isRequested == false)
+        // and this test process itself (a test host) is not in the sample flow
+        #expect(FlowLaunch.current.isRequested == false)
+    }
+
     @Test("-Flow sample turns the host on; -FlowStart names a step; anything else is ignored")
     func launchArguments() {
         #expect(FlowLaunch.parse([]) == FlowLaunch())
