@@ -45,7 +45,7 @@ enum DemoPage: String, CaseIterable, Sendable {
         case .youreIn: ["PI2"]
         case .jr1: ["JR-1", "journal"]
         case .tease: ["player"]
-        case .st9: ["account"]
+        case .st9: ["account", "ST-9"]
         case .shell: ["shell"]
         case .launch, .system, .questions, .privacy, .connect, .gettingReady, .paywall, .firstHome, .miniPlayer, .ex2, .ex3, .ex4:
             []
@@ -164,8 +164,8 @@ enum DemoFlowEdges {
         DemoEdge("F07", .inviteGate, "tear", .swipe, .youreIn, .flow(from: "inviteGate", event: "ticketTorn", to: "youreIn"), .main),
         DemoEdge("F08", .youreIn, "begin", .tap, .questions, .flow(from: "youreIn", event: "begin", to: "questions"), .main),
         DemoEdge("F09", .questions, "send · chip · back", .tap, nil, .inPlace, .main),
-        DemoEdge("F10", .questions, "the last answer", .tap, .privacy, .flow(from: "questions", event: "questionsDone", to: "privacy"), .pr(238)),
-        DemoEdge("F11", .privacy, "back", .back, .questions, .flow(from: "privacy", event: "back", to: "questions"), .pr(238)),
+        DemoEdge("F10", .questions, "the last answer", .tap, .privacy, .flow(from: "questions", event: "questionsDone", to: "privacy"), .main),
+        DemoEdge("F11", .privacy, "back", .back, .questions, .flow(from: "privacy", event: "back", to: "questions"), .main),
         DemoEdge(
             "F12",
             .privacy,
@@ -173,7 +173,7 @@ enum DemoFlowEdges {
             .automatic,
             .connect,
             .flow(from: "privacy", event: "privacyDone", to: "connect"),
-            .planned("FLOW.edges.c")
+            .main
         ),
         DemoEdge("F13", .privacy, "read the privacy policy", .tap, nil, .inPlace, .main),
         DemoEdge("F14", .connect, "+ connect", .tap, nil, .inPlace, .pr(199)),
@@ -184,9 +184,9 @@ enum DemoFlowEdges {
             .tap,
             .gettingReady,
             .flow(from: "connect", event: "connectDone", to: "gettingReady"),
-            .planned("FLOW.edges.c / #201")
+            .main
         ),
-        DemoEdge("F16", .connect, "back", .back, .privacy, .flow(from: "connect", event: "back", to: "privacy"), .planned("FLOW.edges.c")),
+        DemoEdge("F16", .connect, "back", .back, .privacy, .flow(from: "connect", event: "connectBack", to: "privacy"), .main),
         DemoEdge(
             "F18",
             .gettingReady,
@@ -194,7 +194,7 @@ enum DemoFlowEdges {
             .automatic,
             .tease,
             .flow(from: "gettingReady", event: "episodeReady", to: "tease"),
-            .planned("PS.sheet.c")
+            .main
         ),
         DemoEdge(
             "F20",
