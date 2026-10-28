@@ -13,8 +13,14 @@ import SwiftUI
 struct DemoShell: View {
     /// ST-9's sign-out reached its end: the demo shows AC-1 welcome back.
     var signedOut: () -> Void = {}
-    @State private var model = ShellModel(selection: .journal, available: Set(RTab.allCases))
+    @State private var model: ShellModel
     @State private var samples = DemoSamples()
+
+    /// Opens on `tab` (`-DemoTab`, journal by default).
+    init(tab: RTab = .journal, signedOut: @escaping () -> Void = {}) {
+        self.signedOut = signedOut
+        _model = State(initialValue: ShellModel(selection: tab, available: Set(RTab.allCases)))
+    }
 
     var body: some View {
         ShellPage(model: model) { tab, _ in

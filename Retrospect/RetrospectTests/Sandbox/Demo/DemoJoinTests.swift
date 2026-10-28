@@ -67,6 +67,15 @@ struct DemoJoinTests {
         #expect(alone.playerShown)
     }
 
+    @Test("-DemoTab opens the app on that tab; none or an unknown one is the journal")
+    func demoTab() {
+        #expect(DemoLaunch.parse(["-DemoTab", "podcasts"]).tab == .podcasts)
+        #expect(DemoLaunch.parse(["-DemoTab", "nowhere"]).tab == nil)
+        let model = DemoModel(store: MemoryDemoStore(), flowStore: MemoryFlowStore(), launch: DemoLaunch(start: .app, tab: .you), sleep: { _ in })
+        #expect(model.startTab == .you)
+        #expect(DemoModel(store: MemoryDemoStore(), flowStore: MemoryFlowStore(), launch: DemoLaunch(start: .app), sleep: { _ in }).startTab == .journal)
+    }
+
     @Test("one set of samples per session: every page reads the same seam, a new session has new ones")
     func samplesPerSession() {
         let first = DemoSamples()

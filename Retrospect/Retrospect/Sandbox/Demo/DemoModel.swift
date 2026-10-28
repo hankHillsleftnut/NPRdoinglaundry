@@ -27,6 +27,8 @@ final class DemoModel {
     private(set) var returning: SignInModel?
     /// Counts signed-in sessions: the app's pages are rebuilt for each, so nothing from the last one shows.
     private(set) var session = 0
+    /// The tab the app opens on (`-DemoTab`), journal when none was asked for.
+    let startTab: RTab
 
     @ObservationIgnored private let store: any DemoStageStore
     @ObservationIgnored private let flowStore: any SampleFlowStore
@@ -57,6 +59,7 @@ final class DemoModel {
         self.sleep = sleep
         self.clock = clock
         self.stage = stage
+        startTab = launch.tab ?? .journal
         flow = SampleFlowModel(store: flowStore, start: start, sleep: sleep, clock: clock)
         if stage == .returning {
             returning = makeReturning()

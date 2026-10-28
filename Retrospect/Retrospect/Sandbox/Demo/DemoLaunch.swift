@@ -23,15 +23,24 @@ enum DemoStage: String, CaseIterable, Codable, Sendable {
 struct DemoLaunch: Equatable {
     /// `-DemoStart <stage>`: open there with nothing kept. Nil resumes (or starts at the first run).
     var start: DemoStage?
+    /// `-DemoTab <tab>`: the app opens on that tab (journal by default), as if it had been tapped.
+    var tab: RTab?
 
     static let current = parse(ProcessInfo.processInfo.arguments)
 
-    /// An unknown stage is ignored: the demo resumes.
+    /// An unknown stage or tab is ignored.
     static func parse(_ arguments: [String]) -> Self {
         var launch = Self()
-        for (index, flag) in arguments.enumerated() where flag == "-DemoStart" {
+        for (index, flag) in arguments.enumerated() {
             let value = index + 1 < arguments.endIndex ? arguments[index + 1] : nil
-            launch.start = value.flatMap(DemoStage.init(rawValue:))
+            switch flag {
+            case "-DemoStart":
+                launch.start = value.flatMap(DemoStage.init(rawValue:))
+            case "-DemoTab":
+                launch.tab = value.flatMap(RTab.init(rawValue:))
+            default:
+                continue
+            }
         }
         return launch
     }
