@@ -9,10 +9,11 @@ struct NewAppRootTests {
 
     private func screen(
         _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false, seen: Bool? = true,
-        flags: Store.PersonFlags.FirstRun? = Flags(started: true, done: true), updateRequired: Bool = false
+        flags: Store.PersonFlags.FirstRun? = Flags(started: true, done: true), storeOpen: Bool = false, updateRequired: Bool = false
     ) -> NewAppRoot.Screen {
         NewAppRoot.screen(
-            for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen, firstRun: flags, updateRequired: updateRequired
+            for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen, firstRun: flags, storeOpen: storeOpen,
+            updateRequired: updateRequired
         )
     }
 
@@ -80,7 +81,11 @@ struct NewAppRootTests {
     @Test("FR.b1.root: an existing member never sees the first run; one made member mid-flow finishes it")
     func membersAndTheFirstRun() {
         for access in [Session.AccessState.member, .staff] {
-            #expect(screen(signedIn(access), flags: nil) == .journal, "flags unknown: members never wait")
+            #expect(screen(signedIn(access), flags: nil) == .journal, "no store: members never wait")
+            #expect(screen(signedIn(access), flags: nil, storeOpen: true) == .blank, "store open, flags being read: no journal flash before the first run")
+            #expect(screen(signedIn(access), flags: Flags(started: false, done: false), storeOpen: true) == .journal)
+            #expect(screen(signedIn(access), flags: Flags(started: true, done: false), storeOpen: true) == .firstRun)
+            #expect(screen(signedIn(access), failed: true, flags: nil, storeOpen: true) == .storeFailed)
             #expect(screen(signedIn(access), flags: Flags(started: false, done: false)) == .journal)
             #expect(screen(signedIn(access), flags: done) == .journal)
             #expect(screen(signedIn(access), flags: Flags(started: true, done: false)) == .firstRun)

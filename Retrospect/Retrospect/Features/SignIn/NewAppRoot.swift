@@ -45,6 +45,9 @@ struct NewAppRoot: View {
     struct Flags: Equatable {
         var youreInSeen: Bool?
         var firstRun: Store.PersonFlags.FirstRun?
+        /// A store is open, so flags that are still nil are being read: a member waits on the canvas rather than
+        /// flash the journal before the first run (made member mid-flow) shows. Without a store a member never waits.
+        var storeOpen = false
     }
 
     /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
@@ -54,14 +57,14 @@ struct NewAppRoot: View {
     /// wins over all of it: an old build can't do anything useful in any of those pages.
     static func screen(
         for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true,
-        firstRun: Store.PersonFlags.FirstRun? = nil, updateRequired: Bool = false
+        firstRun: Store.PersonFlags.FirstRun? = nil, storeOpen: Bool = false, updateRequired: Bool = false
     ) -> Screen {
         if updateRequired {
             return .updateRequired
         }
         return sessionScreen(
             for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed,
-            flags: Flags(youreInSeen: youreInSeen, firstRun: firstRun)
+            flags: Flags(youreInSeen: youreInSeen, firstRun: firstRun, storeOpen: storeOpen)
         )
     }
 
@@ -85,7 +88,7 @@ struct NewAppRoot: View {
         screen(
             for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
             gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen, firstRun: firstRun,
-            updateRequired: platform.updateRequired
+            storeOpen: platform.personFlags != nil, updateRequired: platform.updateRequired
         )
     }
 
@@ -100,7 +103,8 @@ struct NewAppRoot: View {
         if case .signedOut = state, pendingCode == nil {
             return .blank
         }
-        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, flags: flags) {
+        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, flags: flags)
+            ?? memberHold(state, storeOpenFailed: storeOpenFailed, flags: flags) {
             return early
         }
         let route = FirstRunRoute.route(
@@ -142,6 +146,14 @@ struct NewAppRoot: View {
             return .blank
         }
         return flags.youreInSeen == true && flags.firstRun == nil ? .blank : nil
+    }
+
+    /// A member whose store is open but whose first-run flags are still being read waits on the canvas: one made member
+    /// mid-flow must not see the journal for a moment before the questions. A member with no store never waits, and a
+    /// store that failed to open shows its retry page, never the canvas.
+    private static func memberHold(_ state: Session.State, storeOpenFailed: Bool, flags: Flags) -> Screen? {
+        guard case let .signedIn(_, access) = state, access == .member || access == .staff, !storeOpenFailed else { return nil }
+        return flags.storeOpen && flags.firstRun == nil ? .blank : nil
     }
 
     /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
@@ -201,8 +213,10 @@ struct NewAppRoot: View {
         }
         .task { await platform.pendingInvite.refresh() }
         .task(id: flagsIdentity) {
-            youreInSeen = await platform.youreInSeen()
-            firstRun = await platform.personFlags?.firstRun()
+            // both read, then set together: never a moment with one flag known and the other not
+            let seen = await platform.youreInSeen()
+            let flags = await platform.personFlags?.firstRun()
+            (youreInSeen, firstRun) = (seen, flags)
         }
         // the waiting code is read again whenever something that can change it happens
         .onChange(of: platform.sessionState) { _, state in
@@ -220,27 +234,29 @@ struct NewAppRoot: View {
         platform.personFlags.map { ObjectIdentifier($0) }
     }
 
-    /// "begin": remembered for this person on this phone, then the gate lets go.
+    /// "begin": remembered for this person on this phone (seen, and the first run started), then the gate lets go. One
+    /// flags object for the whole call, so an account change in between can't land a write in the next person's store.
+    /// Not remembered (no store open, or a write failed): the gate stays and "begin" can be pressed again, never dropped.
     private func begin() {
         Task {
-            // not remembered (no store open): the gate stays and "begin" can be pressed again, never dropped
-            guard await platform.markYoureInSeen() else {
+            guard let flags = platform.personFlags, await flags.markYoureInSeen(), await flags.markFirstRunStarted() else {
                 platform.retryOpeningStore() // no store open: ask for it again, so 'begin' has a way forward
                 return
             }
-            // and the first run starts here (a member made mid-flow is routed on this, not on access)
-            await platform.personFlags?.markFirstRunStarted()
-            firstRun = await platform.personFlags?.firstRun() ?? Store.PersonFlags.FirstRun(started: true, done: false)
+            firstRun = await flags.firstRun() ?? Store.PersonFlags.FirstRun(started: true, done: false)
             youreInSeen = true
             gateHeld = false
         }
     }
 
-    /// The first run is over for this person on this phone: remembered, then the journal. Not remembered (no store):
-    /// the questions page stays, as "begin" does.
+    /// The first run is over for this person on this phone: remembered, then the journal. The questions page hands on
+    /// once and has nothing left to press, so the root moves on even when the flag couldn't be written (it asks for the
+    /// store again): the next launch then reopens the questions with every answer kept, which hands straight on.
     private func finishFirstRun() {
         Task {
-            guard await platform.personFlags?.markFirstRunDone() == true else { return }
+            if await platform.personFlags?.markFirstRunDone() != true {
+                platform.retryOpeningStore()
+            }
             firstRun = Store.PersonFlags.FirstRun(started: firstRun?.started ?? true, done: true)
         }
     }
