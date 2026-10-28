@@ -29,9 +29,12 @@ struct REvidenceRow: View {
     /// What leads the row: `.kind` is the source's glyph in a wash well; `.number` is a search
     /// citation's number in the same 32 well (YO-2 c:source-result/rest 1G9P-0: mono 12, text.secondary,
     /// radius.default).
-    enum Leading {
+    enum Leading: Equatable {
         case kind(symbol: String)
         case number(Int)
+        /// Paper's gridless calendar (c:icon/calendar, YO-4 1GD7-0) in the same wash well: SF Symbols has
+        /// none (YO-D29), so `RCalendarGlyph` draws it. Only where Paper draws that calendar.
+        case calendar
     }
 
     let leading: Leading
@@ -128,6 +131,12 @@ struct REvidenceRow: View {
                 .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
                 .background(onTint ? RColor.surfaceLifted : RColor.surfaceWash, in: RShape.rect(RDimension.radiusDefault))
                 .accessibilityHidden(true)
+        case .calendar:
+            // Paper draws the glyph at size.icon.inWell 18, centred in the 32 well
+            RCalendarGlyph()
+                .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
+                .background(onTint ? RColor.surfaceLifted : RColor.surfaceWash, in: RShape.rect(RDimension.radiusDefault))
+                .accessibilityHidden(true)
         }
     }
 }
@@ -195,6 +204,13 @@ struct REvidenceRowGallery: View {
                     REvidenceGroup {
                         REvidenceRow(leading: .number(1), meta: "apple health · 14 nights", words: "you slept 40 min longer after a run")
                         REvidenceRow(leading: .number(2), meta: "journal · 3 entries", words: "\"stopped at 8, slept like a rock\"") {}
+                    }
+                }
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    caption("Paper's gridless calendar (YO-4) beside the SF one")
+                    REvidenceGroup {
+                        REvidenceRow(leading: .calendar, meta: "18 oct · calendar", words: "lunch with priya, an hour") {}
+                        REvidenceRow(leading: .kind(symbol: "calendar"), meta: "18 oct · calendar", words: "lunch with priya, an hour") {}
                     }
                 }
                 VStack(alignment: .leading, spacing: RDimension.space2) {
