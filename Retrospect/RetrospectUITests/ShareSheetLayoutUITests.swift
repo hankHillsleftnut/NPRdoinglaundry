@@ -3,7 +3,8 @@
 //  #220 QA batch 9: the share sheet (EX-1) with the keyboard up and at AX3. Nothing overlaps, the header
 //  never goes under the status bar, "save" sits above the keyboard and never covers the "why" field, and
 //  the mic stays tappable. Runs in the launcher (`-Screen EX-1 -State ready -Data sample`). The UI target
-//  isn't in Platform.xctestplan (hosted CI runs unit tests only), so this runs in the local QA build.
+//  is deliberately NOT in Platform.xctestplan (hosted CI runs unit tests only); a QA build adds it for its
+//  own run. Stills go to the test result, and to `SHARE_LAYOUT_SHOTS_DIR` when that is set.
 //
 import XCTest
 
@@ -59,12 +60,17 @@ final class ShareSheetLayoutUITests: XCTestCase {
         keep(app, "keyboard-up")
     }
 
-    /// Saves a still for the QA bundle when the local QA folder exists (simulator only; a no-op elsewhere).
+    /// Saves a still for a QA bundle when `SHARE_LAYOUT_SHOTS_DIR` names a folder (pass it to xcodebuild as
+    /// `TEST_RUNNER_SHARE_LAYOUT_SHOTS_DIR`); otherwise it only attaches the still to the test result.
     @MainActor
     private func keep(_ app: XCUIApplication, _ name: String) {
-        let folder = URL(fileURLWithPath: "/private/tmp/claude-501/pipeline-work/qa-shots")
-        guard FileManager.default.fileExists(atPath: folder.path) else { return }
-        try? app.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("EX-1-\(name).png"))
+        let shot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "EX-1-\(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        guard let dir = ProcessInfo.processInfo.environment["SHARE_LAYOUT_SHOTS_DIR"], !dir.isEmpty else { return }
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent("EX-1-\(name).png"))
     }
 
     @MainActor
