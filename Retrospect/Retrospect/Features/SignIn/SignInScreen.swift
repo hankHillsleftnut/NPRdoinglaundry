@@ -5,7 +5,8 @@
 //  part generators `p47_signin_returning.py` and the handoff, Paper Desktop being closed). The You map
 //  at rest (C38.1, RYouMapRest) sits behind the words, with Paper's orb names on the splash. Live is
 //  Apple only; on sample data "Continue with Google" is there too, as Paper draws it (decision 12).
-//  No lit object: Apple's black button leads.
+//  Welcome back carries "new here? get started" top-right (AC-1 `1GY6-0`, placed by the founder 27 Oct),
+//  which opens the splash; both looks end with the legal line. No lit object: Apple's black button leads.
 //
 import SwiftUI
 
@@ -53,6 +54,10 @@ struct SignInScreen: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.phase)
+        // "new here?" turns welcome back into the splash in place: the same crossfade as a phase change
+        .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationSlow), value: model.look)
+        // the focused link is gone and the page is new: VoiceOver starts again on the splash's title
+        .onChange(of: model.look) { AccessibilityNotification.ScreenChanged().post() }
         .animation(RMotion.standard(reduceMotion ? RNumber.motionDurationFast : RNumber.motionDurationBase), value: model.isOnline)
         .sensoryFeedback(RHaptic.error, trigger: model.failures)
         // Every failure is said as well as felt (checklist 2), each time, not only the first.
@@ -97,11 +102,25 @@ struct SignInScreen: View {
             .rAppear()
         } else {
             VStack(spacing: RDimension.space4) {
+                if largeType, let newHereAction {
+                    // at large type the link wraps and would sit on the map: it takes its own row
+                    newHereLink(newHereAction)
+                        .padding(.trailing, RDimension.space3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 RYouMapRest(scale: mapScale)
                 words(alignment: .center)
                     .padding(.horizontal, RDimension.spaceScreenMargin)
             }
             .padding(.top, RDimension.space10)
+            // "new here? get started" top-right under the status bar (founder 27 Oct, option B), in the
+            // 40 above the map (at large type it takes its own row above the map instead)
+            .overlay(alignment: .topTrailing) {
+                if !largeType, let newHereAction {
+                    newHereLink(newHereAction)
+                        .padding(.trailing, RDimension.space3)
+                }
+            }
             .rAppear()
         }
     }
@@ -171,6 +190,7 @@ struct SignInScreen: View {
                 }
             }
             #endif
+            // the legal line ends both looks (founder 27 Oct: kept on welcome back too, over Paper's AC-1)
             Text(SignInModel.legal)
                 .rText(.metaLine) // Paper `1F53-0`: Geist 12, leading snug, no tracking
                 .foregroundStyle(RColor.textLabel)
@@ -187,6 +207,31 @@ struct SignInScreen: View {
         // Paper `1F52-0`: the zone ends 40 from the screen's edge (34 home indicator + 6 on a 17 Pro);
         // SE, short and with no indicator, keeps 16
         .padding(.bottom, compact ? RDimension.space4 : max(RDimension.space10 - bottomInset, RDimension.space1))
+    }
+
+    /// AC-1 `1GY6-0`'s look (text-md medium, text-link, a 44pt row), placed top-right under the status
+    /// bar by the founder (27 Oct, option B; Paper draws it at the bottom). The text sits 24 from the
+    /// edge (12 padding inside the 12 inset). It opens the splash; held while Apple's answer is checked.
+    private func newHereLink(_ action: @escaping () -> Void) -> some View {
+        Button(SignInModel.newHere, action: action)
+            .rText(.textMdMedium)
+            .foregroundStyle(RColor.textLink)
+            .multilineTextAlignment(.center)
+            .frame(minHeight: RDimension.sizeTouchTarget)
+            .padding(.horizontal, RDimension.space3)
+            .contentShape(Rectangle())
+            .rPress(small: true)
+            .disabled(!model.newHereEnabled)
+            .accessibilityRemoveTraits(.isButton)
+            .accessibilityAddTraits(.isLink)
+            .accessibilityHint("shows the first-time sign-in")
+            .accessibilityIdentifier("signin.newHere")
+    }
+
+    /// What "new here? get started" does, or nil on the splash (which is where it leads).
+    var newHereAction: (() -> Void)? {
+        guard model.offersNewHere else { return nil }
+        return { [model] in model.startFresh() }
     }
 
     /// "Continue with Google" exists only where it works: on sample taps (`-Flow sample`, the launcher,

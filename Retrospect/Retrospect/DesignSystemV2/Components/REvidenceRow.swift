@@ -26,10 +26,12 @@ extension RTextStyle {
 }
 
 struct REvidenceRow: View {
-    /// What leads the row. `.kind` is the source's glyph in a wash well; the numbered well
-    /// for search citations (YO-2) joins this enum when YO-2 is built.
+    /// What leads the row: `.kind` is the source's glyph in a wash well; `.number` is a search
+    /// citation's number in the same 32 well (YO-2 c:source-result/rest 1G9P-0: mono 12, text.secondary,
+    /// radius.default).
     enum Leading {
         case kind(symbol: String)
+        case number(Int)
     }
 
     let leading: Leading
@@ -68,7 +70,12 @@ struct REvidenceRow: View {
 
     /// What VoiceOver reads for the row, either way: "14 oct, your words, <the full excerpt>".
     var accessibilityText: String {
-        "\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)"
+        let lead = if case let .number(number) = leading {
+            "source \(number), "
+        } else {
+            ""
+        }
+        return "\(lead)\(meta.replacingOccurrences(of: " · ", with: ", ")), \(words)"
     }
 
     private var row: some View {
@@ -113,6 +120,14 @@ struct REvidenceRow: View {
                 glyphScale: RSymbol.defaultGlyphScale * RDimension.sizeIconInWell / RDimension.sizeIconDefault
             )
             .accessibilityHidden(true)
+        case let .number(number):
+            // a figure that counts, so mono (screen rules 4): the voice length's face
+            Text(String(number))
+                .rText(.voiceLength)
+                .foregroundStyle(RColor.textSecondary)
+                .frame(width: RDimension.sizeSourceIcon, height: RDimension.sizeSourceIcon)
+                .background(onTint ? RColor.surfaceLifted : RColor.surfaceWash, in: RShape.rect(RDimension.radiusDefault))
+                .accessibilityHidden(true)
         }
     }
 }
@@ -173,6 +188,13 @@ struct REvidenceRowGallery: View {
                     REvidenceGroup {
                         REvidenceRow(leading: .kind(symbol: "calendar"), meta: "tue 14 oct · calendar", words: "2 hours of deep work")
                         REvidenceRow(leading: .kind(symbol: "doc.text"), meta: "fri 17 oct · your words", words: "\"finally fixed the sync bug\"") {}
+                    }
+                }
+                VStack(alignment: .leading, spacing: RDimension.space2) {
+                    caption("search citations (YO-2)")
+                    REvidenceGroup {
+                        REvidenceRow(leading: .number(1), meta: "apple health · 14 nights", words: "you slept 40 min longer after a run")
+                        REvidenceRow(leading: .number(2), meta: "journal · 3 entries", words: "\"stopped at 8, slept like a rock\"") {}
                     }
                 }
                 VStack(alignment: .leading, spacing: RDimension.space2) {

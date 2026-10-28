@@ -17,6 +17,9 @@
 //  glyphs; logged as discrepancy L0-10. Pressed dims to opacity.pressed at once and back in 240ms; a
 //  tapped change plays haptic.tab (never a programmatic one) and the items cross-fade their weights;
 //  tapping the selected tab again asks the page to scroll to the top (rule 4).
+//  A tab with no page yet (`available` leaves it out) is inert: drawn as Paper draws a resting tab,
+//  but it can't be selected, plays no haptic, reads as dimmed to VoiceOver and says why (no dead
+//  controls, v2-rules 5).
 //  On a small phone the slots share the width down to 64 (`size.tabItemMinWidth`); at accessibility
 //  sizes the labels hide and a long press shows the large-content viewer (iOS behaviour).
 //
@@ -48,6 +51,8 @@ enum RTab: String, CaseIterable, Identifiable, Sendable {
 
 struct RTabBar: View {
     @Binding var selection: RTab
+    /// The tabs that have a page. The others are drawn at rest and are inert.
+    var available: Set<RTab> = Set(RTab.allCases)
     /// The selected tab was tapped again: its page scrolls to the top.
     var reselect: (RTab) -> Void = { _ in }
 
@@ -65,7 +70,9 @@ struct RTabBar: View {
                     RTabBarItem(tab: tab, selected: tab == selection, showsLabel: !typeSize.isAccessibilitySize)
                 }
                 .buttonStyle(RTabPressStyle())
+                .disabled(!available.contains(tab))
                 .accessibilityLabel(tab.title)
+                .accessibilityHint(available.contains(tab) ? Text(verbatim: "") : Text("not built yet"))
                 .accessibilityAddTraits(tab == selection ? [.isSelected] : [])
                 .accessibilityShowsLargeContentViewer {
                     Label(tab.title, systemImage: tab.symbol)
@@ -81,6 +88,8 @@ struct RTabBar: View {
     }
 
     private func choose(_ tab: RTab) {
+        // an inert tab never selects (the button is disabled too; this holds for any caller)
+        guard available.contains(tab) else { return }
         guard tab != selection else {
             reselect(tab)
             return

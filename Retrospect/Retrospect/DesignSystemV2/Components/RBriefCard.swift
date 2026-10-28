@@ -32,6 +32,15 @@ struct RBriefCard: View {
         case error(message: String)
         /// No connection and not downloaded: "it'll be here when you're back online".
         case offline
+        /// The first episode being made, as a row (Paper c:brief-card/artwork/making 26ML-0, ON-10):
+        /// the 44 artwork well, the headline ("your first episode"), `line`, and a 2pt accent line
+        /// along the bottom at `progress` (0…1). No play, no date. Drawn by `RBriefCard+FirstEpisode`.
+        case firstEpisodeMaking(line: String, progress: Double)
+        /// The first episode made, on first home (Paper ON-13 c:brief-card/artwork/making 1FJL-0, which
+        /// draws the ready content): the 40 well with its play, the headline ("your first episode is
+        /// ready") over `line` ("the week you started · 2 min"). The whole row plays. Drawn by
+        /// `RBriefCard+FirstEpisode`.
+        case firstEpisodeReady(line: String, celebrate: Bool = false)
     }
 
     /// The date, already worded ("tue 21 oct").
@@ -70,15 +79,15 @@ struct RBriefCard: View {
         switch state {
         case .played: "\(date) · played"
         case .rest, .starting: length.map { "\(date) · \($0)" } ?? date
-        case .quiet, .making, .error, .offline: date
+        case .quiet, .making, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: date
         }
     }
 
     /// Whether the card has a play (lit, starting, or the replay well).
     static func hasPlay(_ state: State) -> Bool {
         switch state {
-        case .rest, .starting, .played: true
-        case .quiet, .making, .error, .offline: false
+        case .rest, .starting, .played, .firstEpisodeReady: true
+        case .quiet, .making, .error, .offline, .firstEpisodeMaking: false
         }
     }
 
@@ -91,6 +100,8 @@ struct RBriefCard: View {
         case let .making(readyBy): "today's brief, being made" + (readyBy.map { ", ready by \($0)" } ?? "")
         case let .error(message): "today's brief, \(message)"
         case .offline: "today's brief, it'll be here when you're back online"
+        case let .firstEpisodeMaking(line, _): RFirstEpisodeMakingCard.spoken(title: headline, line: line)
+        case let .firstEpisodeReady(line, _): RFirstEpisodeReadyCard.spoken(title: headline, line: line)
         }
     }
 
@@ -120,6 +131,17 @@ struct RBriefCard: View {
     }
 
     var body: some View {
+        if case let .firstEpisodeMaking(line, progress) = state {
+            // the first episode's row is its own shape (no panel, no play): one home, its own drawing
+            RFirstEpisodeMakingCard(title: headline, line: line, progress: progress)
+        } else if case let .firstEpisodeReady(line, celebrate) = state {
+            RFirstEpisodeReadyCard(title: headline, line: line, play: play, celebrate: celebrate)
+        } else {
+            card
+        }
+    }
+
+    @ViewBuilder private var card: some View {
         let layout = collapsed
             ? AnyLayout(HStackLayout(alignment: .center, spacing: RDimension.space3))
             : AnyLayout(VStackLayout(alignment: .leading, spacing: RDimension.space3))
@@ -203,14 +225,14 @@ struct RBriefCard: View {
     private var showsArtwork: Bool {
         switch state {
         case .rest, .starting, .played: true
-        case .quiet, .making, .error, .offline: false
+        case .quiet, .making, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: false
         }
     }
 
     private var panelFill: Color {
         switch state {
         case .making: RColor.surfaceSkeleton
-        case .rest, .starting, .played, .quiet, .error, .offline: RColor.surfaceWash
+        case .rest, .starting, .played, .quiet, .error, .offline, .firstEpisodeMaking, .firstEpisodeReady: RColor.surfaceWash
         }
     }
 
@@ -232,6 +254,9 @@ struct RBriefCard: View {
                 headlineText(message, colour: RColor.statusDangerText, style: .briefLabel)
             case .offline:
                 headlineText("it'll be here when you're back online", colour: RColor.textLabel, style: .briefLabel)
+            case .firstEpisodeMaking, .firstEpisodeReady:
+                // drawn by RBriefCard+FirstEpisode; the card never reaches here in this state
+                EmptyView()
             case .rest, .starting, .played, .quiet:
                 headlineText(headline, colour: state == .played ? RColor.textSecondary : RColor.textPrimary, style: collapsed ? .inkRow : .inkCard)
                     .lineLimit(collapsed ? 1 : nil)
@@ -431,6 +456,12 @@ struct RBriefCardGallery: View {
                 caption("couldn't load · offline")
                 RBriefCard(date: "tue 21 oct", headline: headline, state: .error(message: "couldn't load today's brief"), play: {})
                 RBriefCard(date: "tue 21 oct", headline: headline, state: .offline) {}
+                caption("first episode, being made (ON-10 26ML-0)")
+                RBriefCard(
+                    date: "",
+                    headline: "your first episode",
+                    state: .firstEpisodeMaking(line: "weaving in what you just said · ~2 min", progress: 0.55)
+                ) {}
                 caption("slim bar (decision 05 A) · toggles with the top bar")
                 RBriefCard(date: "tue 21 oct", length: "2 min", headline: headline, subline: subline, collapsed: collapsed) {}
                 RPill(title: collapsed ? "open" : "collapse", style: .raised) { collapsed.toggle() }
