@@ -15,6 +15,9 @@ struct RCalendarGlyphShape: Shape {
     static let grid: CGFloat = 24 // literal-ok: Paper icon viewBox
     /// Paper's stroke on that grid: the outline is 2 units wide (5.25 inside 3.25).
     static let stroke: CGFloat = 2 // literal-ok: Paper icon stroke
+    /// The stroke under Bold Text: 3 units, so it thickens like the SF glyphs beside it (RSymbol's
+    /// `.regular` goes bold through `legibilityWeight`) and the two kinds of well stay one weight.
+    static let strokeBold: CGFloat = 3 // literal-ok: Paper icon stroke under Bold Text
 
     func path(in rect: CGRect) -> Path {
         let unit = min(rect.width, rect.height) / Self.grid
@@ -45,9 +48,17 @@ struct RCalendarGlyph: View {
     var size: CGFloat = RDimension.sizeIconInWell
     var tint: Color = RColor.iconDefault
 
+    @Environment(\.legibilityWeight) private var legibilityWeight
+
+    /// Paper's stroke at this size; under Bold Text the heavier one, as the SF glyph in the row above.
+    var lineWidth: CGFloat {
+        let units = legibilityWeight == .bold ? RCalendarGlyphShape.strokeBold : RCalendarGlyphShape.stroke
+        return units * size / RCalendarGlyphShape.grid
+    }
+
     var body: some View {
         RCalendarGlyphShape()
-            .stroke(tint, style: StrokeStyle(lineWidth: RCalendarGlyphShape.stroke * size / RCalendarGlyphShape.grid, lineCap: .round, lineJoin: .round))
+            .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }

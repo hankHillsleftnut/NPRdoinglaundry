@@ -78,8 +78,7 @@ struct NodeSheet: View {
                     REvidenceGroup {
                         ForEach(node.restsOn) { evidence in
                             REvidenceRow(
-                                // Paper's gridless calendar (1GD7-0, YO-D29); your words keep the page glyph
-                                leading: evidence.kind == .calendar ? .calendar : .kind(symbol: evidence.kind.symbol),
+                                leading: evidence.kind.leading,
                                 meta: evidence.meta,
                                 // Paper draws the 32 wash well behind each glyph (1GCZ-0), as on the canvas
                                 // panel anywhere else: not the lifted well (that one vanished, QA batch 5)
@@ -109,6 +108,14 @@ struct NodeSheet: View {
                 .youInert()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension Flows.Evidence.Kind {
+    /// The evidence row's leading well on YO-4: Paper's gridless calendar for calendar evidence (1GD7-0,
+    /// YO-D29); your words keep the page glyph (`symbol`). Here, not in Flows, so the flow stays free of views.
+    var leading: REvidenceRow.Leading {
+        self == .calendar ? .calendar : .kind(symbol: symbol)
     }
 }
 

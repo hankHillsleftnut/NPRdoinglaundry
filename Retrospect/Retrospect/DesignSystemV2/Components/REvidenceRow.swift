@@ -29,7 +29,7 @@ struct REvidenceRow: View {
     /// What leads the row: `.kind` is the source's glyph in a wash well; `.number` is a search
     /// citation's number in the same 32 well (YO-2 c:source-result/rest 1G9P-0: mono 12, text.secondary,
     /// radius.default).
-    enum Leading {
+    enum Leading: Equatable {
         case kind(symbol: String)
         case number(Int)
         /// Paper's gridless calendar (c:icon/calendar, YO-4 1GD7-0) in the same wash well: SF Symbols has

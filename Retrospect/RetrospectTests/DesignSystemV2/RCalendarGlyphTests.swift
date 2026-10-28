@@ -32,10 +32,40 @@ struct RCalendarGlyphTests {
         #expect(ink.contains(CGPoint(x: 12, y: 10))) // literal-ok: the header line
     }
 
+    @Test("under Bold Text the stroke thickens, as the SF calendar in the row above does")
+    func boldText() throws {
+        func ink(_ view: some View, bold: Bool) throws -> Int {
+            let weight: LegibilityWeight = bold ? .bold : .regular
+            let renderer = ImageRenderer(content: view.environment(\.legibilityWeight, weight))
+            renderer.scale = 3 // literal-ok: test scale
+            return try Self.inkedPixels(#require(renderer.cgImage))
+        }
+        let glyph = RCalendarGlyph(tint: .black).frame(width: 18, height: 18) // literal-ok: test box
+        let regular = try ink(glyph, bold: false)
+        let bold = try ink(glyph, bold: true)
+        // Paper's 2-unit stroke becomes 3: about half again as much ink, never the same, never double
+        #expect(bold > regular + regular / 5)
+        #expect(bold < regular * 2)
+        // the SF calendar beside it, measured the same way, so the two wells can be read as one weight
+        let symbol = RSymbol(name: "calendar", tint: .black)
+        let sfRegular = try ink(symbol, bold: false)
+        let sfBold = try ink(symbol, bold: true)
+        print("RCalendarGlyphTests.boldText: glyph \(regular) -> \(bold); SF calendar \(sfRegular) -> \(sfBold)")
+    }
+
     @Test("the evidence row draws it for the calendar well; VoiceOver text is unchanged")
     func row() {
         let row = REvidenceRow(leading: .calendar, meta: "18 oct · calendar", words: "lunch with priya, an hour")
         #expect(row.accessibilityText == "18 oct, calendar, lunch with priya, an hour")
+        // the same words as the SF calendar row it replaces: the glyph is decoration, the row says the kind
+        let sfRow = REvidenceRow(leading: .kind(symbol: "calendar"), meta: "18 oct · calendar", words: "lunch with priya, an hour")
+        #expect(row.accessibilityText == sfRow.accessibilityText)
+    }
+
+    @Test("YO-4 picks the well by the evidence's kind: calendar draws it, your words keep the page glyph")
+    func kindLeading() {
+        #expect(Flows.Evidence.Kind.calendar.leading == .calendar)
+        #expect(Flows.Evidence.Kind.yourWords.leading == .kind(symbol: "text.page"))
     }
 
     /// Pixels with any opacity in an RGBA image.
