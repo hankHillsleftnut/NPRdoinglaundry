@@ -10,12 +10,15 @@ struct ShellModelTests {
     @Test("-Screen shell opens on a tab with a page: the journal, alone or with the mini-player (G0b)")
     func launches() {
         let screen = ScreenRegistry.screen("shell")
-        #expect(screen?.states == ["tabs", "miniPlayer", "sheet"])
+        #expect(screen?.states == ["tabs", "miniPlayer", "sheet", "blend", "blendPlayer"])
         // no launch state opens on a tab with nothing built (no blank pages)
         for scenario in ShellScenario.allCases {
-            #expect(ShellLaunch.pages.contains(scenario.tab), "-State \(scenario.rawValue) opens on an unbuilt tab")
+            #expect(scenario.pages.contains(scenario.tab), "-State \(scenario.rawValue) opens on an unbuilt tab")
         }
         #expect(ShellLaunch.pages == [.journal])
+        // the blend test states add PC-1 for the stills only; the shipped states are the journal's
+        #expect(ShellScenario.blend.pages == [.journal, .podcasts])
+        #expect(ShellScenario.blendPlayer.tab == .podcasts)
         for state in ShellScenario.allCases.map(\.rawValue) {
             _ = screen?.build(LaunchArguments.parse(["app", "-Screen", "shell", "-State", state]))
         }
