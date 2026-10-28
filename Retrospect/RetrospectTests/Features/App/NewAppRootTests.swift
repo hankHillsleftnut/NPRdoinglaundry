@@ -3,10 +3,18 @@ import Testing
 
 /// APP-ROOT: which page each session lands on, and that a release build opens the new root.
 struct NewAppRootTests {
+    private typealias Flags = Store.PersonFlags.FirstRun
+    /// The flags of a person whose first run is over: the rows below that are about the journal, not the first run.
+    private let done = Flags(started: true, done: true)
+
     private func screen(
-        _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false, seen: Bool? = true
+        _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false, seen: Bool? = true,
+        flags: Store.PersonFlags.FirstRun? = Flags(started: true, done: true), flagsPending: Bool = false, updateRequired: Bool = false
     ) -> NewAppRoot.Screen {
-        NewAppRoot.screen(for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen)
+        NewAppRoot.screen(
+            for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen, firstRun: flags, flagsPending: flagsPending,
+            updateRequired: updateRequired
+        )
     }
 
     private func signedIn(_ access: Session.AccessState) -> Session.State {
@@ -55,6 +63,39 @@ struct NewAppRootTests {
         #expect(screen(signedIn(.approved), seen: true) == .journal)
         #expect(screen(signedIn(.approved), failed: true, seen: nil) == .storeFailed)
         #expect(screen(signedIn(.member), seen: nil) == .journal, "members never wait on the flag")
+    }
+
+    @Test("FR.b1.root: begin leads into the first run; done leads out; flags not known yet hold the canvas; the store's failure wins")
+    func firstRun() {
+        let mid = Flags(started: true, done: false)
+        #expect(screen(signedIn(.approved), seen: true, flags: mid) == .firstRun)
+        #expect(screen(signedIn(.approved), seen: true, flags: Flags(started: false, done: false)) == .firstRun)
+        #expect(screen(signedIn(.approved), seen: true, flags: nil) == .blank, "never the first question for someone past it, never the journal")
+        #expect(screen(signedIn(.approved), seen: true, flags: done) == .journal)
+        #expect(screen(signedIn(.approved), seen: false, flags: mid) == .inviteGate, "the moment comes first")
+        #expect(screen(signedIn(.approved), held: true, flags: mid) == .inviteGate, "the gate stays up until begin")
+        #expect(screen(signedIn(.approved), failed: true, flags: mid) == .storeFailed)
+        #expect(screen(signedIn(.approved), seen: true, flags: mid, updateRequired: true) == .updateRequired)
+    }
+
+    @Test("FR.b1.root: an existing member never sees the first run; one made member mid-flow finishes it")
+    func membersAndTheFirstRun() {
+        for access in [Session.AccessState.member, .staff] {
+            #expect(screen(signedIn(access), flags: nil) == .journal, "no store: members never wait")
+            #expect(screen(signedIn(access), flags: nil, flagsPending: true) == .blank, "flags being read: no journal flash before the first run")
+            #expect(
+                screen(signedIn(access), flags: nil, flagsPending: false) == .journal,
+                "F1 (qa-272): the read finished with nothing (unreadable flags): never stranded on a blank screen"
+            )
+            #expect(screen(signedIn(access), flags: Flags(started: false, done: false), flagsPending: true) == .journal)
+            #expect(screen(signedIn(access), flags: Flags(started: true, done: false), flagsPending: true) == .firstRun)
+            #expect(screen(signedIn(access), failed: true, flags: nil, flagsPending: true) == .storeFailed)
+            #expect(screen(signedIn(access), flags: Flags(started: false, done: false)) == .journal)
+            #expect(screen(signedIn(access), flags: done) == .journal)
+            #expect(screen(signedIn(access), flags: Flags(started: true, done: false)) == .firstRun)
+            #expect(screen(signedIn(access), failed: true, flags: Flags(started: true, done: false)) == .storeFailed)
+        }
+        #expect(screen(signedIn(.waitlisted), flags: Flags(started: true, done: false)) == .inviteGate)
     }
 
     @Test("a store that cannot be opened is its own page with a retry, only where the journal would show")

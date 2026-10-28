@@ -70,6 +70,31 @@ extension Store {
             try? isSet(.youreInSeen)
         }
 
+        /// Where the first run stands on this phone (FR.b1.root): `started` by "begin", `done` on leaving it. The
+        /// root routes on these two, never on access alone, so an existing member never sees the first run.
+        struct FirstRun: Equatable, Sendable {
+            var started: Bool
+            var done: Bool
+        }
+
+        /// Both first-run flags, or nil while they can't be known (closed, or the store couldn't be read).
+        func firstRun() -> FirstRun? {
+            guard let started = try? isSet(.firstRunStarted), let done = try? isSet(.firstRunDone) else { return nil }
+            return FirstRun(started: started, done: done)
+        }
+
+        /// "begin" also starts the first run. False when nothing was written.
+        @discardableResult
+        func markFirstRunStarted() -> Bool {
+            (try? set(.firstRunStarted)) != nil
+        }
+
+        /// The first run ended on this phone: the root shows the journal from now on. False when nothing was written.
+        @discardableResult
+        func markFirstRunDone() -> Bool {
+            (try? set(.firstRunDone)) != nil
+        }
+
         @discardableResult
         func markYoureInSeen() -> Bool {
             (try? set(.youreInSeen)) != nil

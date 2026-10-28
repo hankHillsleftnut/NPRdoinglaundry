@@ -10,6 +10,11 @@
 //  page (PX) replaces whatever was showing, signed in or not. Nothing is erased or signed out: the store and
 //  the paused outbox stay as they are, so queued words send from the updated build (decision 3).
 //
+//  FR.b1.root (founder go 28 Oct): the first run (ON-3–9) sits between "begin" and the journal, routed on the
+//  person's flags (`PersonFlags.FirstRun`): "begin" starts it, leaving it marks it done. An existing member
+//  never sees it. The flags are read with the person's store; until they are known an approved person waits
+//  on the canvas, as for "you're in".
+//
 //  The old home, onboarding and sign-in gate are not reachable from here; debug builds can still open them
 //  with `-OldHome`.
 //
@@ -29,9 +34,21 @@ struct NewAppRoot: View {
         case paused
         /// The person's store could not be opened.
         case storeFailed
+        /// ON-3–9: the first run's questions on the live seam (FR.b1.root).
+        case firstRun
         case journal
         /// PX: this build is too old for the server. Shown over every other case, whatever the session is doing.
         case updateRequired
+    }
+
+    /// The person's flags the root routes on, read together from their store: nil fields while not known.
+    struct Flags: Equatable {
+        var youreInSeen: Bool?
+        var firstRun: Store.PersonFlags.FirstRun?
+        /// The flags are being read from an open store: a member waits on the canvas rather than flash the journal
+        /// before the first run (made member mid-flow) shows. Only while the read is in flight: a read that finished
+        /// with nothing (unreadable flags) sends a member to the journal, never a blank screen with nothing to press.
+        var flagsPending = false
     }
 
     /// Which page a session lands on. `pendingCode` is nil until the Keychain has been asked (a signed-out
@@ -41,12 +58,15 @@ struct NewAppRoot: View {
     /// wins over all of it: an old build can't do anything useful in any of those pages.
     static func screen(
         for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool? = true,
-        updateRequired: Bool = false
+        firstRun: Store.PersonFlags.FirstRun? = nil, flagsPending: Bool = false, updateRequired: Bool = false
     ) -> Screen {
         if updateRequired {
             return .updateRequired
         }
-        return sessionScreen(for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen)
+        return sessionScreen(
+            for: state, pendingCode: pendingCode, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed,
+            flags: Flags(youreInSeen: youreInSeen, firstRun: firstRun, flagsPending: flagsPending)
+        )
     }
 
     /// VoiceOver is told the screen changed when the update page replaces a page (it would otherwise keep
@@ -65,17 +85,19 @@ struct NewAppRoot: View {
     }
 
     /// What the body routes on, read off the app's environment, so the version floor can't be left out of the call.
-    static func screen(on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?) -> Screen {
+    static func screen(
+        on platform: Platform.AppEnvironment, gateHeld: Bool, youreInSeen: Bool?, firstRun: Store.PersonFlags.FirstRun? = nil, flagsRead: Bool = true
+    ) -> Screen {
         screen(
             for: platform.sessionState, pendingCode: platform.pendingInvite.hasCode,
-            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen,
-            updateRequired: platform.updateRequired
+            gateHeld: gateHeld, storeOpenFailed: platform.storeOpenFailed, youreInSeen: youreInSeen, firstRun: firstRun,
+            flagsPending: platform.personFlags != nil && !flagsRead, updateRequired: platform.updateRequired
         )
     }
 
     /// The page for the session alone (the version floor is down).
     private static func sessionScreen(
-        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?
+        for state: Session.State?, pendingCode: Bool?, gateHeld: Bool, storeOpenFailed: Bool, flags: Flags
     ) -> Screen {
         guard let state else { return .blank }
         if case .locked = state {
@@ -84,10 +106,19 @@ struct NewAppRoot: View {
         if case .signedOut = state, pendingCode == nil {
             return .blank
         }
-        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, youreInSeen: youreInSeen) {
+        if let early = approvedHold(state, gateHeld: gateHeld, storeOpenFailed: storeOpenFailed, flags: flags)
+            ?? memberHold(state, storeOpenFailed: storeOpenFailed, flags: flags) {
             return early
         }
-        switch FirstRunRoute.route(session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && youreInSeen == true) {
+        let route = FirstRunRoute.route(
+            session: state, hasPendingCode: pendingCode ?? false, youreInSeen: !gateHeld && flags.youreInSeen == true, firstRun: flags.firstRun
+        )
+        return mounted(route, state: state, storeOpenFailed: storeOpenFailed)
+    }
+
+    /// The page for a launch-table route (the table decides where; this says what page shows there).
+    private static func mounted(_ route: FirstRunRoute, state: Session.State, storeOpenFailed: Bool) -> Screen {
+        switch route {
         case .blank:
             return .blank
         case let .signIn(returning):
@@ -99,19 +130,33 @@ struct NewAppRoot: View {
             return .inviteGate
         case .paused:
             return .paused
+        case .firstRun:
+            return storeOpenFailed ? .storeFailed : .firstRun
         case .journal:
             return storeOpenFailed ? .storeFailed : .journal
         }
     }
 
-    /// An approved person whose store failed gets the retry page; one whose flag is not known yet waits (never the
-    /// journal, never the moment again), unless the gate is already up for them.
-    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, youreInSeen: Bool?) -> Screen? {
+    /// An approved person whose store failed gets the retry page; one whose flags are not known yet waits (never the
+    /// journal, never the moment again, never the first question for someone past it), unless the gate is already up
+    /// for them. Members never wait: an existing account goes to the journal.
+    private static func approvedHold(_ state: Session.State, gateHeld: Bool, storeOpenFailed: Bool, flags: Flags) -> Screen? {
         guard case .signedIn(_, .approved) = state, !gateHeld else { return nil }
         if storeOpenFailed {
             return .storeFailed
         }
-        return youreInSeen == nil ? .blank : nil
+        if flags.youreInSeen == nil {
+            return .blank
+        }
+        return flags.youreInSeen == true && flags.firstRun == nil ? .blank : nil
+    }
+
+    /// A member whose first-run flags are still being read waits on the canvas: one made member mid-flow must not see the
+    /// journal for a moment before the questions. Once the read has finished (even with nothing: unreadable flags), a
+    /// member with no first run to finish goes to the journal; a store that failed to open shows its retry page.
+    private static func memberHold(_ state: Session.State, storeOpenFailed: Bool, flags: Flags) -> Screen? {
+        guard case let .signedIn(_, access) = state, access == .member || access == .staff, !storeOpenFailed else { return nil }
+        return flags.flagsPending && flags.firstRun == nil ? .blank : nil
     }
 
     /// A release build always opens this root. Debug builds do too, unless `-OldHome` asks for the old app.
@@ -124,9 +169,13 @@ struct NewAppRoot: View {
     @State private var gateHeld = false
     /// This person's persisted "begin pressed" flag (`PersonFlags`, per person, erased on Log Out); nil until the store is open.
     @State private var youreInSeen: Bool?
+    /// This person's first-run flags (started by "begin", done on leaving it); nil until the store is open.
+    @State private var firstRun: Store.PersonFlags.FirstRun?
+    /// The flags task for the open store has finished (whatever it found): a member no longer waits on them.
+    @State private var flagsRead = false
 
     var body: some View {
-        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen)
+        let screen = Self.screen(on: platform, gateHeld: gateHeld, youreInSeen: youreInSeen, firstRun: firstRun, flagsRead: flagsRead)
         Group {
             switch screen {
             case .updateRequired:
@@ -142,6 +191,9 @@ struct NewAppRoot: View {
                 PausedView()
             case .storeFailed:
                 StoreFailedView { platform.retryOpeningStore() }
+            case .firstRun:
+                LiveFirstRunHost { finishFirstRun() }
+                    .accessibilityIdentifier("newapp.firstrun")
             case .journal:
                 LiveJournalRoot()
                     .accessibilityIdentifier("newapp.signedin")
@@ -165,7 +217,16 @@ struct NewAppRoot: View {
             }
         }
         .task { await platform.pendingInvite.refresh() }
-        .task(id: flagsIdentity) { youreInSeen = await platform.youreInSeen() }
+        .task(id: flagsIdentity) {
+            // a different store (or none): the last person's values go first, so nobody is routed on them; then both
+            // flags are read and set together (never a moment with one known and the other not). A read for a store
+            // that has since changed hands is dropped (this task was cancelled), so an older read never overwrites a newer one.
+            (youreInSeen, firstRun, flagsRead) = (nil, nil, false)
+            let seen = await platform.youreInSeen()
+            let flags = await platform.personFlags?.firstRun()
+            guard !Task.isCancelled else { return }
+            (youreInSeen, firstRun, flagsRead) = (seen, flags, true)
+        }
         // the waiting code is read again whenever something that can change it happens
         .onChange(of: platform.sessionState) { _, state in
             if case .signedOut? = state {
@@ -182,16 +243,31 @@ struct NewAppRoot: View {
         platform.personFlags.map { ObjectIdentifier($0) }
     }
 
-    /// "begin": remembered for this person on this phone, then the gate lets go.
+    /// "begin": remembered for this person on this phone (seen, and the first run started), then the gate lets go. One
+    /// flags object for the whole call, so an account change in between can't land a write in the next person's store.
+    /// Not remembered (no store open, or a write failed): the gate stays and "begin" can be pressed again, never dropped.
     private func begin() {
         Task {
-            // not remembered (no store open): the gate stays and "begin" can be pressed again, never dropped
-            guard await platform.markYoureInSeen() else {
+            guard let flags = platform.personFlags, await flags.markYoureInSeen(), await flags.markFirstRunStarted() else {
                 platform.retryOpeningStore() // no store open: ask for it again, so 'begin' has a way forward
                 return
             }
+            firstRun = await flags.firstRun() ?? Store.PersonFlags.FirstRun(started: true, done: false)
             youreInSeen = true
             gateHeld = false
+        }
+    }
+
+    /// The first run is over for this person on this phone: remembered, then the journal. The questions page hands on
+    /// once and has nothing left to press, so the root moves on even when the flag couldn't be written (it asks for the
+    /// store again): the next launch then reopens the questions with every answer kept, which hands straight on.
+    private func finishFirstRun() {
+        let flags = platform.personFlags // this person's store, captured now, as "begin" does
+        Task {
+            if await flags?.markFirstRunDone() != true {
+                platform.retryOpeningStore()
+            }
+            firstRun = Store.PersonFlags.FirstRun(started: firstRun?.started ?? true, done: true)
         }
     }
 }
