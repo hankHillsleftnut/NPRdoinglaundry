@@ -218,10 +218,13 @@ struct NewAppRoot: View {
         }
         .task { await platform.pendingInvite.refresh() }
         .task(id: flagsIdentity) {
-            // both read, then set together: never a moment with one flag known and the other not
-            flagsRead = false
+            // a different store (or none): the last person's values go first, so nobody is routed on them; then both
+            // flags are read and set together (never a moment with one known and the other not). A read for a store
+            // that has since changed hands is dropped (this task was cancelled), so an older read never overwrites a newer one.
+            (youreInSeen, firstRun, flagsRead) = (nil, nil, false)
             let seen = await platform.youreInSeen()
             let flags = await platform.personFlags?.firstRun()
+            guard !Task.isCancelled else { return }
             (youreInSeen, firstRun, flagsRead) = (seen, flags, true)
         }
         // the waiting code is read again whenever something that can change it happens
