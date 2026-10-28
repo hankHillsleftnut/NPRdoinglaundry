@@ -90,6 +90,24 @@ struct DemoModelTests {
         #expect(model.stage == .app)
     }
 
+    @Test("the real hand-off is first home: the app opens with first home in its journal tab, once")
+    func firstHomeIsShown() async {
+        // the default hand-off, now that first home is a flow step (#267)
+        #expect(FirstRunScreen.firstHome.step == .firstHome)
+        let model = demo(flowStart: .firstHome, handOff: FirstRunScreen.firstHome.step)
+        #expect(model.stage == .app)
+        #expect(model.firstDay)
+        #expect(model.flow.step == .firstHome)
+        // a later launch saved in the app opens on JR-1
+        #expect(demo(MemoryDemoStore(.app)).firstDay == false)
+        // signing out and back in is not the first day
+        model.signedOut()
+        await model.returning?.appleFinished(.failure(SampleTap()))
+        await settle { model.stage == .app }
+        #expect(model.stage == .app)
+        #expect(model.firstDay == false)
+    }
+
     @Test("-FlowStart opens the first run at that step even when the app stage was saved")
     func flowStartWinsOverSavedApp() {
         let model = demo(MemoryDemoStore(.app), flowStart: .questions)

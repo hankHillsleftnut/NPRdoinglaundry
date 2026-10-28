@@ -36,9 +36,12 @@ struct DemoAppHost: View {
                     // a fresh first run is a new model: the host takes it, not the last one's
                     .id(ObjectIdentifier(demo.flow))
             case .app:
-                DemoShell(tab: demo.startTab, opened: { demo.takeOutside() }, signedOut: { demo.signedOut() })
-                    // a new session builds every page again on fresh samples
-                    .id(demo.session)
+                // straight from the first run, the journal tab is first home (ON-13) until the next launch
+                DemoShell(tab: demo.startTab, firstHome: demo.firstDay ? demo.flow : nil, opened: { demo.takeOutside() }) {
+                    demo.follow(signOut: $0)
+                }
+                // a new session builds every page again on fresh samples
+                .id(demo.session)
             case .returning:
                 if let returning = demo.returning {
                     SignInScreen(model: returning, sampleTaps: true)

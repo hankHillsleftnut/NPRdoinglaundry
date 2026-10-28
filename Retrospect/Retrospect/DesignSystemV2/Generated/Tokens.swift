@@ -536,6 +536,8 @@ public enum RDimension {
     public static let sizeArtworkPlayer: CGFloat = 120
     /// A full-bleed moment.
     public static let sizeArtworkHero: CGFloat = 240
+    /// The shared thing's artwork in the share sheet.
+    public static let sizeArtworkShareItem: CGFloat = 56
     /// The Retrospect mark disc.
     public static let sizeMark: CGFloat = 38
     /// Height of the mini-player.
@@ -690,6 +692,16 @@ public enum RDimension {
     public static let sizeBenefitTile: CGFloat = 56
     /// The ready first episode's artwork well on first home (with a 16 play inside).
     public static let sizeFirstEpisodeWell: CGFloat = 40
+    /// The share sheet header's side slots (cancel, and the empty one opposite).
+    public static let sizeShareHeaderSlot: CGFloat = 72
+    /// The mark at the top of a home-screen widget.
+    public static let sizeWidgetMark: CGFloat = 16
+    /// The brush glyph's width inside the widget mark.
+    public static let sizeWidgetMarkGlyph: CGFloat = 9
+    /// A small home-screen widget's side, for the preview (the system sets the real size).
+    public static let sizeWidgetSmall: CGFloat = 164
+    /// A medium home-screen widget's width, for the preview (the system sets the real size).
+    public static let sizeWidgetMediumWidth: CGFloat = 344
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
@@ -768,6 +780,10 @@ public enum RDimension {
     public static let blurDrawerFootBand: CGFloat = 56
     /// Drawer: blur at the foot band's outer edge.
     public static let blurDrawerFootMax: CGFloat = 6
+    /// The shell's tab bar: how far above the bar's top the content starts to dissolve (blur up to blur.tab.max, canvas easing to opaque at the bar).
+    public static let blurTabBlendRise: CGFloat = 90
+    /// The shell's tab bar on short phones (SE): the dissolve above the bar.
+    public static let blurTabBlendRiseCompact: CGFloat = 72
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
@@ -1046,8 +1062,12 @@ public enum RNumber {
     public static let blurTabSaturation: Double = 1.5
     /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
     public static let blurTranscriptTopTint: Double = 0.3
+    /// Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens).
+    public static let blurTranscriptTopLineSolid: Double = 0.3
     /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
     public static let blurTranscriptBottomTint: Double = 0.15
+    /// Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens).
+    public static let blurTranscriptBottomLineSolid: Double = 0.55
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.

@@ -11,24 +11,38 @@
 import SwiftUI
 
 struct DemoShell: View {
+    /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
+    /// flow does (FirstHomePage); nil on any later launch (JR-1 with its drawer and joins).
+    var firstHome: SampleFlowModel?
     /// How the system opened the app (`-DemoOutside`), asked once when the shell first shows.
     var opened: () -> DemoOutside? = { nil }
-    /// ST-9's sign-out reached its end: the demo shows AC-1 welcome back.
-    var signedOut: () -> Void = {}
+    /// Hands the session's ST-9 sign-out flow to the host once, which follows it to AC-1 welcome back.
+    var followSignOut: (any SignOutFlowing) -> Void = { _ in }
     @State private var model: ShellModel
     @State private var samples = DemoSamples()
 
     /// Opens on `tab` (`-DemoTab`, journal by default).
-    init(tab: RTab = .journal, opened: @escaping () -> DemoOutside? = { nil }, signedOut: @escaping () -> Void = {}) {
+    init(
+        tab: RTab = .journal,
+        firstHome: SampleFlowModel? = nil,
+        opened: @escaping () -> DemoOutside? = { nil },
+        followSignOut: @escaping (any SignOutFlowing) -> Void = { _ in }
+    ) {
+        self.firstHome = firstHome
         self.opened = opened
-        self.signedOut = signedOut
+        self.followSignOut = followSignOut
         _model = State(initialValue: ShellModel(selection: tab, available: Set(RTab.allCases)))
     }
 
     var body: some View {
-        ShellPage(model: model) { tab, _ in
+        ShellPage(model: model) { tab, context in
             switch tab {
-            case .journal: AnyView(DemoJournalTab(samples: samples))
+            case .journal:
+                if let flow = firstHome {
+                    AnyView(DemoFirstHome(flow: flow, isShown: context.isShown))
+                } else {
+                    AnyView(DemoJournalTab(samples: samples))
+                }
             // PC-1 on the sample library (its play joins the player once the shared play button lands)
             case .podcasts: AnyView(PodcastsLaunch(scenario: .rest))
             case .goals: AnyView(DemoGoalsTab(samples: samples))
@@ -36,19 +50,37 @@ struct DemoShell: View {
             }
         }
         .demoSamples(samples)
-        .onAppear { open(opened()) }
-        .onChange(of: samples.signOut.state) { _, state in
-            if state == .done {
-                signedOut()
-            }
+        // the session's sign-out, followed by the demo model (tested there end to end)
+        .onAppear {
+            open(opened())
+            followSignOut(samples.signOut)
         }
     }
 }
 
+/// ON-13 first home, built exactly as the core flow builds it (SampleFlowHost's `.firstHome`): the
+/// celebration, the recap of the person's own answers, the first-episode card that plays the tease.
+private struct DemoFirstHome: View {
+    let flow: SampleFlowModel
+    let isShown: Bool
+
+    var body: some View {
+        FirstHomePage(
+            recap: flow.firstHomeRecap,
+            celebrate: flow.arrivedHome,
+            today: SampleJournalContent.today,
+            makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
+            isShown: isShown
+        )
+        .environment(\.journalData, flow.journalDay)
+    }
+}
+
 extension DemoShell {
-    /// What the system's way in shows: JR-2 over the shell (EX-1 joins when the outside stack, #220-#222, is on main).
+    /// What the system's way in shows: EX-1 or JR-2 over the shell.
     private func open(_ way: DemoOutside?) {
         switch way {
+        case .share: model.present(.share)
         case .brief: model.present(.brief(id: nil))
         case nil: break
         }

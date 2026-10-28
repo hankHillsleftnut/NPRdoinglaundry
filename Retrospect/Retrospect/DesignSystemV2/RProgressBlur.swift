@@ -39,6 +39,28 @@ struct RBlurTint: Hashable, Sendable {
     var endOpacity: Double
     var from: RBandPosition
     var solidFrom: RBandPosition
+    /// How the opacity runs between `from` and `solidFrom`.
+    var curve: RTintCurve = .straight
+}
+
+/// The shape of a tint's rise across its band.
+enum RTintCurve: Hashable, Sendable {
+    /// Two stops: a straight ramp.
+    case straight
+    /// `gradient.fadeToCanvas` (principles/gradients.md rule 5): 13 stops on a smoothstep curve, so
+    /// there is no visible line where the fade starts or where it reaches the colour.
+    case fadeToCanvas
+
+    /// The opacity at each stop, 0 at the start to 1 at the end, evenly spaced.
+    var stops: [Double] {
+        switch self {
+        case .straight:
+            [0, 1]
+        case .fadeToCanvas:
+            // the token's recipe, transcribed (gradients are hand-built Swift: to-swift.mjs leaves them)
+            [0, 0.013, 0.057, 0.13, 0.227, 0.341, 0.467, 0.595, 0.719, 0.83, 0.919, 0.978, 1]
+        }
+    }
 }
 
 /// One edge's progressive blur. Presets carry the values from progressive-blur.md as tokens.
@@ -50,6 +72,51 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
     var maxRadius: CGFloat
     var saturation: Double
     var tint: RBlurTint?
+    /// Draws the blur with the masked material on every iOS, never the system soft edge. For a band
+    /// that must sit above a bar: the system edge draws only inside a scroll view's own inset, and a
+    /// page that ends at the bar's top has none there.
+    var maskedBlur = false
+    /// The band is anchored at the page's end and runs under the page's own bottom inset (the
+    /// journal's composer, the mini-player's room), so that chrome floats over the dissolving content
+    /// as Paper draws it; the scroll content gets a bottom margin of the band less that inset, so the
+    /// last row is clear of the band at rest (system bars: content scrolls under, but ends above).
+    var underPageInsets = false
+
+    /// The band on this screen (`layout.compactHeight` takes the compact one).
+    func band(compact: Bool) -> CGFloat {
+        compact ? (bandCompact ?? band) : band
+    }
+
+    /// The tab edge inside the shell is the shell's; every other style is its own.
+    func inShell(_ shellTabEdge: RProgressiveBlurStyle?) -> Self {
+        self == .tabEdge ? (shellTabEdge ?? self) : self
+    }
+
+    /// The shell's tab bar (TABBAR.blend, founder 27 Oct: content must never be cut by the bar; it
+    /// dissolves into it like the system's bars; tab-bar.md: "starts 90pt above the tabs"). Over
+    /// `blur.tabBlend.rise` above the bar's top the blur ramps t² to `blur.tab.max` (colour kept:
+    /// `blur.tab.saturation`) while the canvas eases in on `gradient.fadeToCanvas` to opaque, the
+    /// canvas the bar sits on. The band runs under the page's own bottom chrome (the journal's
+    /// composer, the mini-player), which floats over it, and the last row rests clear of it. In the
+    /// shell every page's `.tabEdge` becomes this (`\.rShellTabEdge`): one edge, the shell's.
+    static let tabBarBlend = Self(
+        edge: .bottom,
+        band: RDimension.blurTabBlendRise,
+        bandCompact: RDimension.blurTabBlendRiseCompact,
+        maxRadius: RDimension.blurTabMax,
+        saturation: RNumber.blurTabSaturation,
+        tint: RBlurTint(
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundCanvas,
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1),
+            curve: .fadeToCanvas
+        ),
+        maskedBlur: true,
+        underPageInsets: true
+    )
 
     /// Tab screens: above the tab bar. Colour must survive (saturation up), the canvas tint
     /// covers only the bottom of the band, and under the bar itself the page is opaque canvas.
@@ -178,18 +245,35 @@ extension EnvironmentValues {
     @Entry var rCompactHeight = false
     /// Forces the iOS 18 path on iOS 26, so the two can be compared side by side (the gallery).
     @Entry var rForceBlurFallback = false
+    /// Set by the shell: what a page's `.tabEdge` draws inside it (the shell's `tabBarBlend`, which
+    /// ends opaque at the bar). nil outside the shell, where `.tabEdge` is itself.
+    @Entry var rShellTabEdge: RProgressiveBlurStyle?
 }
 
 private struct RProgressiveBlurModifier: ViewModifier {
-    let style: RProgressiveBlurStyle
+    let requested: RProgressiveBlurStyle
     let active: Bool
+
+    init(style: RProgressiveBlurStyle, active: Bool) {
+        requested = style
+        self.active = active
+    }
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.rForceBlurFallback) private var forceFallback
     @Environment(\.rCompactHeight) private var compact
+    @Environment(\.rShellTabEdge) private var shellTabEdge
+
+    /// The page's own bottom inset under the band (the journal's composer, the mini-player's room),
+    /// read when the band runs under it.
+    @State private var bottomInset: CGFloat = 0
+
+    private var style: RProgressiveBlurStyle {
+        requested.inShell(shellTabEdge)
+    }
 
     private var band: CGFloat {
-        compact ? (style.bandCompact ?? style.band) : style.band
+        style.band(compact: compact)
     }
 
     private var systemEdgeAvailable: Bool {
@@ -201,9 +285,12 @@ private struct RProgressiveBlurModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let blurs = active && !reduceTransparency
-        let usesSystemEdge = systemEdgeAvailable && !forceFallback
+        let usesSystemEdge = systemEdgeAvailable && !forceFallback && !style.maskedBlur
+        let underInsets = style.underPageInsets && style.edge == .bottom
         content
             .modifier(SystemSoftEdge(edge: style.edge, shown: blurs && usesSystemEdge))
+            // at rest, and at the end of the scroll, the last row sits clear of the band
+            .modifier(RestMargin(length: underInsets ? max(0, band - bottomInset) : nil))
             .overlay(alignment: style.edge == .top ? .top : .bottom) {
                 RBlurBand(
                     style: style,
@@ -211,9 +298,44 @@ private struct RProgressiveBlurModifier: ViewModifier {
                     blur: blurs && !usesSystemEdge,
                     reduceTransparency: reduceTransparency
                 )
+                .modifier(UnderBottomInset(on: underInsets))
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             }
+            .background {
+                if underInsets {
+                    // inside the safe area, so the proxy reports the inset (extended into it, it reports 0)
+                    Color.clear
+                        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 }
+                }
+            }
+    }
+}
+
+/// A bottom content margin for the scroll views inside, only when there is one to set.
+private struct RestMargin: ViewModifier {
+    let length: CGFloat?
+
+    func body(content: Content) -> some View {
+        if let length {
+            content.contentMargins(.bottom, length, for: .scrollContent)
+        } else {
+            content
+        }
+    }
+}
+
+/// The band anchored at the page's end, running under the page's own bottom inset so what sits
+/// there (the composer, the mini-player) floats over the dissolving content.
+private struct UnderBottomInset: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on {
+            content.ignoresSafeArea(.container, edges: .bottom)
+        } else {
+            content
+        }
     }
 }
 
@@ -273,13 +395,21 @@ private struct RBlurBand: View {
     private func tintGradient(_ tint: RBlurTint) -> some View {
         let from = tint.from.resolved(in: band)
         let solidFrom = max(from, tint.solidFrom.resolved(in: band))
-        // Stops run from the band's inner edge (0) to its outer edge (1).
-        let stops = [
-            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: 0),
-            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: from),
-            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: solidFrom),
-            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: 1),
-        ]
+        // Stops run from the band's inner edge (0) to its outer edge (1); between `from` and
+        // `solidFrom` the curve's stops are spread evenly (two for linear, 13 for fadeToCanvas).
+        let curve = tint.curve.stops
+        let ramp = curve.enumerated().map { index, opacity in
+            let t = curve.count > 1 ? CGFloat(index) / CGFloat(curve.count - 1) : 1
+            // start blends to end along the curve (two stops: start, then end, as before)
+            let color = tint.start == tint.end ? tint.end : tint.start.mix(with: tint.end, by: opacity)
+            return Gradient.Stop(
+                color: color.opacity(tint.startOpacity + (tint.endOpacity - tint.startOpacity) * opacity),
+                location: from + (solidFrom - from) * t
+            )
+        }
+        let stops = [Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: 0)]
+            + ramp
+            + [Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: 1)]
         return LinearGradient(
             stops: stops,
             startPoint: style.edge == .bottom ? .top : .bottom,

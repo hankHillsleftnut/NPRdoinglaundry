@@ -247,20 +247,23 @@ struct FlowHostTests {
 
     // MARK: The end of what's built
 
-    @Test("the tease's end ends the walk: the start-over pill shows there, and starting over is a fresh splash")
-    func endOfWhatsBuilt() {
-        let store = MemoryFlowStore()
-        let model = flow(store, start: .tease)
-        model.answered(.namePlace, words: "sam.")
-        #expect(model.isAtEnd == false)
-        model.send(.teaseEnded)
-        #expect(model.step == .tease)
-        #expect(model.endedAt == .tease)
-        #expect(model.isAtEnd)
-        // a relaunch at the end shows the pill at once
-        #expect(store.saved?.endedAt == .tease)
-        #expect(flow(store).isAtEnd)
+    @Test("the whole first run is joined: no hand-off ends the walk early, and a stale saved end is dropped")
+    func noEndLeft() {
+        // every planned hand-off now has a row: the pill never shows on the walk
+        let model = flow(MemoryFlowStore(), start: .paywall)
+        model.send(.subscribed)
+        #expect(model.step == .firstHome)
+        #expect(model.endedAt == nil)
+        // an end saved by an older build (the paywall before first home joined) is dropped on launch
+        let store = MemoryFlowStore(SampleFlowSaved(step: .paywall, endedAt: .paywall))
+        #expect(flow(store).isAtEnd == false)
+    }
 
+    @Test("starting over is a fresh splash with nothing kept")
+    func startOver() {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .firstHome)
+        model.answered(.namePlace, words: "sam.")
         let fresh = model.startedOver()
         #expect(fresh.step == .splash)
         #expect(fresh.answers.isEmpty)
@@ -270,7 +273,7 @@ struct FlowHostTests {
 
     // MARK: The tease (J2)
 
-    @Test("the tease plays on its own from 0:00 and its end hands on once: the walk ends there for now")
+    @Test("the tease plays on its own from 0:00 and its end collapses it into the paywall")
     func teasePlaysAndEnds() async {
         let model = flow(MemoryFlowStore(), start: .gettingReady)
         model.send(.episodeReady)
@@ -282,10 +285,77 @@ struct FlowHostTests {
         #expect(sheet.playback.position == 0)
         // its end, without racing 40 beats against a bounded settle
         sheet.playback.seek(to: 10)
-        await settle { model.isAtEnd }
+        await settle { model.step == .paywall }
         #expect(sheet.state == .ended)
-        #expect(model.step == .tease)
-        #expect(model.endedAt == .tease)
+        #expect(model.step == .paywall)
+        #expect(model.sheetCoversPage == false)
+        #expect(model.isAtEnd == false)
+    }
+
+    // MARK: The paywall (J3a)
+
+    @Test("the paywall: either dummy price hands on once (nothing charged) to first home")
+    func paywallChoosesAndEnds() async {
+        for choice: PaywallModel.Choice in [.yearly, .monthly] {
+            let model = flow(MemoryFlowStore(), start: .paywall)
+            let page = model.makePaywall()
+            await page.load()
+            #expect(page.offer != nil)
+            await page.choose(choice)
+            #expect(page.phase == .left(choice))
+            #expect(model.step == .firstHome)
+            #expect(model.arrivedHome)
+            #expect(model.endedAt == nil)
+            // a second tap after leaving does nothing
+            await page.choose(.yearly)
+            #expect(page.phase == .left(choice))
+        }
+    }
+
+    // MARK: First home (J3b)
+
+    @Test("first home: the recap is the person's own answers; its card plays the tease from 0:00; the card pops only on arrival")
+    func firstHomeFromTheWalk() {
+        let store = MemoryFlowStore(SampleFlowSaved(step: .paywall, answers: ["name.place": "sam, in london. and more."]))
+        let model = flow(store)
+        model.send(.subscribed)
+        #expect(model.step == .firstHome)
+        #expect(model.arrivedHome)
+        let recap = SetupRecap.make(answers: [.namePlace: "sam, in london. and more."])
+        #expect(model.firstHomeRecap == recap)
+        #expect(recap != SetupRecap.paper)
+        var collapsed = 0
+        let player = model.makeFirstEpisodePlayer { collapsed += 1 }
+        #expect(player.state == .playing)
+        #expect(player.playback.position == 0)
+        player.collapse()
+        #expect(collapsed == 1)
+        // a relaunch at first home comes back to it, recap kept, without the arrival pop
+        let again = flow(store)
+        #expect(again.step == .firstHome)
+        #expect(again.arrivedHome == false)
+        #expect(again.firstHomeRecap == recap)
+    }
+
+    @Test("first home is the end of the first run: nothing moves it, and it never shows the start-over pill")
+    func firstHomeIsTheEnd() {
+        let model = flow(MemoryFlowStore(), start: .firstHome)
+        for event in FlowEvent.allCases {
+            model.send(event)
+        }
+        #expect(model.step == .firstHome)
+        #expect(model.isAtEnd == false)
+    }
+
+    @Test("no way back from the paywall, and a relaunch there comes back to it with the answers kept")
+    func paywallNoBackAndResumes() {
+        let store = MemoryFlowStore(SampleFlowSaved(step: .paywall, answers: ["name.place": "sam."]))
+        let model = flow(store)
+        #expect(model.step == .paywall)
+        #expect(model.answers == [.namePlace: "sam."])
+        model.send(.back)
+        model.send(.connectBack)
+        #expect(model.step == .paywall)
     }
 
     @Test("while the tease is up, the sheet covers getting ready (hidden, out of touch, modal); never before or on other steps")
@@ -294,20 +364,22 @@ struct FlowHostTests {
         #expect(model.sheetCoversPage == false)
         model.send(.episodeReady)
         #expect(model.sheetCoversPage)
-        // the end of the tease keeps the sheet up (the pill shows over it)
+        // the end of the tease collapses it: the paywall is uncovered
         model.send(.teaseEnded)
-        #expect(model.sheetCoversPage)
+        #expect(model.step == .paywall)
+        #expect(model.sheetCoversPage == false)
         for step in FlowStep.allCases where step != .tease {
             #expect(flow(MemoryFlowStore(), start: step).sheetCoversPage == false, "\(step)")
         }
     }
 
-    @Test("the tease's collapse hands on like its end (row 39 default until the founder answers)")
+    @Test("the tease's collapse raises the paywall early, like its end (row 39, provisional default)")
     func teaseCollapseHandsOn() {
         let model = flow(MemoryFlowStore(), start: .tease)
         let sheet = model.teaseSheet()
         sheet.collapse()
-        #expect(model.endedAt == .tease)
+        #expect(model.step == .paywall)
+        #expect(model.endedAt == nil)
         // the tease stops as it hands on
         #expect(sheet.state == .paused)
         // a second tap does nothing more
