@@ -210,6 +210,14 @@ final class SampleFlowModel {
         }
     }
 
+    /// ON-12 for one visit, on the sample (dummy) plans: either price answers "subscribed" at once and
+    /// sends `subscribed` (nothing is charged, DECISIONS 26 Oct night). A left page never fires again.
+    func makePaywall() -> PaywallModel {
+        PaywallModel(paywall: SamplePaywall(answer: .subscribed)) { [weak self] _ in
+            self?.send(.subscribed)
+        }
+    }
+
     /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
     /// so each visit gets a fresh model: Retro finishing (or a tap) sends `privacyDone`, the back chevron
     /// sends `back` to the last question. `clock` is the page's reading clock (tests pass an instant one).

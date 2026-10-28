@@ -45,8 +45,8 @@ struct FlowPlanTests {
                 #expect(FlowStep.next(from: from, event: event) == nil, "\(edge.from) \(edge.event)")
             }
         }
-        // today: the tease's end waits for the paywall (ON-12)
-        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == nil)
+        // today: a paywall price waits for first home (ON-13)
+        #expect(FlowStep.next(from: .paywall, event: .subscribed) == nil)
     }
 
     @Test("no way back through the host where none is drawn or decided (getting ready: decision 10)")
