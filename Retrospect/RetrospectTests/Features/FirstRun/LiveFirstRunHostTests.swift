@@ -20,6 +20,25 @@ struct LiveFirstRunHostTests {
         #expect(LiveFirstRunHost.Step.allCases == [.questions])
     }
 
+    @Test(
+        "what the host shows: no seam (the store couldn't be opened) is the store-failed page; a seam still reading is the canvas; a loaded one the questions"
+    )
+    func content() async throws {
+        #expect(LiveFirstRunHost.Content.choose(seam: nil) == .storeFailed)
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let outbox = Store.Outbox(database: database, log: Platform.Log.Recorder())
+        let seam = LiveFirstRunData(outbox: outbox, setAccess: { _ in })
+        #expect(LiveFirstRunHost.Content.choose(seam: seam) == .loading)
+        await seam.open()
+        #expect(LiveFirstRunHost.Content.choose(seam: seam) == .questions)
+        // the environment's seam goes with the store: after sign-out the host would show the retry page, not a stale page
+        let environment = Platform.AppEnvironment.preview(openDatabase: { _ in database })
+        await environment.sessionDidChange(to: "user-a").value
+        #expect(LiveFirstRunHost.Content.choose(seam: environment.firstRun) != .storeFailed)
+        await environment.sessionWillChange().value
+        #expect(LiveFirstRunHost.Content.choose(seam: environment.firstRun) == .storeFailed)
+    }
+
     #if DEBUG
     @Test("the host's steps are the plan's screens after 'begin', in the plan's order, restricted to the steps built live")
     func stepsFollowThePlan() {

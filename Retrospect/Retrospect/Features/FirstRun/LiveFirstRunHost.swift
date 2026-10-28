@@ -17,21 +17,37 @@ struct LiveFirstRunHost: View {
         case questions
     }
 
+    /// What the host shows for the seam it finds (pure, so the branches are tested).
+    enum Content: Equatable {
+        /// No seam: the person's store could not be opened; the retry page.
+        case storeFailed
+        /// The seam is still reading the kept answers: the canvas.
+        case loading
+        /// The questions.
+        case questions
+
+        @MainActor static func choose(seam: LiveFirstRunData?) -> Content {
+            guard let seam else { return .storeFailed }
+            return seam.isLoaded ? .questions : .loading
+        }
+    }
+
     /// The first run is over: the root marks it done and shows the journal.
     let onDone: () -> Void
     @Environment(Platform.AppEnvironment.self) private var platform
 
     var body: some View {
-        if let seam = platform.firstRun {
-            if seam.isLoaded {
+        switch Content.choose(seam: platform.firstRun) {
+        case .questions:
+            if let seam = platform.firstRun {
                 QuestionsPageContainer(data: seam, kept: seam.kept, seamFinished: seam.completeQueued, onDone: onDone)
                     .accessibilityIdentifier("firstrun.questions")
-            } else {
-                // the kept answers are being read: the canvas, never the first question for a person who is past it
-                RColor.backgroundCanvas.ignoresSafeArea()
-                    .task { await seam.open() }
             }
-        } else {
+        case .loading:
+            // the kept answers are being read: the canvas, never the first question for a person who is past it
+            RColor.backgroundCanvas.ignoresSafeArea()
+                .task { await platform.firstRun?.open() }
+        case .storeFailed:
             StoreFailedView { platform.retryOpeningStore() }
         }
     }

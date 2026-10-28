@@ -9,10 +9,10 @@ struct NewAppRootTests {
 
     private func screen(
         _ state: Session.State?, code: Bool? = false, held: Bool = false, failed: Bool = false, seen: Bool? = true,
-        flags: Store.PersonFlags.FirstRun? = Flags(started: true, done: true), storeOpen: Bool = false, updateRequired: Bool = false
+        flags: Store.PersonFlags.FirstRun? = Flags(started: true, done: true), flagsPending: Bool = false, updateRequired: Bool = false
     ) -> NewAppRoot.Screen {
         NewAppRoot.screen(
-            for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen, firstRun: flags, storeOpen: storeOpen,
+            for: state, pendingCode: code, gateHeld: held, storeOpenFailed: failed, youreInSeen: seen, firstRun: flags, flagsPending: flagsPending,
             updateRequired: updateRequired
         )
     }
@@ -82,10 +82,14 @@ struct NewAppRootTests {
     func membersAndTheFirstRun() {
         for access in [Session.AccessState.member, .staff] {
             #expect(screen(signedIn(access), flags: nil) == .journal, "no store: members never wait")
-            #expect(screen(signedIn(access), flags: nil, storeOpen: true) == .blank, "store open, flags being read: no journal flash before the first run")
-            #expect(screen(signedIn(access), flags: Flags(started: false, done: false), storeOpen: true) == .journal)
-            #expect(screen(signedIn(access), flags: Flags(started: true, done: false), storeOpen: true) == .firstRun)
-            #expect(screen(signedIn(access), failed: true, flags: nil, storeOpen: true) == .storeFailed)
+            #expect(screen(signedIn(access), flags: nil, flagsPending: true) == .blank, "flags being read: no journal flash before the first run")
+            #expect(
+                screen(signedIn(access), flags: nil, flagsPending: false) == .journal,
+                "F1 (qa-272): the read finished with nothing (unreadable flags): never stranded on a blank screen"
+            )
+            #expect(screen(signedIn(access), flags: Flags(started: false, done: false), flagsPending: true) == .journal)
+            #expect(screen(signedIn(access), flags: Flags(started: true, done: false), flagsPending: true) == .firstRun)
+            #expect(screen(signedIn(access), failed: true, flags: nil, flagsPending: true) == .storeFailed)
             #expect(screen(signedIn(access), flags: Flags(started: false, done: false)) == .journal)
             #expect(screen(signedIn(access), flags: done) == .journal)
             #expect(screen(signedIn(access), flags: Flags(started: true, done: false)) == .firstRun)
