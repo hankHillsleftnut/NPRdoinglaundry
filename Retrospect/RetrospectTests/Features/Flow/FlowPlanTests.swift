@@ -5,6 +5,9 @@ import Testing
 /// missing edge, an edge the map doesn't draw, a step out of the app's order, or a way back the founder
 /// ruled out all fail here; an edge into a screen that isn't built is simply absent (the flow ends).
 struct FlowPlanTests {
+    /// The events that leave a page backwards (ON-5's back, ON-6's back).
+    private static let backEvents: Set<String> = ["back", "connectBack"]
+
     @Test("every step is a first-run screen, in the plan's order (a step slotted in the wrong place fails)")
     func stepsFollowThePlan() {
         let screens = FlowStep.allCases.map { FirstRunScreen(rawValue: $0.rawValue) }
@@ -42,16 +45,17 @@ struct FlowPlanTests {
                 #expect(FlowStep.next(from: from, event: event) == nil, "\(edge.from) \(edge.event)")
             }
         }
-        // today: privacy's 'done' waits for connect (ON-6, #199)
-        #expect(FlowStep.next(from: .privacy, event: .privacyDone) == nil)
+        // today: the tease's end waits for the paywall (ON-12)
+        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == nil)
     }
 
     @Test("no way back through the host where none is drawn or decided (getting ready: decision 10)")
     func noBackWhereRuledOut() {
         for screen in FlowPlan.noBack {
-            #expect(FlowPlan.edges.contains { $0.from == screen && $0.event == "back" } == false, "\(screen)")
+            #expect(FlowPlan.edges.contains { $0.from == screen && Self.backEvents.contains($0.event) } == false, "\(screen)")
             if let step = screen.step {
                 #expect(FlowStep.next(from: step, event: .back) == nil, "\(screen)")
+                #expect(FlowStep.next(from: step, event: .connectBack) == nil, "\(screen)")
             }
         }
     }
@@ -60,7 +64,7 @@ struct FlowPlanTests {
     func planIsWhole() {
         var reached: [FirstRunScreen] = [.splash]
         var current = FirstRunScreen.splash
-        while let edge = FlowPlan.edges.first(where: { $0.from == current && $0.event != "back" }) {
+        while let edge = FlowPlan.edges.first(where: { $0.from == current && !Self.backEvents.contains($0.event) }) {
             reached.append(edge.to)
             current = edge.to
         }

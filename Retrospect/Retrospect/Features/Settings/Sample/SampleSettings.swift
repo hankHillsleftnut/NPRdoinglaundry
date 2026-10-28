@@ -2,11 +2,13 @@
 //  SampleSettings.swift
 //  V2.settings: the settings on invented data (Paper ST-1 … ST-4's words), so every page opens from the
 //  launcher and every control does what Paper draws. Nothing is sent or saved. A sync or a connect
-//  turns for a moment on an injected clock, then settles.
+//  turns for a moment on an injected clock, then settles. Debug builds only (the founder's sandbox
+//  rule): the launcher and the tests use it; release code knows only `Flows.SettingsData`.
 //
 import Foundation
 import Observation
 
+#if DEBUG
 @MainActor @Observable
 final class SampleSettings: Flows.SettingsData {
     typealias Settings = Flows.Settings
@@ -67,18 +69,20 @@ final class SampleSettings: Flows.SettingsData {
     }
 
     func connect(_ id: Settings.Source.ID) async {
-        update(id) { $0.status = .syncing }
-        await sleep(settle)
-        update(id) { source in
-            source.status = .connected
-            source.lastRead = "last read just now"
-        }
+        await read(id)
     }
 
     func sync(_ id: Settings.Source.ID) async {
+        await read(id)
+    }
+
+    /// Syncing for a moment, then connected and read just now. If the source changed meanwhile (a
+    /// disconnect while it was reading), the finished read leaves it as it is: it never brings it back.
+    private func read(_ id: Settings.Source.ID) async {
         update(id) { $0.status = .syncing }
         await sleep(settle)
         update(id) { source in
+            guard source.status == .syncing else { return }
             source.status = .connected
             source.lastRead = "last read just now"
         }
@@ -119,3 +123,4 @@ final class SampleSettings: Flows.SettingsData {
         Settings.Source(id: "health", name: "health", purpose: "how you slept, how you moved", symbol: "sun.horizon", status: .syncing),
     ]
 }
+#endif

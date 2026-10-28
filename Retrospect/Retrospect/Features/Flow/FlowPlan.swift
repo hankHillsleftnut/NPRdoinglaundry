@@ -68,7 +68,7 @@ enum FlowPlan {
         PlannedEdge(.privacy, "privacyDone", .connect, "row 20; decision 3"),
         PlannedEdge(.privacy, "back", .questions, "row 23"),
         PlannedEdge(.connect, "connectDone", .gettingReady, "rows 29, 30; decision 5 (continue or later)"),
-        PlannedEdge(.connect, "back", .privacy, "row 32"),
+        PlannedEdge(.connect, "connectBack", .privacy, "row 32"),
         PlannedEdge(.gettingReady, "episodeReady", .tease, "row 34; decision 11"),
         PlannedEdge(.tease, "teaseEnded", .paywall, "row 38; decision 11 (the 10 s mark)"),
         PlannedEdge(.paywall, "subscribed", .firstHome, "row 41; decisions 7 + 26 Oct night (either price, no 'not now')"),

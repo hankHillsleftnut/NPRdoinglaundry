@@ -27,6 +27,8 @@ final class DemoModel {
     private(set) var returning: SignInModel?
     /// Counts signed-in sessions: the app's pages are rebuilt for each, so nothing from the last one shows.
     private(set) var session = 0
+    /// The tab the app opens on (`-DemoTab`), journal when none was asked for.
+    let startTab: RTab
     /// How the system opened the app (`-DemoOutside`), until the app has acted on it once.
     private(set) var outside: DemoOutside?
 
@@ -59,6 +61,7 @@ final class DemoModel {
         self.sleep = sleep
         self.clock = clock
         self.stage = stage
+        startTab = launch.tab ?? .journal
         // the system opens the app the person is signed in to: only an app stage acts on it (it never
         // moves the stage, so a first run or welcome back is never skipped by it)
         outside = stage == .app ? launch.outside : nil

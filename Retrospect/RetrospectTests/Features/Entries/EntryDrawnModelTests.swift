@@ -35,7 +35,8 @@ struct EntryDrawnModelTests {
         model.notRight("took-monday")
         model.notRight("took-monday")
         model.notRight("took-dread")
-        #expect(model.claims.allSatisfy { $0.noted })
+        let allNoted = model.claims.allSatisfy(\.noted)
+        #expect(allNoted)
         #expect(model.notedCount == 1)
     }
 
@@ -63,14 +64,37 @@ struct EntryDrawnModelTests {
         #expect(model.words(words) == "i dread it, every monday")
     }
 
+    @Test("a save goes to the edits owner, and a page reopened on it shows the saved words")
+    func saveOutlivesThePage() {
+        let edits = EntryEdits()
+        let id = SampleEntries.hereID
+        let words = "i think it's the 9am standup. i dread it."
+        let first = EntryDrawnModel(claims: [], savedWords: edits.saved(for: id), onSave: { edits.save($0, for: id) }, onDelete: {})
+        first.beginEdit(from: words)
+        first.edit.draft = "i dread it, every monday "
+        first.save()
+        #expect(edits.saved(for: id) == "i dread it, every monday")
+        let reopened = EntryDrawnModel(claims: [], savedWords: edits.saved(for: id), onSave: { edits.save($0, for: id) }, onDelete: {})
+        #expect(reopened.words(words) == "i dread it, every monday")
+        // an empty save keeps nothing
+        reopened.beginEdit(from: words)
+        reopened.edit.draft = "  "
+        reopened.save()
+        #expect(edits.saved(for: id) == "i dread it, every monday")
+    }
+
     @Test("delete: the dialog asks; keep closes it; delete it pops back once, a double tap too")
     func delete() {
         var pops = 0
         let model = drawn { pops += 1 }
+        #expect(!model.hidesPageFromVoiceOver)
         model.askDelete()
         #expect(model.showsDelete)
+        // the dialog is modal for VoiceOver: the page behind it is hidden while it asks
+        #expect(model.hidesPageFromVoiceOver)
         model.keep()
         #expect(!model.showsDelete)
+        #expect(!model.hidesPageFromVoiceOver)
         #expect(pops == 0)
         model.askDelete()
         model.confirmDelete()

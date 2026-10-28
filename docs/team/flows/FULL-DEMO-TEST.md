@@ -38,7 +38,8 @@ In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick 
 - **`-DemoStart app`**: straight into the app.
 - **`-DemoStart returning`**: "welcome back", as after signing out.
 - **`-FlowStart questions`**: the first run at that screen (change the word to `inviteGate`, `youreIn`, `privacy`, `gettingReady`).
-- **`-DemoOutside share`** / **`brief`**: the app as the system opens it from the share sheet or a notification/widget. It acts only when the demo is in the app (tick `-DemoStart app` with it the first time); it never skips the first run.
+- **`-DemoTab podcasts`**: the app opens on that tab (change the word to `journal`, `goals` or `you`).
+- **`-DemoOutside brief`**: the app as the system opens it from the brief notification or widget (the share sheet joins when its PRs are on main). It acts only when the demo is in the app (tick `-DemoStart app` with it the first time); it never skips the first run.
 
 The quickest full reset: press and hold the Retrospect icon, tap **Remove App**, then press ⌘R.
 
