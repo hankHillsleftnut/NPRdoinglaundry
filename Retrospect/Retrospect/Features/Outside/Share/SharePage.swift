@@ -25,36 +25,46 @@ extension RTextStyle {
 struct SharePage: View {
     @Bindable var model: ShareModel
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Three bands, 24 apart (QA batch 9, #220): the grabber and header stay pinned at the top; only the
+    /// card and the "why" field scroll, inside their own clipped area (so nothing ever slides under the
+    /// status bar or under "save"); "save" is pinned below, above the keyboard when it's up. At rest the
+    /// positions are Paper's: the flexible gap inside the scroll area pushes the field down to save.
     var body: some View {
         VStack(spacing: RDimension.space6) {
-            // the column scrolls when the keyboard takes the room (SE, large type); "save" stays on screen
+            VStack(spacing: RDimension.space6) {
+                grabber
+                header
+            }
+            .padding(.horizontal, RDimension.spaceScreenMargin)
             GeometryReader { proxy in
                 ScrollView {
                     column
+                        // the screen margin sits inside the scroll area, so the card's shadow has room
+                        // and isn't cut by the clip
+                        .padding(.horizontal, RDimension.spaceScreenMargin)
                         .frame(minHeight: proxy.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                // the item card's shadow reaches past the column; don't clip it (QA 1, #220)
-                .scrollClipDisabled()
                 .scrollDismissesKeyboard(.interactively)
             }
             RButton(title: "save", status: model.isSaving ? .pending : .rest) {
                 Task { await model.save() }
             }
+            .accessibilityIdentifier("share.save")
+            .padding(.horizontal, RDimension.spaceScreenMargin)
         }
-        .padding(.horizontal, RDimension.spaceScreenMargin)
         .padding(.top, RDimension.space2)
         // Paper keeps save 40 above the screen edge, which is mostly the home indicator: 8 above the safe area
         .padding(.bottom, RDimension.space2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task { await model.load() }
-        .accessibilityIdentifier("share")
     }
 
+    /// What scrolls: the card, the flexible gap and the "why" field.
     private var column: some View {
         VStack(alignment: .leading, spacing: RDimension.space6) {
-            grabber
-            header
             if let item = model.item {
                 ShareItemCard(item: item)
                     .padding(.top, RDimension.space2)
@@ -66,6 +76,7 @@ struct SharePage: View {
                     .foregroundStyle(RColor.textLabel)
                     .accessibilityHidden(true)
                 RComposer(label: "add why", placeholder: "for the raise, the bit on angels…", text: $model.why)
+                    .accessibilityIdentifier("share.why")
             }
             // the field keeps its own height (48 at rest, growing with the words); the gap above takes
             // the room, not the field (QA 1, #220: it stretched to fill the sheet)
@@ -82,23 +93,43 @@ struct SharePage: View {
             .accessibilityHidden(true)
     }
 
-    /// cancel · save to retrospect · (an empty 72 slot so the title sits on the centre).
-    private var header: some View {
-        HStack(spacing: RDimension.space0) {
-            Button("cancel") { model.cancel() }
-                .buttonStyle(ShareTextButtonStyle())
-                .frame(minWidth: RDimension.sizeShareHeaderSlot, alignment: .leading)
-            Text("save to retrospect")
-                .rText(.shareSheetTitle)
-                .foregroundStyle(RColor.textPrimary)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .accessibilityAddTraits(.isHeader)
-            Color.clear
-                .frame(width: RDimension.sizeShareHeaderSlot, height: RDimension.sizeTouchTarget)
-                .accessibilityHidden(true)
+    /// cancel · save to retrospect · (an empty 72 slot so the title sits on the centre). At accessibility
+    /// sizes the 72 slots can't hold the words: cancel takes its own row and the title its own, so they
+    /// never touch (QA batch 9).
+    @ViewBuilder private var header: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: RDimension.space1) {
+                cancelButton
+                title
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            HStack(spacing: RDimension.space0) {
+                cancelButton
+                    .frame(minWidth: RDimension.sizeShareHeaderSlot, alignment: .leading)
+                title
+                    .frame(maxWidth: .infinity)
+                Color.clear
+                    .frame(width: RDimension.sizeShareHeaderSlot, height: RDimension.sizeTouchTarget)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: RDimension.sizeNavBar)
         }
-        .frame(minHeight: RDimension.sizeNavBar)
+    }
+
+    private var cancelButton: some View {
+        Button("cancel") { model.cancel() }
+            .buttonStyle(ShareTextButtonStyle())
+            .accessibilityIdentifier("share.cancel")
+    }
+
+    private var title: some View {
+        Text("save to retrospect")
+            .rText(.shareSheetTitle)
+            .foregroundStyle(RColor.textPrimary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("share.title")
     }
 }
 
