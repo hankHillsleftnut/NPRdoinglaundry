@@ -66,14 +66,8 @@ struct DemoFlowEdgesTests {
         }
     }
 
-    /// G0's `AppRoute.Kind` and `AppSheet.Kind` raw values (loop/G0.destinations). When G0 is on the base this
-    /// list becomes `AppRoute.Kind.allCases.map(\.rawValue) + AppSheet.Kind.allCases.map(\.rawValue)`.
-    static let g0Kinds: Set<String> = [
-        "entry", "goal", "youSource", "whatIKnow", "whyThisIsHere",
-        "settingsHub", "settingsDailyBrief", "settingsSources", "settingsSource", "settingsPrivacy",
-        "settingsHowStraight", "settingsVoice", "settingsLearned", "settingsAccount",
-        "brief", "episode", "node", "share", "signOut",
-    ]
+    /// G0's `AppRoute.Kind` and `AppSheet.Kind` raw values: the real names, from the table itself.
+    static let g0Kinds = Set(AppRoute.Kind.allCases.map(\.rawValue) + AppSheet.Kind.allCases.map(\.rawValue))
 
     @Test("what nobody plans yet is pinned: adding a missing row (or fixing one) is a visible change")
     func missingPinned() {
@@ -84,7 +78,7 @@ struct DemoFlowEdgesTests {
                 false
             }
         }.map(\.id)
-        #expect(missing == ["F04", "S02", "S03", "P08", "T13", "T14"], "flow-coverage.md §6 lists these")
+        #expect(missing == ["F04", "S02", "S03", "P08", "T13", "T14", "X05a"], "flow-coverage.md §6 lists these")
     }
 
     // MARK: against the app's navigation model
@@ -141,6 +135,37 @@ struct DemoFlowEdgesTests {
         for edge in edges {
             if case let .pr(number) = edge.status {
                 #expect(DemoFlowEdges.openPRs.contains(number), "\(edge.id) points at #\(number), which isn't in openPRs (merged? mark it .main)")
+            }
+        }
+    }
+
+    @Test("a cross-group row that works is built in G0's table, and a built one isn't left planned")
+    func routeRowsMatchTheTable() {
+        for edge in edges {
+            guard case let .route(name) = edge.via else { continue }
+            let built: Bool
+            if let kind = AppRoute.Kind(rawValue: name) {
+                built = AppRoutes.isBuilt(AppRouteTableTests.sample(kind))
+            } else if let kind = AppSheet.Kind(rawValue: name) {
+                built = AppRoutes.isBuilt(AppRouteTableTests.sample(kind))
+            } else {
+                Issue.record("\(edge.id) names \(name), not a G0 route or sheet")
+                continue
+            }
+            if Self.works(edge) {
+                #expect(built, "\(edge.id) works but \(name) isn't built in G0's table")
+            }
+            if case .planned = edge.status {
+                #expect(!built, "\(edge.id) is planned but \(name) is built: mark the row with the PR that joins it")
+            }
+        }
+    }
+
+    @Test("a row joined by an open demo PR names its join")
+    func demoRowsNameTheirJoin() {
+        for edge in edges {
+            if case let .pr(number) = edge.status, DemoFlowEdges.openPRs.contains(number) {
+                #expect(edge.join != nil, "\(edge.id) is joined by #\(number) but names no join")
             }
         }
     }
