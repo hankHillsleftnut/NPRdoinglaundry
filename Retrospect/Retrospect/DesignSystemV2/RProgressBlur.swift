@@ -39,6 +39,28 @@ struct RBlurTint: Hashable, Sendable {
     var endOpacity: Double
     var from: RBandPosition
     var solidFrom: RBandPosition
+    /// How the opacity runs between `from` and `solidFrom`.
+    var curve: RTintCurve = .straight
+}
+
+/// The shape of a tint's rise across its band.
+enum RTintCurve: Hashable, Sendable {
+    /// Two stops: a straight ramp.
+    case straight
+    /// `gradient.fadeToCanvas` (principles/gradients.md rule 5): 13 stops on a smoothstep curve, so
+    /// there is no visible line where the fade starts or where it reaches the colour.
+    case fadeToCanvas
+
+    /// The opacity at each stop, 0 at the start to 1 at the end, evenly spaced.
+    var stops: [Double] {
+        switch self {
+        case .straight:
+            [0, 1]
+        case .fadeToCanvas:
+            // the token's recipe, transcribed (gradients are hand-built Swift: to-swift.mjs leaves them)
+            [0, 0.013, 0.057, 0.13, 0.227, 0.341, 0.467, 0.595, 0.719, 0.83, 0.919, 0.978, 1]
+        }
+    }
 }
 
 /// One edge's progressive blur. Presets carry the values from progressive-blur.md as tokens.
@@ -50,6 +72,35 @@ struct RProgressiveBlurStyle: Hashable, Sendable {
     var maxRadius: CGFloat
     var saturation: Double
     var tint: RBlurTint?
+    /// Draws the blur with the masked material on every iOS, never the system soft edge. For a band
+    /// that must sit above a bar: the system edge draws only inside a scroll view's own inset, and a
+    /// page that ends at the bar's top has none there.
+    var maskedBlur = false
+
+    /// The shell's tab bar (TABBAR.blend, founder 27 Oct: content must never be cut by the bar; it
+    /// dissolves into it like the system's bars; tab-bar.md: "starts 90pt above the tabs"). Over
+    /// `blur.tabBlend.rise` above where the page ends, the blur ramps t² to `blur.tab.max` (colour
+    /// kept: `blur.tab.saturation`) while the canvas eases in on `gradient.fadeToCanvas` to opaque,
+    /// the canvas the bar sits on. In the shell every page's `.tabEdge` becomes this
+    /// (`\.rShellTabEdge`), so there is one edge, the shell's, and it sits wherever the page's scroll
+    /// ends (the bar's top, the journal's composer, the mini-player's room).
+    static let tabBarBlend = Self(
+        edge: .bottom,
+        band: RDimension.blurTabBlendRise,
+        bandCompact: RDimension.blurTabBlendRiseCompact,
+        maxRadius: RDimension.blurTabMax,
+        saturation: RNumber.blurTabSaturation,
+        tint: RBlurTint(
+            start: RColor.backgroundCanvas,
+            startOpacity: 0,
+            end: RColor.backgroundCanvas,
+            endOpacity: 1,
+            from: .fraction(0),
+            solidFrom: .fraction(1),
+            curve: .fadeToCanvas
+        ),
+        maskedBlur: true
+    )
 
     /// Tab screens: above the tab bar. Colour must survive (saturation up), the canvas tint
     /// covers only the bottom of the band, and under the bar itself the page is opaque canvas.
@@ -178,15 +229,29 @@ extension EnvironmentValues {
     @Entry var rCompactHeight = false
     /// Forces the iOS 18 path on iOS 26, so the two can be compared side by side (the gallery).
     @Entry var rForceBlurFallback = false
+    /// Set by the shell: what a page's `.tabEdge` draws inside it (the shell's `tabBarBlend`, which
+    /// ends opaque at the bar). nil outside the shell, where `.tabEdge` is itself.
+    @Entry var rShellTabEdge: RProgressiveBlurStyle?
 }
 
 private struct RProgressiveBlurModifier: ViewModifier {
-    let style: RProgressiveBlurStyle
+    let requested: RProgressiveBlurStyle
     let active: Bool
+
+    init(style: RProgressiveBlurStyle, active: Bool) {
+        requested = style
+        self.active = active
+    }
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.rForceBlurFallback) private var forceFallback
     @Environment(\.rCompactHeight) private var compact
+    @Environment(\.rShellTabEdge) private var shellTabEdge
+
+    /// The tab edge inside the shell is the shell's; every other style is its own.
+    private var style: RProgressiveBlurStyle {
+        requested == .tabEdge ? (shellTabEdge ?? requested) : requested
+    }
 
     private var band: CGFloat {
         compact ? (style.bandCompact ?? style.band) : style.band
@@ -201,7 +266,7 @@ private struct RProgressiveBlurModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let blurs = active && !reduceTransparency
-        let usesSystemEdge = systemEdgeAvailable && !forceFallback
+        let usesSystemEdge = systemEdgeAvailable && !forceFallback && !style.maskedBlur
         content
             .modifier(SystemSoftEdge(edge: style.edge, shown: blurs && usesSystemEdge))
             .overlay(alignment: style.edge == .top ? .top : .bottom) {
@@ -273,13 +338,21 @@ private struct RBlurBand: View {
     private func tintGradient(_ tint: RBlurTint) -> some View {
         let from = tint.from.resolved(in: band)
         let solidFrom = max(from, tint.solidFrom.resolved(in: band))
-        // Stops run from the band's inner edge (0) to its outer edge (1).
-        let stops = [
-            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: 0),
-            Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: from),
-            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: solidFrom),
-            Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: 1),
-        ]
+        // Stops run from the band's inner edge (0) to its outer edge (1); between `from` and
+        // `solidFrom` the curve's stops are spread evenly (two for linear, 13 for fadeToCanvas).
+        let curve = tint.curve.stops
+        let ramp = curve.enumerated().map { index, opacity in
+            let t = curve.count > 1 ? CGFloat(index) / CGFloat(curve.count - 1) : 1
+            // the start colour sits only at the ramp's first stop, as it did with two stops
+            let color = index == 0 ? tint.start : tint.end
+            return Gradient.Stop(
+                color: color.opacity(tint.startOpacity + (tint.endOpacity - tint.startOpacity) * opacity),
+                location: from + (solidFrom - from) * t
+            )
+        }
+        let stops = [Gradient.Stop(color: tint.start.opacity(tint.startOpacity), location: 0)]
+            + ramp
+            + [Gradient.Stop(color: tint.end.opacity(tint.endOpacity), location: 1)]
         return LinearGradient(
             stops: stops,
             startPoint: style.edge == .bottom ? .top : .bottom,

@@ -18,11 +18,16 @@
 //  Layout: the pages, then the bar on the bottom safe area (Paper: the dock 32 above the screen edge,
 //  which is the home indicator). A phone with no home indicator (iPhone SE: a bottom inset of 0) keeps
 //  space3 (12) under the bar instead of ending flush at the edge: compact, not Paper's 32 (logged).
-//  A page ends at the bar's top, so its bottom parts (the journal's composer, which its sheet host
-//  lets reach into the safe area) sit above the bar, never under it. While the keyboard is up the bar
-//  steps aside (it never rides on the keys) and the composer sits on the keyboard as it does in JR-1.
-//  The strip under the bar is opaque canvas (build notes, podcasts bottom edge). A tab change cross-fades
-//  the page over motion.duration.fast (Reduce Motion: none); the bar plays haptic.tab for a tap.
+//  A page ends at the bar's top (TABBAR.blend, founder 27 Oct: nothing is cut off by the bar): its
+//  own bottom part (the journal's composer) sits above the bar, never under it, and the shell sets
+//  every page's tab edge to RProgressiveBlurStyle.tabBarBlend (`\.rShellTabEdge`): over the 90 above
+//  where the page's scroll ends, the content blurs (t², to blur.tab.max, colour kept) under canvas
+//  easing in on gradient.fadeToCanvas to opaque, and the bar sits on the shell's canvas with no plate,
+//  so content dissolves into the bar with no line, light and dark alike. Reduce
+//  Transparency: the canvas fade alone (RProgressBlur); Reduce Motion: unchanged. While the keyboard
+//  is up the bar steps aside (it never rides on the keys) and the composer sits on the keyboard as it
+//  does in JR-1. A tab change cross-fades the page, edge included, over motion.duration.fast (Reduce
+//  Motion: none); the bar plays haptic.tab for a tap.
 //
 //  G0b (plan-glue.md §1c; DISC L0-14, PCD-10): the sheet host and the mini-player are the shell's.
 //  One RSheetHost wraps the pages AND the bar, so a sheet (an `AppSheet` from any page, or a page's
@@ -152,49 +157,34 @@ struct ShellPage: View {
     }
 
     private func shell(bottomInset: CGFloat) -> some View {
-        // the pages, then the bar under them: a page that reaches into the bottom safe area (the
-        // journal's sheet host does) stops at the bar instead of sliding under it
+        // The pages, then the bar under them, with no plate and no background of its own: a page ends
+        // at the bar's top (its own bottom part, the journal's composer, sits above the bar, and its
+        // shadow falls over the bar as Paper draws it) and the page's tab edge is the shell's
+        // `tabBarBlend` (TABBAR.blend): blur and canvas rising over blur.tabBlend.rise to opaque
+        // exactly where the page ends, so content dissolves into the bar's canvas instead of being
+        // cut by it. Nothing is drawn under the bar: what the band hides is gone.
         VStack(spacing: RDimension.space0) {
-            ZStack {
-                ForEach(RTab.allCases) { tab in
-                    if model.visited.contains(tab) {
-                        let context = model.context(for: tab)
-                        Group {
-                            if let view = page(tab, context) {
-                                view
-                            } else {
-                                RColor.backgroundCanvas
-                            }
-                        }
-                        .environment(\.shellTab, context)
-                        // the shell's host draws the page's sheets (over the bar); pages present AppSheets here
-                        .environment(\.rSheetHostAbove, true)
-                        .appSheetPresent { model.present($0) }
-                        .opacity(context.isShown ? 1 : 0)
-                        .allowsHitTesting(context.isShown)
-                        .accessibilityHidden(!context.isShown)
+            pages
+                .environment(\.rShellTabEdge, .tabBarBlend)
+                .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: model.selection)
+                // the pages end above the mini-player: it never covers their content (mini-player.md rule)
+                .safeAreaPadding(.bottom, floatingMiniPlayer == nil ? RDimension.space0 : miniPlayerHeight + RDimension.space3)
+                .overlay(alignment: .bottom) {
+                    if let floatingMiniPlayer {
+                        floatingMiniPlayer
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
+                            .padding(.horizontal, RDimension.spaceScreenMargin)
+                            .padding(.bottom, RDimension.space3)
+                            .frame(maxWidth: .infinity)
+                            // the player's room is opaque canvas: the page's edge ends opaque at the
+                            // room's top and the player floats on the same canvas the bar sits on
+                            .background(RColor.backgroundCanvas)
+                            .transition(miniPlayerArrives)
                     }
                 }
-            }
-            .animation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast), value: model.selection)
-            // the pages end above the mini-player: it never covers their content (mini-player.md rule)
-            .safeAreaPadding(.bottom, floatingMiniPlayer == nil ? RDimension.space0 : miniPlayerHeight + RDimension.space3)
-            .overlay(alignment: .bottom) {
-                if let floatingMiniPlayer {
-                    floatingMiniPlayer
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
-                        .padding(.horizontal, RDimension.spaceScreenMargin)
-                        .padding(.bottom, RDimension.space3)
-                        .transition(miniPlayerArrives)
-                }
-            }
-            .animation(RMotion.standard(RNumber.motionDurationSlow), value: floatingMiniPlayer == nil)
+                .animation(RMotion.standard(RNumber.motionDurationSlow), value: floatingMiniPlayer == nil)
             if !keyboardUp {
-                RTabBar(
-                    selection: Binding(get: { model.selection }, set: { model.select($0) }),
-                    available: model.available
-                ) { model.reselect($0) }
-                    .padding(.bottom, max(RDimension.space0, RDimension.space3 - bottomInset))
+                bar(bottomInset: bottomInset)
             }
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
@@ -205,6 +195,41 @@ struct ShellPage: View {
             keyboardUp = false
         }
         .accessibilityIdentifier("shell")
+    }
+
+    /// The tabs' pages, every visited one kept and only the selected one shown.
+    private var pages: some View {
+        ZStack {
+            ForEach(RTab.allCases) { tab in
+                if model.visited.contains(tab) {
+                    let context = model.context(for: tab)
+                    Group {
+                        if let view = page(tab, context) {
+                            view
+                        } else {
+                            RColor.backgroundCanvas
+                        }
+                    }
+                    .environment(\.shellTab, context)
+                    // the shell's host draws the page's sheets (over the bar); pages present AppSheets here
+                    .environment(\.rSheetHostAbove, true)
+                    .appSheetPresent { model.present($0) }
+                    .opacity(context.isShown ? 1 : 0)
+                    .allowsHitTesting(context.isShown)
+                    .accessibilityHidden(!context.isShown)
+                }
+            }
+        }
+    }
+
+    /// The bar on the bottom safe area (Paper: the dock 32 above the screen edge), on the shell's
+    /// canvas: the page's edge reaches full canvas at the bar's top, so the two meet with no line.
+    private func bar(bottomInset: CGFloat) -> some View {
+        RTabBar(
+            selection: Binding(get: { model.selection }, set: { model.select($0) }),
+            available: model.available
+        ) { model.reselect($0) }
+            .padding(.bottom, max(RDimension.space0, RDimension.space3 - bottomInset))
     }
 
     /// The mini-player while it may show: something is loaded and the keyboard is down.
