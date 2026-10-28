@@ -78,7 +78,8 @@ struct NodeSheet: View {
                     REvidenceGroup {
                         ForEach(node.restsOn) { evidence in
                             REvidenceRow(
-                                leading: .kind(symbol: evidence.kind.symbol),
+                                // Paper's gridless calendar (1GD7-0, YO-D29); your words keep the page glyph
+                                leading: evidence.kind == .calendar ? .calendar : .kind(symbol: evidence.kind.symbol),
                                 meta: evidence.meta,
                                 // Paper draws the 32 wash well behind each glyph (1GCZ-0), as on the canvas
                                 // panel anywhere else: not the lifted well (that one vanished, QA batch 5)
