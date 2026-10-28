@@ -13,7 +13,8 @@ import SwiftUI
 
 enum PodcastsScreens: ScreenGroup {
     static let name = "podcasts"
-    static let screens: [LaunchableScreen] = [
+    /// PC-2 in episode mode (V2.podcasts.c) registers from its own file.
+    static let screens: [LaunchableScreen] = ScreenRegistry.podcastsPlayerScreens + [
         LaunchableScreen(id: "PC-1", states: PodcastsScenario.allCases.map(\.rawValue)) { arguments in
             AnyView(PodcastsLaunch(scenario: PodcastsScenario(rawValue: arguments.state) ?? .rest))
         },
