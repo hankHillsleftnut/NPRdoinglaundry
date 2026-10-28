@@ -69,16 +69,33 @@ struct NodeSheet: View {
         .padding(.top, RDimension.space1)
     }
 
+    /// The belief (1GDU-0): the stated claim at text-2xl, balanced as Paper sets it (text-wrap: balance):
+    /// three even lines, no lone "her."
+    var claim: RClaim {
+        RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief, balanced: true)
+    }
+
+    /// The evidence row's leading well, by the evidence's kind: Paper's gridless calendar for calendar
+    /// evidence (1GD7-0, YO-D29); your words keep the page glyph (`symbol`). On the sheet, not on the kind:
+    /// You is a dark folder, and a member added to a Flows type from here would be a back door past the
+    /// fence (ReleaseRouteTableTests). The switch is exhaustive, so a new kind has to choose.
+    static func leading(for kind: Flows.Evidence.Kind) -> REvidenceRow.Leading {
+        switch kind {
+        case .calendar: .calendar
+        case .yourWords: .kind(symbol: kind.symbol)
+        }
+    }
+
     private var belief: some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
-            RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief)
+            claim
             if !node.restsOn.isEmpty {
                 VStack(alignment: .leading, spacing: RDimension.space1) {
                     RSectionLabel(title: "what it rests on")
                     REvidenceGroup {
                         ForEach(node.restsOn) { evidence in
                             REvidenceRow(
-                                leading: .kind(symbol: evidence.kind.symbol),
+                                leading: Self.leading(for: evidence.kind),
                                 meta: evidence.meta,
                                 // Paper draws the 32 wash well behind each glyph (1GCZ-0), as on the canvas
                                 // panel anywhere else: not the lifted well (that one vanished, QA batch 5)
