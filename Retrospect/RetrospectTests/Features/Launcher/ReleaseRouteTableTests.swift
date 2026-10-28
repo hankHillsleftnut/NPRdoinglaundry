@@ -41,8 +41,10 @@ struct ReleaseRouteTableTests {
         "Features/Goals", "Features/Outside",
     ]
 
-    /// Debug-only surfaces that may name a dark screen: the launcher (and its group registry) and the lab.
-    static let allowedToNameDark = ["Features/Launcher/", "DesignSystemV2/RLabPages"]
+    /// Debug-only surfaces that may name a dark screen: the launcher (and its group registry), the lab, and
+    /// the sandbox (`Sandbox/`: the full-app demo, `-Flow demo`, DECISIONS 27 Oct), whose files are wholly
+    /// DEBUG-only (SandboxFenceTests).
+    static let allowedToNameDark = ["Features/Launcher/", "DesignSystemV2/RLabPages", "Sandbox/"]
 
     // MARK: guard 1: the pinned tables
 

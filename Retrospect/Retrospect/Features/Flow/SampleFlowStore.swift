@@ -76,8 +76,10 @@ final class MemoryFlowStore: SampleFlowStore {
 
 /// What the command line asked of the flow.
 struct FlowLaunch: Equatable {
-    /// `-Flow sample` was given.
+    /// `-Flow sample` was given (or `-Flow demo`: the demo is a sample flow to the app root).
     var isRequested = false
+    /// `-Flow demo` (DEMO.app): the whole app on sample data, from `Sandbox/Demo`.
+    var isDemo = false
     /// `-FlowStart <step>`: start there with nothing kept. Nil resumes (or starts at the splash).
     var start: FlowStep?
 
@@ -127,7 +129,8 @@ struct FlowLaunch: Equatable {
             let value = index + 1 < arguments.endIndex ? arguments[index + 1] : nil
             switch flag {
             case "-Flow":
-                launch.isRequested = value == "sample"
+                launch.isRequested = value == "sample" || value == "demo"
+                launch.isDemo = value == "demo"
             case "-FlowStart":
                 launch.start = value.flatMap(FlowStep.init(rawValue:))
             default:
