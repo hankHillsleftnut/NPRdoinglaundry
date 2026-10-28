@@ -132,6 +132,73 @@ struct ClientSenderTests {
         #expect(StubProtocol.requests(on: session).isEmpty)
     }
 
+    @Test("a first-run answer goes to POST /v2/onboarding/answers with the fixture's bytes and its own id as the key (FR.b1.data)")
+    func anAnswerGoesToItsDoor() async throws {
+        defer { StubProtocol.clear(session) }
+        let fixture = try Fixtures.data("01", "answer.create.request")
+        let body = try Backend.Coding.decoder.decode(Backend.Endpoints.OnboardingAnswer.Body.self, from: fixture)
+        let payload = try Backend.Coding.encoder.encode(body)
+        let at = Date(timeIntervalSince1970: 1_792_569_604)
+        let row = Store.OutboxRow(
+            id: body.clientEntryId, operation: .onboardingAnswer, entityID: body.clientEntryId, payload: payload, attempts: 0,
+            nextAttemptAt: at, status: .inFlight, lastErrorCode: nil, createdAt: at
+        )
+        StubProtocol.register(on: session) { request in
+            try (HTTPURLResponse.stub(request, status: 201), Fixtures.data("01", "answer.create.response"))
+        }
+
+        let result = try await sender().send(row)
+
+        let request = try #require(StubProtocol.requests(on: session).first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/v2/onboarding/answers")
+        #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == "b1f0c6a2-4c1e-4a57-9d34-0f8f6f2e1a01")
+        #expect(request.httpBody == payload)
+        // the same fields as the fixture, exactly (the encoder sorts keys; the fixture is pretty-printed)
+        let sentBody = try #require(request.httpBody)
+        let sent = try #require(JSONSerialization.jsonObject(with: sentBody) as? NSDictionary)
+        #expect(try sent == (JSONSerialization.jsonObject(with: fixture) as? NSDictionary))
+        #expect(result.serverID == "00000000-0000-4000-8000-000000000001")
+        #expect(result.access == nil)
+    }
+
+    @Test("a row whose id is not its answer's clientEntryId is refused without a request: the door would refuse it for good")
+    func aMismatchedAnswerIsNotSent() async throws {
+        defer { StubProtocol.clear(session) }
+        let body = try Backend.Coding.decoder.decode(Backend.Endpoints.OnboardingAnswer.Body.self, from: Fixtures.data("01", "answer.create.request"))
+        let at = Date(timeIntervalSince1970: 1_792_569_604)
+        let row = try Store.OutboxRow(
+            id: "00000000-0000-4000-8000-000000000555", operation: .onboardingAnswer, entityID: body.clientEntryId,
+            payload: Backend.Coding.encoder.encode(body), attempts: 0, nextAttemptAt: at, status: .inFlight, lastErrorCode: nil, createdAt: at
+        )
+
+        await #expect(throws: Backend.Failure(.invalidRequest)) { _ = try await sender().send(row) }
+        #expect(StubProtocol.requests(on: session).isEmpty)
+    }
+
+    @Test("onboarding.complete goes to POST /v2/onboarding/complete with `{}` and no key, and the access state comes back")
+    func completeGoesToItsDoor() async throws {
+        defer { StubProtocol.clear(session) }
+        let at = Date(timeIntervalSince1970: 1_792_569_604)
+        let row = try Store.OutboxRow(
+            id: Store.Outbox.completeID, operation: .onboardingComplete, entityID: Store.Outbox.completeID,
+            payload: Backend.Coding.encoder.encode(Backend.NoBody()), attempts: 0, nextAttemptAt: at, status: .inFlight, lastErrorCode: nil, createdAt: at
+        )
+        StubProtocol.register(on: session) { request in
+            try (HTTPURLResponse.stub(request, status: 200), Fixtures.data("01", "onboarding.complete.response"))
+        }
+
+        let result = try await sender().send(row)
+
+        let request = try #require(StubProtocol.requests(on: session).first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/v2/onboarding/complete")
+        #expect(request.value(forHTTPHeaderField: "Idempotency-Key") == nil)
+        #expect(request.httpBody == Data("{}".utf8))
+        #expect(result.access == .member)
+        #expect(result.serverID == nil)
+    }
+
     @Test("a door's refusal comes back as the backend failure, for the drainer to settle")
     func aRefusalComesBackAsTheFailure() async throws {
         defer { StubProtocol.clear(session) }

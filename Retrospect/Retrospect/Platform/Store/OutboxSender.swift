@@ -12,13 +12,19 @@ extension Store {
         var day: String?
         /// A report's short reference (`r-7KQ2`), for the "sent" toast.
         var reference: String?
+        /// Where the account stands after `onboarding.complete` (`member`), for the session to keep.
+        var access: Session.AccessState?
 
-        init(serverID: String? = nil, reading: Reading? = nil, createdAt: Date? = nil, day: String? = nil, reference: String? = nil) {
+        init(
+            serverID: String? = nil, reading: Reading? = nil, createdAt: Date? = nil, day: String? = nil, reference: String? = nil,
+            access: Session.AccessState? = nil
+        ) {
             self.reference = reference
             self.serverID = serverID
             self.reading = reading
             self.createdAt = createdAt
             self.day = day
+            self.access = access
         }
     }
 
@@ -66,20 +72,28 @@ extension Store {
                 _ = try await client.send(Backend.Endpoints.AnswerGuess(guessID: item.entityID, content: body, key: key))
                 return OutboxSendResult()
             case .diagnosticsSend:
-                let report: Platform.Diagnostics.Report
-                do {
-                    report = try Backend.Coding.decoder.decode(Platform.Diagnostics.Report.self, from: item.payload)
-                } catch {
-                    throw Backend.Failure(.invalidRequest)
-                }
-                // The door's key is the report's own id, which is also the row's id.
-                guard report.reportId.lowercased() == item.id else { throw Backend.Failure(.invalidRequest) }
-                let receipt = try await client.send(Backend.Endpoints.SendReport(report: report))
-                return OutboxSendResult(reference: receipt.reference)
+                return try await sendReport(item)
+            case .onboardingAnswer:
+                return try await sendAnswer(item)
+            case .onboardingComplete:
+                return try await sendComplete()
             case .unknown:
                 // Written by a newer build; left in the queue for it.
                 throw Backend.Failure(.invalidRequest)
             }
+        }
+
+        /// `diagnostics.send`: the stored report goes to its door; the door's key is the report's own id, which is also the row's id.
+        private func sendReport(_ item: OutboxRow) async throws -> OutboxSendResult {
+            let report: Platform.Diagnostics.Report
+            do {
+                report = try Backend.Coding.decoder.decode(Platform.Diagnostics.Report.self, from: item.payload)
+            } catch {
+                throw Backend.Failure(.invalidRequest)
+            }
+            guard report.reportId.lowercased() == item.id else { throw Backend.Failure(.invalidRequest) }
+            let receipt = try await client.send(Backend.Endpoints.SendReport(report: report))
+            return OutboxSendResult(reference: receipt.reference)
         }
     }
 }

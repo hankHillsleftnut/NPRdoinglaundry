@@ -12,4 +12,6 @@ extension EnvironmentValues {
     @Entry var journalData: (any Flows.JournalData)?
     /// The one player.
     @Entry var playback: (any Flows.Playback)?
+    /// The first run's questions: `SampleFirstRunData` or `LiveFirstRunData` (FR.b1.data).
+    @Entry var firstRun: (any Flows.FirstRun)?
 }

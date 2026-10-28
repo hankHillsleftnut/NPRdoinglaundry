@@ -111,6 +111,23 @@ struct PersonFlagsTests {
         #expect(owner == "abc")
     }
 
+    @Test("the first-run flags (FR.b1) set and read apart from each other, and go with the rest on erase")
+    func firstRunFlags() async throws {
+        let database = try Store.LocalDatabase.inMemory(ownerUserID: "user-a")
+        let flags = Store.PersonFlags(database: database)
+        #expect(try await flags.isSet(.firstRunStarted) == false)
+        #expect(try await flags.isSet(.firstRunDone) == false)
+
+        try await flags.set(.firstRunStarted)
+
+        #expect(try await flags.isSet(.firstRunStarted))
+        #expect(try await flags.isSet(.firstRunDone) == false, "started is not done")
+        #expect(Store.PersonFlags.Key.firstRunStarted.rawValue == "first_run_started")
+        #expect(Store.PersonFlags.Key.firstRunDone.rawValue == "first_run_done")
+        try database.erase()
+        #expect(try await flags.isSet(.firstRunStarted) == false)
+    }
+
     @Test("a closed flags object reads as unknown and writes nothing")
     func aClosedObjectWritesNothing() async throws {
         let database = try Store.LocalDatabase.inMemory()

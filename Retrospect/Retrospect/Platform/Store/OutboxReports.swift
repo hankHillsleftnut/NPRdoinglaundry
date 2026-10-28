@@ -80,14 +80,18 @@ extension Store.Outbox {
 }
 
 extension Store.Outbox {
-    /// Entries not yet sent: pending, in flight or refused. Guess answers and reports aren't
-    /// the person's words, so they aren't counted. Feeds sign-out's "not sent yet" question.
+    /// Entries not yet sent: pending, in flight or refused. Guess answers, reports and the first run's
+    /// `complete` aren't the person's words, so they aren't counted; first-run answers are. Feeds
+    /// sign-out's "not sent yet" question.
     func unsentCount() throws -> Int {
         try database.writer.read { db in
             try Store.OutboxRow
                 .filter([Store.OutboxStatus.pending, .inFlight, .dead].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.status)))
-                // only the person's own words: a refused guess answer or a report is not an unsent entry
-                .filter(![Store.OutboxOperation.diagnosticsSend, .guessAnswer].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.operation)))
+                // only the person's own words: a refused guess answer, a report or `complete` is not an unsent entry
+                .filter(
+                    ![Store.OutboxOperation.diagnosticsSend, .guessAnswer, .onboardingComplete].map(\.rawValue)
+                        .contains(Column(Store.OutboxRow.CodingKeys.operation))
+                )
                 .fetchCount(db)
         }
     }
