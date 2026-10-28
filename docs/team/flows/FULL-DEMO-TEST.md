@@ -44,5 +44,5 @@ In Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Tick 
 The quickest full reset: press and hold the Retrospect icon, tap **Remove App**, then press ⌘R.
 
 ## Good to know
-- **Start the Full Demo from Xcode** (this scheme passes `-Flow demo`). The home-screen icon carries no setting: in a debug build what it opens is decided by the debug-launch rule (today the Core Flow's first run, not the Full Demo; that rule may become opt-in), so use Xcode for the demo.
+- **Start the Full Demo from Xcode** (this scheme passes `-Flow demo`). The home-screen icon carries no setting, so it opens the normal app, not the demo: after a Full Demo run from Xcode, tapping the icon shows the regular app.
 - The demo keeps its place apart from the Core Flow scheme: walking one never moves the other.
