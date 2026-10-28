@@ -31,19 +31,20 @@ struct FlowStepTests {
         }
     }
 
-    @Test("the paywall ends the flow: a price has no row until first home (ON-13) adds one")
-    func endsAtPaywall() {
-        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
+    @Test("first home ends the first run: a price reaches it, and nothing leaves it (no forward row, no back)")
+    func endsAtFirstHome() {
         #expect(FlowStep.next(from: .tease, event: .teaseEnded) == .paywall)
-        #expect(FlowEdge.table.contains { $0.from == .paywall } == false)
-        #expect(FlowStep.next(from: .paywall, event: .subscribed) == nil)
-        let withFirstHome = FlowEdge.table + [FlowEdge(.paywall, .subscribed, .splash)]
-        #expect(FlowStep.next(from: .paywall, event: .subscribed, table: withFirstHome) == .splash)
+        #expect(FlowStep.next(from: .paywall, event: .subscribed) == .firstHome)
+        #expect(FlowEdge.table.contains { $0.from == .firstHome } == false)
+        for event in FlowEvent.allCases {
+            #expect(FlowStep.next(from: .firstHome, event: event) == nil, "\(event)")
+        }
+        #expect(FlowStep.allCases.last == .firstHome)
     }
 
     @Test("each edge of the table is the move next(from:event:) makes")
     func eachEdgeMoves() {
-        #expect(FlowEdge.table.count == 10)
+        #expect(FlowEdge.table.count == 11)
         for edge in FlowEdge.table {
             #expect(FlowStep.next(from: edge.from, event: edge.event) == edge.to, "\(edge.from) \(edge.event)")
         }
@@ -57,6 +58,7 @@ struct FlowStepTests {
         #expect(FlowStep.next(from: .connect, event: .connectBack) == .privacy)
         #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
         #expect(FlowStep.next(from: .tease, event: .teaseEnded) == .paywall)
+        #expect(FlowStep.next(from: .paywall, event: .subscribed) == .firstHome)
     }
 
     @Test("connect (ON-6): continue and later both go on to getting ready; back returns to privacy")
@@ -103,6 +105,7 @@ struct FlowStepTests {
         // the Core Flow scheme's reset
         #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "splash"]) == FlowLaunch(isRequested: true, start: .splash))
         #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "paywall"]).start == .paywall)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "firstHome"]).start == .firstHome)
         #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "nowhere"]).start == nil)
         #expect(FlowLaunch.parse(["-Screen", "PI0", "-State", "splash"]).isRequested == false)
     }

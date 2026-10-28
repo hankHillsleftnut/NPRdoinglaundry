@@ -29,6 +29,9 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case tease
     /// ON-12: the paywall (#255); the sheet has collapsed into its mini-player (PW-Q2 A).
     case paywall
+    /// ON-13: first home (#256), the journal tab inside the tab shell with all four tabs (FH-Q1). The end
+    /// of the first run: no forward row, no back.
+    case firstHome
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -55,8 +58,7 @@ enum FlowEvent: String, CaseIterable, Sendable {
     /// ON-11: the tease reached its end (the 10 s mark, decision 11) or its collapse was tapped: the sheet
     /// collapses into the paywall's mini-player (rows 38, 39).
     case teaseEnded
-    /// ON-12: either dummy price (DECISIONS 26 Oct night: no "not now", nothing charged). Its row to first
-    /// home (row 41) lands with first home; until then the walk ends here.
+    /// ON-12: either dummy price (DECISIONS 26 Oct night: no "not now", nothing charged): first home (row 41).
     case subscribed
 }
 
@@ -73,7 +75,7 @@ struct FlowEdge: Equatable, Sendable {
     }
 
     /// Every edge between merged screens, with its SCREEN-MAP §3.1 row (`FlowPlan.edges` is the whole
-    /// first run). `paywall` has no forward row yet: the flow ends there (first home adds the next one).
+    /// first run). Splash to first home is whole; first home has no forward row (the first run's end).
     static let table: [Self] = [
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
@@ -85,6 +87,7 @@ struct FlowEdge: Equatable, Sendable {
         Self(.connect, .connectBack, .privacy), // 32
         Self(.gettingReady, .episodeReady, .tease), // 34
         Self(.tease, .teaseEnded, .paywall), // 38 (and 39: the collapse, provisional default)
+        Self(.paywall, .subscribed, .firstHome), // 41
     ]
 }
 

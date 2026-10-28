@@ -62,6 +62,19 @@ struct SampleFlowHost: View {
             case .paywall:
                 // the tease's sheet slides away as the paywall arrives with its mini-player (PW-Q2 A)
                 FlowPaywallVisit(flow: flow)
+            case .firstHome:
+                // ON-13 in the tab shell, all four tabs live (FH-Q1, DECISIONS 27 Oct); the recap is the
+                // person's own answers (FH-Q2 A); the card plays the tease in the player sheet (FH-Q3 A)
+                FirstRunShell { isShown in
+                    FirstHomePage(
+                        recap: flow.firstHomeRecap,
+                        celebrate: flow.arrivedHome,
+                        today: SampleJournalContent.today,
+                        makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
+                        isShown: isShown
+                    )
+                    .environment(\.journalData, flow.journalDay)
+                }
             }
         }
         // getting ready stays mounted under the tease but out of reach: VoiceOver stays on the sheet
@@ -169,5 +182,6 @@ private struct FlowEndPill: View {
 #Preview("flow · connect") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .connect)) }
 #Preview("flow · the tease") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .tease)) }
 #Preview("flow · the paywall") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .paywall)) }
+#Preview("flow · first home") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .firstHome)) }
 #Preview("flow · getting ready") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .gettingReady)) }
 #endif
