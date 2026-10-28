@@ -220,7 +220,16 @@ enum DemoFlowEdges {
             .flow(from: "tease", event: "teaseEnded", to: "paywall"),
             .main
         ),
-        DemoEdge("F21", .tease, "collapse chevron", .dismiss, nil, .inPlace, .open("Q-E3 / map Q7: where the tease's collapse goes")),
+        DemoEdge(
+            "F21",
+            .tease,
+            "collapse chevron",
+            .dismiss,
+            .paywall,
+            .flow(from: "tease", event: "teaseEnded", to: "paywall"),
+            .main,
+            join: "FlowStep row 39: the provisional default until Q-E3 / map Q7 is answered"
+        ),
         DemoEdge("F22", .tease, "share", .tap, nil, .inPlace, .main),
         DemoEdge("F23", .tease, "correct this part · … rows", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge(
