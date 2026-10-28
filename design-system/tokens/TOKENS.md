@@ -415,6 +415,7 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `size.artwork.card` | Artwork in a card or on the player header. | 64pt |  | to set |
 | `size.artwork.player` | A show or episode page. | 120pt |  | to set |
 | `size.artwork.hero` | A full-bleed moment. | 240pt |  | to set |
+| `size.artwork.shareItem` | The shared thing's artwork in the share sheet. | 56pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
 | `size.mark` | The Retrospect mark disc. | 38pt |  | paywall |
 | `size.miniPlayer` | Height of the mini-player. | 42pt |  | paywall |
 | `size.progress` | Thickness of progress and scrubber tracks. | 3pt |  | paywall |
@@ -492,6 +493,11 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `size.saveBadgeHeight` | The "save" badge height (it sits half above the plan button). | 22pt |  | paper: ON-12 c:badge/save 22MI-0 |
 | `size.benefitTile` | The small raised art tile at the start of a paywall benefit row. | 56pt |  | paper: ON-12 c:benefit-row tiles 22S5-0, 22RR-0, 22RG-0, 22R2-0, 22QR-0, 22QE-0 |
 | `size.firstEpisodeWell` | The ready first episode's artwork well on first home (with a 16 play inside). | 40pt |  | paper: ON-13 1FJP-0 |
+| `size.share.headerSlot` | The share sheet header's side slots (cancel, and the empty one opposite). | 72pt |  | Paper EX-1 1H2G-0 / 1H2E-0 (V2.outside, 26 Oct) |
+| `size.widget.mark` | The mark at the top of a home-screen widget. | 16pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.markGlyph` | The brush glyph's width inside the widget mark. | 9pt |  | Paper EX-1 1H2C-0 / EX-4 1H59-0 (V2.outside, 26 Oct) |
+| `size.widget.small` | A small home-screen widget's side, for the preview (the system sets the real size). | 164pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
+| `size.widget.mediumWidth` | A medium home-screen widget's width, for the preview (the system sets the real size). | 344pt |  | Paper EX-4 1H55-0 / 1H4L-0 (V2.outside, 26 Oct) |
 
 ## radius
 
