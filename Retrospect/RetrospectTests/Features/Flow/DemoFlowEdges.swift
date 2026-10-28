@@ -141,13 +141,27 @@ struct DemoEdge: Sendable {
 }
 
 enum DemoFlowEdges {
-    /// Flipped by the demo's final PR (after FLOW.edges.c, PS.sheet.c, PW and FH land) in the same change that
-    /// sets every row's status: from then on no row may be planned, open or missing, and every page is reachable.
+    /// Flipped by the demo host's last PR (DEMO.app.c) in the same change that sets every row's status:
+    /// from then on no row may be planned, open or missing, and every page is reachable from a launch.
     static let demoHostLanded = false
+
+    /// The PRs a `.pr(n)` row may name: only open ones. When one merges, its rows become `.main` and its
+    /// number leaves this list in the same change (`prRowsNameOpenPRs`).
+    static let openPRs: Set<Int> = [248, 252, 253]
 
     /// Pages that have no way out inside the app, by design: the lock screen's now playing has no page in a
     /// simulator (it is covered by the player).
     static let noWayOut: Set<DemoPage> = [.ex2]
+
+    /// The shell's tab roots: the tab bar is always a way out of them, so a walk never reads one as a dead end.
+    static let tabRoots: Set<DemoPage> = [.jr1, .pc1, .gl1, .yo1]
+
+    /// Pages a walk over working edges reaches that have no working way out, pinned with the reason. Empty
+    /// today; a new dead end fails `noDeadEndsOrStrandedPages` until it is fixed or named here.
+    static let knownDeadEnds: [DemoPage: String] = [:]
+
+    /// Pages entered by a push or a sheet that have no working way back, pinned with the reason. Empty today.
+    static let knownNoWayBack: [DemoPage: String] = [:]
 
     /// The founder's named exceptions to "no inert control" in release (plan-glue §3) are still rows here;
     /// the demo shows them as "not available yet".
@@ -177,7 +191,7 @@ enum DemoFlowEdges {
             .main
         ),
         DemoEdge("F13", .privacy, "read the privacy policy", .tap, nil, .inPlace, .main),
-        DemoEdge("F14", .connect, "+ connect", .tap, nil, .inPlace, .pr(199)),
+        DemoEdge("F14", .connect, "+ connect", .tap, nil, .inPlace, .main),
         DemoEdge(
             "F15",
             .connect,
@@ -204,7 +218,7 @@ enum DemoFlowEdges {
             .automatic,
             .paywall,
             .flow(from: "tease", event: "teaseEnded", to: "paywall"),
-            .planned("PS.sheet.c / PW.paywall.b")
+            .main
         ),
         DemoEdge("F21", .tease, "collapse chevron", .dismiss, nil, .inPlace, .open("Q-E3 / map Q7: where the tease's collapse goes")),
         DemoEdge("F22", .tease, "share", .tap, nil, .inPlace, .main),
@@ -216,23 +230,14 @@ enum DemoFlowEdges {
             .tap,
             .firstHome,
             .flow(from: "paywall", event: "subscribed", to: "firstHome"),
-            .planned("PW.paywall.b + FH.home.b")
+            .main
         ),
         DemoEdge("F25", .paywall, "restore · privacy · terms", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("F26", .paywall, "mini-player play (haptic nudge)", .tap, nil, .inPlace, .planned("PW.paywall.b")),
-        DemoEdge("F27", .firstHome, "first-episode card", .tap, .tease, .stack, .planned("FH.home.b")),
-        DemoEdge("F27b", .tease, "close (from first home)", .dismiss, .firstHome, .stack, .planned("FH.home.b")),
+        DemoEdge("F27", .firstHome, "first-episode card", .tap, .tease, .stack, .main),
+        DemoEdge("F27b", .tease, "close (from first home)", .dismiss, .firstHome, .stack, .main),
         DemoEdge("F28", .firstHome, "drawer button", .tap, nil, .inPlace, .notAvailableYet),
-        DemoEdge(
-            "F30",
-            .firstHome,
-            "the first run ends",
-            .automatic,
-            .shell,
-            .host,
-            .planned("FH.home.b"),
-            join: "D13 DEMO.app.a #248: hands over once firstHome is a step"
-        ),
+        DemoEdge("F30", .firstHome, "the first run ends", .automatic, .shell, .host, .pr(248), join: "D13 DEMO.app.a: first home opens in the joined shell"),
     ]
 
     // MARK: shell and journal (flow-coverage.md §3)
@@ -245,17 +250,17 @@ enum DemoFlowEdges {
         DemoEdge("S02", .shell, "re-tap a tab (scroll to top)", .tab, nil, .inPlace, .missing("#213 counts re-taps; no page listens")),
         DemoEdge("S03", .shell, "a tab with no page", .tab, nil, .inPlace, .missing("RTabBar says 'not built yet', the rule says 'not available yet'")),
         DemoEdge("S04", .miniPlayer, "tap", .tap, .pc2, .route("episode"), .planned("G0b + DEMO.app.b")),
-        DemoEdge("J01", .jr1, "drawer button · edge swipe", .swipe, .jr3, .stack, .pr(226), join: "D15 DEMO.app.b"),
-        DemoEdge("J02", .jr3, "journal edge", .tap, .jr1, .stack, .pr(226)),
+        DemoEdge("J01", .jr1, "drawer button · edge swipe", .swipe, .jr3, .stack, .main, join: "D15 DEMO.app.b"),
+        DemoEdge("J02", .jr3, "journal edge", .tap, .jr1, .stack, .main),
         DemoEdge("J03", .jr3, "an entry", .tap, .jr4, .route("entry"), .pr(252), join: "D16 DEMO.app.b"),
-        DemoEdge("J04", .jr3, "search · unsent row", .tap, nil, .inPlace, .pr(226)),
+        DemoEdge("J04", .jr3, "search · unsent row", .tap, nil, .inPlace, .main),
         DemoEdge("J05", .jr3, "foot · settings", .tap, .st1, .route("settingsHub"), .pr(252), join: "D17 DEMO.app.b"),
-        DemoEdge("J06", .jr4, "back", .back, .jr3, .stack, .pr(233)),
-        DemoEdge("J07", .jr4, "edit · not right · what i took", .tap, nil, .inPlace, .pr(240)),
-        DemoEdge("J08", .jr4, "delete entry → delete it", .tap, .jr3, .stack, .pr(240)),
-        DemoEdge("J10", .jr1, "brief card play", .tap, .jr2, .route("brief"), .pr(252), join: "D18 DEMO.app.b (over the bar: G0b #249)"),
-        DemoEdge("J11", .jr2, "collapse · drag down", .dismiss, .jr1, .stack, .pr(235)),
-        DemoEdge("J12", .jr2, "share", .tap, nil, .inPlace, .pr(235)),
+        DemoEdge("J06", .jr4, "back", .back, .jr3, .stack, .main),
+        DemoEdge("J07", .jr4, "edit · not right · what i took", .tap, nil, .inPlace, .main),
+        DemoEdge("J08", .jr4, "delete entry → delete it", .tap, .jr3, .stack, .main),
+        DemoEdge("J10", .jr1, "brief card play", .tap, .jr2, .route("brief"), .pr(252), join: "D18 DEMO.app.b (over the bar: G0b)"),
+        DemoEdge("J11", .jr2, "collapse · drag down", .dismiss, .jr1, .stack, .main),
+        DemoEdge("J12", .jr2, "share", .tap, nil, .inPlace, .main),
         DemoEdge("J13", .jr2, "correct this part · … rows", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("J14", .jr1, "composer mic · send", .tap, nil, .inPlace, .main),
         DemoEdge("J15", .jr1, "retro line 'because ›'", .tap, nil, .inPlace, .open("SCREEN-MAP row 67: the target")),
@@ -266,7 +271,7 @@ enum DemoFlowEdges {
     static let podcasts: [DemoEdge] = [
         DemoEdge("P01", .pc1, "hero play", .tap, .pc2, .route("episode"), .planned("V2.playbutton + DEMO.app.b"), join: "D19"),
         DemoEdge("P02", .pc1, "square tile", .tap, nil, .inPlace, .open("SCREEN-MAP row 73: episode or brief")),
-        DemoEdge("P03", .pc2, "tap a transcript line", .tap, .pc3, .route("whyThisIsHere"), .pr(236), join: "D20 DEMO.app.b"),
+        DemoEdge("P03", .pc2, "tap a transcript line", .tap, .pc3, .route("whyThisIsHere"), .main, join: "D20 DEMO.app.b"),
         DemoEdge("P04", .pc2, "collapse", .dismiss, .miniPlayer, .host, .planned("G0b + DEMO.app.b")),
         DemoEdge("P05", .pc2, "share · correct this part · …", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("P06", .pc3, "back chevron", .back, .pc2, .stack, .planned("DEMO.app.b")),
@@ -280,20 +285,20 @@ enum DemoFlowEdges {
     // MARK: goals and you (flow-coverage.md §4)
 
     static let goalsAndYou: [DemoEdge] = [
-        DemoEdge("G01", .gl1, "a goal card", .tap, .gl2, .stack, .pr(219)),
-        DemoEdge("G02", .gl1, "guess yes · not quite", .tap, nil, .inPlace, .pr(218)),
-        DemoEdge("G04", .gl2, "back · turn off", .back, .gl1, .stack, .pr(219)),
+        DemoEdge("G01", .gl1, "a goal card", .tap, .gl2, .stack, .main),
+        DemoEdge("G02", .gl1, "guess yes · not quite", .tap, nil, .inPlace, .main),
+        DemoEdge("G04", .gl2, "back · turn off", .back, .gl1, .stack, .main),
         DemoEdge("G06", .gl2, "your words", .tap, .jr4, .route("entry"), .pr(252), join: "D24 DEMO.app.b (sample ids differ: DM-6)"),
-        DemoEdge("Y01", .yo1, "ask", .tap, .yo2, .stack, .pr(237)),
-        DemoEdge("Y01b", .yo2, "clear", .tap, .yo1, .stack, .pr(237)),
-        DemoEdge("Y02", .yo2, "a source", .tap, .yo3, .stack, .pr(237)),
-        DemoEdge("Y03", .yo3, "back", .back, .yo2, .stack, .pr(231)),
-        DemoEdge("Y04", .yo3, "this supports · what i know", .tap, .yo5, .stack, .pr(231)),
-        DemoEdge("Y05", .yo1, "a node on the map", .tap, .yo4, .stack, .pr(241)),
-        DemoEdge("Y06", .yo4, "chevron-down · still true", .dismiss, .yo1, .stack, .pr(241)),
+        DemoEdge("Y01", .yo1, "ask", .tap, .yo2, .stack, .main),
+        DemoEdge("Y01b", .yo2, "clear", .tap, .yo1, .stack, .main),
+        DemoEdge("Y02", .yo2, "a source", .tap, .yo3, .stack, .main),
+        DemoEdge("Y03", .yo3, "back", .back, .yo2, .stack, .main),
+        DemoEdge("Y04", .yo3, "this supports · what i know", .tap, .yo5, .stack, .main),
+        DemoEdge("Y05", .yo1, "a node on the map", .tap, .yo4, .stack, .main),
+        DemoEdge("Y06", .yo4, "chevron-down · still true", .dismiss, .yo1, .stack, .main),
         DemoEdge("Y07", .yo4, "evidence rows · not right", .tap, nil, .inPlace, .notAvailableYet),
-        DemoEdge("Y08", .yo1, "what i know about you", .tap, .yo5, .stack, .pr(237)),
-        DemoEdge("Y09", .yo5, "back", .back, .yo1, .stack, .pr(228)),
+        DemoEdge("Y08", .yo1, "what i know about you", .tap, .yo5, .stack, .main),
+        DemoEdge("Y09", .yo5, "back", .back, .yo1, .stack, .main),
         DemoEdge("Y10", .yo1, "one question waiting · list", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("Y11", .yo1, "your picture", .tap, .st1, .route("settingsHub"), .pr(252), join: "D22 DEMO.app.b"),
         DemoEdge("Y12", .yo3, "a goal row", .tap, .gl2, .route("goal"), .notAvailableYet, join: "GL-D11: the you sample's goal has no GL-2 drawn"),
@@ -303,25 +308,25 @@ enum DemoFlowEdges {
     // MARK: settings and account (flow-coverage.md §4)
 
     static let settings: [DemoEdge] = [
-        DemoEdge("T01a", .st1, "daily brief", .tap, .st2, .stack, .pr(225)),
-        DemoEdge("T01b", .st1, "sources", .tap, .st3, .stack, .pr(230)),
-        DemoEdge("T01c", .st1, "privacy", .tap, .st5, .stack, .pr(232)),
-        DemoEdge("T01d", .st1, "how straight i am with you", .tap, .st6, .stack, .pr(229)),
-        DemoEdge("T01e", .st1, "voice and listening", .tap, .st7, .stack, .pr(232)),
-        DemoEdge("T01f", .st1, "what i've learned", .tap, .st8, .stack, .pr(229)),
-        DemoEdge("T02", .st1, "account", .tap, .st9, .stack, .pr(229)),
-        DemoEdge("T03a", .st2, "back", .back, .st1, .stack, .pr(225)),
-        DemoEdge("T03b", .st3, "back", .back, .st1, .stack, .pr(230)),
-        DemoEdge("T03c", .st4, "back", .back, .st3, .stack, .pr(230)),
-        DemoEdge("T03d", .st5, "back", .back, .st1, .stack, .pr(232)),
-        DemoEdge("T03e", .st6, "back", .back, .st1, .stack, .pr(229)),
-        DemoEdge("T03f", .st7, "back", .back, .st1, .stack, .pr(232)),
-        DemoEdge("T03g", .st8, "back", .back, .st1, .stack, .pr(229)),
-        DemoEdge("T03h", .st9, "back", .back, .st1, .stack, .pr(229)),
+        DemoEdge("T01a", .st1, "daily brief", .tap, .st2, .stack, .main),
+        DemoEdge("T01b", .st1, "sources", .tap, .st3, .stack, .main),
+        DemoEdge("T01c", .st1, "privacy", .tap, .st5, .stack, .main),
+        DemoEdge("T01d", .st1, "how straight i am with you", .tap, .st6, .stack, .main),
+        DemoEdge("T01e", .st1, "voice and listening", .tap, .st7, .stack, .main),
+        DemoEdge("T01f", .st1, "what i've learned", .tap, .st8, .stack, .main),
+        DemoEdge("T02", .st1, "account", .tap, .st9, .stack, .main),
+        DemoEdge("T03a", .st2, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03b", .st3, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03c", .st4, "back", .back, .st3, .stack, .main),
+        DemoEdge("T03d", .st5, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03e", .st6, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03f", .st7, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03g", .st8, "back", .back, .st1, .stack, .main),
+        DemoEdge("T03h", .st9, "back", .back, .st1, .stack, .main),
         DemoEdge("T04", .st1, "back (to where it was opened)", .back, .shell, .stack, .pr(252), join: "D25 DEMO.app.b"),
-        DemoEdge("T05", .st1, "talk or read", .tap, nil, .inPlace, .pr(224)),
-        DemoEdge("T06", .st3, "calendar", .tap, .st4, .stack, .pr(230)),
-        DemoEdge("T07", .st4, "disconnect · delete what it read", .tap, nil, .inPlace, .pr(230)),
+        DemoEdge("T05", .st1, "talk or read", .tap, nil, .inPlace, .main),
+        DemoEdge("T06", .st3, "calendar", .tap, .st4, .stack, .main),
+        DemoEdge("T07", .st4, "disconnect · delete what it read", .tap, nil, .inPlace, .main),
         DemoEdge("T07b", .st5, "where it's processed · export", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("T08", .st2, "play today's", .tap, .jr2, .route("brief"), .pr(253), join: "D26 DEMO.app.c"),
         DemoEdge("T09", .st9, "sign out", .tap, .ac2, .stack, .main),
@@ -331,16 +336,16 @@ enum DemoFlowEdges {
         DemoEdge("T13", .st9, "plan rows · manage subscription ↗ · restore purchases", .tap, nil, .inPlace, .missing("Paper draws them; AccountPage has none")),
         DemoEdge("T14", .st9, "delete account", .tap, .splash, .host, .missing("P31.delete is release 0.3; no UI in the demo")),
         DemoEdge("T15", .ac1, "Sign in with Apple · Google", .tap, .shell, .host, .pr(248), join: "D28 DEMO.app.a (live: MAIN)"),
-        DemoEdge("T16", .ac1, "new here? get started", .tap, .splash, .host, .pr(246), join: "D29 DEMO.app.a #248"),
+        DemoEdge("T16", .ac1, "new here? get started", .tap, .splash, .host, .main, join: "D29 #246 + DEMO.app.a"),
     ]
 
     // MARK: outside the app (flow-coverage.md §4)
 
     static let outside: [DemoEdge] = [
-        DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .planned("DEMO.app share, after #220-#222"), join: "D30 -DemoOutside share"),
-        DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .pr(220), join: "DEMO.app share, after #220-#222 (save closes: DM-3)"),
-        DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .pr(220), join: "DEMO.app share, after #220-#222"),
-        DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("W7 (DEMO.app.c stands in for share and brief only)")),
+        DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .pr(253), join: "D30 -DemoOutside share"),
+        DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .pr(253), join: "DEMO.app.c (save closes: DM-3)"),
+        DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .pr(253), join: "DEMO.app.c"),
+        DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("W7 (the demo stands in for share and brief only)")),
         DemoEdge("X04a", .ex3, "your brief is ready", .tap, .jr2, .route("brief"), .pr(253), join: "-DemoOutside brief"),
         DemoEdge("X04b", .ex3, "a new episode", .tap, .pc2, .route("episode"), .planned("W7 + PC-2 as an app sheet"), join: "-DemoOutside episode (not built)"),
         DemoEdge("X04c", .ex3, "a question", .tap, .yo4, .route("node"), .planned("W7 + YO-4 as an app sheet"), join: "-DemoOutside question (not built)"),
