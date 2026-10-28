@@ -34,11 +34,14 @@ struct OutboxOnboardingTests {
     }
 
     /// Jitter replaced by its ceiling; the retry timer never fires on its own (the test drains by hand).
-    private func outbox(sender: (any Store.OutboxSending)? = nil) -> Store.Outbox {
+    private func outbox(
+        sender: (any Store.OutboxSending)? = nil,
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { _ in try await Task.sleep(for: .seconds(3600)) }
+    ) -> Store.Outbox {
         let now = now
         return Store.Outbox(
             database: database, sender: sender ?? self.sender, now: { now.value }, timeZone: { .gmt }, jitter: { $0 }, pick: { _ in 0 },
-            sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: recorder
+            sleep: sleep, log: recorder
         )
     }
 
@@ -270,6 +273,80 @@ struct OutboxOnboardingTests {
 
         #expect(sender.sends.map(\.id) == [key(a1), key(a2), key(a1), complete])
         #expect(try row(complete).status == .done)
+    }
+
+    @Test("a server outage never kills an answer: six 503s, then it lands, and complete goes only after it (the attempt limit is for entries)")
+    func anOutageNeverKillsAnAnswer() async throws {
+        let outbox = outbox()
+        sender.script(key(a1), Array(repeating: .failure(Backend.Failure(.upstreamUnavailable)), count: 6))
+        try await enqueue(outbox, a1)
+        try await outbox.enqueueComplete()
+
+        for _ in 0 ..< 6 {
+            await outbox.drain(reason: .retryTimer)
+            now.advance(seconds: 400) // past the backoff cap (5 min)
+        }
+
+        let item = try row(key(a1))
+        #expect(item.status == .pending, "past the entry limit of 5, still waiting")
+        #expect(item.attempts == 6)
+        #expect(try row(complete).status == .pending)
+        #expect(sender.sends.map(\.id) == Array(repeating: key(a1), count: 6), "complete never went")
+        #expect(!recorder.events.contains {
+            if case .outbox(.dead) = $0 {
+                true
+            } else {
+                false
+            }
+        })
+
+        await outbox.drain(reason: .retryTimer)
+
+        #expect(try row(key(a1)).status == .done)
+        #expect(try row(complete).status == .done)
+        #expect(sender.sends.map(\.id).suffix(2) == [key(a1), complete])
+    }
+
+    @Test("a 503 burst on complete leaves it pending, not dead, and it lands later")
+    func anOutageNeverKillsComplete() async throws {
+        let outbox = outbox()
+        sender.script(complete, Array(repeating: .failure(Backend.Failure(.internal)), count: 7))
+        try await outbox.enqueueComplete()
+
+        for _ in 0 ..< 7 {
+            await outbox.drain(reason: .retryTimer)
+            now.advance(seconds: 400)
+        }
+
+        #expect(try row(complete).status == .pending)
+        #expect(try row(complete).attempts == 7)
+        await outbox.drain(reason: .retryTimer)
+        #expect(try row(complete).status == .done)
+        #expect(sender.sends.count == 8)
+    }
+
+    @Test("the retry timer also wakes for an in-flight row's crash deadline, so a held complete isn't left to the next trigger")
+    func theWakeCoversAnInFlightDeadline() async throws {
+        let waits = Platform.Box<[TimeInterval]>([])
+        let outbox = outbox(sender: sender, sleep: { seconds in
+            waits.value.append(seconds)
+            try await Task.sleep(for: .seconds(3600))
+        })
+        try await enqueue(outbox, a1)
+        try await database.writer.write {
+            try $0.execute(
+                sql: "UPDATE outbox SET status = ?, next_attempt_at = ? WHERE id = ?",
+                arguments: [Store.OutboxStatus.inFlight.rawValue, Backend.Coding.timestamp(now.value.addingTimeInterval(90)), key(a1)]
+            )
+        }
+        try await outbox.enqueueComplete()
+        await outbox.start()
+        await outbox.drain(reason: .manual)
+
+        #expect(sender.sends.isEmpty, "the answer is still in flight, complete is held")
+        #expect(await outbox.retryWakeArmed)
+        #expect(waits.value == [90])
+        await outbox.stop()
     }
 
     @Test("a refused answer (dead) does not hold complete: it goes, and the answer stays visible as refused")

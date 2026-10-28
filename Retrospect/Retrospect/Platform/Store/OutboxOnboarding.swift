@@ -116,6 +116,14 @@ extension Store.Outbox {
 
     // MARK: The drain rule
 
+    /// A first-run row is retried for server trouble without the attempt limit (capped backoff, 5 min): a
+    /// 30 s outage must not kill an answer (then `complete` would go on a partial profile and nothing would
+    /// retry it) nor `complete` itself. The doors are idempotent, so repeating is safe. A contract refusal
+    /// (4xx) still kills the row at once.
+    static func keepsRetrying(_ operation: Store.OutboxOperation) -> Bool {
+        operation == .onboardingAnswer || operation == .onboardingComplete
+    }
+
     /// An answer row the door hasn't answered yet (pending or in flight): `complete` waits for it.
     static func isAnswerOnItsWay(_ row: Store.OutboxRow) -> Bool {
         row.operation == .onboardingAnswer && (row.status == .pending || row.status == .inFlight)

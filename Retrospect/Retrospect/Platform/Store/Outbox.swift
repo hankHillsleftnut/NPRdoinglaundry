@@ -307,7 +307,8 @@ extension Store {
                 log.record(.outbox(.paused(code: code)))
             case .retry:
                 let attempts = item.attempts + 1
-                if attempts >= Self.attemptLimit {
+                // a first-run row is never given up on for server trouble (OutboxOnboarding): only a contract refusal kills it
+                if attempts >= Self.attemptLimit, !Self.keepsRetrying(item.operation) {
                     try? markDead(item, attempts: attempts, code: code)
                     tally.failed += 1
                 } else {
@@ -547,11 +548,13 @@ extension Store.Outbox {
         }
     }
 
+    /// The earliest future retry: a pending row's due time, or an in-flight row's crash deadline (a send the app
+    /// died in; past the deadline it is sent again, and until then it can hold `onboarding.complete`).
     private func earliestPendingAt() throws -> Date? {
         let current = now()
         return try database.writer.read { db in
             try Store.OutboxRow
-                .filter(Column(Store.OutboxRow.CodingKeys.status) == Store.OutboxStatus.pending.rawValue)
+                .filter([Store.OutboxStatus.pending, .inFlight].map(\.rawValue).contains(Column(Store.OutboxRow.CodingKeys.status)))
                 .fetchAll(db)
                 .map(\.nextAttemptAt)
                 .filter { $0 > current }

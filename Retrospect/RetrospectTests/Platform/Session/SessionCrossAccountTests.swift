@@ -41,6 +41,18 @@ struct SessionCrossAccountTests {
         #expect(await rejected(h, failedToken: first))
     }
 
+    @Test("an access state set for one person never lands on another (FR.b1.data: a late complete receipt)")
+    func accessForOnePersonNeverLandsOnAnother() async throws {
+        let h = try SessionHarness()
+        try await h.manager.install(Self.other)
+
+        await h.manager.setAccess(.staff, for: SessionHarness.signedIn.userID)
+        #expect(await h.manager.state == .signedIn(userID: Self.other.userID, access: .member), "the first person's receipt changed nothing")
+
+        await h.manager.setAccess(.staff, for: Self.other.userID)
+        #expect(await h.manager.state == .signedIn(userID: Self.other.userID, access: .staff))
+    }
+
     @Test("the same person's older token still gets the stored one: a refresh by someone else in flight is honoured")
     func samePersonKeepsWorking() async throws {
         let h = try SessionHarness()

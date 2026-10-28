@@ -44,8 +44,8 @@ struct LiveFirstRunDataTests {
         )
     }
 
-    private static func seam(on outbox: Store.Outbox, access: Access, now: Date) -> LiveFirstRunData {
-        LiveFirstRunData(outbox: outbox, setAccess: { access.record($0) }, now: { now })
+    private static func seam(on outbox: Store.Outbox, access: Access, now: Date, accessNow: Session.AccessState? = nil) -> LiveFirstRunData {
+        LiveFirstRunData(outbox: outbox, setAccess: { access.record($0) }, accessNow: { accessNow }, now: { now })
     }
 
     private func rows() throws -> [Store.OutboxRow] {
@@ -232,6 +232,26 @@ struct LiveFirstRunDataTests {
 
         #expect(relaunched.completeQueued)
         #expect(relaunched.isComplete)
+    }
+
+    @Test("complete landed but its receipt was never heard: on relaunch a session still approved is made member; one already member is left alone")
+    func relaunchAfterCompleteRepairsAccess() async throws {
+        sender.script(Store.Outbox.completeID, [.success(Store.OutboxSendResult(access: .member))])
+        try await outbox.enqueueComplete()
+        await outbox.drain(reason: .manual) // delivered with nobody listening
+        #expect(access.values.isEmpty)
+
+        let approved = Self.seam(on: outbox, access: access, now: now, accessNow: .approved)
+        await approved.open()
+        #expect(access.values == [.member])
+
+        let member = Self.seam(on: outbox, access: access, now: now, accessNow: .member)
+        await member.open()
+        #expect(access.values == [.member], "nothing written twice")
+        let fresh = Self.seam(on: Self.outbox(on: database, sender: sender, log: log, now: now), access: access, now: now, accessNow: .approved)
+        try await database.writer.write { try $0.execute(sql: "DELETE FROM outbox") }
+        await fresh.open()
+        #expect(access.values == [.member], "not sent: nothing to repair")
     }
 
     // MARK: Sign-out

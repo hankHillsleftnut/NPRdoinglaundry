@@ -31,6 +31,8 @@ final class LiveFirstRunData: Flows.FirstRun {
 
     @ObservationIgnored private let outbox: Store.Outbox
     @ObservationIgnored private let setAccess: @Sendable (Session.AccessState) async -> Void
+    /// Where the session says the account stands now; nil when not signed in.
+    @ObservationIgnored private let accessNow: @Sendable () async -> Session.AccessState?
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var completionWatch: Task<Void, Never>?
     /// After `stop()` nothing more is read, written or shown.
@@ -40,17 +42,27 @@ final class LiveFirstRunData: Flows.FirstRun {
         outbox: Store.Outbox,
         questions: [Flows.FirstRunQuestion] = Flows.FirstRunQuestion.core,
         setAccess: @escaping @Sendable (Session.AccessState) async -> Void,
+        accessNow: @escaping @Sendable () async -> Session.AccessState? = { nil },
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.outbox = outbox
         self.questions = Self.asked(questions)
         self.setAccess = setAccess
+        self.accessNow = accessNow
         self.now = now
     }
 
-    /// The seam on the person's outbox and session (built by `AppEnvironment` with the stack).
-    convenience init(outbox: Store.Outbox, session: Session.Manager, questions: [Flows.FirstRunQuestion] = Flows.FirstRunQuestion.core) {
-        self.init(outbox: outbox, questions: questions, setAccess: { await session.setAccess($0) })
+    /// The seam on the person's outbox and session (built by `AppEnvironment` with the stack). The access state
+    /// is written for `userID` only: a receipt landing after someone else signed in changes nothing.
+    convenience init(outbox: Store.Outbox, session: Session.Manager, userID: String, questions: [Flows.FirstRunQuestion] = Flows.FirstRunQuestion.core) {
+        self.init(
+            outbox: outbox, questions: questions,
+            setAccess: { await session.setAccess($0, for: userID) },
+            accessNow: {
+                guard case let .signedIn(id, access) = await session.state, id == userID else { return nil }
+                return access
+            }
+        )
     }
 
     /// The questions the door accepts, in order: one whose key it refuses is not asked (never sent, never lost).
@@ -87,6 +99,11 @@ final class LiveFirstRunData: Flows.FirstRun {
             isComplete = true
         }
         isLoaded = true
+        // `complete` landed but its receipt was never heard (killed between the send and the listener): the door made
+        // the person a member, so the session says so now rather than at its next refresh
+        if sent, await accessNow() == .approved, !stopped {
+            await setAccess(.member)
+        }
     }
 
     /// The person signed out: nothing more is read or written, and no late receipt changes the session.
