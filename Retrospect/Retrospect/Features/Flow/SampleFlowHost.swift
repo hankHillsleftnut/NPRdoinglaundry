@@ -59,6 +59,9 @@ struct SampleFlowHost: View {
                     onAnswered: { key, words in flow.answered(key, words: words) },
                     onReady: { flow.send(.episodeReady) }
                 )
+            case .paywall:
+                // the tease's sheet slides away as the paywall arrives with its mini-player (PW-Q2 A)
+                FlowPaywallVisit(flow: flow)
             }
         }
         // getting ready stays mounted under the tease but out of reach: VoiceOver stays on the sheet
@@ -121,6 +124,23 @@ private struct FlowPrivacyVisit: View {
     }
 }
 
+/// ON-12 for one visit: the model is made as the page arrives and kept while it shows (as `PaywallLaunch`
+/// does); a left paywall never fires again.
+private struct FlowPaywallVisit: View {
+    let flow: SampleFlowModel
+    @State private var model: PaywallModel?
+
+    var body: some View {
+        if let model {
+            PaywallPage(model: model)
+        } else {
+            RColor.backgroundCanvas
+                .ignoresSafeArea()
+                .onAppear { model = flow.makePaywall() }
+        }
+    }
+}
+
 /// "end of what's built · tap to start over": the sample flow's only own drawing, styled as the invite page's
 /// hint pill (label text on a wash). Debug builds only; never in the release app.
 private struct FlowEndPill: View {
@@ -146,5 +166,6 @@ private struct FlowEndPill: View {
 #Preview("flow · privacy") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .privacy)) }
 #Preview("flow · connect") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .connect)) }
 #Preview("flow · the tease") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .tease)) }
+#Preview("flow · the paywall") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .paywall)) }
 #Preview("flow · getting ready") { SampleFlowHost(flow: SampleFlowModel(store: MemoryFlowStore(), start: .gettingReady)) }
 #endif
