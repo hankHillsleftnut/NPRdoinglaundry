@@ -271,7 +271,7 @@ enum DemoFlowEdges {
     static let podcasts: [DemoEdge] = [
         DemoEdge("P01", .pc1, "hero play", .tap, .pc2, .route("episode"), .planned("V2.playbutton + DEMO.app.b"), join: "D19"),
         DemoEdge("P02", .pc1, "square tile", .tap, nil, .inPlace, .open("SCREEN-MAP row 73: episode or brief")),
-        DemoEdge("P03", .pc2, "tap a transcript line", .tap, .pc3, .route("whyThisIsHere"), .main, join: "D20 DEMO.app.b"),
+        DemoEdge("P03", .pc2, "tap a transcript line", .tap, .pc3, .stack, .main, join: "inside the player sheet (#236 + #227)"),
         DemoEdge("P04", .pc2, "collapse", .dismiss, .miniPlayer, .host, .planned("G0b + DEMO.app.b")),
         DemoEdge("P05", .pc2, "share · correct this part · …", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("P06", .pc3, "back chevron", .back, .pc2, .stack, .planned("DEMO.app.b")),
