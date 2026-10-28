@@ -340,9 +340,11 @@ struct OutboxOnboardingTests {
             )
         }
         try await outbox.enqueueComplete()
-        await outbox.start()
-        await outbox.drain(reason: .manual)
+        await outbox.start() // one drain, the launch one; its wake records the wait it asks for
 
+        for _ in 0 ..< 500 where waits.value.isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         #expect(sender.sends.isEmpty, "the answer is still in flight, complete is held")
         #expect(await outbox.retryWakeArmed)
         #expect(waits.value == [90])
