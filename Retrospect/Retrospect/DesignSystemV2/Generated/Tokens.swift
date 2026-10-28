@@ -780,6 +780,10 @@ public enum RDimension {
     public static let blurDrawerFootBand: CGFloat = 56
     /// Drawer: blur at the foot band's outer edge.
     public static let blurDrawerFootMax: CGFloat = 6
+    /// The shell's tab bar: how far above the bar's top the content starts to dissolve (blur up to blur.tab.max, canvas easing to opaque at the bar).
+    public static let blurTabBlendRise: CGFloat = 90
+    /// The shell's tab bar on short phones (SE): the dissolve above the bar.
+    public static let blurTabBlendRiseCompact: CGFloat = 72
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
