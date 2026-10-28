@@ -14,6 +14,8 @@ struct DemoShell: View {
     /// The first run that just ended at first home: the journal tab shows ON-13 on its answers, as the core
     /// flow does (FirstHomePage); nil on any later launch (JR-1 with its drawer and joins).
     var firstHome: SampleFlowModel?
+    /// How the system opened the app (`-DemoOutside`), asked once when the shell first shows.
+    var opened: () -> DemoOutside? = { nil }
     /// Hands the session's ST-9 sign-out flow to the host once, which follows it to AC-1 welcome back.
     var followSignOut: (any SignOutFlowing) -> Void = { _ in }
     @State private var model: ShellModel
@@ -23,9 +25,11 @@ struct DemoShell: View {
     init(
         tab: RTab = .journal,
         firstHome: SampleFlowModel? = nil,
+        opened: @escaping () -> DemoOutside? = { nil },
         followSignOut: @escaping (any SignOutFlowing) -> Void = { _ in }
     ) {
         self.firstHome = firstHome
+        self.opened = opened
         self.followSignOut = followSignOut
         _model = State(initialValue: ShellModel(selection: tab, available: Set(RTab.allCases)))
     }
@@ -47,7 +51,10 @@ struct DemoShell: View {
         }
         .demoSamples(samples)
         // the session's sign-out, followed by the demo model (tested there end to end)
-        .onAppear { followSignOut(samples.signOut) }
+        .onAppear {
+            open(opened())
+            followSignOut(samples.signOut)
+        }
     }
 }
 
@@ -66,6 +73,17 @@ private struct DemoFirstHome: View {
             isShown: isShown
         )
         .environment(\.journalData, flow.journalDay)
+    }
+}
+
+extension DemoShell {
+    /// What the system's way in shows: EX-1 or JR-2 over the shell.
+    private func open(_ way: DemoOutside?) {
+        switch way {
+        case .share: model.present(.share)
+        case .brief: model.present(.brief(id: nil))
+        case nil: break
+        }
     }
 }
 

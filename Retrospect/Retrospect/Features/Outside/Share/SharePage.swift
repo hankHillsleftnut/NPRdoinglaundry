@@ -25,6 +25,8 @@ extension RTextStyle {
 
 struct SharePage: View {
     @Bindable var model: ShareModel
+    /// Paper's own grabber; off when a sheet host already draws one (the app's sheet over the shell).
+    var drawsGrabber = true
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -36,7 +38,9 @@ struct SharePage: View {
     var body: some View {
         VStack(spacing: RDimension.space6) {
             VStack(spacing: RDimension.space6) {
-                grabber
+                if drawsGrabber {
+                    grabber
+                }
                 header
             }
             .padding(.horizontal, RDimension.spaceScreenMargin)

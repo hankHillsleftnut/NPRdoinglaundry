@@ -13,6 +13,8 @@ struct DailyBriefPage: View {
     typealias Settings = Flows.Settings
     let data: any Flows.SettingsData
     let back: () -> Void
+    /// "play today's": JR-2 over the shell, when the host can raise it; nil: drawn, inert.
+    var playToday: (() -> Void)?
 
     var body: some View {
         SettingsPageFrame(title: "daily brief", back: back) {
@@ -52,7 +54,8 @@ struct DailyBriefPage: View {
                     title: "play today's",
                     subline: "\(today.day) · \(today.minutes) min",
                     pill: "play",
-                    symbol: "play.fill"
+                    symbol: "play.fill",
+                    action: playToday
                 )
             }
         }

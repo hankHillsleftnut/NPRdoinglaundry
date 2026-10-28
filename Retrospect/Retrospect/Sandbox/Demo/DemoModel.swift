@@ -29,6 +29,8 @@ final class DemoModel {
     private(set) var session = 0
     /// The tab the app opens on (`-DemoTab`), journal when none was asked for.
     let startTab: RTab
+    /// How the system opened the app (`-DemoOutside`), until the app has acted on it once.
+    private(set) var outside: DemoOutside?
     /// The app was entered from first home in this launch: its journal tab is ON-13 (FirstHomePage), as the
     /// core flow shows it, not JR-1. A later launch (or welcome back) opens on JR-1.
     private(set) var firstDay = false
@@ -63,6 +65,9 @@ final class DemoModel {
         self.clock = clock
         self.stage = stage
         startTab = launch.tab ?? .journal
+        // the system opens the app the person is signed in to: only an app stage acts on it (it never
+        // moves the stage, so a first run or welcome back is never skipped by it)
+        outside = stage == .app ? launch.outside : nil
         flow = SampleFlowModel(store: flowStore, start: start, sleep: sleep, clock: clock)
         if stage == .returning {
             returning = makeReturning()
@@ -88,6 +93,12 @@ final class DemoModel {
     func flowMoved(to step: FlowStep) {
         guard stage == .firstRun, let handOff, step == handOff else { return }
         enterApp(firstDay: true)
+    }
+
+    /// The app acts on how it was opened once: later calls return nil.
+    func takeOutside() -> DemoOutside? {
+        defer { outside = nil }
+        return outside
     }
 
     /// Signed out (ST-9 → AC-2 done): welcome back. The app's pages go with the session.

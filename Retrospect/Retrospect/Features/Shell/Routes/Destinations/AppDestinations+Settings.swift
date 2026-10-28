@@ -101,7 +101,8 @@ private struct SettingsRoutePage: View {
             open: { open($0, data: data) },
             back: context.back,
             close: { _ in context.back() },
-            signOut: signOut
+            signOut: signOut,
+            present: context.present
         )
     }
 
