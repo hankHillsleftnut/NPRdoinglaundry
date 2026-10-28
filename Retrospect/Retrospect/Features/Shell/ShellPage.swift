@@ -21,9 +21,11 @@
 //  A page ends at the bar's top (TABBAR.blend, founder 27 Oct: nothing is cut off by the bar): its
 //  own bottom part (the journal's composer) sits above the bar, never under it, and the shell sets
 //  every page's tab edge to RProgressiveBlurStyle.tabBarBlend (`\.rShellTabEdge`): over the 90 above
-//  where the page's scroll ends, the content blurs (t², to blur.tab.max, colour kept) under canvas
-//  easing in on gradient.fadeToCanvas to opaque, and the bar sits on the shell's canvas with no plate,
-//  so content dissolves into the bar with no line, light and dark alike. Reduce
+//  the bar's top the content blurs (t², to blur.tab.max, colour kept) under canvas easing in on
+//  gradient.fadeToCanvas to opaque, and the bar sits on the shell's canvas with no plate, so content
+//  dissolves into the bar with no line, light and dark alike. The band runs under the page's own
+//  bottom chrome (the composer, the mini-player), which floats over it, and the last row rests clear
+//  of the band (a content margin of the band less that chrome). Reduce
 //  Transparency: the canvas fade alone (RProgressBlur); Reduce Motion: unchanged. While the keyboard
 //  is up the bar steps aside (it never rides on the keys) and the composer sits on the keyboard as it
 //  does in JR-1. A tab change cross-fades the page, edge included, over motion.duration.fast (Reduce
@@ -161,8 +163,8 @@ struct ShellPage: View {
         // at the bar's top (its own bottom part, the journal's composer, sits above the bar, and its
         // shadow falls over the bar as Paper draws it) and the page's tab edge is the shell's
         // `tabBarBlend` (TABBAR.blend): blur and canvas rising over blur.tabBlend.rise to opaque
-        // exactly where the page ends, so content dissolves into the bar's canvas instead of being
-        // cut by it. Nothing is drawn under the bar: what the band hides is gone.
+        // exactly at the bar's top, so content dissolves into the bar's canvas instead of being cut
+        // by it. Nothing is drawn under the bar: what the band hides is gone.
         VStack(spacing: RDimension.space0) {
             pages
                 .environment(\.rShellTabEdge, .tabBarBlend)
@@ -175,10 +177,8 @@ struct ShellPage: View {
                             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
                             .padding(.horizontal, RDimension.spaceScreenMargin)
                             .padding(.bottom, RDimension.space3)
-                            .frame(maxWidth: .infinity)
-                            // the player's room is opaque canvas: the page's edge ends opaque at the
-                            // room's top and the player floats on the same canvas the bar sits on
-                            .background(RColor.backgroundCanvas)
+                            // the page's edge runs under the player's room: it floats over the
+                            // dissolving content, 12 above the bar, as the system's does
                             .transition(miniPlayerArrives)
                     }
                 }

@@ -21,6 +21,21 @@ struct ShellTabBlendTests {
         #expect(blend.saturation == RNumber.blurTabSaturation)
         #expect(blend.saturation > 1, "the edge must keep colour, never grey")
         #expect(blend.maskedBlur, "the blur sits above the bar, where the system scroll edge can't draw it")
+        #expect(blend.underPageInsets, "the composer and the mini-player float over the band")
+        #expect(blend.band(compact: false) == 90)
+        #expect(blend.band(compact: true) == 72)
+    }
+
+    @Test("inside the shell the tab edge becomes the shell's; nothing else does, and outside it stays itself")
+    func inShell() {
+        #expect(RProgressiveBlurStyle.tabEdge.inShell(.tabBarBlend) == .tabBarBlend)
+        #expect(RProgressiveBlurStyle.tabEdge.inShell(nil) == .tabEdge)
+        for other in [RProgressiveBlurStyle.journalTop, .transcriptTop, .transcriptBottom, .drawerFoot, .tabBarBlend] {
+            #expect(other.inShell(.tabBarBlend) == other)
+        }
+        var tweaked = RProgressiveBlurStyle.tabEdge
+        tweaked.band += 1
+        #expect(tweaked.inShell(.tabBarBlend) == tweaked, "a page's own variant of the edge is its own")
     }
 
     @Test("the canvas eases in over the whole band and is opaque at the bar, in light and dark alike")
