@@ -1046,8 +1046,12 @@ public enum RNumber {
     public static let blurTabSaturation: Double = 1.5
     /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
     public static let blurTranscriptTopTint: Double = 0.3
+    /// Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens).
+    public static let blurTranscriptTopLineSolid: Double = 0.3
     /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
     public static let blurTranscriptBottomTint: Double = 0.15
+    /// Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens).
+    public static let blurTranscriptBottomLineSolid: Double = 0.55
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.

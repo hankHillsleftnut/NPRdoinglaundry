@@ -624,10 +624,12 @@ Generated from `tokens.json` by `validate.mjs`. Do not edit by hand. For the cou
 | `blur.transcriptTop.bandCompact` | Player transcript on short phones: the top band. | 64pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (SE 64pt) |
 | `blur.transcriptTop.max` | Player transcript: blur at the top band's outer edge. | 8pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (8pt) |
 | `blur.transcriptTop.tint` | Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band. | 0.3 |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript top row (tint over the top 30%) |
+| `blur.transcriptTop.lineSolid` | Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens). | 0.3 |  | Paper PC-2 1FWN-0 edge · top: mask black 0–30%, transparent at 100% (QA batch 4, #236) |
 | `blur.transcriptBottom.band` | Player transcript: the bottom band, into the transport. | 140pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (140pt) |
 | `blur.transcriptBottom.bandCompact` | Player transcript on short phones: the bottom band. | 80pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (SE 80pt) |
 | `blur.transcriptBottom.max` | Player transcript: blur at the bottom band's outer edge. | 8pt |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (8pt) |
 | `blur.transcriptBottom.tint` | Player transcript, bottom: the sheet tint is solid over this fraction of the band. | 0.15 |  | docs/design/progressive-blur.md, "Where it's used" table, player transcript bottom row (solid for the bottom 15%) |
+| `blur.transcriptBottom.lineSolid` | Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens). | 0.55 |  | Paper PC-2 1FWM-0 edge · bottom: mask transparent 0% → black 55% (QA batch 4, #236) |
 | `blur.drawerFoot.band` | Drawer: the band under the foot. | 56pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (56pt) |
 | `blur.drawerFoot.max` | Drawer: blur at the foot band's outer edge. | 6pt |  | docs/design/progressive-blur.md, "Where it's used" table, drawer row (6pt) |
 
