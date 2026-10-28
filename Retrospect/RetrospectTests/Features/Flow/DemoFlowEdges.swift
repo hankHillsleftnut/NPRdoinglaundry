@@ -301,7 +301,7 @@ enum DemoFlowEdges {
         DemoEdge("Y09", .yo5, "back", .back, .yo1, .stack, .main),
         DemoEdge("Y10", .yo1, "one question waiting · list", .tap, nil, .inPlace, .notAvailableYet),
         DemoEdge("Y11", .yo1, "your picture", .tap, .st1, .route("settingsHub"), .planned("DEMO.app.b"), join: "D22 (NA today)"),
-        DemoEdge("Y12", .yo3, "a goal row", .tap, .gl2, .route("goal"), .planned("DEMO.app.b"), join: "D23 (NA today)"),
+        DemoEdge("Y12", .yo3, "a goal row", .tap, .gl2, .route("goal"), .notAvailableYet, join: "GL-D11: the you sample's goal has no GL-2 drawn"),
         DemoEdge("Y13", .yo3, "show it in the conversation", .tap, nil, .inPlace, .notAvailableYet),
     ]
 
