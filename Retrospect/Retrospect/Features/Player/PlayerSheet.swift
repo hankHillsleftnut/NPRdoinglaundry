@@ -17,23 +17,17 @@ import SwiftUI
 /// (`PlayerSheetScreen` here; the page under RSheetHost in PS.sheet.c), never on the padded content.
 struct PlayerSheet: View {
     let model: PlayerSheetModel
-    /// How the scrubber names the chapter: ON-11's title alone by default; PC-2's episode mode passes
-    /// `.counted` ("2 of 4 · the river", PCD-12) until RScrubber has Paper's "chapter 2 · the river".
-    var partLabel: RScrubber.PartLabel = .title
-    /// A tap on a transcript line (PC-2, SCREEN-MAP row 76: why this is here); nil keeps the lines
-    /// plain text, as ON-11 draws them.
-    var onTapLine: ((Int) -> Void)?
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
             PlayerSheetHeader(title: model.title, shareText: model.shareText, onCollapse: model.collapse)
                 .padding(.top, RDimension.space1)
-            TranscriptColumn(transcript: model.transcript, current: model.currentLine, onTapLine: onTapLine)
+            TranscriptColumn(transcript: model.transcript, current: model.currentLine)
                 .frame(maxHeight: .infinity)
             CorrectThisPart()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, RDimension.space4)
-            RScrubber(playback: model.playback, partLabel: partLabel)
+            RScrubber(playback: model.playback, partLabel: .title)
                 .padding(.top, RDimension.space5)
             RTransport(playback: model.playback, more: moreRows)
                 .padding(.top, RDimension.space6)

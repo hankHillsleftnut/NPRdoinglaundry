@@ -377,7 +377,9 @@ final class JournalViewModel {
     /// corner button is only the send (no dead controls).
     var voice = false
     /// Opens the drawer (JR-3, P11); the page's host wires it.
-    var openDrawer: () -> Void = {}
+    var openDrawer: (() -> Void)? = {}
+    /// ON-13 first home: the welcome, the setup recap and the ready first episode (nil on every other day).
+    var firstDay: FirstDay?
     /// Opens today's brief in the host's player sheet (JR-2, the demo's shell); nil: the text sheet.
     var openBrief: (() -> Void)?
 

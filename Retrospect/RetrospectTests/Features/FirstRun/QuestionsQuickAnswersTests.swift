@@ -94,6 +94,16 @@ struct QuestionsQuickAnswersTests {
         #expect(model.draft == "podcasts, tech")
         #expect(model.composer == .typing)
         #expect(ear.stops >= 1)
+        // the ear heard the chip's own words: the tap keeps them (the chip turns on, never off)
+        let again = QuestionsModel(data: ChipFirstRun(ear: ear))
+        await again.appear()
+        ear.say(.partial(["tech"]))
+        for _ in 0 ..< 5000 where again.heard.isEmpty {
+            await Task.yield()
+        }
+        again.toggle("tech")
+        #expect(again.draft == "tech")
+        #expect(again.isChosen("tech"))
         // a late word from the stopped ear never lands
         ear.say(.partial(["podcasts", "mostly"]))
         for _ in 0 ..< 50 {

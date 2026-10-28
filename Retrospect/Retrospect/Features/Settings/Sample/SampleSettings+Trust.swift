@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 
+#if DEBUG
 extension SampleSettings {
     @MainActor @Observable
     final class Trust {
@@ -33,13 +34,20 @@ extension SampleSettings {
         /// ST-7 (Paper 1GSK-0: "1×").
         var speed: Settings.Speed = .normal
 
+        /// ST-9 (Paper 1GV2-0: "yearly" / "renews on 3 march · $239.99").
+        var plan: Settings.Plan? = Settings.Plan(
+            name: "yearly",
+            renewsOn: Calendar(identifier: .gregorian).date(from: DateComponents(year: 2027, month: 3, day: 3, hour: 12)) ?? .now,
+            price: "$239.99"
+        )
+
         /// ST-1's "how straight i am with you" value.
         var straightnessName: String {
             straightness.level?.shortName ?? ""
         }
 
         /// 25 Oct 2026, a Sunday, at noon in the phone's calendar.
-        static let lastSunday = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
+        static let lastSunday = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 12)) ?? .now
 
         init() {}
     }
@@ -74,6 +82,13 @@ extension SampleSettings: Flows.SettingsTrustData {
     /// Nothing after a delete is drawn (ST-D19): the sample keeps its values and the dialog closes.
     func deleteMyData() async throws {}
 
+    var plan: Settings.Plan? {
+        trust.plan
+    }
+
+    /// Nothing after deleting the account is drawn (ST-D26): the sample deletes nothing and the dialog closes.
+    func deleteAccount() async throws {}
+
     func setStraightness(_ level: Settings.Straightness?) {
         if let level {
             trust.straightness = Settings.StraightnessSetting(level: level, source: .yours, why: nil)
@@ -82,3 +97,4 @@ extension SampleSettings: Flows.SettingsTrustData {
         }
     }
 }
+#endif

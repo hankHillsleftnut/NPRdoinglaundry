@@ -74,10 +74,20 @@ final class EntryDrawnModel {
     let start: Start
     @ObservationIgnored private var started = false
     @ObservationIgnored private let onDelete: () -> Void
+    /// Hands a save to the entry's data owner, so the words outlive this page (reopened, they're there).
+    @ObservationIgnored private let onSave: (String) -> Void
 
-    init(claims: [TookClaim], start: Start = .rest, onDelete: @escaping () -> Void) {
+    init(
+        claims: [TookClaim],
+        start: Start = .rest,
+        savedWords: String? = nil,
+        onSave: @escaping (String) -> Void = { _ in },
+        onDelete: @escaping () -> Void
+    ) {
         self.claims = claims
         self.start = start
+        self.savedWords = savedWords
+        self.onSave = onSave
         self.onDelete = onDelete
     }
 
@@ -117,6 +127,7 @@ final class EntryDrawnModel {
         let kept = edit.save().trimmingCharacters(in: .whitespacesAndNewlines)
         if !kept.isEmpty {
             savedWords = kept
+            onSave(kept)
         }
     }
 
@@ -134,6 +145,11 @@ final class EntryDrawnModel {
     }
 
     // MARK: delete
+
+    /// While the dialog asks, the page behind it is out of VoiceOver's reach (the dialog is modal).
+    var hidesPageFromVoiceOver: Bool {
+        showsDelete
+    }
 
     func askDelete() {
         showsDelete = true

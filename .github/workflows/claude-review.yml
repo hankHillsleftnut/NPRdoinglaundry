@@ -20,8 +20,8 @@ permissions:
 jobs:
   review:
     if: vars.CLAUDE_REVIEW == 'true' && github.event.pull_request.draft == false
-    # `CI_HOSTED=true` (repo variable) runs on GitHub's runners; see quality.yml.
-    runs-on: ${{ vars.CI_HOSTED == 'true' && 'ubuntu-latest' || fromJSON('["self-hosted","light"]') }}
+    # Light job: always on GitHub's runner (free while public), never queued behind the iOS build; see quality.yml.
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

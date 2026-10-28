@@ -33,13 +33,35 @@ final class SampleFlowModel {
     let invite: InviteModel
     /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
+    /// ON-6's sample sources: one for the whole flow, so a connection made there is still made on a
+    /// later visit.
+    let connect: SampleConnect
     /// ON-10's simulated listening.
     let listening: SampleListening
     /// ON-10's episode, built the first time the page asks (see `gettingReadyEpisode()`).
     @ObservationIgnored private var episode: SampleFirstEpisode?
+    /// ON-11's sheet for this visit (see `teaseSheet()`).
+    @ObservationIgnored private var tease: PlayerSheetModel?
+
+    /// The step whose page handed on to a screen that isn't built yet: the end of what's built. The host
+    /// shows its "start over" pill while the flow is still there.
+    private(set) var endedAt: FlowStep?
+
+    /// The tease's sheet is up over getting ready: the page behind is hidden from VoiceOver, out of touch,
+    /// and the sheet is modal (the host reads this one value for all three).
+    var sheetCoversPage: Bool {
+        step == .tease
+    }
+
+    /// The walk has reached the end of what's built (the page on screen handed on and nothing follows).
+    var isAtEnd: Bool {
+        endedAt == step
+    }
 
     @ObservationIgnored private let store: any SampleFlowStore
     @ObservationIgnored private let table: [FlowEdge]
+    @ObservationIgnored private let sleep: Sleep
+    @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var hasStarted = false
 
     /// `start` begins at that step with nothing kept (`-FlowStart`); nil resumes what the store holds.
@@ -54,9 +76,15 @@ final class SampleFlowModel {
         let saved = start.map { SampleFlowSaved(step: $0) } ?? store.load() ?? SampleFlowSaved()
         self.store = store
         self.table = table
+        self.sleep = sleep
+        self.clock = clock
         step = saved.step
         answers = Self.keyed(saved.answers)
         cameBack = saved.cameBack ?? false
+        // still the end only while the next screen isn't built (a newer build may have joined it)
+        endedAt = saved.endedAt.flatMap { ended in
+            FlowPlan.edges.contains { $0.from.rawValue == ended.rawValue && $0.to.step == nil } ? ended : nil
+        }
         signIn = SignInModel(
             look: .splash,
             coordinator: SampleSignIn(script: [.signedIn(firstName: SampleInvite.firstName, access: .waitlisted)], sleep: sleep)
@@ -64,6 +92,7 @@ final class SampleFlowModel {
         invite = Self.inviteModel(at: saved.step, sleep: sleep)
         firstRun = SampleFirstRunData(scenario: .questions, clock: clock)
         listening = SampleListening(clock: clock)
+        connect = SampleConnect()
         signIn.onSignedIn = { [weak self] _, _ in self?.send(.signedIn) }
         invite.onFinish = { [weak self] in self?.send(.begin) }
         followInvite()
@@ -95,13 +124,34 @@ final class SampleFlowModel {
 
     /// A screen handed off: move where the table says, or stay (no edge: the flow ends here).
     func send(_ event: FlowEvent) {
-        guard let next = FlowStep.next(from: step, event: event, table: table) else { return }
+        guard let next = FlowStep.next(from: step, event: event, table: table) else {
+            // the page handed on to a screen the map plans but that isn't built: the walk ends here
+            if Self.reachesUnbuilt(from: step, event: event), endedAt != step {
+                endedAt = step
+                // kept, so a relaunch at the end shows the pill at once
+                save()
+            }
+            return
+        }
         if step == .questions, event == .questionsDone {
             questionsFinished = true
         }
         cameBack = event == .back
         step = next
         save()
+    }
+
+    /// "start over": a fresh flow from the splash on the same store with nothing kept (every page's model
+    /// is new, as on a first launch). The host swaps it in.
+    func startedOver() -> SampleFlowModel {
+        let fresh = SampleFlowModel(store: store, start: .splash, table: table, sleep: sleep, clock: clock)
+        fresh.started()
+        return fresh
+    }
+
+    /// The map plans a hand-off from `step` on `event` into a screen that isn't a step yet.
+    private static func reachesUnbuilt(from step: FlowStep, event: FlowEvent) -> Bool {
+        FlowPlan.edges.contains { $0.from.rawValue == step.rawValue && $0.event == event.rawValue && $0.to.step == nil }
     }
 
     /// The invite page's phase moved: once the stub has come away, the flow is at "you're in".
@@ -120,6 +170,44 @@ final class SampleFlowModel {
         let made = SampleFirstEpisode(scenario: .makingThenReady)
         episode = made
         return made
+    }
+
+    /// ON-11's sheet: the 10-second sample tease (PS.sheet Q5 = B), playing from 0:00 as it rises, made
+    /// the first time the host asks and kept for the visit. Its end (or its collapse) sends `teaseEnded`;
+    /// the end is watched here, not in a view, like the tear.
+    func teaseSheet() -> PlayerSheetModel {
+        if let tease {
+            return tease
+        }
+        let playback = SamplePlayback(scenario: .tease, clock: clock)
+        let made = PlayerSheetModel(
+            playback: playback,
+            transcript: SampleTranscript.tease,
+            onCollapse: { [weak self, weak playback] in
+                // never sound under what comes next (the paywall): the tease stops as it hands on
+                playback?.pause()
+                self?.send(.teaseEnded)
+            }
+        )
+        tease = made
+        followTease(playback)
+        return made
+    }
+
+    /// Hands `teaseEnded` on once the sample tease reaches its end.
+    private func followTease(_ playback: SamplePlayback) {
+        withObservationTracking {
+            _ = playback.state
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if playback.state == .ended {
+                    send(.teaseEnded)
+                } else {
+                    followTease(playback)
+                }
+            }
+        }
     }
 
     /// ON-5 for one visit, on the sample read-aloud (about 8 s, decision 3). A left page never fires again,
@@ -143,7 +231,7 @@ final class SampleFlowModel {
 
     private func save() {
         let words = Dictionary(answers.map { ($0.key.rawValue, $0.value) }, uniquingKeysWith: { first, _ in first })
-        store.save(SampleFlowSaved(step: step, answers: words, cameBack: cameBack ? true : nil))
+        store.save(SampleFlowSaved(step: step, answers: words, cameBack: cameBack ? true : nil, endedAt: endedAt))
     }
 
     /// Saved answers back to keys; a key the app doesn't know is dropped.
