@@ -83,20 +83,23 @@ struct FlowLaunch: Equatable {
 
     static let current: Self = {
         let defaults = UserDefaults.standard
-        let launch = resolve(
-            ProcessInfo.processInfo.arguments,
-            environment: ProcessInfo.processInfo.environment,
-            optedIn: defaults.bool(forKey: iconOptInKey)
-        )
-        // an explicit `-Flow sample` launch (the Core Flow scheme) is the opt-in the icon follows later
-        if parse(ProcessInfo.processInfo.arguments).isRequested {
-            defaults.set(true, forKey: iconOptInKey)
-        }
+        let arguments = ProcessInfo.processInfo.arguments
+        let launch = resolve(arguments, environment: ProcessInfo.processInfo.environment, optedIn: defaults.bool(forKey: iconOptInKey))
+        defaults.set(iconOptIn(after: arguments, was: defaults.bool(forKey: iconOptInKey)), forKey: iconOptInKey)
         return launch
     }()
 
-    /// Set once this build was launched with `-Flow sample`; removing the app clears it.
+    /// Set by a launch with `-Flow sample`, cleared by any other explicit `-Flow` (the plain scheme's
+    /// `-Flow live`; #248's `-Flow demo` too, so a Full Demo run never opts the icon into the Core Flow walk).
     static let iconOptInKey = "sampleFlow.iconOptIn"
+
+    /// The icon opt-in after this launch: the last explicit `-Flow` decides (as in `parse`): `sample` turns it
+    /// on, any other value turns it off; a launch with no `-Flow` (the icon, a link, a notification) keeps it.
+    static func iconOptIn(after arguments: [String], was optedIn: Bool) -> Bool {
+        guard let flag = arguments.lastIndex(of: "-Flow") else { return optedIn }
+        let value = flag + 1 < arguments.endIndex ? arguments[flag + 1] : nil
+        return value == "sample"
+    }
 
     /// FLOW.debug-launch (founder, DECISIONS 27 Oct; debug builds only, this whole file is DEBUG): a launch
     /// from the home-screen icon carries no arguments. Once this build has been run with `-Flow sample`

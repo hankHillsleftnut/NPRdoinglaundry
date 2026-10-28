@@ -122,6 +122,27 @@ struct FlowStepTests {
         #expect(FlowLaunch.current.isRequested == false)
     }
 
+    @Test("the icon opt-in: -Flow sample turns it on, any other explicit -Flow turns it off, no -Flow keeps it")
+    func iconOptInOnAndOff() {
+        let app = "/Retrospect.app/Retrospect"
+        // on: the Core Flow scheme
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow", "sample"], was: false))
+        // off: the plain scheme's -Flow live (the way back without removing the app), and #248's -Flow demo
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow", "live"], was: true) == false)
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow", "demo"], was: true) == false)
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow"], was: true) == false)
+        // kept: the icon, a link or a notification (no arguments), or other flags
+        #expect(FlowLaunch.iconOptIn(after: [app], was: true))
+        #expect(FlowLaunch.iconOptIn(after: [app], was: false) == false)
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Screen", "PI0"], was: true))
+        // the last -Flow wins, as in parse
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow", "sample", "-Flow", "live"], was: false) == false)
+        #expect(FlowLaunch.iconOptIn(after: [app, "-Flow", "live", "-Flow", "sample"], was: false))
+        // the whole path: opted in, one plain-scheme run, then the icon opens the live app again
+        let afterPlainRun = FlowLaunch.iconOptIn(after: [app, "-Flow", "live"], was: true)
+        #expect(FlowLaunch.resolve([app], environment: [:], optedIn: afterPlainRun).isRequested == false)
+    }
+
     @Test("-Flow sample turns the host on; -FlowStart names a step; anything else is ignored")
     func launchArguments() {
         #expect(FlowLaunch.parse([]) == FlowLaunch())
