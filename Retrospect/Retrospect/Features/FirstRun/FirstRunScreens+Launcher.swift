@@ -5,7 +5,8 @@
 //  scenario (still / quick: Paper's listening and quick-answers frames); `-State privacy` opens ON-5
 //  on a silent ~8 s sample read-aloud, after which the page moves on; `-State connect|connect-3of6`
 //  opens ON-6 on the sample sources (calendar connected, or all three); `-State getting-ready|
-//  getting-ready-still` opens ON-10 on the sample listening and episode; `-State first-home|
+//  getting-ready-still` opens ON-10 on the sample listening and episode; `-State paywall|paywall-still|
+//  paywall-nudge` opens ON-12 on the sample (dummy) plans; `-State first-home|
 //  first-home-still` opens ON-13 (the journal's first day) on the day-one sample and Paper's recap. Nothing is mounted in the
 //  app yet (FR.root): when a page is left it says so in a quiet line.
 //
@@ -18,7 +19,8 @@ extension ScreenRegistry {
             id: "first-run",
             states: FirstRunScenario.allCases.map(\.rawValue) + PrivacyScenario.allCases.map(\.rawValue)
                 + ConnectScenario.allCases.map(\.rawValue)
-                + GettingReadyScenario.allCases.map(\.rawValue) + FirstHomeScenario.allCases.map(\.rawValue)
+                + GettingReadyScenario.allCases.map(\.rawValue) + PaywallScenario.allCases.map(\.rawValue)
+                + FirstHomeScenario.allCases.map(\.rawValue)
         ) { arguments in
             if let firstHome = FirstHomeScenario(rawValue: arguments.state) {
                 return AnyView(FirstHomeLaunch(scenario: firstHome))
@@ -31,6 +33,9 @@ extension ScreenRegistry {
             }
             if let gettingReady = GettingReadyScenario(rawValue: arguments.state) {
                 return AnyView(GettingReadyLaunch(scenario: gettingReady))
+            }
+            if let paywall = PaywallScenario(rawValue: arguments.state) {
+                return AnyView(PaywallLaunch(scenario: paywall))
             }
             return AnyView(QuestionsLaunch(scenario: FirstRunScenario(rawValue: arguments.state) ?? .questions))
         },
@@ -124,6 +129,45 @@ struct ConnectLaunch: View {
     }
 }
 
+/// ON-12 on the sample plans. `paywall`: a plan moves on (a quiet line stands in for first home until
+/// the flow step lands); `paywall-still`: the same frame, held for the 1:1 comparison (taps stay put);
+/// `paywall-nudge`: the still, with the mini-player's play pressed for the nudge film (once, then three quick).
+struct PaywallLaunch: View {
+    let scenario: PaywallScenario
+    @State private var left: PaywallModel.Choice?
+    @State private var model: PaywallModel?
+
+    var body: some View {
+        if let left {
+            Text("paywall done · \(left == .yearly ? "yearly" : "monthly")")
+                .rText(.textMd)
+                .foregroundStyle(RColor.textSecondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RColor.backgroundCanvas)
+                .accessibilityIdentifier("paywall.left")
+        } else if let model {
+            PaywallPage(model: model)
+                .task {
+                    guard scenario == .paywallNudge else { return }
+                    for wait in PaywallScenario.nudgeFilm {
+                        try? await Task.sleep(for: wait)
+                        model.nudge()
+                    }
+                }
+        } else {
+            RColor.backgroundCanvas
+                .ignoresSafeArea()
+                .onAppear {
+                    // the held states answer "cancelled", so a stray tap keeps the plans on screen
+                    let paywall = SamplePaywall(answer: scenario == .paywall ? .subscribed : .cancelled)
+                    model = PaywallModel(paywall: paywall) { choice in
+                        left = choice
+                    }
+                }
+        }
+    }
+}
+
 /// ON-10 on the sample seams, on the real clock: `getting-ready` hears an invented answer and is made
 /// about 30 s later; `getting-ready-still` holds Paper's frame. Nothing is mounted after it yet (the
 /// tease, ON-11): when it is made the line fills, VoiceOver hears it, and the page stays.
@@ -180,5 +224,6 @@ struct FirstHomeLaunch: View {
 #Preview("questions · quick answers") { QuestionsLaunch(scenario: .questionsQuick) }
 #Preview("privacy") { PrivacyLaunch(scenario: .privacy) }
 #Preview("connect") { ConnectLaunch(scenario: .connect) }
+#Preview("paywall") { PaywallLaunch(scenario: .paywall) }
 #Preview("first home") { FirstHomeLaunch(scenario: .firstHomeStill) }
 #endif
