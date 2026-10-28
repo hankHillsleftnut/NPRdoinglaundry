@@ -49,7 +49,7 @@ struct LocalDatabaseTests {
         ) }
 
         #expect(names == [
-            "meta", "entries", "outbox", "cached_documents", "diagnostics", "flags",
+            "meta", "entries", "outbox", "cached_documents", "diagnostics", "flags", "first_run_answers",
             "entries_day_created", "entries_sync_state", "outbox_status_next", "outbox_entity", "diagnostics_ring",
         ])
     }
@@ -213,7 +213,7 @@ struct LocalDatabaseTests {
 
         let tables = try database.writer.read { try Store.LocalDatabase.dataTables($0) }
 
-        #expect(tables == ["cached_documents", "diagnostics", "entries", "flags", "outbox"])
+        #expect(tables == ["cached_documents", "diagnostics", "entries", "first_run_answers", "flags", "outbox"])
     }
 
     @Test("erase empties a table a later migration adds")

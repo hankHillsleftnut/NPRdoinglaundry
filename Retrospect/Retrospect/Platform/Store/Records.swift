@@ -40,6 +40,11 @@ extension Store {
         case guessAnswer = "guess.answer"
         /// `POST /v2/diagnostics`; the entity and the key are the report's id. Not an entry: nothing is written back to `entries`.
         case diagnosticsSend = "diagnostics.send"
+        /// `POST /v2/onboarding/answers` (FR.b1.data); the entity and the key are the answer's `clientEntryId`.
+        case onboardingAnswer = "onboarding.answer"
+        /// `POST /v2/onboarding/complete`; one row per store (`OutboxOnboarding.completeID`), sent only once every
+        /// answer row has gone out or been refused. The door is idempotent by state, so the row carries no key.
+        case onboardingComplete = "onboarding.complete"
         case unknown
     }
 

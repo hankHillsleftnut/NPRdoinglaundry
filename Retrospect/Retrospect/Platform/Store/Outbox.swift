@@ -74,6 +74,8 @@ extension Store {
         var reachabilityWatch: Task<Void, Never>?
         var inFlightSend: Task<Store.OutboxSendResult, any Error>?
         var receiptListeners: [UUID: AsyncStream<ReportReceipt>.Continuation] = [:]
+        /// Who hears `onboarding.complete` land (FR.b1.data, `OutboxOnboarding`).
+        var completionListeners: [UUID: AsyncStream<Session.AccessState>.Continuation] = [:]
 
         /// Without a sender the outbox only queues (previews, the queue's own
         /// tests); `drain` does nothing.
@@ -270,6 +272,9 @@ extension Store {
                     if item.operation == .diagnosticsSend, let reference = result.reference {
                         publish(ReportReceipt(reportID: item.id, reference: reference))
                     }
+                    if item.operation == .onboardingComplete, let access = result.access {
+                        publishCompletion(access)
+                    }
                     log.record(.outbox(.sent(operation: item.operation, attempts: item.attempts + 1, ms: Self.milliseconds(since: startedAt, now: now()))))
                 } catch is CancellationError {
                     try? markPending(item, at: now())
@@ -372,7 +377,8 @@ extension Store {
             var taken: Set<String> = []
             var included: Set<String> = []
             var due: [OutboxRow] = []
-            for row in rows where row.operation != .unknown {
+            // `onboarding.complete` is decided after every other row: it goes only once no answer is on its way (OutboxOnboarding)
+            for row in rows where row.operation != .unknown && row.operation != .onboardingComplete {
                 let isDue = row.status == .pending && Backend.Coding.timestamp(row.nextAttemptAt) <= cutoff
                 guard !taken.contains(row.entityID) else {
                     // Due, behind an item this pass is sending: one more pass picks it up.
@@ -388,6 +394,9 @@ extension Store {
                     due.append(row)
                 }
             }
+            let complete = Self.completeToSend(among: rows, cutoff: cutoff, sendingNow: included)
+            due += complete.send
+            needsAnotherPass = needsAnotherPass || complete.anotherPass
             return due
         }
 

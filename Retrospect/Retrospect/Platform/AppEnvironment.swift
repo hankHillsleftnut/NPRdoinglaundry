@@ -78,6 +78,8 @@ extension Platform {
         private(set) var playback: Platform.Media.LivePlayback?
         /// The person's small flags ("you're in" seen, INVITE-FLAGS); built and dropped with the stack.
         private(set) var personFlags: Store.PersonFlags?
+        /// The first run's live seam (FR.b1.data): answers through the outbox; stopped and dropped with the stack.
+        private(set) var firstRun: LiveFirstRunData?
 
         /// True once the backend has said this version is too old (PL1.6); never false again.
         var updateRequired: Bool {
@@ -332,6 +334,8 @@ extension Platform {
             openUserID = nil
             await personFlags?.close() // first: a late "begin" can't land in a store being erased or kept
             personFlags = nil
+            firstRun?.stop()
+            firstRun = nil
             journalData?.stop()
             journalData = nil
             await repository?.close()
@@ -421,6 +425,9 @@ extension Platform {
             let repository = Platform.Repositories.Journal(database: database, client: client)
             self.repository = repository
             journalData = LiveJournalData(repository: repository, outbox: outbox, reachability: reachability)
+            let firstRun = LiveFirstRunData(outbox: outbox, session: session)
+            self.firstRun = firstRun
+            Task { await firstRun.open() }
             let reachability = reachability
             let source = Platform.Media.Source(
                 isOnline: { await reachability.isOnline },

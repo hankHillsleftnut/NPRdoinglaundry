@@ -105,3 +105,27 @@ extension Backend.Endpoints {
         }
     }
 }
+
+extension Backend.Endpoints.OnboardingAnswer.QuestionKey {
+    /// The app's keys the door does not accept yet: `struggle` until BE.struggle is deployed (FR.b2 empties
+    /// this and adds the case). A key here is never sent, so no answer can be refused for its key and lost.
+    static let notYetAccepted: Set<Flows.QuestionKey> = [.struggle]
+
+    /// The door's key for one of the app's question keys (the same name on the wire), or nil when the door
+    /// doesn't accept it: not in this enum, or in `notYetAccepted`. The live seam asks only keys that map.
+    init?(flow key: Flows.QuestionKey) {
+        guard !Self.notYetAccepted.contains(key), key != .unknown, let door = Self(rawValue: key.rawValue), door != .unknown else { return nil }
+        self = door
+    }
+}
+
+extension Backend.Endpoints.OnboardingAnswer.Given {
+    /// The door's `given` for the app's; `unknown` is never sent (it becomes `typed`).
+    init(flow given: Flows.FirstRunQuestion.Given) {
+        switch given {
+        case .voice: self = .voice
+        case .typed, .unknown: self = .typed
+        case .skipped: self = .skipped
+        }
+    }
+}

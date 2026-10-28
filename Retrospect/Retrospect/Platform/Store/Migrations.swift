@@ -10,6 +10,7 @@ extension Store {
             migrator.registerMigration("v2", migrate: v2)
             migrator.registerMigration("v3", migrate: v3)
             migrator.registerMigration("v4", migrate: v4)
+            migrator.registerMigration("v5", migrate: v5)
             return migrator
         }
 
@@ -83,6 +84,17 @@ extension Store {
                 table.primaryKey("key", .text)
                 table.column("value", .text).notNull()
                 table.column("set_at", .text).notNull()
+            }
+        }
+
+        /// FR.b1.data: the person's first-run answers on this phone, latest words per question
+        /// (resume shows them; the first-home recap reads them). Written in the same transaction as
+        /// the outbox row that sends them. A data table: erased with the rest on Log Out.
+        private static func v5(_ db: GRDB.Database) throws {
+            try db.create(table: "first_run_answers") { table in
+                table.primaryKey("key", .text)
+                table.column("text", .text).notNull()
+                table.column("created_at", .text).notNull()
             }
         }
     }

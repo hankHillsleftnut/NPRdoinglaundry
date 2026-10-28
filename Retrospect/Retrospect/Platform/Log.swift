@@ -482,6 +482,8 @@ extension Platform.Log {
             case .entryCreate: "entry.create"
             case .guessAnswer: "guess.answer"
             case .diagnosticsSend: "diagnostics.send"
+            case .onboardingAnswer: "onboarding.answer"
+            case .onboardingComplete: "onboarding.complete"
             case .unknown: "unknown operation"
             }
         }

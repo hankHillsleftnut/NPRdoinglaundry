@@ -23,6 +23,10 @@ extension Store {
     actor PersonFlags: YoureInSeenStoring {
         enum Key: String, CaseIterable, Sendable {
             case youreInSeen = "youre_in_seen"
+            /// FR.b1: "begin" also starts the first run; the root routes on it (FR.b1.root), never on access alone.
+            case firstRunStarted = "first_run_started"
+            /// FR.b1: the first run ended on this phone; the root never shows it again.
+            case firstRunDone = "first_run_done"
         }
 
         private let database: LocalDatabase
