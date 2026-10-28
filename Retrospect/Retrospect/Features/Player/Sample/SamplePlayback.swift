@@ -43,6 +43,12 @@ extension Flows {
         case teasePaused
         /// The tease played to the end.
         case teaseEnded
+        /// PC-2, this week's episode (Paper 1FV9-0): four chapters, 11:30, playing from 4:12 in
+        /// chapter 2, "the river".
+        case weeklyEpisode
+        /// The weekly episode playing at 4:12 on the line Paper lights, held still until something is
+        /// tapped: the frame compared with Paper.
+        case weeklyEpisodeStill
         /// JR-2 (Paper 1FMG-0): today's brief as Paper draws it, 4:10 in three parts (1:30, 1:20, 1:20),
         /// playing at 0:48 in part 1, held still until something is tapped: the frame compared with Paper.
         case briefPaperPlaying
@@ -70,6 +76,11 @@ final class SamplePlayback: Flows.Playback {
     /// Episodes show how much is downloaded; briefs are short enough not to.
     var buffered: Double? {
         guard item?.kind == .episode, let duration, duration > 0 else { return nil }
+        if item?.id == Self.weeklyEpisodeID {
+            // Paper 1FV9-0 draws the downloaded stretch ending inside chapter 2 (by the loaded episode,
+            // so a later `load(_:)` of another episode never borrows it)
+            return min(Self.weeklyBuffered / duration, 1)
+        }
         return 1
     }
 
@@ -94,6 +105,8 @@ final class SamplePlayback: Flows.Playback {
     @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
+    // one start per scenario, listed flat so scenarios are only ever added (V2 add-only lease)
+    // swiftlint:disable:next cyclomatic_complexity
     init(scenario: Flows.PlaybackScenario, clock: any Clock<Duration>) {
         self.scenario = scenario
         self.clock = clock
@@ -120,20 +133,6 @@ final class SamplePlayback: Flows.Playback {
         case .briefPlayed, .teaseEnded:
             position = item.durationSeconds ?? 0
             state = .ended
-        case .buffering:
-            state = .buffering
-        case .failed:
-            state = .failed(Flows.Failure(.network))
-        case .offline:
-            state = .offline
-        case .briefPaperPlaying, .briefPaperPaused, .briefPaperPlayed, .briefPaperQuiet:
-            startBriefPaper()
-        }
-    }
-
-    /// JR-2's starting points (V2.journal), apart from `init` so the existing starts stay as they were.
-    private func startBriefPaper() {
-        switch scenario {
         case .briefPaperPlaying, .briefPaperQuiet:
             // playing, as drawn, with no ticker (like `teaseStill`): pause and play to move on
             position = scenario == .briefPaperQuiet ? Self.briefPaperQuietAt : Self.briefPaperAt
@@ -142,8 +141,31 @@ final class SamplePlayback: Flows.Playback {
             position = Self.briefPaperAt
             state = .paused
         case .briefPaperPlayed:
-            position = duration ?? 0
+            position = item.durationSeconds ?? 0
             state = .ended
+        case .buffering:
+            state = .buffering
+        case .failed:
+            state = .failed(Flows.Failure(.network))
+        case .offline:
+            state = .offline
+        case .weeklyEpisode, .weeklyEpisodeStill:
+            startWeekly()
+        }
+    }
+
+    /// The weekly episode's starting points (PC-2), apart from `init` so the tease's lines stay as they were (Paper draws
+    /// PC-2 playing only; founder 27 Oct: no undrawn states).
+    private func startWeekly() {
+        switch scenario {
+        case .weeklyEpisode:
+            position = Self.weeklyLitLine
+            state = .playing
+            run()
+        case .weeklyEpisodeStill:
+            // playing, as drawn, with no ticker (like the tease's still)
+            position = Self.weeklyLitLine
+            state = .playing
         default:
             break
         }
@@ -286,6 +308,8 @@ final class SamplePlayback: Flows.Playback {
             }, duration: 45)
         case .tease, .teaseStill, .teasePaused, .teaseEnded:
             tease
+        case .weeklyEpisode, .weeklyEpisodeStill:
+            weeklyEpisode
         case .briefPaperPlaying, .briefPaperPaused, .briefPaperPlayed:
             briefPaper
         case .briefPaperQuiet:
@@ -307,6 +331,45 @@ final class SamplePlayback: Flows.Playback {
 
     /// Where the tease reads the line Paper lights (the third, 26PC-0).
     static let teaseLitLine: Double = 4
+
+    /// PC-2's episode (Paper 1FV9-0): "the week you kept choosing the river", 11:30 in four chapters
+    /// whose lengths are Paper's capsules (82 : 114 : 62 : 64), so 4:12 falls in chapter 2, "the river",
+    /// with 7:18 left. Chapters 1 and 2 carry Paper's five lines (1FWZ-0 … 1FWV-0); chapter 2's title is
+    /// Paper's; the other titles and chapters 3 and 4's words are invented sample lines.
+    static let weeklyEpisode = Flows.PlaybackItem(
+        id: weeklyEpisodeID,
+        kind: .episode,
+        title: "the week you kept choosing the river",
+        parts: [
+            .init(id: 0, title: "a quiet start", text: weeklyLines[0 ..< 2].joined(separator: " "), startSeconds: 0),
+            .init(id: 1, title: "the river", text: weeklyLines[2 ..< 5].joined(separator: " "), startSeconds: 176),
+            .init(id: 2, title: "your sister", text: "A sample line for the third chapter.", startSeconds: 420),
+            .init(id: 3, title: "a guess", text: "A sample line for the last chapter.", startSeconds: 553),
+        ],
+        durationSeconds: 690
+    )
+
+    /// The weekly episode's `PlaybackItem.id` (its transcript names it).
+    static let weeklyEpisodeID = "sample-weekly"
+
+    /// Paper's five transcript lines on PC-2 (1FWZ-0 … 1FWV-0), word for word.
+    static let weeklyLines = [
+        "This week started quietly. Two short entries, a long Sunday walk.",
+        "On Monday you wrote that the meeting went badly, and that you didn't want to talk about it.",
+        "That evening you walked to the river. Then again on Wednesday, and again on Friday.",
+        "Each time, you called your sister afterwards, not before.",
+        "So here is a guess, and you can tell me if it's wrong.",
+    ]
+
+    /// Where the weekly episode reads the line Paper lights (the third, 1FWX-0): 04:12.
+    static let weeklyLitLine: Double = 252
+
+    /// How far the weekly episode is downloaded, in seconds (Paper 1FWB-0: the grey stretch ends
+    /// 104 of 118 points into chapter 2).
+    static let weeklyBuffered: Double = 391
+
+    /// Every scenario that plays the weekly episode.
+    static let weeklyScenarios: Set<Flows.PlaybackScenario> = [.weeklyEpisode, .weeklyEpisodeStill]
 
     private static func brief(id: String, parts: [Flows.PlaybackItem.Part], duration: Double) -> Flows.PlaybackItem {
         Flows.PlaybackItem(id: id, kind: .brief, title: "today's brief", parts: parts, durationSeconds: duration)
