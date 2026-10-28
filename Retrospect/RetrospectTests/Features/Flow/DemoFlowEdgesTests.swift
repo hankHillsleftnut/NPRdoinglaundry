@@ -115,7 +115,8 @@ struct DemoFlowEdgesTests {
     @Test("every screen in the launcher with a Paper id is a page here (a screen can't merge unjoined)")
     func launcherScreensArePages() {
         let known = Set(DemoPage.allCases.flatMap(\.launcherIDs))
-        let paperLike = ScreenRegistry.allIDs.filter { $0.range(of: #"^[A-Z]{2}-\d+$"#, options: .regularExpression) != nil }
+        // Paper ids (`JR-1`) and the sign-in/invite ids (`PI0`…`PI2`)
+        let paperLike = ScreenRegistry.allIDs.filter { $0.range(of: #"^([A-Z]{2}-\d+|PI\d+)$"#, options: .regularExpression) != nil }
         for id in paperLike {
             #expect(known.contains(id), "-Screen \(id) is in the launcher but not in DemoFlowEdges (flow-coverage.md)")
         }
