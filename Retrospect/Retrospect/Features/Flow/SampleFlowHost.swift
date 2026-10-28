@@ -65,12 +65,13 @@ struct SampleFlowHost: View {
             case .firstHome:
                 // ON-13 in the tab shell, all four tabs live (FH-Q1, DECISIONS 27 Oct); the recap is the
                 // person's own answers (FH-Q2 A); the card plays the tease in the player sheet (FH-Q3 A)
-                FirstRunShell {
+                FirstRunShell { isShown in
                     FirstHomePage(
                         recap: flow.firstHomeRecap,
                         celebrate: flow.arrivedHome,
                         today: SampleJournalContent.today,
-                        makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) }
+                        makePlayer: { onCollapse in flow.makeFirstEpisodePlayer(onCollapse: onCollapse) },
+                        isShown: isShown
                     )
                     .environment(\.journalData, flow.journalDay)
                 }

@@ -19,6 +19,9 @@ struct FirstHomePage: View {
     let makePlayer: (_ onCollapse: @escaping () -> Void) -> PlayerSheetModel
 
     @State private var player: PlayerSheetModel?
+    /// Whether this page's tab is the one showing (a tab host passes it; alone, always shown).
+    var isShown = true
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -38,6 +41,13 @@ struct FirstHomePage: View {
             }
         }
         .animation(reduceMotion ? RMotion.standard(RNumber.motionDurationFast) : RMotion.sheet, value: player != nil)
+        // inside a tab host: leaving the journal tab collapses the player, so nothing plays on a hidden
+        // tab and coming back finds first home, not a sheet mid-tease
+        .onChange(of: isShown) { _, shown in
+            if !shown {
+                player?.collapse()
+            }
+        }
         .accessibilityIdentifier("screen.ON-13")
     }
 

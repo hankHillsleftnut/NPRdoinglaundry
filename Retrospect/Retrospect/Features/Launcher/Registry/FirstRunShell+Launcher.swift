@@ -10,21 +10,24 @@
 #if DEBUG
 import SwiftUI
 
-/// The four tabs under the shell's bar: the journal tab is whatever the host passes (first home); the
-/// others are PC-1, GL-1 and YO-1 on their samples, each built the first time its tab is shown and kept.
+/// The four tabs under the shell's bar: the journal tab is whatever the host passes (first home), told
+/// whether it is the tab showing; the others are PC-1, GL-1 and YO-1 on their samples: the shell builds each
+/// page the first time its tab is shown and keeps it; their sample models are made with the shell (YO-1's
+/// page model on first show).
 struct FirstRunShell<Journal: View>: View {
     @State private var model = ShellModel(selection: .journal)
     @State private var goals = GoalsModel(data: SampleGoals())
     @State private var youData = SampleYou()
     @State private var youNavigator = YouNavigator()
     @State private var you: YouModel?
-    @ViewBuilder let journal: () -> Journal
+    /// The journal tab's page, given whether that tab is showing.
+    @ViewBuilder let journal: (_ isShown: Bool) -> Journal
 
     var body: some View {
-        ShellPage(model: model) { tab, _ in
+        ShellPage(model: model) { tab, context in
             switch tab {
             case .journal:
-                AnyView(journal())
+                AnyView(journal(context.isShown))
             case .podcasts:
                 AnyView(PodcastsLaunch(scenario: .rest))
             case .goals:
