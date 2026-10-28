@@ -17,8 +17,9 @@ struct NotificationPolicy: Equatable, Sendable {
     func allows(at date: Date, lastSent: Date?, calendar: Calendar) -> Bool {
         guard !isQuiet(date, calendar: calendar) else { return false }
         guard let lastSent else { return true }
-        // at most one a day (handoff): another may go out only on a later day
-        return !calendar.isDate(lastSent, inSameDayAs: date)
+        // at most one a day (handoff): another may go out only on a LATER calendar day (a clock moved back
+        // across midnight must not open a second one)
+        return calendar.compare(date, to: lastSent, toGranularity: .day) == .orderedDescending
     }
 
     func isQuiet(_ date: Date, calendar: Calendar) -> Bool {

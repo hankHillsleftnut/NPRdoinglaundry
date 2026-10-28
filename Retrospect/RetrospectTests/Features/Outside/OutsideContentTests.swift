@@ -63,5 +63,7 @@ struct OutsideContentTests {
         #expect(try !policy.allows(at: at(26, 21), lastSent: nil, calendar: calendar))
         #expect(try !policy.allows(at: at(27, 7, 59), lastSent: nil, calendar: calendar))
         #expect(try policy.allows(at: at(27, 8), lastSent: nil, calendar: calendar))
+        // a clock moved back across midnight: the day before the last one is not a later day
+        #expect(try !policy.allows(at: at(26, 18), lastSent: at(27, 9), calendar: calendar))
     }
 }
