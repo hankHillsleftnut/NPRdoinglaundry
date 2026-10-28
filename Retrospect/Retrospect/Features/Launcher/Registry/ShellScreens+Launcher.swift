@@ -28,10 +28,24 @@ enum ShellScenario: String, CaseIterable {
     case tabs
     case miniPlayer
     case sheet
+    /// TABBAR.blend (test states, not shipped): PC-1 on its sample library in the shell, opened on
+    /// podcasts, so a page that scrolls under the bar shows the blend; `blendPlayer` with the
+    /// mini-player up on it. The podcasts lane wires PC-1 into the shipped states itself.
+    case blend
+    case blendPlayer
 
     var tab: RTab {
         switch self {
         case .tabs, .miniPlayer, .sheet: .journal
+        case .blend, .blendPlayer: .podcasts
+        }
+    }
+
+    /// The tabs with a page in this state (their lanes add theirs to `tabs`).
+    var pages: Set<RTab> {
+        switch self {
+        case .tabs, .miniPlayer, .sheet: [.journal]
+        case .blend, .blendPlayer: [.journal, .podcasts]
         }
     }
 }
@@ -39,20 +53,22 @@ enum ShellScenario: String, CaseIterable {
 /// The shell on sample data: the tabs that have a page, and only those.
 struct ShellLaunch: View {
     /// The tabs built so far (their lanes add theirs).
-    static let pages: Set<RTab> = [.journal]
+    static let pages: Set<RTab> = ShellScenario.tabs.pages
 
     @State private var model: ShellModel
     let scenario: ShellScenario
 
     init(scenario: ShellScenario) {
         self.scenario = scenario
-        _model = State(initialValue: ShellModel(selection: scenario.tab, available: Self.pages))
+        _model = State(initialValue: ShellModel(selection: scenario.tab, available: scenario.pages))
     }
 
     var body: some View {
         ShellPage(model: model, miniPlayer: miniPlayer) { tab, _ in
             switch tab {
             case .journal: AnyView(ShellJournalLaunch())
+            // the blend test state only; otherwise not built yet (inert in the bar): the podcasts lane adds PC-1
+            case .podcasts where scenario.pages.contains(.podcasts): AnyView(PodcastsLaunch(scenario: .rest))
             // not built yet (inert in the bar): their lanes add PC-1, GL-1 and YO-1 here
             case .podcasts, .goals, .you: nil
             }
@@ -61,8 +77,8 @@ struct ShellLaunch: View {
 
     private var miniPlayer: AnyView? {
         switch scenario {
-        case .tabs: nil
-        case .miniPlayer: AnyView(ShellMiniPlayerLaunch(playerShown: false))
+        case .tabs, .blend: nil
+        case .miniPlayer, .blendPlayer: AnyView(ShellMiniPlayerLaunch(playerShown: false))
         case .sheet: AnyView(ShellMiniPlayerLaunch(playerShown: true))
         }
     }

@@ -18,6 +18,8 @@ struct PodcastsPage: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var overflows = false
+    /// Set inside the shell, whose edge owns the bottom margin and inset.
+    @Environment(\.rShellTabEdge) private var shellTabEdge
 
     var body: some View {
         VStack(spacing: RDimension.space0) {
@@ -64,12 +66,14 @@ struct PodcastsPage: View {
     /// covers the home-indicator strip too: the cards dissolve into the canvas instead of being cut
     /// by a hard line at the safe area (screen-rules 17; QA batch 1). At rest the last card still
     /// ends above the safe area (the bottom inset is kept as a content margin). In the shell the
-    /// page ends at the tab bar, so the inset there is the bar's business (V2.tabbar-blend).
+    /// page ends at the tab bar and the edge is the shell's (TABBAR.blend), which sets the rest
+    /// margin itself: the page's own margin and inset step aside there, or they would win over it.
     private func scroll(@ViewBuilder _ rows: () -> some View) -> some View {
         // built here, outside the reader's escaping closure
         let column = VStack(alignment: .leading, spacing: RDimension.space8) {
             rows()
         }
+        let inShell = shellTabEdge != nil
         return GeometryReader { proxy in
             ScrollView {
                 column
@@ -77,7 +81,7 @@ struct PodcastsPage: View {
                     .padding(.top, RDimension.space3)
                     .padding(.bottom, RDimension.space8)
             }
-            .contentMargins(.bottom, proxy.safeAreaInsets.bottom, for: .scrollContent)
+            .modifier(OwnBottomInset(length: inShell ? nil : proxy.safeAreaInsets.bottom))
             // the cards' shadows may spill sideways past the margins, but the cards never draw over
             // the title bar while they scroll
             .scrollClipDisabled()
@@ -88,7 +92,7 @@ struct PodcastsPage: View {
                 overflows = now
             }
             .rProgressiveBlur(.tabEdge, active: overflows)
-            .ignoresSafeArea(.container, edges: .bottom)
+            .ignoresSafeArea(.container, edges: inShell ? [] : .bottom)
         }
     }
 
@@ -113,5 +117,18 @@ struct PodcastsPage: View {
     private var columns: [GridItem] {
         let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
         return Array(repeating: GridItem(.flexible(), spacing: RDimension.space3, alignment: .top), count: count)
+    }
+}
+
+/// The page's own bottom content margin (the safe area it runs into), only outside the shell.
+private struct OwnBottomInset: ViewModifier {
+    let length: CGFloat?
+
+    func body(content: Content) -> some View {
+        if let length {
+            content.contentMargins(.bottom, length, for: .scrollContent)
+        } else {
+            content
+        }
     }
 }

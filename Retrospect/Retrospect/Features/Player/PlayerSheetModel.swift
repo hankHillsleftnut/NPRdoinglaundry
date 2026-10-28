@@ -96,8 +96,8 @@ final class PlayerSheetModel {
         return transcript.lineIndex(at: playback.position)
     }
 
-    /// The chevron-down (26PH-0): the sheet goes, once. In the first run the host raises the paywall
-    /// early (PS.sheet.c); until the paywall exists it only hands the sheet back.
+    /// The chevron-down (26PH-0): the sheet goes, once. In the first run the sample flow raises the
+    /// paywall early (row 39, `teaseEnded`); elsewhere the host only takes the sheet back.
     func collapse() {
         guard !hasCollapsed else { return }
         hasCollapsed = true

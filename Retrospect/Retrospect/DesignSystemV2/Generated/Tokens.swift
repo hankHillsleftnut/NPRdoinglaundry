@@ -536,6 +536,8 @@ public enum RDimension {
     public static let sizeArtworkPlayer: CGFloat = 120
     /// A full-bleed moment.
     public static let sizeArtworkHero: CGFloat = 240
+    /// The shared thing's artwork in the share sheet.
+    public static let sizeArtworkShareItem: CGFloat = 56
     /// The Retrospect mark disc.
     public static let sizeMark: CGFloat = 38
     /// Height of the mini-player.
@@ -680,8 +682,26 @@ public enum RDimension {
     public static let sizeSkeletonGap: CGFloat = 9
     /// The raised mark above an empty state line.
     public static let sizeEmptyMark: CGFloat = 52
+    /// A plan button on the paywall (monthly / yearly), the price is the button.
+    public static let sizePlanButton: CGFloat = 52
+    /// The "save" badge straddling the top edge of the lit yearly plan.
+    public static let sizeSaveBadgeWidth: CGFloat = 76
+    /// The "save" badge height (it sits half above the plan button).
+    public static let sizeSaveBadgeHeight: CGFloat = 22
+    /// The small raised art tile at the start of a paywall benefit row.
+    public static let sizeBenefitTile: CGFloat = 56
     /// The ready first episode's artwork well on first home (with a 16 play inside).
     public static let sizeFirstEpisodeWell: CGFloat = 40
+    /// The share sheet header's side slots (cancel, and the empty one opposite).
+    public static let sizeShareHeaderSlot: CGFloat = 72
+    /// The mark at the top of a home-screen widget.
+    public static let sizeWidgetMark: CGFloat = 16
+    /// The brush glyph's width inside the widget mark.
+    public static let sizeWidgetMarkGlyph: CGFloat = 9
+    /// A small home-screen widget's side, for the preview (the system sets the real size).
+    public static let sizeWidgetSmall: CGFloat = 164
+    /// A medium home-screen widget's width, for the preview (the system sets the real size).
+    public static let sizeWidgetMediumWidth: CGFloat = 344
     /// Small marks and tags.
     public static let radiusSmall: CGFloat = 6
     /// Small cards and thumbnails.
@@ -760,6 +780,10 @@ public enum RDimension {
     public static let blurDrawerFootBand: CGFloat = 56
     /// Drawer: blur at the foot band's outer edge.
     public static let blurDrawerFootMax: CGFloat = 6
+    /// The shell's tab bar: how far above the bar's top the content starts to dissolve (blur up to blur.tab.max, canvas easing to opaque at the bar).
+    public static let blurTabBlendRise: CGFloat = 90
+    /// The shell's tab bar on short phones (SE): the dissolve above the bar.
+    public static let blurTabBlendRiseCompact: CGFloat = 72
     /// The widest a reading column gets (the transcript).
     public static let layoutReadingWidth: CGFloat = 326
     /// The width of grouped transport controls.
@@ -962,6 +986,8 @@ public enum RNumber {
     public static let motionScalePopoverFrom: Double = 0.86
     /// Press scale for small controls (pills, icon buttons); large things use press (0.98).
     public static let motionScalePressSmall: Double = 0.94
+    /// The barely visible nudge of the lit plan when the paywall mini-player's play is tapped (1.0 → nudge → 1.0, settles on snappy). Founder 26 Oct night: "very, very subtle".
+    public static let motionScaleNudge: Double = 1.02
     /// Delay between elements arriving in sequence.
     public static let motionStagger: Double = 0.06
     /// Points per second that count as a flick down.
@@ -1036,8 +1062,12 @@ public enum RNumber {
     public static let blurTabSaturation: Double = 1.5
     /// Player transcript, top: the sheet tint rises 0 → 100% over this fraction of the band.
     public static let blurTranscriptTopTint: Double = 0.3
+    /// Player transcript, top: the words are soft in full within this outer fraction of the band, easing to sharp at the band's inner edge (point by point down a line; the line being read never softens).
+    public static let blurTranscriptTopLineSolid: Double = 0.3
     /// Player transcript, bottom: the sheet tint is solid over this fraction of the band.
     public static let blurTranscriptBottomTint: Double = 0.15
+    /// Player transcript, bottom: the words ease from sharp at the band's inner edge to soft in full this fraction of the way into the band (point by point down a line; the line being read never softens).
+    public static let blurTranscriptBottomLineSolid: Double = 0.55
     /// The page.
     public static let layerBase: Double = 0
     /// The floating player.
@@ -1221,5 +1251,47 @@ public enum RElevation {
         RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
         RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 4, blur: 10, spread: -4),
         RShadowLayer(color: RColor.depthShadowAmbient, x: 0, y: 10, blur: 30, spread: -10),
+    ]
+    /// A paywall benefit tile: top light, outer hairline, contact, and a cast pulled in by its spread.
+    public static let boxShadowPaywallTile: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 1.5, spread: 0),
+        RShadowLayer(color: RColor.depthShadowCast, x: 0, y: 6, blur: 14, spread: -6),
+    ]
+    /// The raised monthly plan button: top light, outer hairline, contact.
+    public static let boxShadowPaywallPlanMonthly: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthStrokeInnerTop, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.depthStrokeOuter, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+    ]
+    /// The lit yearly plan button: rim, edge and bloom inside, the ring, and the halo pulled in by its spread (Paper keeps the halo on this screen: founder 26 Oct night, PW-Q4 A).
+    public static let boxShadowPaywallPlanYearly: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryRim, x: 0, y: 1, blur: 0, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryEdge, x: 0, y: -1, blur: 1.5, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryBloom, x: 0, y: 0, blur: 6, spread: 0, inset: true),
+        RShadowLayer(color: RColor.glowPrimaryRing, x: 0, y: 0, blur: 0, spread: 1),
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 6, blur: 14, spread: -6),
+    ]
+    /// The "save" badge on the lit plan: a primary ring hairline and contact.
+    public static let boxShadowPaywallSaveBadge: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryRing, x: 0, y: 0, blur: 0, spread: 0.5),
+        RShadowLayer(color: RColor.depthShadowContact, x: 0, y: 1, blur: 2, spread: 0),
+    ]
+    /// The tiny sunken search field drawn in the "ask" tile.
+    public static let boxShadowPaywallTileField: [RShadowLayer] = [
+        RShadowLayer(color: RColor.depthShadowSunken, x: 0, y: 1, blur: 2, spread: 0, inset: true),
+    ]
+    /// The halo round the lit sun in the "brief" tile.
+    public static let boxShadowPaywallTileGlowSun: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 0, blur: 10, spread: 0),
+    ]
+    /// The halo round the lit "you" node in the "map" tile.
+    public static let boxShadowPaywallTileGlowYou: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 0, blur: 8, spread: 0),
+    ]
+    /// The halo under the lit play in the "podcast" tile.
+    public static let boxShadowPaywallTileGlowPlay: [RShadowLayer] = [
+        RShadowLayer(color: RColor.glowPrimaryHalo, x: 0, y: 2, blur: 8, spread: 0),
     ]
 }
