@@ -128,6 +128,59 @@ struct QuestionsQuickAnswersTests {
         await send.value
     }
 
+    @Test("a chip whose words hold a comma ('friends, family') shows chosen, and a second tap removes it, never a duplicate")
+    func chipWithAComma() {
+        let question = Flows.FirstRunQuestion(
+            key: .people,
+            text: "who would you call?",
+            quickAnswers: ["friends, family", "family", "nobody"]
+        )
+        let model = QuestionsModel(data: ChipFirstRun(ear: nil, questions: [question]))
+        model.toggle("friends, family")
+        #expect(model.draft == "friends, family")
+        #expect(model.isChosen("friends, family"))
+        // its words are its own: "family" inside it is not the "family" chip
+        #expect(!model.isChosen("family"))
+        model.toggle("nobody")
+        #expect(model.draft == "friends, family, nobody")
+        model.toggle("friends, family")
+        #expect(model.draft == "nobody")
+        #expect(!model.isChosen("friends, family"))
+        // the family chip on its own, then the comma chip: both chosen, each removed alone
+        model.toggle("family")
+        model.toggle("friends, family")
+        #expect(model.isChosen("family"))
+        #expect(model.isChosen("friends, family"))
+        model.toggle("friends, family")
+        #expect(model.draft == "nobody, family")
+        #expect(model.isChosen("family"))
+    }
+
+    @Test("single chips a comma chip is made of never duplicate, however often they are tapped")
+    func singlesInsideACommaChip() {
+        let question = Flows.FirstRunQuestion(
+            key: .people,
+            text: "who would you call?",
+            quickAnswers: ["friends", "family", "friends, family"]
+        )
+        let model = QuestionsModel(data: ChipFirstRun(ear: nil, questions: [question]))
+        model.toggle("friends")
+        model.toggle("family")
+        // the longer chip claims the pair, so the singles read off; a tap on one adds nothing again
+        #expect(model.draft == "friends, family")
+        model.toggle("family")
+        model.toggle("family")
+        #expect(model.draft == "friends, family")
+        // and the claim is the question's: the comma chip reads chosen, its tap removes the pair
+        #expect(model.isChosen("friends, family"))
+        model.toggle("friends, family")
+        #expect(model.draft.isEmpty)
+        // equal-length chips claim in the question's order, the same every time
+        let ties = QuestionsModel.runs(of: ["a, b", "b, c"], in: ["a", "b", "c"])
+        #expect(ties["a, b"] == [0 ..< 2])
+        #expect(ties["b, c"] == nil)
+    }
+
     @Test("chips match the field whatever the case: 'Tech' chooses tech, and a tap removes it, never a duplicate")
     func caseInsensitive() {
         let (model, _) = quickModel()
@@ -181,14 +234,15 @@ private final class WordsEar: Flows.Listening {
 @MainActor
 @Observable
 private final class ChipFirstRun: Flows.FirstRun {
-    let questions = [Flows.FirstRunQuestion.paperQuickAnswers]
+    let questions: [Flows.FirstRunQuestion]
     var answeredKeys: Set<Flows.QuestionKey> = []
     @ObservationIgnored private let ear: WordsEar?
     @ObservationIgnored var holds = false
     @ObservationIgnored private var waiting: CheckedContinuation<Void, Never>?
 
-    init(ear: WordsEar?) {
+    init(ear: WordsEar?, questions: [Flows.FirstRunQuestion] = [.paperQuickAnswers]) {
         self.ear = ear
+        self.questions = questions
     }
 
     var isHolding: Bool {
