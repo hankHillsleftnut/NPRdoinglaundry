@@ -24,25 +24,17 @@ struct TranscriptColumn: View {
     let transcript: Flows.Transcript
     /// The line being read; nil lights none.
     let current: Int?
-    /// A tap on a line, with its index (PC-2 → why this is here). Nil: the lines are plain text (ON-11).
-    var onTapLine: ((Int) -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RDimension.space5) {
                 ForEach(Array(transcript.lines.enumerated()), id: \.element.id) { index, line in
-                    if let onTapLine {
-                        Button {
-                            onTapLine(index)
-                        } label: {
-                            lineText(line, index: index)
-                        }
-                        .buttonStyle(TranscriptLineStyle())
-                        .accessibilityHint("shows why this is here")
-                        .accessibilityIdentifier("player.line.\(index)")
-                    } else {
-                        lineText(line, index: index)
-                    }
+                    Text(line.text)
+                        .rText(.transcriptLine)
+                        .foregroundStyle(index == current ? RColor.textPrimary : RColor.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityValue(index == current ? "being read" : "")
                 }
             }
             .padding(.top, RDimension.space6)
@@ -51,24 +43,5 @@ struct TranscriptColumn: View {
         .rProgressiveBlur(.transcriptTop)
         .rProgressiveBlur(.transcriptBottom)
         .accessibilityIdentifier("player.transcript")
-    }
-
-    private func lineText(_ line: Flows.TranscriptLine, index: Int) -> some View {
-        Text(line.text)
-            .rText(.transcriptLine)
-            .foregroundStyle(index == current ? RColor.textPrimary : RColor.textTertiary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityValue(index == current ? "being read" : "")
-    }
-}
-
-/// A tappable line looks exactly like a plain one at rest; pressed, it dims (no scale: a paragraph
-/// that shrinks reflows the column).
-private struct TranscriptLineStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? RNumber.opacityPressed : 1)
     }
 }

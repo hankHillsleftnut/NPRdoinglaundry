@@ -317,14 +317,17 @@ final class QuestionsModel {
     func toggle(_ chip: String) {
         // never while an answer is on its way: the words would land on a question being answered
         guard !isFinished, !isSending, question?.quickAnswers.contains(chip) == true else { return }
+        // on or off as the person saw it before the tap: while listening the chips show off (the
+        // field is empty), so a tap turns its chip on even when the ear already heard its words
+        let wasChosen = composer == .typing && isChosen(chip)
         if composer != .typing {
             stopHearing()
         }
         var parts = Self.parts(of: draft)
-        if parts.contains(where: { Self.same($0, chip) }) {
+        if wasChosen {
             // every spelling of it ("tech, Tech" typed by hand), so the chip really turns off
             parts.removeAll { Self.same($0, chip) }
-        } else {
+        } else if !parts.contains(where: { Self.same($0, chip) }) {
             parts.append(chip)
         }
         draft = parts.joined(separator: ", ")

@@ -199,10 +199,6 @@ private final class CountingEntries: EntriesData {
     /// Holds the next first page this long (a slow search).
     var slowFirstPage: Duration = .zero
 
-    func entry(id _: String) async -> Result<Flows.Journal.Entry, Flows.Failure> {
-        .failure(Flows.Failure(.notFound))
-    }
-
     func entries(cursor: String?, query _: String?) async -> Result<Flows.Page<Flows.Journal.Entry>, Flows.Failure> {
         let rest = SampleEntries.rest
         cursors.append(cursor)
@@ -215,6 +211,11 @@ private final class CountingEntries: EntriesData {
         }
         // yesterday again, on the next page
         return .success(Flows.Page(items: [rest[1]], nextCursor: nil))
+    }
+
+    func entry(id: String) async -> Result<Flows.Journal.Entry, Flows.Failure> {
+        let found = SampleEntries.rest.first { $0.id == id }
+        return found.map { .success($0) } ?? .failure(Flows.Failure(.notFound))
     }
 
     func retry(clientEntryId _: String) async {

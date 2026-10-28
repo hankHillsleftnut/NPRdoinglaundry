@@ -15,16 +15,18 @@ struct EntryPage: View {
     var drawn: EntryDrawnModel?
 
     var body: some View {
-        VStack(spacing: RDimension.space0) {
-            RTopBar(variant: .entry(barVariant))
-            ScrollView {
-                content
-                    .padding(.top, RDimension.space4)
-                    .padding(.horizontal, RDimension.spaceScreenMargin)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        GeometryReader { proxy in
+            VStack(spacing: RDimension.space0) {
+                RTopBar(variant: .entry(barVariant))
+                ScrollView {
+                    content
+                        .padding(.top, RDimension.space4)
+                        .padding(.horizontal, RDimension.spaceScreenMargin)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollIndicators(.hidden)
+                deleteRow(bottomInset: proxy.safeAreaInsets.bottom)
             }
-            .scrollIndicators(.hidden)
-            deleteRow
         }
         .background(RColor.backgroundCanvas.ignoresSafeArea())
         .accessibilityAction(.escape) {
@@ -44,7 +46,7 @@ struct EntryPage: View {
         case .loading:
             Color.clear.frame(height: RDimension.sizeTouchTarget)
         case let .failed(reason):
-            REmptyLine(line: reason)
+            REmptyLine(line: reason, action: .init(title: "try again") { Task { await model.load() } })
         case let .shown(words, meta, standing):
             if let drawn {
                 drawnContent(drawn, words: words, meta: meta, standing: standing)
@@ -119,13 +121,20 @@ struct EntryScreen: View {
         capabilities: EntryCapabilities = .cut,
         claims: [TookClaim] = [],
         start: EntryDrawnModel.Start = .rest,
+        edits: EntryEdits? = nil,
         onDelete: (() -> Void)? = nil,
         back: @escaping () -> Void
     ) {
         _model = State(initialValue: EntryPageModel(id: id, data: data, capabilities: capabilities))
-        // the drawn parts exist only when a capability is on (all off = the app's cut)
-        // the edit and the drawn parts live here; nil only when every capability is off
-        _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(claims: claims, start: start, onDelete: onDelete ?? back))
+        // the edit and the drawn parts live here; nil only when every capability is off. A save goes to
+        // `edits` (owned above the page), so a reopened entry keeps it
+        _drawn = State(initialValue: capabilities == EntryCapabilities() ? nil : EntryDrawnModel(
+            claims: claims,
+            start: start,
+            savedWords: edits?.saved(for: id),
+            onSave: { edits?.save($0, for: id) },
+            onDelete: onDelete ?? back
+        ))
         self.back = back
     }
 

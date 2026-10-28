@@ -198,8 +198,8 @@ struct FlowHostTests {
 
     // MARK: The end
 
-    @Test("the last question hands on to privacy; privacy's end stays put (connect isn't a step yet)")
-    func questionsToPrivacyThenEnds() async {
+    @Test("the last question hands on to privacy; privacy's end goes on to connect")
+    func questionsToPrivacyToConnect() async {
         let store = MemoryFlowStore(SampleFlowSaved(step: .questions))
         let model = flow(store)
         let page = QuestionsModel(data: model.firstRun, kept: model.answers)
@@ -218,28 +218,114 @@ struct FlowHostTests {
         #expect(store.saved?.step == .privacy)
         #expect(model.answers.count == page.questions.count)
 
-        // Retro reads to the end (instant clock): privacy is done, and with no row the flow ends here
+        // Retro reads to the end (instant clock): privacy is done, on to connect; not the end of the walk
         let privacy = model.makePrivacy(clock: FlowImmediateClock())
         await privacy.run()
         #expect(privacy.hasLeft)
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
+        #expect(model.isAtEnd == false)
     }
 
-    @Test("privacy: a tap moves on early (ending the flow for now); a fresh visit's back returns to the questions")
+    @Test("privacy: a tap moves on early to connect; connect's back returns to privacy; privacy's back to the questions")
     func privacyMoves() {
         let model = flow(MemoryFlowStore(), start: .privacy)
         let tapped = model.makePrivacy(clock: FlowImmediateClock())
         tapped.tapAnywhere()
         #expect(tapped.hasLeft)
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
         // a left page never fires again: a later back on it moves nothing
         tapped.back()
-        #expect(model.step == .privacy)
+        #expect(model.step == .connect)
 
+        model.send(.connectBack)
+        #expect(model.step == .privacy)
         let visit = model.makePrivacy(clock: FlowImmediateClock())
         visit.back()
         #expect(visit.hasLeft)
         #expect(model.step == .questions)
+    }
+
+    // MARK: The end of what's built
+
+    @Test("the tease's end ends the walk: the start-over pill shows there, and starting over is a fresh splash")
+    func endOfWhatsBuilt() {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .tease)
+        model.answered(.namePlace, words: "sam.")
+        #expect(model.isAtEnd == false)
+        model.send(.teaseEnded)
+        #expect(model.step == .tease)
+        #expect(model.endedAt == .tease)
+        #expect(model.isAtEnd)
+        // a relaunch at the end shows the pill at once
+        #expect(store.saved?.endedAt == .tease)
+        #expect(flow(store).isAtEnd)
+
+        let fresh = model.startedOver()
+        #expect(fresh.step == .splash)
+        #expect(fresh.answers.isEmpty)
+        #expect(fresh.isAtEnd == false)
+        #expect(store.saved == SampleFlowSaved(step: .splash))
+    }
+
+    // MARK: The tease (J2)
+
+    @Test("the tease plays on its own from 0:00 and its end hands on once: the walk ends there for now")
+    func teasePlaysAndEnds() async {
+        let model = flow(MemoryFlowStore(), start: .gettingReady)
+        model.send(.episodeReady)
+        #expect(model.step == .tease)
+        let sheet = model.teaseSheet()
+        #expect(model.teaseSheet() === sheet)
+        // it rises playing, from 0:00
+        #expect(sheet.state == .playing)
+        #expect(sheet.playback.position == 0)
+        // its end, without racing 40 beats against a bounded settle
+        sheet.playback.seek(to: 10)
+        await settle { model.isAtEnd }
+        #expect(sheet.state == .ended)
+        #expect(model.step == .tease)
+        #expect(model.endedAt == .tease)
+    }
+
+    @Test("while the tease is up, the sheet covers getting ready (hidden, out of touch, modal); never before or on other steps")
+    func sheetCoversOnlyDuringTheTease() {
+        let model = flow(MemoryFlowStore(), start: .gettingReady)
+        #expect(model.sheetCoversPage == false)
+        model.send(.episodeReady)
+        #expect(model.sheetCoversPage)
+        // the end of the tease keeps the sheet up (the pill shows over it)
+        model.send(.teaseEnded)
+        #expect(model.sheetCoversPage)
+        for step in FlowStep.allCases where step != .tease {
+            #expect(flow(MemoryFlowStore(), start: step).sheetCoversPage == false, "\(step)")
+        }
+    }
+
+    @Test("the tease's collapse hands on like its end (row 39 default until the founder answers)")
+    func teaseCollapseHandsOn() {
+        let model = flow(MemoryFlowStore(), start: .tease)
+        let sheet = model.teaseSheet()
+        sheet.collapse()
+        #expect(model.endedAt == .tease)
+        // the tease stops as it hands on
+        #expect(sheet.state == .paused)
+        // a second tap does nothing more
+        sheet.collapse()
+        #expect(sheet.hasCollapsed)
+    }
+
+    @Test("a stray event with no planned hand-off never shows the pill (the invite's phase after 'you're in')")
+    func strayEventIsNotTheEnd() {
+        let model = flow(MemoryFlowStore(), start: .youreIn)
+        model.send(.ticketTorn)
+        model.send(.connectDone)
+        #expect(model.endedAt == nil)
+        #expect(model.isAtEnd == false)
+        // a real hand-off still moves on as before
+        model.send(.begin)
+        #expect(model.step == .questions)
+        #expect(model.isAtEnd == false)
     }
 
     @Test("back from privacy opens the last question with its words in the composer; sent unchanged, on to privacy")
@@ -340,7 +426,7 @@ struct FlowHostTests {
 
     // MARK: Getting ready (GR.ready)
 
-    @Test("getting ready: the answer is kept on the flow and comes back after a relaunch; made ends the flow there")
+    @Test("getting ready: the answer is kept on the flow and comes back after a relaunch; made raises the tease")
     func gettingReadyKeepsAndEnds() async {
         let store = MemoryFlowStore(SampleFlowSaved(step: .gettingReady))
         let model = flow(store)
@@ -362,11 +448,12 @@ struct FlowHostTests {
         #expect(model.answers[.thisWeek] == "the investor call on thursday")
         await page.run()
         #expect(made == 1)
-        // no row to the tease yet: the flow ends cleanly here
-        #expect(model.step == .gettingReady)
+        // made: the tease rises over getting ready
+        #expect(model.step == .tease)
 
+        // a relaunch at the tease keeps getting ready's words under it
         let again = flow(store)
-        #expect(again.step == .gettingReady)
+        #expect(again.step == .tease)
         let resumed = GettingReadyModel(
             firstRun: again.firstRun,
             episode: again.gettingReadyEpisode(),
@@ -376,6 +463,27 @@ struct FlowHostTests {
         )
         #expect(resumed.goingIn == "the investor call on thursday")
         #expect(resumed.spokenWords == "the investor call on thursday")
+    }
+
+    @Test("connect: continue or later moves on to getting ready and is kept; back goes to privacy; a connection lasts the flow")
+    func connectMovesOnToGettingReady() async {
+        let store = MemoryFlowStore()
+        let model = flow(store, start: .connect)
+        #expect(model.step == .connect)
+        await ConnectModel(data: model.connect, onDone: { _ in }, onBack: {}).connect("apple_health")
+        #expect(model.connect.knowsYou.filled == 2)
+        model.send(.connectBack)
+        #expect(model.step == .privacy)
+        model.send(.privacyDone)
+        #expect(model.step == .connect)
+        model.send(.connectDone)
+        #expect(model.step == .gettingReady)
+        #expect(store.saved?.step == .gettingReady)
+        // the page's own exits are the flow's one event: later goes on too
+        let later = flow(MemoryFlowStore(), start: .connect)
+        let page = ConnectModel(data: later.connect, onDone: { _ in later.send(.connectDone) }, onBack: { later.send(.connectBack) })
+        page.later()
+        #expect(later.step == .gettingReady)
     }
 
     @Test("getting ready's sample episode starts when the page first asks, not at launch, and stays the same one")

@@ -74,8 +74,7 @@ final class SignInModel {
         phase = .rest
     }
 
-    /// AC-1 `1GY6-0` draws the link where the splash has its legal line (`1F53-0`); welcome back has no
-    /// legal line in Paper, and the splash it opens carries it.
+    /// Welcome back carries the link (AC-1 `1GY6-0`, top-right by the founder's choice); the splash doesn't.
     var offersNewHere: Bool {
         look == .returning
     }

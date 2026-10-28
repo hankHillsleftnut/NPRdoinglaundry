@@ -337,9 +337,9 @@ enum DemoFlowEdges {
     // MARK: outside the app (flow-coverage.md §4)
 
     static let outside: [DemoEdge] = [
-        DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .pr(253), join: "D30 -DemoOutside share"),
-        DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .pr(253), join: "DEMO.app.c (save closes: DM-3)"),
-        DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .pr(253), join: "DEMO.app.c"),
+        DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .planned("DEMO.app share, after #220-#222"), join: "D30 -DemoOutside share"),
+        DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .pr(220), join: "DEMO.app share, after #220-#222 (save closes: DM-3)"),
+        DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .pr(220), join: "DEMO.app share, after #220-#222"),
         DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("W7 (DEMO.app.c stands in for share and brief only)")),
         DemoEdge("X04a", .ex3, "your brief is ready", .tap, .jr2, .route("brief"), .pr(253), join: "-DemoOutside brief"),
         DemoEdge("X04b", .ex3, "a new episode", .tap, .pc2, .route("episode"), .planned("W7 + PC-2 as an app sheet"), join: "-DemoOutside episode (not built)"),

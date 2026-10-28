@@ -13,7 +13,7 @@ struct LearnedPage: View {
 
     var body: some View {
         SettingsPageFrame(title: "what i've learned", back: back) {
-            if data.learned.state == .learning, let headline = data.learned.headline {
+            if Self.hasContent(data.learned), let headline = data.learned.headline {
                 // Paper 1GTJ-0: three lines 12 apart inside the margin
                 VStack(alignment: .leading, spacing: RDimension.space3) {
                     Text(headline)
@@ -39,9 +39,15 @@ struct LearnedPage: View {
         }
     }
 
+    /// Whether there is something to show: Paper draws the page only with its sentence. Anything else
+    /// (too early, off, unknown, or learning without a sentence yet) keeps ST-1's row inert.
+    static func hasContent(_ learned: Flows.Settings.Learned) -> Bool {
+        learned.state == .learning && learned.headline?.isEmpty == false
+    }
+
     /// "last changed on sunday"
     static func changed(_ date: Date) -> String {
-        let day = date.formatted(Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX")).weekday(.wide))
+        let day = date.formatted(Date.FormatStyle(locale: Locale(identifier: "en_US_POSIX"), calendar: Calendar(identifier: .gregorian)).weekday(.wide))
         return "last changed on \(day.lowercased())"
     }
 }

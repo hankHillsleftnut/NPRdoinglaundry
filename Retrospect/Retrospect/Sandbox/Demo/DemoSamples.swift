@@ -25,8 +25,6 @@ final class DemoSamples {
     let settings = SampleSettings()
     /// ST-9's sign-out (AC-2): nothing unsent, so it signs out at once; the demo hears `.done`.
     let signOut = SampleSignOutFlow(unsent: 0)
-    /// EX-1: the shared item (the sample records the save; it doesn't write into the journal, DM-3).
-    let share = SampleShare()
     /// JR-2: the brief on the sample player, as the brief lane's launcher plays it.
     let brief = BriefSheetSource(
         playback: SamplePlayback(scenario: .briefPaperPlaying, clock: ContinuousClock()),
@@ -42,7 +40,6 @@ extension View {
             .environment(\.settingsData, samples.settings)
             .environment(\.signOutFlow, samples.signOut)
             .environment(\.briefSheetSource, samples.brief)
-            .environment(\.shareData, samples.share)
     }
 }
 #endif

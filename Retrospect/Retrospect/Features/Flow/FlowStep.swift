@@ -19,12 +19,14 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case youreIn
     /// ON-3–9: the questions (#190).
     case questions
-    /// ON-5: privacy (#196). Moves on when Retro finishes reading (decision 3); its row to connect (ON-6)
-    /// lands with connect, so until then the flow ends here.
+    /// ON-5: privacy (#196). Moves on when Retro finishes reading (decision 3).
     case privacy
-    /// ON-10: getting ready (GR.ready). Reached from connect (ON-6) once connect is a step; until
-    /// then `-FlowStart gettingReady` opens it.
+    /// ON-6: connect (CN.connect, #199), after privacy.
+    case connect
+    /// ON-10: getting ready (GR.ready), after connect.
     case gettingReady
+    /// ON-11: the tease, the player sheet risen over getting ready (PS.sheet), playing on its own.
+    case tease
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -40,12 +42,17 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case questionsDone
     /// ON-5: Retro finished reading, or a tap moved on early (decision 3).
     case privacyDone
-    /// A page's own back chevron that leaves the page (ON-5 back to the last question). Back between
-    /// questions stays inside ON-3–9.
+    /// ON-5's back chevron, back to the last question. Back between questions stays inside ON-3–9.
     case back
-    /// ON-10: the first episode is made. Its edge to the tease (ON-11, SCREEN-MAP §3.1 row 34) lands
-    /// with the tease; until then the flow ends at getting ready.
+    /// ON-6: "continue" or "later" (both go on to getting ready, founder decision 5).
+    case connectDone
+    /// ON-6: the back chevron, back to privacy (ON-5).
+    case connectBack
+    /// ON-10: the first episode is made: the tease rises and plays (row 34, decision 11).
     case episodeReady
+    /// ON-11: the tease reached its end (the 10 s mark, decision 11) or its collapse was tapped. Its row
+    /// to the paywall (row 38) lands with the paywall; until then the walk ends here.
+    case teaseEnded
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.
@@ -61,13 +68,17 @@ struct FlowEdge: Equatable, Sendable {
     }
 
     /// Every edge between merged screens, with its SCREEN-MAP §3.1 row (`FlowPlan.edges` is the whole
-    /// first run). `privacy` has no forward row yet: the flow ends there (connect adds the next one).
+    /// first run). `tease` has no forward row yet: the flow ends there (the paywall adds the next one).
     static let table: [Self] = [
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
         Self(.youreIn, .begin, .questions), // 13
         Self(.questions, .questionsDone, .privacy), // 19
+        Self(.privacy, .privacyDone, .connect), // 20
         Self(.privacy, .back, .questions), // 23
+        Self(.connect, .connectDone, .gettingReady), // 29 (continue) and 30 (later)
+        Self(.connect, .connectBack, .privacy), // 32
+        Self(.gettingReady, .episodeReady, .tease), // 34
     ]
 }
 

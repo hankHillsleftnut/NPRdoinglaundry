@@ -11,10 +11,12 @@ extension Flows {
         enum Kind: Hashable, Sendable {
             case yourWords, calendar
 
-            /// The kind well's glyph (as the evidence row's lab page).
+            /// The kind well's glyph. Paper 1GCZ-0 draws your words as the journal's page glyph (the tab bar's
+            /// `text.page`); its calendar has no grid, which SF Symbols doesn't offer, so `calendar` stands in
+            /// (repo rule: SF Symbols, DISCREPANCIES L0-10 / YO-D29).
             var symbol: String {
                 switch self {
-                case .yourWords: "doc.text"
+                case .yourWords: "text.page"
                 case .calendar: "calendar"
                 }
             }

@@ -69,15 +69,18 @@ extension View {
         // a stroke twice the inset's width, clipped to the shape, leaves the inset half inside
         let inset = RDimension.sizeBorderDefault * 2
         return background(RColor.backgroundRaised, in: shape)
-            .overlay(shape.stroke(RColor.depthStrokeInner, lineWidth: inset).clipShape(shape))
-            .overlay(alignment: .top) {
-                shape.stroke(RColor.depthStrokeInnerTop, lineWidth: inset)
-                    .clipShape(shape)
-                    .mask(alignment: .top) { Rectangle().frame(height: RDimension.sizeBorderDefault) }
+            .overlay {
+                ZStack(alignment: .top) {
+                    shape.stroke(RColor.depthStrokeInner, lineWidth: inset).clipShape(shape)
+                    shape.stroke(RColor.depthStrokeInnerTop, lineWidth: inset)
+                        .clipShape(shape)
+                        .mask(alignment: .top) { Rectangle().frame(height: RDimension.sizeBorderDefault) }
+                    // the rim: light mode's warm hairline; on night a faint light edge, so the paper never
+                    // sinks into the canvas where its shadow can't show (TEAR.motion, founder 27 Oct)
+                    shape.stroke(RTicketRim.color, lineWidth: RDimension.sizeBorderHairline)
+                }
+                .mask { RTicketSeamGap(shape: shape, band: inset * 1.5) } // literal-ok: the strokes' reach either side of the edge
             }
-            // the rim: light mode's warm hairline; on night a faint light edge, so the paper never sinks
-            // into the canvas where its shadow can't show (TEAR.motion, founder 27 Oct)
-            .overlay(shape.stroke(RTicketRim.color, lineWidth: RDimension.sizeBorderHairline))
             .modifier(RTicketShadow(amount: shadowed ? 1 : 0))
     }
 
@@ -101,6 +104,29 @@ private struct RTicketShadow: ViewModifier {
         content
             .shadow(color: RColor.depthShadowContact.opacity(amount), radius: 0.5, y: 1) // literal-ok: board 2IV3-0
             .shadow(color: RColor.depthShadowCast.opacity(amount), radius: 7, y: 10) // literal-ok: board 2IV3-0
+    }
+}
+
+/// Where a half's edge strokes may draw: everywhere but the perforation between the notches. Paper
+/// draws the perforation as punched circles only (founder 27 Oct: "there isn't a line that goes
+/// through the circles; it's just circles"), so the body's and the stub's edges along it carry no
+/// stroke, joined, tearing or torn; the paper parts through the bridges with no line drawn.
+struct RTicketSeamGap: View {
+    let shape: RTicketShape
+    let band: CGFloat
+
+    var body: some View {
+        let geometry = shape.geometry
+        ZStack(alignment: .topLeading) {
+            Rectangle()
+            if shape.part != .whole {
+                Rectangle()
+                    .frame(width: geometry.width - TicketGeometry.notchRadius * 2, height: band) // literal-ok: between the two notches
+                    .offset(x: TicketGeometry.notchRadius, y: geometry.perforationY - band / 2)
+                    .blendMode(.destinationOut)
+            }
+        }
+        .compositingGroup()
     }
 }
 

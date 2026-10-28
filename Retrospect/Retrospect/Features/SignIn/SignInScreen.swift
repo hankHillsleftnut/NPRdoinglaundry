@@ -5,8 +5,8 @@
 //  part generators `p47_signin_returning.py` and the handoff, Paper Desktop being closed). The You map
 //  at rest (C38.1, RYouMapRest) sits behind the words, with Paper's orb names on the splash. Live is
 //  Apple only; on sample data "Continue with Google" is there too, as Paper draws it (decision 12).
-//  Welcome back ends with "new here? get started" (AC-1 `1GY6-0`, founder 27 Oct), which opens the
-//  splash; the splash ends with the legal line. No lit object: Apple's black button leads.
+//  Welcome back carries "new here? get started" top-right (AC-1 `1GY6-0`, placed by the founder 27 Oct),
+//  which opens the splash; both looks end with the legal line. No lit object: Apple's black button leads.
 //
 import SwiftUI
 
@@ -102,11 +102,25 @@ struct SignInScreen: View {
             .rAppear()
         } else {
             VStack(spacing: RDimension.space4) {
+                if largeType, let newHereAction {
+                    // at large type the link wraps and would sit on the map: it takes its own row
+                    newHereLink(newHereAction)
+                        .padding(.trailing, RDimension.space3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 RYouMapRest(scale: mapScale)
                 words(alignment: .center)
                     .padding(.horizontal, RDimension.spaceScreenMargin)
             }
             .padding(.top, RDimension.space10)
+            // "new here? get started" top-right under the status bar (founder 27 Oct, option B), in the
+            // 40 above the map (at large type it takes its own row above the map instead)
+            .overlay(alignment: .topTrailing) {
+                if !largeType, let newHereAction {
+                    newHereLink(newHereAction)
+                        .padding(.trailing, RDimension.space3)
+                }
+            }
             .rAppear()
         }
     }
@@ -176,14 +190,11 @@ struct SignInScreen: View {
                 }
             }
             #endif
-            if let newHereAction {
-                newHereLink(newHereAction)
-            } else {
-                Text(SignInModel.legal)
-                    .rText(.metaLine) // Paper `1F53-0`: Geist 12, leading snug, no tracking
-                    .foregroundStyle(RColor.textLabel)
-                    .multilineTextAlignment(.center)
-            }
+            // the legal line ends both looks (founder 27 Oct: kept on welcome back too, over Paper's AC-1)
+            Text(SignInModel.legal)
+                .rText(.metaLine) // Paper `1F53-0`: Geist 12, leading snug, no tracking
+                .foregroundStyle(RColor.textLabel)
+                .multilineTextAlignment(.center)
         }
         .overlay(alignment: .top) {
             // The failure line floats above the button without taking layout space, so the words
@@ -198,8 +209,9 @@ struct SignInScreen: View {
         .padding(.bottom, compact ? RDimension.space4 : max(RDimension.space10 - bottomInset, RDimension.space1))
     }
 
-    /// AC-1 `1GY6-0` in its 44pt row `1GY5-0`: text-md medium, text-link, centred, 12 under the buttons.
-    /// It opens the splash (founder, 27 Oct); held still while Apple's answer is being checked.
+    /// AC-1 `1GY6-0`'s look (text-md medium, text-link, a 44pt row), placed top-right under the status
+    /// bar by the founder (27 Oct, option B; Paper draws it at the bottom). The text sits 24 from the
+    /// edge (12 padding inside the 12 inset). It opens the splash; held while Apple's answer is checked.
     private func newHereLink(_ action: @escaping () -> Void) -> some View {
         Button(SignInModel.newHere, action: action)
             .rText(.textMdMedium)
@@ -216,7 +228,7 @@ struct SignInScreen: View {
             .accessibilityIdentifier("signin.newHere")
     }
 
-    /// What "new here? get started" does, or nil where it isn't drawn (the splash has the legal line).
+    /// What "new here? get started" does, or nil on the splash (which is where it leads).
     var newHereAction: (() -> Void)? {
         guard model.offersNewHere else { return nil }
         return { [model] in model.startFresh() }
