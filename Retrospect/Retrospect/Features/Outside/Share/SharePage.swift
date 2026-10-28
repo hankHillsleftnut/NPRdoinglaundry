@@ -9,6 +9,7 @@
 //  in (EX-D10): voice capture inside an extension isn't built.
 //
 import SwiftUI
+import UIKit
 
 extension RTextStyle {
     /// "save to retrospect": Geist 14 semibold, leading snug (1H2F-0).
@@ -26,6 +27,7 @@ struct SharePage: View {
     @Bindable var model: ShareModel
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Three bands, 24 apart (QA batch 9, #220): the grabber and header stay pinned at the top; only the
     /// card and the "why" field scroll, inside their own clipped area (so nothing ever slides under the
@@ -39,15 +41,22 @@ struct SharePage: View {
             }
             .padding(.horizontal, RDimension.spaceScreenMargin)
             GeometryReader { proxy in
-                ScrollView {
-                    column
-                        // the screen margin sits inside the scroll area, so the card's shadow has room
-                        // and isn't cut by the clip
-                        .padding(.horizontal, RDimension.spaceScreenMargin)
-                        .frame(minHeight: proxy.size.height, alignment: .top)
+                ScrollViewReader { scroller in
+                    ScrollView {
+                        column
+                            // the screen margin sits inside the scroll area, so the card's shadow has room
+                            // and isn't cut by the clip
+                            .padding(.horizontal, RDimension.spaceScreenMargin)
+                            .frame(minHeight: proxy.size.height, alignment: .top)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDismissesKeyboard(.interactively)
+                    // while you write (keyboard up, the words growing) the whole field stays in view above save
+                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                        revealWhy(scroller)
+                    }
+                    .onChange(of: model.why) { revealWhy(scroller) }
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollDismissesKeyboard(.interactively)
             }
             RButton(title: "save", status: model.isSaving ? .pending : .rest) {
                 Task { await model.save() }
@@ -81,6 +90,16 @@ struct SharePage: View {
             // the field keeps its own height (48 at rest, growing with the words); the gap above takes
             // the room, not the field (QA 1, #220: it stretched to fill the sheet)
             .fixedSize(horizontal: false, vertical: true)
+            .id(Self.whyID)
+        }
+    }
+
+    private static let whyID = "share.why.group"
+
+    /// Scrolls the "why" group's bottom into view (the system only keeps the caret in view).
+    private func revealWhy(_ scroller: ScrollViewProxy) {
+        withAnimation(reduceMotion ? nil : RMotion.standard(RNumber.motionDurationFast)) {
+            scroller.scrollTo(Self.whyID, anchor: .bottom)
         }
     }
 

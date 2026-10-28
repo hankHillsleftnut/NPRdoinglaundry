@@ -49,9 +49,22 @@ final class ShareSheetLayoutUITests: XCTestCase {
         // the header stays pinned below the status bar
         XCTAssertTrue(cancel.isHittable)
         XCTAssertGreaterThanOrEqual(cancel.frame.minY, statusBarBottom(app))
-        // save sits above the keyboard and never covers the field
+        // save sits above the keyboard and never covers the field (give the reveal scroll a moment to land)
         XCTAssertLessThanOrEqual(save.frame.maxY, keyboard.frame.minY + 1)
+        let deadline = Date().addingTimeInterval(3)
+        while save.frame.intersects(field.frame), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
         XCTAssertFalse(save.frame.intersects(field.frame), "save \(save.frame) covers the field \(field.frame)")
+        keep(app, "keyboard-up")
+    }
+
+    /// Saves a still for the QA bundle when the local QA folder exists (simulator only; a no-op elsewhere).
+    @MainActor
+    private func keep(_ app: XCUIApplication, _ name: String) {
+        let folder = URL(fileURLWithPath: "/private/tmp/claude-501/pipeline-work/qa-shots")
+        guard FileManager.default.fileExists(atPath: folder.path) else { return }
+        try? app.screenshot().pngRepresentation.write(to: folder.appendingPathComponent("EX-1-\(name).png"))
     }
 
     @MainActor
@@ -73,6 +86,7 @@ final class ShareSheetLayoutUITests: XCTestCase {
         let mic = app.buttons["share.why"]
         XCTAssertTrue(mic.isHittable)
         XCTAssertFalse(save.frame.intersects(mic.frame), "save \(save.frame) covers the mic \(mic.frame)")
+        keep(app, "ax3-field")
         mic.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "the mic didn't raise the keyboard")
     }
