@@ -352,7 +352,16 @@ enum DemoFlowEdges {
 
     static let outside: [DemoEdge] = [
         DemoEdge("X01", .system, "share to retrospect", .system, .ex1, .route("share"), .main, join: "D30 -DemoOutside share"),
-        DemoEdge("X02", .ex1, "save", .tap, .jr1, .host, .main, join: "DEMO.app.c (save closes: DM-3)"),
+        DemoEdge(
+            "X02",
+            .ex1,
+            "save",
+            .tap,
+            .shell,
+            .host,
+            .main,
+            join: "DEMO.app.c: the sheet closes over the tab that was showing (the save is recorded, not written into JR-1: DM-3)"
+        ),
         DemoEdge("X03", .ex1, "cancel", .dismiss, .shell, .host, .main, join: "DEMO.app.c"),
         DemoEdge("X04", .system, "a notification arrives", .system, .ex3, .system, .planned("W7 (the demo stands in for share and brief only)")),
         DemoEdge("X04a", .ex3, "your brief is ready", .tap, .jr2, .route("brief"), .main, join: "-DemoOutside brief"),
