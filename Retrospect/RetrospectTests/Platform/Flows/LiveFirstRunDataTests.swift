@@ -105,6 +105,10 @@ struct LiveFirstRunDataTests {
         #expect(await data.answer(.struggle, text: "sleep.", given: .typed) == .failedKept(.invalid))
         #expect(await data.answer(.namePlace, text: "   ", given: .typed) == .failedKept(.invalid))
         #expect(await data.answer(.namePlace, text: long, given: .typed) == .failedKept(.invalid))
+        // the door's other refusals (profile.ts): a skip with words (and a skip at all: never sent), a NUL
+        #expect(await data.answer(.namePlace, text: "sam.", given: .skipped) == .failedKept(.invalid))
+        #expect(await data.answer(.namePlace, text: "", given: .skipped) == .failedKept(.invalid))
+        #expect(await data.answer(.namePlace, text: "sam\u{0}.", given: .typed) == .failedKept(.invalid))
 
         #expect(try rows().isEmpty)
         #expect(try answerRows().isEmpty)
@@ -193,6 +197,27 @@ struct LiveFirstRunDataTests {
         #expect(access.values == [.member])
         await data.finishQuestions()
         #expect(try rows().count == 2, "finishing again queues nothing new")
+    }
+
+    @Test("a complete left from the last session that lands while the seam opens is still heard (the listener registers before the reads)")
+    func completeLandingDuringOpenIsHeard() async throws {
+        sender.script(Store.Outbox.completeID, [.success(Store.OutboxSendResult(access: .member))])
+        try await outbox.enqueueComplete()
+        let gate = Gate()
+        sender.gate = gate
+        let drain = Task { await outbox.drain(reason: .launch) }
+        while sender.sends.isEmpty {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+
+        let opening = Task { await data.open() }
+        try await Task.sleep(for: .milliseconds(20)) // past the registration, inside the reads at worst
+        gate.open()
+        await drain.value
+        await opening.value
+
+        try await settle { data.isComplete }
+        #expect(access.values == [.member])
     }
 
     @Test("a relaunch after complete landed knows it (no second complete from the host)")

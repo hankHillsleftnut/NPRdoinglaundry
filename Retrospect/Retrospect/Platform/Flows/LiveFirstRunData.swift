@@ -63,11 +63,17 @@ final class LiveFirstRunData: Flows.FirstRun {
     func open() async {
         guard !stopped else { return }
         if completionWatch == nil {
-            completionWatch = Task { [weak self, outbox] in
-                for await access in await outbox.completions() {
-                    guard let self, !stopped else { return }
-                    isComplete = true
-                    await setAccess(access)
+            // registered before the reads below, so a `complete` left from the last session that lands while
+            // they run (the outbox may already be draining) is heard: the stream replays nothing
+            let completions = await outbox.completions()
+            guard !stopped else { return }
+            if completionWatch == nil {
+                completionWatch = Task { [weak self] in
+                    for await access in completions {
+                        guard let self, !stopped else { return }
+                        isComplete = true
+                        await setAccess(access)
+                    }
                 }
             }
         }
@@ -95,8 +101,10 @@ final class LiveFirstRunData: Flows.FirstRun {
     func answer(_ key: Flows.QuestionKey, text: String, given: Flows.FirstRunQuestion.Given) async -> Flows.AnswerOutcome {
         guard !stopped else { return .failedKept(.signedOut) }
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // a key the door refuses, no words, or too many: refused here, so no row can ever dead-letter for it
-        guard let doorKey = Backend.Endpoints.OnboardingAnswer.QuestionKey(flow: key), !words.isEmpty, words.utf16.count <= Self.longestAnswer
+        // everything the door refuses (profile.ts AnswerCreateBody): a key it doesn't accept, a skip (never sent: no skip, founder
+        // rule), no words, too many, a NUL. Refused here, so no row can ever dead-letter for it.
+        guard let doorKey = Backend.Endpoints.OnboardingAnswer.QuestionKey(flow: key), given != .skipped, !words.isEmpty,
+              words.utf16.count <= Self.longestAnswer, !words.contains("\u{0}")
         else { return .failedKept(.invalid) }
         do {
             try await outbox.enqueueAnswer(key: key, doorKey: doorKey, text: words, given: .init(flow: given), createdAt: now())

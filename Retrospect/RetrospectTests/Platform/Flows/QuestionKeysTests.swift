@@ -50,9 +50,11 @@ struct QuestionKeysTests {
         let names: Set<String> = backendKeys.union(Flows.FirstRunQuestion.core.map(\.key.rawValue))
         let flowKeys: [Flows.QuestionKey] = names.compactMap { Flows.QuestionKey(rawValue: $0) }.filter { $0 != Flows.QuestionKey.unknown }
         let appKeys: Set<String> = Set(flowKeys.compactMap { DoorKey(flow: $0) }.map(\.rawValue))
+        // a key the app defers on purpose (struggle until FR.b2) may already be on the backend: that is not drift
+        let deferred = Set(DoorKey.notYetAccepted.map(\.rawValue))
         #expect(
-            appKeys == backendKeys,
-            "app sends \(appKeys.subtracting(backendKeys).sorted()); backend only knows \(backendKeys.subtracting(appKeys).sorted())"
+            appKeys == backendKeys.subtracting(deferred),
+            "app sends \(appKeys.subtracting(backendKeys).sorted()); backend only knows \(backendKeys.subtracting(appKeys).subtracting(deferred).sorted())"
         )
     }
 
