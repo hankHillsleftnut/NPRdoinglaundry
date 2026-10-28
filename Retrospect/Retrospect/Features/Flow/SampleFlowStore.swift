@@ -81,20 +81,37 @@ struct FlowLaunch: Equatable {
     /// `-FlowStart <step>`: start there with nothing kept. Nil resumes (or starts at the splash).
     var start: FlowStep?
 
-    static let current = resolve(ProcessInfo.processInfo.arguments, environment: ProcessInfo.processInfo.environment)
+    static let current: Self = {
+        let defaults = UserDefaults.standard
+        let launch = resolve(
+            ProcessInfo.processInfo.arguments,
+            environment: ProcessInfo.processInfo.environment,
+            optedIn: defaults.bool(forKey: iconOptInKey)
+        )
+        // an explicit `-Flow sample` launch (the Core Flow scheme) is the opt-in the icon follows later
+        if parse(ProcessInfo.processInfo.arguments).isRequested {
+            defaults.set(true, forKey: iconOptInKey)
+        }
+        return launch
+    }()
+
+    /// Set once this build was launched with `-Flow sample`; removing the app clears it.
+    static let iconOptInKey = "sampleFlow.iconOptIn"
 
     /// FLOW.debug-launch (founder, DECISIONS 27 Oct; debug builds only, this whole file is DEBUG): a launch
-    /// from the home-screen icon carries no arguments, and then the sample flow opens, so the founder can
-    /// walk the first run on his phone without Xcode. Any explicit argument wins: `-Flow sample` turns it on,
-    /// `-Flow` with anything else (`-Flow live`) keeps it off, and any other flag (`-Screen`, `-DesignLab`,
-    /// `-OldHome`, Xcode's own `-NSDocumentRevisionsDebugMode`) means the launch asked for something else.
-    /// A test run (an XCTest host) never opens it by default.
-    static func resolve(_ arguments: [String], environment: [String: String]) -> Self {
+    /// from the home-screen icon carries no arguments. Once this build has been run with `-Flow sample`
+    /// (the `Retrospect · Core Flow` scheme), the icon opens the sample flow too, so the founder can walk the
+    /// first run on his phone without Xcode. Never by default: a build that was never opted in (a fresh
+    /// install, Xcode's plain scheme, a UI test's `XCUIApplication`) opens the live app whatever Xcode passes
+    /// or leaves out. Any explicit argument wins: `-Flow sample` on, `-Flow` with anything else (`-Flow live`)
+    /// off for that launch, any other flag (`-Screen`, `-DesignLab`, `-OldHome`) asks for something else.
+    /// A test host (unit tests) never opens it.
+    static func resolve(_ arguments: [String], environment: [String: String], optedIn: Bool) -> Self {
         var launch = parse(arguments)
         let flags = arguments.dropFirst().filter { $0.hasPrefix("-") }
         let testKeys = ["XCTestConfigurationFilePath", "XCTestSessionIdentifier", "XCTestBundlePath", "XCInjectBundleInto"]
         let underTest = testKeys.contains { environment[$0] != nil }
-        if flags.isEmpty, !underTest {
+        if flags.isEmpty, optedIn, !underTest {
             launch.isRequested = true
         }
         return launch

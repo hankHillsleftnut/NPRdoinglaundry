@@ -94,22 +94,30 @@ struct FlowStepTests {
         #expect(Set(rows).count == rows.count)
     }
 
-    @Test("debug: a launch with no arguments (the home-screen icon) opens the sample flow; any explicit flag wins")
+    @Test("debug: the icon opens the sample flow only once the build was opted in with -Flow sample; any explicit flag wins")
     func iconLaunchOpensTheSampleFlow() {
         let app = "/private/var/containers/Bundle/Application/X/Retrospect.app/Retrospect"
-        // the icon: no arguments, not a test run
-        #expect(FlowLaunch.resolve([app], environment: [:]) == FlowLaunch(isRequested: true, start: nil))
-        // explicit arguments win
-        #expect(FlowLaunch.resolve([app, "-Flow", "live"], environment: [:]).isRequested == false)
-        #expect(FlowLaunch.resolve([app, "-Flow", "sample", "-FlowStart", "questions"], environment: [:]) == FlowLaunch(isRequested: true, start: .questions))
-        #expect(FlowLaunch.resolve([app, "-Screen", "PI0", "-State", "splash"], environment: [:]).isRequested == false)
-        #expect(FlowLaunch.resolve([app, "-DesignLab"], environment: [:]).isRequested == false)
-        #expect(FlowLaunch.resolve([app, "-OldHome"], environment: [:]).isRequested == false)
-        // Xcode's own run arguments mean the launch came from Xcode's plain scheme: the live root, as before
-        #expect(FlowLaunch.resolve([app, "-NSDocumentRevisionsDebugMode", "YES"], environment: [:]).isRequested == false)
-        // a test host never opens it by default
-        #expect(FlowLaunch.resolve([app], environment: ["XCTestConfigurationFilePath": "/x"]).isRequested == false)
-        #expect(FlowLaunch.resolve([app], environment: ["XCTestSessionIdentifier": "x"]).isRequested == false)
+        // never by default: no arguments on a build never opted in (fresh install, Xcode's plain Run, a UI
+        // test's XCUIApplication) is the live app
+        #expect(FlowLaunch.resolve([app], environment: [:], optedIn: false).isRequested == false)
+        // the icon, once opted in: the sample flow
+        #expect(FlowLaunch.resolve([app], environment: [:], optedIn: true) == FlowLaunch(isRequested: true, start: nil))
+        // explicit arguments win, opted in or not
+        for optedIn in [false, true] {
+            #expect(FlowLaunch.resolve([app, "-Flow", "live"], environment: [:], optedIn: optedIn).isRequested == false)
+            #expect(
+                FlowLaunch.resolve([app, "-Flow", "sample", "-FlowStart", "questions"], environment: [:], optedIn: optedIn)
+                    == FlowLaunch(isRequested: true, start: .questions)
+            )
+            #expect(FlowLaunch.resolve([app, "-Screen", "PI0", "-State", "splash"], environment: [:], optedIn: optedIn).isRequested == false)
+            #expect(FlowLaunch.resolve([app, "-DesignLab"], environment: [:], optedIn: optedIn).isRequested == false)
+            #expect(FlowLaunch.resolve([app, "-OldHome"], environment: [:], optedIn: optedIn).isRequested == false)
+            // any flag counts as "something else was asked", including one Xcode may add on its own (unchecked on iOS)
+            #expect(FlowLaunch.resolve([app, "-NSDocumentRevisionsDebugMode", "YES"], environment: [:], optedIn: optedIn).isRequested == false)
+        }
+        // a test host never opens it, even opted in
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestConfigurationFilePath": "/x"], optedIn: true).isRequested == false)
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestSessionIdentifier": "x"], optedIn: true).isRequested == false)
         // and this test process itself (a test host) is not in the sample flow
         #expect(FlowLaunch.current.isRequested == false)
     }

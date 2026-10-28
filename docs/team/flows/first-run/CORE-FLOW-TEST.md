@@ -42,5 +42,6 @@ Or in Xcode: **Product → Scheme → Edit Scheme… → Run → Arguments**. Ti
 You can also start from a later screen by changing `splash` to `inviteGate`, `youreIn`, `questions`, `privacy`, `connect`, `gettingReady`, `tease`, `paywall` or `firstHome`. Spell it exactly like that: a misspelled step is ignored, and the flow carries on where it was.
 
 ## Good to know
-- **After the first install, the home-screen icon works too.** In this test build, tapping the Retrospect icon opens the sample flow, carrying on where you left off. (Only test builds do this; the App Store app never does.) Running from Xcode with the `Retrospect · Core Flow` scheme does the same.
+- **After the first run from Xcode, the home-screen icon works too.** Once this test build has been run once with the `Retrospect · Core Flow` scheme, tapping the Retrospect icon opens the sample flow, carrying on where you left off. (Only test builds do this; the App Store app never does. The plain `Retrospect` scheme always opens the normal app.) Removing the app forgets this.
+- **Links do nothing in the sample flow.** An invite link, the record button on the lock screen or a notification tap won't open anything while it's on. To try those, run from Xcode with the plain `Retrospect` scheme.
 - What you type stays on this phone, in the sample flow only. It is never sent anywhere.
