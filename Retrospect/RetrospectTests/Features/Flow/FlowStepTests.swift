@@ -31,18 +31,20 @@ struct FlowStepTests {
         }
     }
 
-    @Test("the tease ends the flow: its end has no row until the paywall (ON-12) adds one")
-    func endsAtTease() {
-        #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
-        #expect(FlowEdge.table.contains { $0.from == .tease } == false)
-        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == nil)
-        let withPaywall = FlowEdge.table + [FlowEdge(.tease, .teaseEnded, .splash)]
-        #expect(FlowStep.next(from: .tease, event: .teaseEnded, table: withPaywall) == .splash)
+    @Test("first home ends the first run: a price reaches it, and nothing leaves it (no forward row, no back)")
+    func endsAtFirstHome() {
+        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == .paywall)
+        #expect(FlowStep.next(from: .paywall, event: .subscribed) == .firstHome)
+        #expect(FlowEdge.table.contains { $0.from == .firstHome } == false)
+        for event in FlowEvent.allCases {
+            #expect(FlowStep.next(from: .firstHome, event: event) == nil, "\(event)")
+        }
+        #expect(FlowStep.allCases.last == .firstHome)
     }
 
     @Test("each edge of the table is the move next(from:event:) makes")
     func eachEdgeMoves() {
-        #expect(FlowEdge.table.count == 9)
+        #expect(FlowEdge.table.count == 11)
         for edge in FlowEdge.table {
             #expect(FlowStep.next(from: edge.from, event: edge.event) == edge.to, "\(edge.from) \(edge.event)")
         }
@@ -55,6 +57,8 @@ struct FlowStepTests {
         #expect(FlowStep.next(from: .connect, event: .connectDone) == .gettingReady)
         #expect(FlowStep.next(from: .connect, event: .connectBack) == .privacy)
         #expect(FlowStep.next(from: .gettingReady, event: .episodeReady) == .tease)
+        #expect(FlowStep.next(from: .tease, event: .teaseEnded) == .paywall)
+        #expect(FlowStep.next(from: .paywall, event: .subscribed) == .firstHome)
     }
 
     @Test("connect (ON-6): continue and later both go on to getting ready; back returns to privacy")
@@ -90,6 +94,26 @@ struct FlowStepTests {
         #expect(Set(rows).count == rows.count)
     }
 
+    @Test("debug: a launch with no arguments (the home-screen icon) opens the sample flow; any explicit flag wins")
+    func iconLaunchOpensTheSampleFlow() {
+        let app = "/private/var/containers/Bundle/Application/X/Retrospect.app/Retrospect"
+        // the icon: no arguments, not a test run
+        #expect(FlowLaunch.resolve([app], environment: [:]) == FlowLaunch(isRequested: true, start: nil))
+        // explicit arguments win
+        #expect(FlowLaunch.resolve([app, "-Flow", "live"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-Flow", "sample", "-FlowStart", "questions"], environment: [:]) == FlowLaunch(isRequested: true, start: .questions))
+        #expect(FlowLaunch.resolve([app, "-Screen", "PI0", "-State", "splash"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-DesignLab"], environment: [:]).isRequested == false)
+        #expect(FlowLaunch.resolve([app, "-OldHome"], environment: [:]).isRequested == false)
+        // Xcode's own run arguments mean the launch came from Xcode's plain scheme: the live root, as before
+        #expect(FlowLaunch.resolve([app, "-NSDocumentRevisionsDebugMode", "YES"], environment: [:]).isRequested == false)
+        // a test host never opens it by default
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestConfigurationFilePath": "/x"]).isRequested == false)
+        #expect(FlowLaunch.resolve([app], environment: ["XCTestSessionIdentifier": "x"]).isRequested == false)
+        // and this test process itself (a test host) is not in the sample flow
+        #expect(FlowLaunch.current.isRequested == false)
+    }
+
     @Test("-Flow sample turns the host on; -FlowStart names a step; anything else is ignored")
     func launchArguments() {
         #expect(FlowLaunch.parse([]) == FlowLaunch())
@@ -100,7 +124,9 @@ struct FlowStepTests {
         #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "privacy"]).start == .privacy)
         // the Core Flow scheme's reset
         #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "splash"]) == FlowLaunch(isRequested: true, start: .splash))
-        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "paywall"]).start == nil)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "paywall"]).start == .paywall)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "firstHome"]).start == .firstHome)
+        #expect(FlowLaunch.parse(["-Flow", "sample", "-FlowStart", "nowhere"]).start == nil)
         #expect(FlowLaunch.parse(["-Screen", "PI0", "-State", "splash"]).isRequested == false)
     }
 }

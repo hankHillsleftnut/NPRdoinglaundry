@@ -26,6 +26,8 @@ final class SampleFlowModel {
     /// The questions page finished `firstRun` (its `finishQuestions()` ran) in this launch: a later pass
     /// after back only hands on. In memory, like the seam it describes.
     private(set) var questionsFinished = false
+    /// First home was reached by walking (a price on the paywall) in this launch: its card pops once.
+    private(set) var arrivedHome = false
 
     /// PI0 on the sample sign-in: the first tap signs in (no scripted failure in the flow).
     let signIn: SignInModel
@@ -33,6 +35,8 @@ final class SampleFlowModel {
     let invite: InviteModel
     /// ON-3–9's seam (ON-10's answers go through it too).
     let firstRun: SampleFirstRunData
+    /// ON-13's journal on its first day (the journal tab's sample), one for the flow.
+    let journalDay = SampleJournalData(scenario: .dayOne)
     /// ON-6's sample sources: one for the whole flow, so a connection made there is still made on a
     /// later visit.
     let connect: SampleConnect
@@ -137,6 +141,8 @@ final class SampleFlowModel {
             questionsFinished = true
         }
         cameBack = event == .back
+        // the card pops once, as first home arrives from the paywall (not on a relaunch there)
+        arrivedHome = next == .firstHome
         step = next
         save()
     }
@@ -207,6 +213,28 @@ final class SampleFlowModel {
                     followTease(playback)
                 }
             }
+        }
+    }
+
+    /// ON-13's recap: the person's own answers from this flow (FH-Q2 A), first sentence each.
+    var firstHomeRecap: SetupRecap {
+        SetupRecap.make(answers: answers)
+    }
+
+    /// ON-13's first episode card: the tease again, from 0:00, in the player sheet (FH-Q3 A).
+    func makeFirstEpisodePlayer(onCollapse: @escaping () -> Void) -> PlayerSheetModel {
+        PlayerSheetModel(
+            playback: SamplePlayback(scenario: .tease, clock: clock),
+            transcript: SampleTranscript.tease,
+            onCollapse: onCollapse
+        )
+    }
+
+    /// ON-12 for one visit, on the sample (dummy) plans: either price answers "subscribed" at once and
+    /// sends `subscribed` (nothing is charged, DECISIONS 26 Oct night). A left page never fires again.
+    func makePaywall() -> PaywallModel {
+        PaywallModel(paywall: SamplePaywall(answer: .subscribed)) { [weak self] _ in
+            self?.send(.subscribed)
         }
     }
 

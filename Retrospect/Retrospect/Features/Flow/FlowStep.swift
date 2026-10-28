@@ -27,6 +27,11 @@ enum FlowStep: String, CaseIterable, Codable, Sendable {
     case gettingReady
     /// ON-11: the tease, the player sheet risen over getting ready (PS.sheet), playing on its own.
     case tease
+    /// ON-12: the paywall (#255); the sheet has collapsed into its mini-player (PW-Q2 A).
+    case paywall
+    /// ON-13: first home (#256), the journal tab inside the tab shell with all four tabs (FH-Q1). The end
+    /// of the first run: no forward row, no back.
+    case firstHome
 }
 
 /// A screen's hand-off to the host. Moves inside a screen (a failed sign-in, a wrong code, back between
@@ -50,9 +55,11 @@ enum FlowEvent: String, CaseIterable, Sendable {
     case connectBack
     /// ON-10: the first episode is made: the tease rises and plays (row 34, decision 11).
     case episodeReady
-    /// ON-11: the tease reached its end (the 10 s mark, decision 11) or its collapse was tapped. Its row
-    /// to the paywall (row 38) lands with the paywall; until then the walk ends here.
+    /// ON-11: the tease reached its end (the 10 s mark, decision 11) or its collapse was tapped: the sheet
+    /// collapses into the paywall's mini-player (rows 38, 39).
     case teaseEnded
+    /// ON-12: either dummy price (DECISIONS 26 Oct night: no "not now", nothing charged): first home (row 41).
+    case subscribed
 }
 
 /// One edge of the flow: `from` hears `event` and moves to `to`.
@@ -68,7 +75,7 @@ struct FlowEdge: Equatable, Sendable {
     }
 
     /// Every edge between merged screens, with its SCREEN-MAP §3.1 row (`FlowPlan.edges` is the whole
-    /// first run). `tease` has no forward row yet: the flow ends there (the paywall adds the next one).
+    /// first run). Splash to first home is whole; first home has no forward row (the first run's end).
     static let table: [Self] = [
         Self(.splash, .signedIn, .inviteGate), // 7
         Self(.inviteGate, .ticketTorn, .youreIn), // 12
@@ -79,6 +86,8 @@ struct FlowEdge: Equatable, Sendable {
         Self(.connect, .connectDone, .gettingReady), // 29 (continue) and 30 (later)
         Self(.connect, .connectBack, .privacy), // 32
         Self(.gettingReady, .episodeReady, .tease), // 34
+        Self(.tease, .teaseEnded, .paywall), // 38 (and 39: the collapse, provisional default)
+        Self(.paywall, .subscribed, .firstHome), // 41
     ]
 }
 
