@@ -57,7 +57,10 @@ struct RClaim: View {
     /// it smaller passes its own (YO-4 1GDU-0: text-2xl). Additive, `.inkTitle` by default.
     var statedStyle: RTextStyle = .inkTitle
     /// Balanced wrapping for the stated claim (CSS `text-wrap: balance`, as Paper sets YO-4's belief 1GDU-0):
-    /// the lines even out instead of leaving one word alone on the last. Additive, off by default.
+    /// the lines even out instead of leaving one word alone on the last. Additive, off by default: the
+    /// master (G2A-0) is balanced too, but PC-3 and GL-2 were compared with Paper ragged, so flipping the
+    /// default here would move their lines without a side-by-side. YO-4 opts in; the other two are on the
+    /// polish list (docs/team/polish-list.md) to opt in, or flip the default, against their own stills.
     var balanced = false
 
     @Environment(\.colorSchemeContrast) private var contrast

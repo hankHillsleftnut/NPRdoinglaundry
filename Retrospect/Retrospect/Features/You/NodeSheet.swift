@@ -69,10 +69,15 @@ struct NodeSheet: View {
         .padding(.top, RDimension.space1)
     }
 
+    /// The belief (1GDU-0): the stated claim at text-2xl, balanced as Paper sets it (text-wrap: balance):
+    /// three even lines, no lone "her."
+    var claim: RClaim {
+        RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief, balanced: true)
+    }
+
     private var belief: some View {
         VStack(alignment: .leading, spacing: RDimension.space8) {
-            // balanced, as Paper sets it (1GDU-0 text-wrap: balance): three even lines, no lone "her."
-            RClaim(kind: .stated, text: node.belief, meta: node.meta, statedStyle: .inkNodeBelief, balanced: true)
+            claim
             if !node.restsOn.isEmpty {
                 VStack(alignment: .leading, spacing: RDimension.space1) {
                     RSectionLabel(title: "what it rests on")
